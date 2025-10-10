@@ -104,7 +104,10 @@ set(SOURCE_FILES
     src/hlir/bound_to_hlir.cpp
 
     # Code Generator
-    src/codegen/codegen.cpp
+    src/codegen/llvm_ir_builder.cpp
+    src/codegen/codegen_module.cpp
+    src/codegen/codegen_function.cpp
+    src/codegen/hlir_codegen.cpp
     
     # Common Utilities
     src/common/logger.cpp

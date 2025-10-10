@@ -1,7 +1,7 @@
 #include "compiler.hpp"
 
 #include "common/logger.hpp"
-#include "codegen/codegen.hpp"
+#include "codegen/hlir_codegen.hpp"
 #include "semantic/symbol_table.hpp"
 #include "parser/lexer.hpp"
 #include "parser/parser.hpp"
@@ -27,62 +27,6 @@
 
 namespace Fern
 {
-
-    // void Compiler::add_builtin_functions(SymbolTable& global_symbols)
-    // {
-    //     auto& type_system = global_symbols.get_type_system();
-        
-    //     // Add Print function
-    //     {
-    //         global_symbols.set_current_scope(global_symbols.get_global_namespace());
-    //         auto print_function = global_symbols.enter_function("Print", type_system.get_primitive_type("void"));
-
-    //         auto print_param = global_symbols.define_parameter("message", type_system.get_pointer_type(type_system.get_primitive_type("char")));
-    //         print_function->set_parameters({print_param});
-    //     }
-
-    //     // Add Malloc function - heap allocation
-    //     // Malloc(size: i32) -> *i8
-    //     {
-    //         global_symbols.set_current_scope(global_symbols.get_global_namespace());
-    //         auto malloc_function = global_symbols.enter_function("Malloc", type_system.get_pointer_type(type_system.get_primitive_type("i8")));
-
-    //         auto size_param = global_symbols.define_parameter("size", type_system.get_primitive_type("i32"));
-    //         malloc_function->set_parameters({size_param});
-    //     }
-
-    //     // Add Alloc function - stack allocation
-    //     // Alloc(size: i32) -> *i8
-    //     {
-    //         global_symbols.set_current_scope(global_symbols.get_global_namespace());
-    //         auto alloc_function = global_symbols.enter_function("Alloc", type_system.get_pointer_type(type_system.get_primitive_type("i8")));
-
-    //         auto size_param = global_symbols.define_parameter("size", type_system.get_primitive_type("i32"));
-    //         alloc_function->set_parameters({size_param});
-    //     }
-
-    //     // Add Free function - heap deallocation
-    //     // Free(ptr: *i8) -> void
-    //     {
-    //         global_symbols.set_current_scope(global_symbols.get_global_namespace());
-    //         auto free_function = global_symbols.enter_function("Free", type_system.get_primitive_type("void"));
-
-    //         auto ptr_param = global_symbols.define_parameter("ptr", type_system.get_pointer_type(type_system.get_primitive_type("i8")));
-    //         free_function->set_parameters({ptr_param});
-    //     }
-
-    //     // Add Input function
-    //     {
-    //         global_symbols.set_current_scope(global_symbols.get_global_namespace());
-    //         auto input_function = global_symbols.enter_function("Input", type_system.get_primitive_type("i32"));
-
-    //         auto buffer_param = global_symbols.define_parameter("buffer", type_system.get_pointer_type(type_system.get_primitive_type("char")));
-    //         input_function->set_parameters({buffer_param});
-    //     }
-
-    //     // Reset scope back to global namespace
-    //     global_symbols.set_current_scope(global_symbols.get_global_namespace());
-    // }
 
     std::unique_ptr<CompiledModule> Compiler::compile(const std::vector<SourceFile> &source_files)
     {

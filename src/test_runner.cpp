@@ -83,10 +83,10 @@ std::vector<TestResult> TestRunner::run_all_tests(const std::string& test_dir) {
     std::vector<TestResult> results;
     std::vector<std::string> test_files;
 
-    // Collect all .fern files in the test directory
+    // Collect all .fn files in the test directory
     try {
         for (const auto& entry : fs::directory_iterator(test_dir)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".fern") {
+            if (entry.is_regular_file() && entry.path().extension() == ".fn") {
                 test_files.push_back(entry.path().string());
             }
         }

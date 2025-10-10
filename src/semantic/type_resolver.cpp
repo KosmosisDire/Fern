@@ -1442,8 +1442,7 @@ namespace Fern
                 else
                 {
                     // Check type compatibility
-                    check_implicit_conversion(node->initializer->type, varSym->type,
-                                              node, "variable initialization");
+                    check_implicit_conversion(node->initializer->type, varSym->type, node, "variable initialization");
                 }
             }
         }
