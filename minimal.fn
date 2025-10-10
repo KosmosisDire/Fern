@@ -12,13 +12,21 @@ type Person
     fn HaveBirthday
     {
         age += 1
+        Print(name)
         Print("Happy birthday {name}! You're now {age}")
     }
 }
 
 fn Main
 {
-    var alice = new Person("Alice", 30)su
+    var names =
+    [
+        "Alice",
+        "Lucy", 
+        "Gertrude"
+    ]
+    Print(names[2])
+    var alice = new Person("Alice", 30)
     alice.HaveBirthday()  -- "Happy birthday Alice! You're now 31"
 
     return 0.0

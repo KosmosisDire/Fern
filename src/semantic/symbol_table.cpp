@@ -354,6 +354,7 @@ std::string SymbolTable::to_string() const {
             case SymbolKind::Variable: ss << "variable"; break;
             case SymbolKind::Property: ss << "property"; break;
             case SymbolKind::EnumCase: ss << "enum_case"; break;
+            case SymbolKind::Block: ss << "block"; break;
         }
         
         ss << " " << sym->name;
