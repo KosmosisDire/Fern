@@ -14,6 +14,7 @@
 #include "semantic/symbol_table_builder.hpp"
 #include "hlir/hlir.hpp"
 #include "hlir/bound_to_hlir.hpp"
+// #include "hlir/mem2reg.hpp"
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
@@ -23,6 +24,15 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Scalar/Reassociate.h>
+#include <llvm/Transforms/Scalar/SimplifyCFG.h>
+#include <llvm/Transforms/Utils.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Analysis/LoopAnalysisManager.h>
+#include <llvm/Analysis/CGSCCPassManager.h>
 #include <optional>
 
 namespace Fern
@@ -319,10 +329,10 @@ namespace Fern
             converter.build(state.boundTree);
         }
         
-        // Dump HLIR if requested
+        // Dump non-SSA HLIR if requested
         if (print_hlir)
         {
-            LOG_HEADER("HLIR Output", LogCategory::COMPILER);
+            LOG_HEADER("HLIR Output (Non-SSA)", LogCategory::COMPILER);
             std::cout << hlir_module->dump() << "\n";
         }
 
@@ -352,6 +362,33 @@ namespace Fern
             }
             return std::make_unique<CompiledModule>(all_errors);
         }
+
+        // === Run optimization passes ===
+        LOG_HEADER("Running optimization passes", LogCategory::COMPILER);
+
+        // Create analysis managers
+        llvm::LoopAnalysisManager LAM;
+        llvm::FunctionAnalysisManager FAM;
+        llvm::CGSCCAnalysisManager CGAM;
+        llvm::ModuleAnalysisManager MAM;
+
+        // Create pass builder
+        llvm::PassBuilder PB;
+
+        // Register analysis managers
+        PB.registerModuleAnalyses(MAM);
+        PB.registerCGSCCAnalyses(CGAM);
+        PB.registerFunctionAnalyses(FAM);
+        PB.registerLoopAnalyses(LAM);
+        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+        // Build optimization pipeline (O2 level)
+        llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2);
+
+        // Run the optimization passes
+        MPM.run(*llvm_module, MAM);
+
+        LOG_INFO("Optimization passes completed", LogCategory::COMPILER);
 
         return std::make_unique<CompiledModule>(
             std::move(llvm_context),

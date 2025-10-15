@@ -1,33 +1,16 @@
-type Person
-{
-    string name
-    i32 age
-
-    new (string n, i32 a)
-    {
-        name = n
-        age = a
-    }
-
-    fn HaveBirthday
-    {
-        age += 1
-        Print(name)
-        Print("Happy birthday {name}! You're now {age}")
-    }
-}
 
 fn Main
 {
-    var names =
-    [
-        "Alice",
-        "Lucy", 
-        "Gertrude"
-    ]
-    Print(names[2])
-    var alice = new Person("Alice", 30)
-    alice.HaveBirthday()  -- "Happy birthday Alice! You're now 31"
+    Print("Hello from Fern!")
+    Print("External functions work!")
+    Print("Printing functions works!")
+    PrintInt(123)
+    PrintFloat(3.14159)
+
+    var x = 10.5
+    var y = 2.0
+    var z = x / y
+    PrintFloat(x + y + z)
 
     return 0.0
 }

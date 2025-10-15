@@ -161,6 +161,18 @@ namespace Fern::HLIR
         }
     };
 
+    struct ConstNullInst : Instruction
+    {
+        TypePtr null_type;
+
+        ConstNullInst(Value *result, TypePtr type)
+        {
+            op = Opcode::ConstNull;
+            this->result = result;
+            this->null_type = type;
+        }
+    };
+
 #pragma region Memory Inst
 
     struct AllocInst : Instruction
@@ -345,6 +357,9 @@ namespace Fern::HLIR
         void add_incoming(Value *val, BasicBlock *block)
         {
             incoming.push_back({val, block});
+            if (val) {
+                val->uses.push_back(this);
+            }
         }
     };
 
@@ -715,6 +730,12 @@ namespace Fern::HLIR
             {
                 auto *cs = static_cast<const ConstStringInst *>(inst);
                 ss << "const.string \"" << cs->value << "\"";
+                break;
+            }
+            case Opcode::ConstNull:
+            {
+                auto *cn = static_cast<const ConstNullInst *>(inst);
+                ss << "const.null " << type_to_string(cn->null_type);
                 break;
             }
             case Opcode::Alloc:

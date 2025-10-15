@@ -975,6 +975,12 @@ namespace Fern
             {
                 bound->parts.push_back("[]"); // Marker for array
                 bound->typeArguments.push_back(element_type);
+
+                // Bind the array size if present (e.g., char[12])
+                if (array_type->size)
+                {
+                    bound->arraySize = bind_expression(array_type->size);
+                }
             }
         }
         else if (auto ptr_type = syntax->as<PointerTypeSyntax>())

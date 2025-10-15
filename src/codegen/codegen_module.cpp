@@ -105,22 +105,8 @@ namespace Fern
         }
         else if (auto* array_type = type->as<ArrayType>())
         {
-            llvm::Type* elem = get_or_create_type(array_type->element);
-
-            if (array_type->size >= 0)
-            {
-                // Fixed-size array: [N x T] (stack allocated)
-                llvm_type = llvm::ArrayType::get(elem, array_type->size);
-            }
-            else
-            {
-                // Dynamic arrays are represented as a struct { i32 length, ptr data }
-                std::vector<llvm::Type*> fields = {
-                    llvm::Type::getInt32Ty(context),           // length
-                    llvm::PointerType::get(context, 0)         // data pointer (opaque)
-                };
-                llvm_type = llvm::StructType::create(context, fields, "array");
-            }
+            // just represent arrays as pointers for now
+            llvm_type = llvm::PointerType::get(context, 0);
         }
         else if (auto* named_type = type->as<NamedType>())
         {

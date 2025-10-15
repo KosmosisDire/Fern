@@ -91,6 +91,7 @@
         "coroutine": "cpp",
         "resumable": "cpp",
         "future": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "queue": "cpp"
     }
 }

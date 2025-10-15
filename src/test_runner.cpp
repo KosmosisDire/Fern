@@ -38,6 +38,9 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
         // Read and compile the test file
         std::string source = read_file(test_file);
         std::vector<SourceFile> source_files = {{test_file, source}};
+        
+        std::string stdlib = read_file("runtime/basic_print.fn");
+        source_files.push_back({"runtime/basic_print.fn", stdlib});
 
         auto compile_result = compiler.compile(source_files);
 

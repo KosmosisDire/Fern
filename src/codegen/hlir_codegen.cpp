@@ -214,7 +214,19 @@ namespace Fern
     void HLIRCodeGen::gen_alloc(CodeGenFunction& CGF, HLIR::AllocInst* inst)
     {
         auto& ir = CGF.get_ir_builder();
-        llvm::Type* alloc_type = CGF.get_module().get_or_create_type(inst->alloc_type);
+        
+        llvm::Type* alloc_type;
+        
+        // Special handling for array types - allocate the data, not a pointer
+        if (auto* array_type = inst->alloc_type->as<ArrayType>())
+        {
+            llvm::Type* elem_type = CGF.get_module().get_or_create_type(array_type->element);
+            alloc_type = llvm::ArrayType::get(elem_type, array_type->size);
+        }
+        else
+        {
+            alloc_type = CGF.get_module().get_or_create_type(inst->alloc_type);
+        }
 
         llvm::Value* ptr;
         if (inst->on_stack)
@@ -288,7 +300,15 @@ namespace Fern
 
     void HLIRCodeGen::gen_element_addr(CodeGenFunction& CGF, HLIR::ElementAddrInst* inst)
     {
-        llvm::Type* array_llvm_type = CGF.get_module().get_or_create_type(inst->array->type);
+        // Determine the underlying type we're indexing into
+        TypePtr hlir_type = inst->array->type;
+
+        // If it's a pointer, get the pointee type
+        if (auto ptr_type = hlir_type->as<PointerType>()) {
+            hlir_type = ptr_type->pointee;
+        }
+
+        llvm::Type* array_llvm_type = CGF.get_module().get_or_create_type(hlir_type);
 
         llvm::Value* elem_ptr;
 
@@ -317,7 +337,13 @@ namespace Fern
         auto& ir = CGF.get_ir_builder();
         llvm::Value* array = CGF.get_value(inst->array);
         llvm::Value* index = CGF.get_value(inst->index);
-        llvm::Type* array_llvm_type = CGF.get_module().get_or_create_type(inst->array->type);
+
+        // Get the array type (unwrap pointer if needed)
+        TypePtr hlir_type = inst->array->type;
+        if (auto ptr_type = hlir_type->as<PointerType>()) {
+            hlir_type = ptr_type->pointee;
+        }
+        llvm::Type* array_llvm_type = CGF.get_module().get_or_create_type(hlir_type);
 
         // For fixed arrays, we need GEP with two indices: [0, index]
         llvm::Value* zero = ir.i32_constant(0);
@@ -355,21 +381,58 @@ namespace Fern
         return ir.create_gep(elem_type, data_ptr, index, "elem_addr");
     }
 
-    llvm::Value* HLIRCodeGen::gen_pointer_element_addr(CodeGenFunction& CGF,
-                                                       HLIR::ElementAddrInst* inst)
+    llvm::Value* HLIRCodeGen::gen_pointer_element_addr(CodeGenFunction& CGF, HLIR::ElementAddrInst* inst)
     {
         auto& ir = CGF.get_ir_builder();
         llvm::Value* array = CGF.get_value(inst->array);
         llvm::Value* index = CGF.get_value(inst->index);
 
-        // Get element type
-        llvm::Type* elem_type = CGF.get_module().get_or_create_type(inst->result->type);
-        if (auto* ptr_type = inst->result->type->as<PointerType>())
+        // Debug: Print GEP operation details
+        std::cout << "\n=== Pointer GEP Operation Debug ===" << std::endl;
+        std::cout << "Array value: ";
+        array->print(llvm::outs());
+        std::cout << "\nArray value type: ";
+        array->getType()->print(llvm::outs());
+        std::cout << "\nIndex value: ";
+        index->print(llvm::outs());
+        std::cout << "\nIndex value type: ";
+        index->getType()->print(llvm::outs());
+        std::cout << "\nHLIR array type: " << inst->array->type->get_name() << std::endl;
+
+        // Determine the element type
+        TypePtr hlir_type = inst->array->type;
+        llvm::Type* elem_type = nullptr;
+
+        // If it's a pointer to an array, unwrap it
+        if (auto* ptr_type = hlir_type->as<PointerType>())
         {
-            elem_type = CGF.get_module().get_or_create_type(ptr_type->pointee);
+            std::cout << "Pointer pointee type: " << ptr_type->pointee->get_name() << std::endl;
+            hlir_type = ptr_type->pointee;
         }
 
-        return ir.create_gep(elem_type, array, index, "elem_addr");
+        // Now hlir_type should be an array type
+        if (auto* array_type = hlir_type->as<ArrayType>())
+        {
+            std::cout << "Array element type: " << array_type->element->get_name() << std::endl;
+            elem_type = CGF.get_module().get_or_create_type(array_type->element);
+            std::cout << "LLVM element type: ";
+            elem_type->print(llvm::outs());
+            std::cout << std::endl;
+        }
+
+        if (!elem_type)
+        {
+            throw std::runtime_error("Cannot determine element type for pointer GEP - type is neither pointer nor array");
+        }
+
+        auto* result = ir.create_gep(elem_type, array, index, "elem_addr");
+        std::cout << "GEP result: ";
+        result->print(llvm::outs());
+        std::cout << "\nGEP result type: ";
+        result->getType()->print(llvm::outs());
+        std::cout << "\n=== End Pointer GEP Debug ===\n" << std::endl;
+
+        return result;
     }
 
     #pragma region Binary Gen

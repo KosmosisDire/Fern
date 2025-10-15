@@ -102,6 +102,7 @@ set(SOURCE_FILES
 
     # HLIR
     src/hlir/bound_to_hlir.cpp
+    # src/hlir/mem2reg.cpp
 
     # Code Generator
     src/codegen/llvm_ir_builder.cpp

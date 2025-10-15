@@ -10,6 +10,7 @@ namespace Fern
     bool Type::is_value_type() const {
         if (is<PrimitiveType>()) return true;
         if (is<PointerType>()) return true;  // Pointers themselves are values
+        if (is<ArrayType>()) return false;  // Arrays are reference types
         if (is<NamedType>()) {
             // Check if the type symbol is a value type (struct)
             return as<NamedType>()->symbol && !as<NamedType>()->symbol->isRef;

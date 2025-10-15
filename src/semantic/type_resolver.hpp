@@ -22,6 +22,7 @@ namespace Fern
         // Type inference via unification
         std::unordered_map<TypePtr, TypePtr> substitution;
         std::unordered_set<TypePtr> pendingConstraints;
+        std::unordered_map<TypePtr, BoundNode*> constraintNodes;  // Track where each constraint originated
         
         // Context tracking
         FunctionSymbol* currentFunction = nullptr;

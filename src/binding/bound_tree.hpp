@@ -424,6 +424,7 @@ namespace Fern
         std::vector<std::string> parts;                   // ["List"], or ["System", "Collections", "Generic", "List"]
         std::vector<BoundTypeExpression *> typeArguments; // For generics (future)
         TypePtr resolvedTypeReference = nullptr;          // Resolved in semantic pass
+        BoundExpression* arraySize = nullptr;             // For array types like char[12]
         BOUND_ACCEPT_VISITOR
     };
 

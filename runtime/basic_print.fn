@@ -12,7 +12,7 @@ fn PrintInt(i32 value)
     Print(buffer);
 }
 
-fn IntToString(i32 num, char* buffer) -> i32
+fn IntToString(i32 num, char[] buffer) -> i32
 {
     if num == 0
     {
@@ -71,7 +71,7 @@ fn PrintFloat(f32 value)
     Print(buffer);
 }
 
-fn FloatToString(f32 num, char* buffer, i32 precision) -> i32
+fn FloatToString(f32 num, char[] buffer, i32 precision) -> i32
 {
     var index = 0
     

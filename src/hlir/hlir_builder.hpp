@@ -51,32 +51,10 @@ namespace Fern::HLIR
         }
         
         Value* const_null(TypePtr type) {
-            // Create a zero value for the given type
-            if (auto prim = type->as<PrimitiveType>()) {
-                switch (prim->kind) {
-                    case PrimitiveKind::Bool:
-                        return const_bool(false, type);
-                    case PrimitiveKind::I8:
-                    case PrimitiveKind::I16:
-                    case PrimitiveKind::I32:
-                    case PrimitiveKind::I64:
-                    case PrimitiveKind::U8:
-                    case PrimitiveKind::U16:
-                    case PrimitiveKind::U32:
-                    case PrimitiveKind::U64:
-                    case PrimitiveKind::Char:
-                        return const_int(0, type);
-                    case PrimitiveKind::F32:
-                    case PrimitiveKind::F64:
-                        return const_float(0.0, type);
-                    default:
-                        break;
-                }
-            }
-            
-            // For pointers, arrays, and complex types, use nullptr/zero
+            // Create a proper ConstNull instruction for any type
+            // The backend will lower this appropriately for each type
             auto result = current_func->create_value(type);
-            auto inst = std::make_unique<ConstIntInst>(result, 0);
+            auto inst = std::make_unique<ConstNullInst>(result, type);
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
@@ -91,6 +69,11 @@ namespace Fern::HLIR
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
+        }
+
+        Value* alloc_nested(TypePtr type, bool stack = false) {
+            // Result type is pointer to a pointer to the allocated type
+            return alloc(type_system->get_pointer(type), stack);
         }
         
         Value* load(Value* addr, TypePtr type) {

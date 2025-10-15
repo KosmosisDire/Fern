@@ -10,6 +10,7 @@ namespace Fern
         errors.clear();
         substitution.clear();
         pendingConstraints.clear();
+        constraintNodes.clear();
 
         // Multiple passes for type inference
         for (int pass = 0; pass < MAX_PASSES; ++pass)
@@ -74,11 +75,13 @@ namespace Fern
         {
             substitution[root1] = root2;
             pendingConstraints.erase(root1);
+            constraintNodes.erase(root1);
         }
         else if (root2_is_var)
         {
             substitution[root2] = root1;
             pendingConstraints.erase(root2);
+            constraintNodes.erase(root2);
         }
         else if (root1->get_name() != root2->get_name())
         {
@@ -102,6 +105,7 @@ namespace Fern
         if (canonical->is<UnresolvedType>())
         {
             pendingConstraints.insert(canonical);
+            constraintNodes[canonical] = expr;  // Track which node has this unresolved type
         }
     }
 
@@ -242,7 +246,20 @@ namespace Fern
                     TypePtr elementType = resolve_type_expression(boundType->typeArguments[0]);
                     if (elementType)
                     {
-                        return typeSystem.get_array(elementType, -1); // -1 for dynamic array
+                        // Extract array size if present
+                        int32_t arraySize = -1; // Default to unsized/dynamic
+                        if (boundType->arraySize)
+                        {
+                            // If it's a literal, extract the constant value
+                            if (auto literal = boundType->arraySize->as<BoundLiteralExpression>())
+                            {
+                                if (std::holds_alternative<int64_t>(literal->constantValue))
+                                {
+                                    arraySize = static_cast<int32_t>(std::get<int64_t>(literal->constantValue));
+                                }
+                            }
+                        }
+                        return typeSystem.get_array(elementType, arraySize);
                     }
                 }
                 return typeSystem.get_unresolved();
@@ -480,7 +497,43 @@ namespace Fern
     {
         for (auto constraint : pendingConstraints)
         {
-            errors.push_back("Could not infer type: " + constraint->get_name());
+            // Find the node that has this unresolved type
+            auto nodeIt = constraintNodes.find(constraint);
+            if (nodeIt != constraintNodes.end() && nodeIt->second)
+            {
+                BoundNode* node = nodeIt->second;
+                std::stringstream ss;
+                ss << "Error at " << node->location.start.to_string() << ": Could not infer type";
+
+                // Try to add more context about what variable/expression this is
+                if (auto varDecl = node->as<BoundVariableDeclaration>())
+                {
+                    ss << " for variable '" << varDecl->name << "'";
+                }
+                else if (auto nameExpr = node->as<BoundNameExpression>())
+                {
+                    if (!nameExpr->parts.empty())
+                    {
+                        ss << " for name '" << nameExpr->parts.back() << "'";
+                    }
+                }
+                else if (auto memberExpr = node->as<BoundMemberAccessExpression>())
+                {
+                    ss << " for member '" << memberExpr->memberName << "'";
+                }
+                else
+                {
+                    // For other expressions, just mention it's an expression
+                    ss << " for expression";
+                }
+
+                errors.push_back(ss.str());
+            }
+            else
+            {
+                // Fallback to old error message if we can't find the node
+                errors.push_back("Could not infer type: " + constraint->get_name());
+            }
         }
     }
 
@@ -1443,6 +1496,13 @@ namespace Fern
                 {
                     // Check type compatibility
                     check_implicit_conversion(node->initializer->type, varSym->type, node, "variable initialization");
+                }
+
+                // Track if the variable still has an unresolved type
+                if (varSym->type->is<UnresolvedType>())
+                {
+                    pendingConstraints.insert(varSym->type);
+                    constraintNodes[varSym->type] = node;
                 }
             }
         }

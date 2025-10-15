@@ -1,6 +1,7 @@
 // llvm_ir_builder.cpp - LLVM IR Building Utilities Implementation
 #include "llvm_ir_builder.hpp"
 #include <llvm/IR/DataLayout.h>
+#include <iostream>
 
 namespace Fern
 {
@@ -106,6 +107,30 @@ namespace Fern
 
     void LLVMIRBuilder::create_store(llvm::Value* value, llvm::Value* ptr)
     {
+        // Validate pointer argument
+        if (!ptr) {
+            std::cerr << "ERROR: Null pointer passed to create_store\n";
+            return;
+        }
+        
+        if (!ptr->getType()->isPointerTy()) {
+            std::cerr << "ERROR: Non-pointer type passed as pointer to create_store\n";
+            std::cerr << "  Got type: ";
+            ptr->getType()->print(llvm::errs());
+            std::cerr << "\n";
+            return;
+        }
+
+        // Validate value argument
+        if (!value) {
+            std::cerr << "ERROR: Null value passed to create_store\n";
+            return;
+        }
+
+        // Note: Type validation removed for opaque pointers (LLVM 15+)
+        // Opaque pointers don't have getPointerElementType()
+        // LLVM will validate the store operation internally
+
         builder.CreateStore(value, ptr);
     }
 
@@ -350,6 +375,29 @@ namespace Fern
                                            std::vector<llvm::Value*> args,
                                            const std::string& name)
     {
+        // Validate arguments before calling
+        llvm::FunctionType* func_type = callee->getFunctionType();
+        if (args.size() != func_type->getNumParams()) {
+            std::cerr << "ERROR: Argument count mismatch for function " << callee->getName().str() << "\n";
+            std::cerr << "  Expected " << func_type->getNumParams() << " arguments, got " << args.size() << "\n";
+        }
+
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (i < func_type->getNumParams()) {
+                llvm::Type* expected_type = func_type->getParamType(i);
+                llvm::Type* actual_type = args[i]->getType();
+                if (expected_type != actual_type) {
+                    std::cerr << "ERROR: Type mismatch in call to " << callee->getName().str() << "\n";
+                    std::cerr << "  Argument " << i << ":\n";
+                    std::cerr << "    Expected: ";
+                    expected_type->print(llvm::errs());
+                    std::cerr << "\n    Got: ";
+                    actual_type->print(llvm::errs());
+                    std::cerr << "\n";
+                }
+            }
+        }
+
         return builder.CreateCall(callee, args, name);
     }
 
