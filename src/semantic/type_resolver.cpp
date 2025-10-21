@@ -463,6 +463,40 @@ namespace Fern
             return false; // Return false to indicate conversion not yet determined
         }
 
+        // Helper lambda to check if a type is an integer
+        auto is_integer = [](TypePtr t) -> bool {
+            if (auto* prim = t->as<PrimitiveType>()) {
+                switch (prim->kind) {
+                    case PrimitiveKind::I8:
+                    case PrimitiveKind::I16:
+                    case PrimitiveKind::I32:
+                    case PrimitiveKind::I64:
+                    case PrimitiveKind::U8:
+                    case PrimitiveKind::U16:
+                    case PrimitiveKind::U32:
+                    case PrimitiveKind::U64:
+                    case PrimitiveKind::Char:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            return false;
+        };
+
+        // Allow explicit cast between pointers and integers (pointer-width integers)
+        // pointer -> integer (cast to usize/isize equivalent, we'll use u64/i64)
+        if (canonicalFrom->is<PointerType>() && is_integer(canonicalTo))
+        {
+            return true; // Allow pointer-to-integer cast
+        }
+
+        // integer -> pointer (cast from usize/isize equivalent)
+        if (is_integer(canonicalFrom) && canonicalTo->is<PointerType>())
+        {
+            return true; // Allow integer-to-pointer cast
+        }
+
         ConversionKind kind = check_conversion(canonicalFrom, canonicalTo);
 
         if (Conversions::is_conversion_possible(kind))
@@ -666,7 +700,92 @@ namespace Fern
             break;
         }
 
-        default: // Arithmetic operators
+        case BinaryOperatorKind::Add:
+        case BinaryOperatorKind::Subtract:
+        {
+            // Handle pointer arithmetic: pointer +/- integer
+            TypePtr resultType = nullptr;
+
+            if (!leftType->is<UnresolvedType>() && !rightType->is<UnresolvedType>())
+            {
+                // Helper lambda to check if a type is an integer
+                auto is_integer = [](TypePtr t) -> bool {
+                    if (auto* prim = t->as<PrimitiveType>()) {
+                        switch (prim->kind) {
+                            case PrimitiveKind::I8:
+                            case PrimitiveKind::I16:
+                            case PrimitiveKind::I32:
+                            case PrimitiveKind::I64:
+                            case PrimitiveKind::U8:
+                            case PrimitiveKind::U16:
+                            case PrimitiveKind::U32:
+                            case PrimitiveKind::U64:
+                            case PrimitiveKind::Char:
+                                return true;
+                            default:
+                                return false;
+                        }
+                    }
+                    return false;
+                };
+
+                // Check for pointer + integer or integer + pointer
+                if (leftType->is<PointerType>() && is_integer(rightType))
+                {
+                    // pointer + integer = pointer
+                    resultType = leftType;
+                }
+                else if (node->operatorKind == BinaryOperatorKind::Add &&
+                         rightType->is<PointerType>() && is_integer(leftType))
+                {
+                    // integer + pointer = pointer (only for addition)
+                    resultType = rightType;
+                }
+                else if (leftType->is<PointerType>() && rightType->is<PointerType>())
+                {
+                    // pointer - pointer = integer (ptrdiff_t, represented as i64)
+                    if (node->operatorKind == BinaryOperatorKind::Subtract)
+                    {
+                        // TODO: Verify pointers are compatible types
+                        resultType = typeSystem.get_i64();
+                    }
+                    else
+                    {
+                        report_error(node, "Cannot add two pointers");
+                        resultType = typeSystem.get_unresolved();
+                    }
+                }
+                else
+                {
+                    // Regular arithmetic between non-pointer types
+                    ConversionKind ltr = check_conversion(leftType, rightType);
+                    ConversionKind rtl = check_conversion(rightType, leftType);
+
+                    if (Conversions::is_implicit_conversion(rtl))
+                        resultType = leftType; // Left is wider
+                    else if (Conversions::is_implicit_conversion(ltr))
+                        resultType = rightType; // Right is wider
+                    else if (ltr == ConversionKind::Identity)
+                        resultType = leftType; // Same type
+                    else
+                    {
+                        report_error(node, "Incompatible types for binary operator: '" +
+                                               leftType->get_name() + "' and '" + rightType->get_name() + "'");
+                        resultType = typeSystem.get_unresolved();
+                    }
+                }
+            }
+            else
+            {
+                unify(leftType, rightType, node, "binary operation");
+                resultType = apply_substitution(leftType);
+            }
+
+            annotate_expression(node, resultType);
+            break;
+        }
+
+        default: // Other arithmetic operators (multiply, divide, modulo, bitwise, etc.)
         {
             // Determine result type
             TypePtr resultType = nullptr;

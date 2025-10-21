@@ -403,27 +403,35 @@ namespace Fern
         TypePtr hlir_type = inst->array->type;
         llvm::Type* elem_type = nullptr;
 
-        // If it's a pointer to an array, unwrap it
+        // If it's a pointer, unwrap to get the pointee type
         if (auto* ptr_type = hlir_type->as<PointerType>())
         {
             std::cout << "Pointer pointee type: " << ptr_type->pointee->get_name() << std::endl;
             hlir_type = ptr_type->pointee;
         }
 
-        // Now hlir_type should be an array type
+        // Check if the pointee is an array type (e.g., for pointer to array)
         if (auto* array_type = hlir_type->as<ArrayType>())
         {
             std::cout << "Array element type: " << array_type->element->get_name() << std::endl;
             elem_type = CGF.get_module().get_or_create_type(array_type->element);
-            std::cout << "LLVM element type: ";
-            elem_type->print(llvm::outs());
-            std::cout << std::endl;
+        }
+        else
+        {
+            // Direct pointer arithmetic (e.g., char* + 5)
+            // The element type is just the pointee type itself
+            std::cout << "Direct pointer arithmetic - element type: " << hlir_type->get_name() << std::endl;
+            elem_type = CGF.get_module().get_or_create_type(hlir_type);
         }
 
         if (!elem_type)
         {
-            throw std::runtime_error("Cannot determine element type for pointer GEP - type is neither pointer nor array");
+            throw std::runtime_error("Cannot determine element type for pointer GEP");
         }
+
+        std::cout << "LLVM element type: ";
+        elem_type->print(llvm::outs());
+        std::cout << std::endl;
 
         auto* result = ir.create_gep(elem_type, array, index, "elem_addr");
         std::cout << "GEP result: ";
@@ -591,7 +599,25 @@ namespace Fern
 
         llvm::Value* result = nullptr;
 
-        if (src_props.is_float && dst_props.is_float)
+        // Handle pointer-to-integer cast
+        if (src_props.is_pointer && dst_props.is_integer)
+        {
+            // Use ptrtoint instruction
+            result = ir.create_ptr_to_int(value, target_type, "ptrtoint");
+        }
+        // Handle integer-to-pointer cast
+        else if (src_props.is_integer && dst_props.is_pointer)
+        {
+            // Use inttoptr instruction
+            result = ir.create_int_to_ptr(value, target_type, "inttoptr");
+        }
+        // Handle pointer-to-pointer cast (bitcast)
+        else if (src_props.is_pointer && dst_props.is_pointer)
+        {
+            // Pointer to pointer cast (bitcast)
+            result = ir.create_bitcast(value, target_type, "ptrcast");
+        }
+        else if (src_props.is_float && dst_props.is_float)
         {
             // Float to float
             result = ir.create_float_cast(value, target_type, "cast");

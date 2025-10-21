@@ -28,9 +28,12 @@ size_t BoundToHLIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
 
 void BoundToHLIR::visit(BoundLiteralExpression* node) {
     HLIR::Value* result = nullptr;
-    
+
     if (std::holds_alternative<int64_t>(node->constantValue)) {
         result = builder.const_int(std::get<int64_t>(node->constantValue), node->type);
+    }
+    else if (std::holds_alternative<uint64_t>(node->constantValue)) {
+        result = builder.const_int(static_cast<int64_t>(std::get<uint64_t>(node->constantValue)), node->type);
     }
     else if (std::holds_alternative<bool>(node->constantValue)) {
         result = builder.const_bool(std::get<bool>(node->constantValue), node->type);
@@ -41,7 +44,16 @@ void BoundToHLIR::visit(BoundLiteralExpression* node) {
     else if (std::holds_alternative<std::string>(node->constantValue)) {
         result = builder.const_string(std::get<std::string>(node->constantValue), node->type);
     }
-    
+    else if (std::holds_alternative<std::monostate>(node->constantValue)) {
+        std::cerr << "ERROR: BoundLiteralExpression has monostate (not a constant)\n";
+        std::cerr << "  Type: " << (node->type ? node->type->get_name() : "null") << "\n";
+    }
+    else {
+        std::cerr << "ERROR: BoundLiteralExpression has unknown variant type\n";
+        std::cerr << "  Variant index: " << node->constantValue.index() << "\n";
+        std::cerr << "  Type: " << (node->type ? node->type->get_name() : "null") << "\n";
+    }
+
     expression_values[node] = result;
 }
 
@@ -87,10 +99,72 @@ void BoundToHLIR::visit(BoundBinaryExpression* node) {
 
     if (!left || !right) {
         std::cerr << "ERROR: Null operand in binary expression\n";
+        if (!left) {
+            std::cerr << "  Left operand is null - type: " << typeid(*node->left).name() << "\n";
+            if (node->left->type) {
+                std::cerr << "    Left type: " << node->left->type->get_name() << "\n";
+            }
+        }
+        if (!right) {
+            std::cerr << "  Right operand is null - type: " << typeid(*node->right).name() << "\n";
+            if (node->right->type) {
+                std::cerr << "    Right type: " << node->right->type->get_name() << "\n";
+            }
+        }
         expression_values[node] = nullptr;
         return;
     }
-    
+
+    // Handle pointer arithmetic specially
+    if ((node->operatorKind == BinaryOperatorKind::Add ||
+         node->operatorKind == BinaryOperatorKind::Subtract) &&
+        node->left->type && node->right->type) {
+
+        // Check for pointer + integer
+        if (node->left->type->is<PointerType>() && node->right->type->is<PrimitiveType>()) {
+            auto ptr_type = node->left->type->as<PointerType>();
+            auto element_type = ptr_type->pointee;
+
+            if (node->operatorKind == BinaryOperatorKind::Add) {
+                // pointer + integer: use ElementAddr
+                auto result = builder.element_addr(left, right, element_type);
+                expression_values[node] = result;
+                return;
+            } else {
+                // pointer - integer: negate the index and use ElementAddr
+                auto neg_right = builder.unary(Opcode::Neg, right);
+                auto result = builder.element_addr(left, neg_right, element_type);
+                expression_values[node] = result;
+                return;
+            }
+        }
+
+        // Check for integer + pointer (only for addition)
+        if (node->operatorKind == BinaryOperatorKind::Add &&
+            node->right->type->is<PointerType>() && node->left->type->is<PrimitiveType>()) {
+            auto ptr_type = node->right->type->as<PointerType>();
+            auto element_type = ptr_type->pointee;
+
+            // integer + pointer: use ElementAddr (swap operands)
+            auto result = builder.element_addr(right, left, element_type);
+            expression_values[node] = result;
+            return;
+        }
+
+        // Check for pointer - pointer
+        if (node->operatorKind == BinaryOperatorKind::Subtract &&
+            node->left->type->is<PointerType>() && node->right->type->is<PointerType>()) {
+            // pointer - pointer: convert pointers to integers, subtract, divide by element size
+            // For now, we'll use a simple subtraction - proper implementation would need ptrtoint
+            // This is a placeholder that will need proper implementation in codegen
+            auto opcode = get_binary_opcode(node->operatorKind);
+            auto result = builder.binary(opcode, left, right);
+            expression_values[node] = result;
+            return;
+        }
+    }
+
+    // Regular binary operation
     auto opcode = get_binary_opcode(node->operatorKind);
     auto result = builder.binary(opcode, left, right);
     expression_values[node] = result;
@@ -492,8 +566,18 @@ void BoundToHLIR::visit(BoundWhileStatement* node) {
     loop_stack.push(ctx);
 
     auto cond = evaluate_expression(node->condition);
+    if (!cond) {
+        std::cerr << "ERROR: While condition evaluated to null!\n";
+        std::cerr << "Condition type: " << typeid(*node->condition).name() << "\n";
+        if (node->condition->type) {
+            std::cerr << "Condition result type: " << node->condition->type->get_name() << "\n";
+        }
+    }
     if (cond) {
         builder.cond_br(cond, body, exit);
+    } else {
+        // Fallback: create unconditional branch to exit to avoid invalid IR
+        builder.br(exit);
     }
 
     builder.set_block(body);

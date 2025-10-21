@@ -342,6 +342,24 @@ namespace Fern
                          : builder.CreateFPToUI(value, target_type, name);
     }
 
+    llvm::Value* LLVMIRBuilder::create_ptr_to_int(llvm::Value* value, llvm::Type* target_type,
+                                                 const std::string& name)
+    {
+        return builder.CreatePtrToInt(value, target_type, name);
+    }
+
+    llvm::Value* LLVMIRBuilder::create_int_to_ptr(llvm::Value* value, llvm::Type* target_type,
+                                                 const std::string& name)
+    {
+        return builder.CreateIntToPtr(value, target_type, name);
+    }
+
+    llvm::Value* LLVMIRBuilder::create_bitcast(llvm::Value* value, llvm::Type* target_type,
+                                              const std::string& name)
+    {
+        return builder.CreateBitCast(value, target_type, name);
+    }
+
     // === Control Flow ===
 
     void LLVMIRBuilder::create_ret(llvm::Value* value)

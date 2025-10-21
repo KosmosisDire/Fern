@@ -125,6 +125,12 @@ namespace Fern
                                         bool is_signed, const std::string& name = "");
         llvm::Value* create_float_to_int(llvm::Value* value, llvm::Type* target_type,
                                         bool is_signed, const std::string& name = "");
+        llvm::Value* create_ptr_to_int(llvm::Value* value, llvm::Type* target_type,
+                                      const std::string& name = "");
+        llvm::Value* create_int_to_ptr(llvm::Value* value, llvm::Type* target_type,
+                                      const std::string& name = "");
+        llvm::Value* create_bitcast(llvm::Value* value, llvm::Type* target_type,
+                                   const std::string& name = "");
 
         // === Control Flow ===
         void create_ret(llvm::Value* value = nullptr);

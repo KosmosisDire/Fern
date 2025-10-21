@@ -579,9 +579,17 @@ namespace Fern
             bound->constantValue = (syntax->value == "true");
             break;
         case LiteralKind::Char:
-            if (syntax->value.length() >= 3)
+            // The lexer stores the actual character value (after processing escape sequences)
+            // For '\0', it stores the null character (length 1)
+            // For 'a', it stores 'a' (length 1)
+            if (syntax->value.length() >= 1)
             {
-                bound->constantValue = static_cast<int64_t>(syntax->value[1]);
+                bound->constantValue = static_cast<int64_t>(static_cast<unsigned char>(syntax->value[0]));
+            }
+            else
+            {
+                std::cerr << "ERROR: Empty char literal\n";
+                bound->constantValue = static_cast<int64_t>(0);
             }
             break;
         case LiteralKind::String:
