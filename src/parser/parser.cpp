@@ -1592,62 +1592,74 @@ namespace Fern
         auto nameExpr = parseNameExpression();
         BaseExprSyntax *baseType = nameExpr;
 
-        // Speculatively check for array type syntax
-        if (check(TokenKind::LeftBracket))
+        // Parse pointer and array type suffixes in a loop
+        // This allows combinations like: void*[], int***, MyType[]*, etc.
+        while (true)
         {
-            auto checkpoint = tokens.checkpoint();
-            tokens.advance(); // consume [
-
-            // Check if this looks like array type syntax (empty or literal)
-            bool isArrayType = false;
-            if (check(TokenKind::RightBracket))
+            // Check for pointer syntax: *
+            if (consume(TokenKind::Asterisk))
             {
-                isArrayType = true; // Empty brackets: Type[]
+                auto pointerType = arena.make<PointerTypeSyntax>();
+                pointerType->baseType = baseType;
+                pointerType->location = SourceRange(baseType->location.start, previous().location.end());
+                baseType = pointerType;
+                continue; // Check for more suffixes
             }
-            else if (check(TokenKind::LiteralI32) || check(TokenKind::LiteralI64) || check(TokenKind::LiteralI8))
+
+            // Speculatively check for array type syntax
+            if (check(TokenKind::LeftBracket))
             {
-                tokens.advance(); // consume literal
+                auto checkpoint = tokens.checkpoint();
+                tokens.advance(); // consume [
+
+                // Check if this looks like array type syntax (empty or literal)
+                bool isArrayType = false;
                 if (check(TokenKind::RightBracket))
                 {
-                    isArrayType = true; // Literal size: Type[10]
+                    isArrayType = true; // Empty brackets: Type[]
                 }
-            }
+                else if (check(TokenKind::LiteralI32) || check(TokenKind::LiteralI64) || check(TokenKind::LiteralI8))
+                {
+                    tokens.advance(); // consume literal
+                    if (check(TokenKind::RightBracket))
+                    {
+                        isArrayType = true; // Literal size: Type[10]
+                    }
+                }
 
-            if (!isArrayType)
-            {
-                // Not array type syntax, restore and return base type
+                if (!isArrayType)
+                {
+                    // Not array type syntax, restore and return base type
+                    tokens.restore(checkpoint);
+                    break; // Exit loop
+                }
+
+                // It is array type syntax, restore and parse properly
                 tokens.restore(checkpoint);
-                return baseType;
+                consume(TokenKind::LeftBracket);
+
+                auto arrayType = arena.make<ArrayTypeSyntax>();
+                arrayType->baseType = baseType;
+
+                if (check(TokenKind::LiteralI32) || check(TokenKind::LiteralI64) || check(TokenKind::LiteralI8))
+                {
+                    arrayType->size = parseLiteral();
+                }
+
+                if (!consume(TokenKind::RightBracket))
+                {
+                    // If we determined it was array type syntax but can't parse it,
+                    // return null to indicate parse failure
+                    return nullptr;
+                }
+
+                arrayType->location = SourceRange(baseType->location.start, previous().location.end());
+                baseType = arrayType;
+                continue; // Check for more suffixes
             }
 
-            // It is array type syntax, restore and parse properly
-            tokens.restore(checkpoint);
-            consume(TokenKind::LeftBracket);
-
-            auto arrayType = arena.make<ArrayTypeSyntax>();
-            arrayType->baseType = baseType;
-
-            if (check(TokenKind::LiteralI32) || check(TokenKind::LiteralI64) || check(TokenKind::LiteralI8))
-            {
-                arrayType->size = parseLiteral();
-            }
-
-            if (!consume(TokenKind::RightBracket))
-            {
-                // If we determined it was array type syntax but can't parse it,
-                // return null to indicate parse failure
-                return nullptr;
-            }
-
-            arrayType->location = SourceRange(baseType->location.start, previous().location.end());
-            baseType = arrayType;
-        }
-
-        if (consume(TokenKind::Asterisk))
-        {
-            auto pointerType = arena.make<PointerTypeSyntax>();
-            pointerType->baseType = baseType;
-            baseType = pointerType;
+            // No more type suffixes
+            break;
         }
 
         return baseType;

@@ -1,0 +1,11 @@
+
+type GCContext
+{
+    void*[] roots
+}
+
+fn Main
+{
+    var gc = new GCContext()
+    return 0.0
+}
