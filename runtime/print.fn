@@ -5,162 +5,116 @@ fn Print(string msg)
     puts(msg)
 }
 
-fn PrintLn(char* str)
-{
-    Print(str);
-    Print("\n");
-}
-
-fn PrintLn(i32 i)
-{
-    Print(i);
-    Print("\n");
-}
-
-fn PrintLn(f32 f)
-{
-    Print(f);
-    Print("\n");
-}
-
-fn Print(i32 value)
+fn PrintInt(i32 value)
 {
     var buffer = new char[12];  -- Enough for 32-bit int
     IntToString(value, buffer);
     Print(buffer);
 }
 
-fn IntToString(i32 num, char[] buffer) {
-    if (num == 0) {
-        buffer[0] = '0';
-        buffer[1] = '\0';
-        return 1;
-    }
-    
-    bool isNegative = num < 0;
-    if (isNegative)
+fn IntToString(i32 num, char[] buffer) -> i32
+{
+    if num == 0
     {
-        num = -num;  -- Make positive for digit extraction
+        buffer[0] = (char)48  -- '0' ASCII value
+        buffer[1] = (char)0   -- '\0' null terminator
+        return 1
     }
-    
-    i32 index = 0;
-    
+
+    var isNegative = num < 0
+    if isNegative
+    {
+        num = -num  -- Make positive for digit extraction
+    }
+
+    var index = 0
+    var digit = 0
+
     -- Extract digits (builds string backwards)
-    while (num > 0) {
-        buffer[index] = (char)((num % 10)) + '0';
-        index += 1;
-        num /= 10;
-    }
-    
-    -- Add negative sign if needed
-    if (isNegative)
+    while num > 0
     {
-        buffer[index] = '-';
-        index += 1;
+        digit = num % 10
+        buffer[index] = (char)(digit + 48)  -- Convert digit to ASCII ('0' is 48)
+        index += 1
+        num /= 10
     }
-    
-    buffer[index] = '\0';  -- Null terminate
-    
+
+    -- Add negative sign if needed
+    if isNegative
+    {
+        buffer[index] = (char)45  -- '-' ASCII value
+        index += 1
+    }
+
+    buffer[index] = (char)0  -- Null terminate
+
     -- Reverse the string in-place
-    i32 start = 0;
-    i32 end = index - 1;
-    while (start < end) {
-        char temp = buffer[start];
-        buffer[start] = buffer[end];
-        buffer[end] = temp;
-        start += 1;
-        end -= 1;
+    var start = 0
+    var end = index - 1
+    char temp = (char)0
+    while start < end
+    {
+        temp = buffer[start]
+        buffer[start] = buffer[end]
+        buffer[end] = temp
+        start += 1
+        end -= 1
     }
-    
-    return index;  -- Return length
+
+    return index  -- Return length
 }
 
-fn Print(f32 value, i32 places)
+fn PrintFloat(f32 value)
 {
-    var buffer = new char[32];  -- Enough for 32-bit float
-    FloatToString(value, buffer, places);
+    var buffer = new char[32];  -- Enough for float representation
+    FloatToString(value, buffer, 6);  -- 6 decimal places by default
     Print(buffer);
 }
 
-fn Print(f32 value)
+fn FloatToString(f32 num, char[] buffer, i32 precision) -> i32
 {
-    Print(value, 2);  -- Default to 2 decimal places
-}
-
-fn FloatToString(f32 num, char[] buffer, i32 places) {
-    -- Handle special cases
-    if (num == 0.0) {
-        buffer[0] = '0';
-        if (places > 0) {
-            buffer[1] = '.';
-            i32 index = 2;
-            for (i32 i = 0; i < places; i++) {
-                buffer[index] = '0';
-                index += 1;
-            }
-            buffer[index] = '\0';
-            return index;
-        } else {
-            buffer[1] = '\0';
-            return 1;
-        }
-    }
-
-    bool isNegative = num < 0.0;
-    if (isNegative) {
-        num = -num;
-    }
-
-    i32 integerPart = (i32)num;
-    f32 fractionalPart = num - (f32)integerPart;
-
-    i32 index = 0;
+    var index = 0
     
-    -- Handle case where integer part is 0
-    if (integerPart == 0) {
-        buffer[index] = '0';
-        index += 1;
-    } else {
-        -- Extract digits (builds string backwards)
-        while (integerPart > 0) {
-            buffer[index] = (char)((integerPart % 10)) + '0';
-            index += 1;
-            integerPart /= 10;
-        }
+    -- Handle negative numbers
+    if num < 0.0
+    {
+        buffer[index] = (char)45  -- '-'
+        index += 1
+        num = -num
     }
-
-    -- Add negative sign if needed
-    if (isNegative) {
-        buffer[index] = '-';
-        index += 1;
+    
+    -- Extract integer part
+    var intPart = (i32)num
+    var fracPart = num - (f32)intPart
+    
+    -- Convert integer part
+    var tempBuffer = new char[12]
+    var intLen = IntToString(intPart, tempBuffer)
+    
+    var i = 0
+    while i < intLen
+    {
+        buffer[index] = tempBuffer[i]
+        index += 1
+        i += 1
     }
-
-    buffer[index] = '\0';  -- Null terminate
-
-    -- Reverse the string in-place
-    i32 start = 0;
-    i32 end = index - 1;
-    while (start < end) {
-        char temp = buffer[start];
-        buffer[start] = buffer[end];
-        buffer[end] = temp;
-        start += 1;
-        end -= 1;
+    
+    -- Add decimal point
+    buffer[index] = (char)46  -- '.'
+    index += 1
+    
+    -- Convert fractional part
+    var j = 0
+    while j < precision
+    {
+        fracPart *= 10.0
+        var digit = (i32)fracPart
+        buffer[index] = (char)(digit + 48)
+        index += 1
+        fracPart -= (f32)digit
+        j += 1
     }
-
-    -- Add fractional part if places > 0
-    if (places > 0) {
-        buffer[index] = '.';
-        index += 1;
-        for (i32 i = 0; i < places; i++) {
-            fractionalPart *= 10.0;
-            i32 digit = (i32)fractionalPart;
-            buffer[index] = ((char)digit) + '0';
-            index += 1;
-            fractionalPart -= (f32)digit;
-        }
-    }
-
-    buffer[index] = '\0';  -- Null terminate
-    return index;  -- Return length
+    
+    buffer[index] = (char)0  -- Null terminate
+    return index
 }

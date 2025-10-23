@@ -1,0 +1,47 @@
+fn AllocateString(i32 length)
+{
+    return (char*)malloc(length + 1)
+}
+
+fn CopyString(char* dest, char* src, i32 length)
+{
+    memcpy((void*)dest, (void*)src, length)
+    dest[length] = '\0'
+}
+
+fn StrLen(char* str)
+{
+    i32 len = 0
+    while (str[len] != '\0')
+    {
+        len = len + 1
+    }
+    return len
+}
+
+type String
+{
+    i32 length
+    char* data
+
+    new(char* str)
+    {
+        length = StrLen(str)
+        data = AllocateString(length)
+        CopyString(data, str, length)
+    }
+
+    fn Concat(String other)
+    {
+        i32 newLength = length + other.length
+        char* newData = AllocateString(newLength)
+        CopyString(newData, data, length)
+        CopyString(newData + length, other.data, other.length)
+        return new String(newData)
+    }
+}
+
+fn PrintStr(String str)
+{
+    Print(str.data)
+}
