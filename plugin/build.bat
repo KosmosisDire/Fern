@@ -1,0 +1,1 @@
+echo y& echo y| vsce package

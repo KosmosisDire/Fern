@@ -376,17 +376,17 @@ namespace Fern
         llvm::PassBuilder PB;
 
         // Register analysis managers
-        PB.registerModuleAnalyses(MAM);
-        PB.registerCGSCCAnalyses(CGAM);
-        PB.registerFunctionAnalyses(FAM);
-        PB.registerLoopAnalyses(LAM);
-        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+        // PB.registerModuleAnalyses(MAM);
+        // PB.registerCGSCCAnalyses(CGAM);
+        // PB.registerFunctionAnalyses(FAM);
+        // PB.registerLoopAnalyses(LAM);
+        // PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-        // Build optimization pipeline (O2 level)
-        llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2);
+        // // Build optimization pipeline (O2 level)
+        // llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2);
 
-        // Run the optimization passes
-        MPM.run(*llvm_module, MAM);
+        // // Run the optimization passes
+        // MPM.run(*llvm_module, MAM);
 
         LOG_INFO("Optimization passes completed", LogCategory::COMPILER);
 

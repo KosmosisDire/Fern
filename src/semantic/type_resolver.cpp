@@ -599,7 +599,7 @@ namespace Fern
             break;
         case LiteralKind::String:
             // String literals are char* (pointer to null-terminated char array)
-            type = typeSystem.get_pointer(typeSystem.get_primitive("char"));
+            type = typeSystem.get_primitive("string");
             break;
         default:
             type = typeSystem.get_unresolved();

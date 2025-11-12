@@ -1,16 +1,14 @@
-
+ref type String
+{
+    i32 length
+    char* data
+}
 
 fn Main
 {
-    var hello = new String("Hello, ")
-    var world = new String("Fern!\n")
-    var greeting = hello.Concat(world)
-    var file = new File("greeting.txt")
-    file.OpenReadWrite(true)
-    var f = file.Read()
-    PrintStr(f)
-    file.Write(greeting.data)
-    file.Close()
+    var str = new String()
+    var hello = "Hello, Fern!"
     return 0.0
 }
  
+

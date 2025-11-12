@@ -94,6 +94,10 @@ namespace Fern
             case PrimitiveKind::F64:
                 llvm_type = llvm::Type::getDoubleTy(context);
                 break;
+            case PrimitiveKind::String:
+                // just generic pointer
+                llvm_type = llvm::PointerType::get(context, 0);
+                break;
             default:
                 throw std::runtime_error("Unknown primitive type");
             }

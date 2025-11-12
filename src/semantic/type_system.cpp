@@ -56,6 +56,7 @@ void TypeSystem::init_primitives() {
     add_primitive(PrimitiveKind::Void);
     add_primitive(PrimitiveKind::Bool);
     add_primitive(PrimitiveKind::Char);
+    add_primitive(PrimitiveKind::String);
     add_primitive(PrimitiveKind::I8);
     add_primitive(PrimitiveKind::I16);
     add_primitive(PrimitiveKind::I32);
@@ -107,6 +108,7 @@ TypePtr TypeSystem::get_primitive(const std::string& name) {
         {"u64", PrimitiveKind::U64},
         {"f32", PrimitiveKind::F32},
         {"f64", PrimitiveKind::F64},
+        {"string", PrimitiveKind::String}
     };
     
     auto it = name_map.find(name);

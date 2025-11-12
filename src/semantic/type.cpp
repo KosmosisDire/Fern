@@ -41,6 +41,7 @@ namespace Fern
                     case PrimitiveKind::U64: return "u64";
                     case PrimitiveKind::F32: return "f32";
                     case PrimitiveKind::F64: return "f64";
+                    case PrimitiveKind::String: return "string";
                 }
                 return "primitive?";
             }
