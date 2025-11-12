@@ -560,19 +560,9 @@ namespace Fern
         switch (syntax->kind)
         {
         case LiteralKind::I32:
-        case LiteralKind::I64:
-        case LiteralKind::I8:
-        case LiteralKind::I16:
             bound->constantValue = static_cast<int64_t>(std::stoll(std::string(syntax->value)));
             break;
-        case LiteralKind::U32:
-        case LiteralKind::U64:
-        case LiteralKind::U8:
-        case LiteralKind::U16:
-            bound->constantValue = static_cast<uint64_t>(std::stoull(std::string(syntax->value)));
-            break;
         case LiteralKind::F32:
-        case LiteralKind::F64:
             bound->constantValue = std::stod(std::string(syntax->value));
             break;
         case LiteralKind::Bool:

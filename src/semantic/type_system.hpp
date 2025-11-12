@@ -47,9 +47,7 @@ namespace Fern
         TypePtr get_void();
         TypePtr get_bool();
         TypePtr get_i32();
-        TypePtr get_i64();
         TypePtr get_f32();
-        TypePtr get_f64();
         
         TypePtr get_primitive(const std::string& name);
         TypePtr get_pointer(TypePtr pointee);

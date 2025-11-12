@@ -15,9 +15,8 @@ namespace Fern
         Void,
         Bool,
         Char,
-        I8, I16, I32, I64,
-        U8, U16, U32, U64,
-        F32, F64,
+        I32,
+        F32,
         String
     };
 

@@ -1,14 +1,9 @@
-ref type String
-{
-    i32 length
-    char* data
-}
 
 fn Main
 {
-    var str = new String()
-    var hello = "Hello, Fern!"
-    return 0.0
+    var test = 0.0
+    test += 10.0
+    return test
 }
  
 

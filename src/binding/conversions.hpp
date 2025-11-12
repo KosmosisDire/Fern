@@ -58,22 +58,15 @@ namespace Fern
 
         // Conversion matrix using PrimitiveKind as indices
         // Rows = source type, Columns = target type
-        static constexpr ConversionKind conversionMatrix[14][14] = {
+        static constexpr ConversionKind conversionMatrix[6][6] = {
             // Converting FROM (row) TO (column):
-            //          i8   u8   i16  u16  i32  u32  i64  u64  f32  f64  bool char void
-            /*  i8 */ {IDN, EXP, IMP, EXP, IMP, EXP, IMP, EXP, IMP, IMP, EXP, EXP, NOC},
-            /*  u8 */ {EXP, IDN, IMP, IMP, IMP, IMP, IMP, IMP, IMP, IMP, EXP, EXP, NOC},
-            /* i16 */ {EXP, EXP, IDN, EXP, IMP, EXP, IMP, EXP, IMP, IMP, EXP, EXP, NOC},
-            /* u16 */ {EXP, EXP, EXP, IDN, IMP, IMP, IMP, IMP, IMP, IMP, EXP, EXP, NOC},
-            /* i32 */ {EXP, EXP, EXP, EXP, IDN, EXP, IMP, EXP, IMP, IMP, EXP, EXP, NOC},
-            /* u32 */ {EXP, EXP, EXP, EXP, EXP, IDN, IMP, IMP, IMP, IMP, EXP, EXP, NOC},
-            /* i64 */ {EXP, EXP, EXP, EXP, EXP, EXP, IDN, EXP, EXP, IMP, EXP, EXP, NOC},
-            /* u64 */ {EXP, EXP, EXP, EXP, EXP, EXP, EXP, IDN, EXP, IMP, EXP, EXP, NOC},
-            /* f32 */ {EXP, EXP, EXP, EXP, EXP, EXP, EXP, EXP, IDN, IMP, EXP, EXP, NOC},
-            /* f64 */ {EXP, EXP, EXP, EXP, EXP, EXP, EXP, EXP, EXP, IDN, EXP, EXP, NOC},
-            /*bool */ {EXP, EXP, EXP, EXP, EXP, EXP, EXP, EXP, EXP, EXP, IDN, EXP, NOC},
-            /*char */ {EXP, EXP, IMP, IMP, IMP, IMP, IMP, IMP, IMP, IMP, EXP, IDN, NOC},
-            /*void */ {NOC, NOC, NOC, NOC, NOC, NOC, NOC, NOC, NOC, NOC, NOC, NOC, IDN},
+            //          void  bool  char  i32   f32   string
+            /*  void */  {IDN, NOC,  NOC,  NOC,  NOC,  NOC},
+            /*  bool */  {NOC, IDN,  EXP,  EXP,  EXP,  NOC},
+            /*  char */  {NOC, EXP,  IDN,  IMP,  IMP,  NOC},
+            /*  i32 */   {NOC, EXP,  EXP,  IDN,  IMP,  NOC},
+            /*  f32 */   {NOC, EXP,  EXP,  EXP,  IDN,  NOC},
+            /*string */  {NOC, NOC,  NOC,  NOC,  NOC,  IDN},
         };
 
     public:
@@ -83,19 +76,12 @@ namespace Fern
         static PrimitiveKind get_primitive_kind(const std::string &typeName)
         {
             static const std::unordered_map<std::string, PrimitiveKind> typeMap = {
-                {"i8", PrimitiveKind::I8},
-                {"u8", PrimitiveKind::U8},
-                {"i16", PrimitiveKind::I16},
-                {"u16", PrimitiveKind::U16},
-                {"i32", PrimitiveKind::I32},
-                {"u32", PrimitiveKind::U32},
-                {"i64", PrimitiveKind::I64},
-                {"u64", PrimitiveKind::U64},
-                {"f32", PrimitiveKind::F32},
-                {"f64", PrimitiveKind::F64},
+                {"void", PrimitiveKind::Void},
                 {"bool", PrimitiveKind::Bool},
                 {"char", PrimitiveKind::Char},
-                {"void", PrimitiveKind::Void}};
+                {"i32", PrimitiveKind::I32},
+                {"f32", PrimitiveKind::F32},
+                {"string", PrimitiveKind::String}};
 
             auto it = typeMap.find(typeName);
             if (it != typeMap.end())

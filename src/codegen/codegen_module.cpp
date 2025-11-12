@@ -72,27 +72,13 @@ namespace Fern
                 llvm_type = llvm::Type::getInt1Ty(context);
                 break;
             case PrimitiveKind::Char:
-            case PrimitiveKind::I8:
-            case PrimitiveKind::U8:
                 llvm_type = llvm::Type::getInt8Ty(context);
                 break;
-            case PrimitiveKind::I16:
-            case PrimitiveKind::U16:
-                llvm_type = llvm::Type::getInt16Ty(context);
-                break;
             case PrimitiveKind::I32:
-            case PrimitiveKind::U32:
                 llvm_type = llvm::Type::getInt32Ty(context);
-                break;
-            case PrimitiveKind::I64:
-            case PrimitiveKind::U64:
-                llvm_type = llvm::Type::getInt64Ty(context);
                 break;
             case PrimitiveKind::F32:
                 llvm_type = llvm::Type::getFloatTy(context);
-                break;
-            case PrimitiveKind::F64:
-                llvm_type = llvm::Type::getDoubleTy(context);
                 break;
             case PrimitiveKind::String:
                 // just generic pointer
@@ -278,23 +264,14 @@ namespace Fern
     {
         if (auto* prim = type->as<PrimitiveType>())
         {
-            return prim->kind == PrimitiveKind::I8 ||
-                   prim->kind == PrimitiveKind::I16 ||
-                   prim->kind == PrimitiveKind::I32 ||
-                   prim->kind == PrimitiveKind::I64;
+            return prim->kind == PrimitiveKind::I32;
         }
         return false;
     }
 
     bool CodeGenModule::is_unsigned_int(TypePtr type) const
     {
-        if (auto* prim = type->as<PrimitiveType>())
-        {
-            return prim->kind == PrimitiveKind::U8 ||
-                   prim->kind == PrimitiveKind::U16 ||
-                   prim->kind == PrimitiveKind::U32 ||
-                   prim->kind == PrimitiveKind::U64;
-        }
+        // No unsigned types supported
         return false;
     }
 
@@ -302,8 +279,7 @@ namespace Fern
     {
         if (auto* prim = type->as<PrimitiveType>())
         {
-            return prim->kind == PrimitiveKind::F32 ||
-                   prim->kind == PrimitiveKind::F64;
+            return prim->kind == PrimitiveKind::F32;
         }
         return false;
     }

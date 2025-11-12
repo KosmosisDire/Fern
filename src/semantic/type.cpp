@@ -31,16 +31,8 @@ namespace Fern
                     case PrimitiveKind::Void: return "void";
                     case PrimitiveKind::Bool: return "bool";
                     case PrimitiveKind::Char: return "char";
-                    case PrimitiveKind::I8: return "i8";
-                    case PrimitiveKind::I16: return "i16";
                     case PrimitiveKind::I32: return "i32";
-                    case PrimitiveKind::I64: return "i64";
-                    case PrimitiveKind::U8: return "u8";
-                    case PrimitiveKind::U16: return "u16";
-                    case PrimitiveKind::U32: return "u32";
-                    case PrimitiveKind::U64: return "u64";
                     case PrimitiveKind::F32: return "f32";
-                    case PrimitiveKind::F64: return "f64";
                     case PrimitiveKind::String: return "string";
                 }
                 return "primitive?";

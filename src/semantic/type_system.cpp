@@ -52,21 +52,13 @@ void TypeSystem::init_primitives() {
         primitives[kind] = type;
         return type;
     };
-    
+
     add_primitive(PrimitiveKind::Void);
     add_primitive(PrimitiveKind::Bool);
     add_primitive(PrimitiveKind::Char);
     add_primitive(PrimitiveKind::String);
-    add_primitive(PrimitiveKind::I8);
-    add_primitive(PrimitiveKind::I16);
     add_primitive(PrimitiveKind::I32);
-    add_primitive(PrimitiveKind::I64);
-    add_primitive(PrimitiveKind::U8);
-    add_primitive(PrimitiveKind::U16);
-    add_primitive(PrimitiveKind::U32);
-    add_primitive(PrimitiveKind::U64);
     add_primitive(PrimitiveKind::F32);
-    add_primitive(PrimitiveKind::F64);
 }
 
 TypePtr TypeSystem::get_void() { 
@@ -77,20 +69,12 @@ TypePtr TypeSystem::get_bool() {
     return primitives[PrimitiveKind::Bool]; 
 }
 
-TypePtr TypeSystem::get_i32() { 
-    return primitives[PrimitiveKind::I32]; 
+TypePtr TypeSystem::get_i32() {
+    return primitives[PrimitiveKind::I32];
 }
 
-TypePtr TypeSystem::get_i64() { 
-    return primitives[PrimitiveKind::I64]; 
-}
-
-TypePtr TypeSystem::get_f32() { 
-    return primitives[PrimitiveKind::F32]; 
-}
-
-TypePtr TypeSystem::get_f64() { 
-    return primitives[PrimitiveKind::F64]; 
+TypePtr TypeSystem::get_f32() {
+    return primitives[PrimitiveKind::F32];
 }
 
 TypePtr TypeSystem::get_primitive(const std::string& name) {
@@ -98,19 +82,11 @@ TypePtr TypeSystem::get_primitive(const std::string& name) {
         {"void", PrimitiveKind::Void},
         {"bool", PrimitiveKind::Bool},
         {"char", PrimitiveKind::Char},
-        {"i8", PrimitiveKind::I8},
-        {"i16", PrimitiveKind::I16},
         {"i32", PrimitiveKind::I32},
-        {"i64", PrimitiveKind::I64},
-        {"u8", PrimitiveKind::U8},
-        {"u16", PrimitiveKind::U16},
-        {"u32", PrimitiveKind::U32},
-        {"u64", PrimitiveKind::U64},
         {"f32", PrimitiveKind::F32},
-        {"f64", PrimitiveKind::F64},
         {"string", PrimitiveKind::String}
     };
-    
+
     auto it = name_map.find(name);
     if (it != name_map.end()) {
         return primitives[it->second];

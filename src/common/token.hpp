@@ -18,16 +18,8 @@ namespace Fern
         Invalid,
 
         // Literals
-        LiteralI8,
-        LiteralU8,
-        LiteralI16,
-        LiteralU16,
         LiteralI32,
-        LiteralU32,
-        LiteralI64,
-        LiteralU64,
         LiteralF32,
-        LiteralF64,
         LiteralString,
         LiteralChar,
         LiteralBool,
@@ -312,16 +304,8 @@ namespace Fern
     enum class LiteralKind
     {
         Invalid = (int)TokenKind::Invalid,
-        I8 = (int)TokenKind::LiteralI8,
-        U8 = (int)TokenKind::LiteralU8,
-        I16 = (int)TokenKind::LiteralI16,
-        U16 = (int)TokenKind::LiteralU16,
         I32 = (int)TokenKind::LiteralI32,
-        U32 = (int)TokenKind::LiteralU32,
-        I64 = (int)TokenKind::LiteralI64,
-        U64 = (int)TokenKind::LiteralU64,
         F32 = (int)TokenKind::LiteralF32,
-        F64 = (int)TokenKind::LiteralF64,
         String = (int)TokenKind::LiteralString,
         Char = (int)TokenKind::LiteralChar,
         Bool = (int)TokenKind::LiteralBool,
@@ -651,26 +635,10 @@ namespace Fern
         {
         case LiteralKind::Invalid:
             return "invalid";
-        case LiteralKind::I8:
-            return "i8";
-        case LiteralKind::U8:
-            return "u8";
-        case LiteralKind::I16:
-            return "i16";
-        case LiteralKind::U16:
-            return "u16";
         case LiteralKind::I32:
             return "i32";
-        case LiteralKind::U32:
-            return "u32";
-        case LiteralKind::I64:
-            return "i64";
-        case LiteralKind::U64:
-            return "u64";
         case LiteralKind::F32:
             return "f32";
-        case LiteralKind::F64:
-            return "f64";
         case LiteralKind::String:
             return "string";
         case LiteralKind::Char:
@@ -1038,9 +1006,7 @@ namespace Fern
             {
             // Literals
             case TokenKind::LiteralI32:
-            case TokenKind::LiteralI64:
             case TokenKind::LiteralF32:
-            case TokenKind::LiteralF64:
             case TokenKind::LiteralString:
             case TokenKind::LiteralChar:
             case TokenKind::LiteralBool:

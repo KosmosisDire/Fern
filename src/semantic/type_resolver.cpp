@@ -467,14 +467,7 @@ namespace Fern
         auto is_integer = [](TypePtr t) -> bool {
             if (auto* prim = t->as<PrimitiveType>()) {
                 switch (prim->kind) {
-                    case PrimitiveKind::I8:
-                    case PrimitiveKind::I16:
                     case PrimitiveKind::I32:
-                    case PrimitiveKind::I64:
-                    case PrimitiveKind::U8:
-                    case PrimitiveKind::U16:
-                    case PrimitiveKind::U32:
-                    case PrimitiveKind::U64:
                     case PrimitiveKind::Char:
                         return true;
                     default:
@@ -484,14 +477,14 @@ namespace Fern
             return false;
         };
 
-        // Allow explicit cast between pointers and integers (pointer-width integers)
-        // pointer -> integer (cast to usize/isize equivalent, we'll use u64/i64)
+        // Allow explicit cast between pointers and integers
+        // pointer -> integer
         if (canonicalFrom->is<PointerType>() && is_integer(canonicalTo))
         {
             return true; // Allow pointer-to-integer cast
         }
 
-        // integer -> pointer (cast from usize/isize equivalent)
+        // integer -> pointer
         if (is_integer(canonicalFrom) && canonicalTo->is<PointerType>())
         {
             return true; // Allow integer-to-pointer cast
@@ -582,14 +575,8 @@ namespace Fern
         case LiteralKind::I32:
             type = typeSystem.get_i32();
             break;
-        case LiteralKind::I64:
-            type = typeSystem.get_i64();
-            break;
         case LiteralKind::F32:
             type = typeSystem.get_f32();
-            break;
-        case LiteralKind::F64:
-            type = typeSystem.get_f64();
             break;
         case LiteralKind::Bool:
             type = typeSystem.get_bool();
@@ -712,14 +699,7 @@ namespace Fern
                 auto is_integer = [](TypePtr t) -> bool {
                     if (auto* prim = t->as<PrimitiveType>()) {
                         switch (prim->kind) {
-                            case PrimitiveKind::I8:
-                            case PrimitiveKind::I16:
                             case PrimitiveKind::I32:
-                            case PrimitiveKind::I64:
-                            case PrimitiveKind::U8:
-                            case PrimitiveKind::U16:
-                            case PrimitiveKind::U32:
-                            case PrimitiveKind::U64:
                             case PrimitiveKind::Char:
                                 return true;
                             default:
@@ -743,11 +723,11 @@ namespace Fern
                 }
                 else if (leftType->is<PointerType>() && rightType->is<PointerType>())
                 {
-                    // pointer - pointer = integer (ptrdiff_t, represented as i64)
+                    // pointer - pointer = integer (ptrdiff_t, represented as i32)
                     if (node->operatorKind == BinaryOperatorKind::Subtract)
                     {
                         // TODO: Verify pointers are compatible types
-                        resultType = typeSystem.get_i64();
+                        resultType = typeSystem.get_i32();
                     }
                     else
                     {
@@ -1391,8 +1371,8 @@ namespace Fern
         if (node->typeExpression)
             node->typeExpression->accept(this);
 
-        // sizeof returns size_t (u64)
-        annotate_expression(node, typeSystem.get_primitive("u64"));
+        // sizeof returns size_t (i32)
+        annotate_expression(node, typeSystem.get_i32());
     }
 
     void TypeResolver::visit(BoundParenthesizedExpression *node)
