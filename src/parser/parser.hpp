@@ -137,9 +137,7 @@ private:
     BaseExprSyntax* parseArrayLiteral();
     BaseExprSyntax* parseNewExpression();
     BaseExprSyntax* parseLambdaExpression();
-    BaseExprSyntax* parseTypeOfExpression();
-    BaseExprSyntax* parseSizeOfExpression();
-    
+
     BaseNameExprSyntax* parseIdentifier();
     TypedIdentifier* parseTypedIdentifier();
     List<ParameterDeclSyntax*> parseParameterList();

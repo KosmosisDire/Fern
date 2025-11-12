@@ -53,8 +53,6 @@ namespace Fern
 
     // Special expressions
     struct LambdaExprSyntax;
-    struct TypeOfExprSyntax;
-    struct SizeOfExprSyntax;
 
     // Type expressions
     struct ArrayTypeSyntax;
@@ -137,8 +135,6 @@ namespace Fern
         virtual void visit(NewExprSyntax *node) = 0;
         virtual void visit(CastExprSyntax *node) = 0;
         virtual void visit(LambdaExprSyntax *node) = 0;
-        virtual void visit(TypeOfExprSyntax *node) = 0;
-        virtual void visit(SizeOfExprSyntax *node) = 0;
 
         // Type expressions
         virtual void visit(ArrayTypeSyntax *node) = 0;
@@ -419,17 +415,6 @@ namespace Fern
         ACCEPT_VISITOR
     };
 
-    struct TypeOfExprSyntax : BaseExprSyntax
-    {
-        BaseExprSyntax *type;
-        ACCEPT_VISITOR
-    };
-
-    struct SizeOfExprSyntax : BaseExprSyntax
-    {
-        BaseExprSyntax *type;
-        ACCEPT_VISITOR
-    };
 #pragma endregion
 
 #pragma region Type Expressions
@@ -830,20 +815,6 @@ namespace Fern
             }
             if (node->body)
                 node->body->accept(this);
-        }
-
-        void visit(TypeOfExprSyntax *node) override
-        {
-            visit(static_cast<BaseExprSyntax *>(node));
-            if (node->type)
-                node->type->accept(this);
-        }
-
-        void visit(SizeOfExprSyntax *node) override
-        {
-            visit(static_cast<BaseExprSyntax *>(node));
-            if (node->type)
-                node->type->accept(this);
         }
 
         // Type expressions

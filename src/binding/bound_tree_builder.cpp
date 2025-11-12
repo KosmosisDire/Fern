@@ -540,10 +540,6 @@ namespace Fern
             return bind_this_expression(this_expr);
         if (auto array = syntax->as<ArrayLiteralExprSyntax>())
             return bind_array_creation(array);
-        if (auto typeof_expr = syntax->as<TypeOfExprSyntax>())
-            return bind_typeof_expression(typeof_expr);
-        if (auto sizeof_expr = syntax->as<SizeOfExprSyntax>())
-            return bind_sizeof_expression(sizeof_expr);
         if (auto paren = syntax->as<ParenthesizedExprSyntax>())
             return bind_parenthesized_expression(paren);
 
@@ -914,22 +910,6 @@ namespace Fern
             }
         }
 
-        return bound;
-    }
-
-    BoundTypeOfExpression *BoundTreeBuilder::bind_typeof_expression(TypeOfExprSyntax *syntax)
-    {
-        auto bound = arena_.make<BoundTypeOfExpression>();
-        bound->location = syntax->location;
-        bound->typeExpression = bind_type_expression(syntax->type);
-        return bound;
-    }
-
-    BoundSizeOfExpression *BoundTreeBuilder::bind_sizeof_expression(SizeOfExprSyntax *syntax)
-    {
-        auto bound = arena_.make<BoundSizeOfExpression>();
-        bound->location = syntax->location;
-        bound->typeExpression = bind_type_expression(syntax->type);
         return bound;
     }
 

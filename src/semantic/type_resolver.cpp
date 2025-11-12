@@ -1356,25 +1356,6 @@ namespace Fern
         annotate_expression(node, currentType->type);
     }
 
-    void TypeResolver::visit(BoundTypeOfExpression *node)
-    {
-        if (node->typeExpression)
-            node->typeExpression->accept(this);
-
-        // typeof returns Type type (runtime type information)
-        // TODO: Implement proper Type type
-        annotate_expression(node, typeSystem.get_primitive("Type"));
-    }
-
-    void TypeResolver::visit(BoundSizeOfExpression *node)
-    {
-        if (node->typeExpression)
-            node->typeExpression->accept(this);
-
-        // sizeof returns size_t (i32)
-        annotate_expression(node, typeSystem.get_i32());
-    }
-
     void TypeResolver::visit(BoundParenthesizedExpression *node)
     {
         if (node->expression)

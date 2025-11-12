@@ -55,8 +55,6 @@ namespace Fern::HLIR
         void visit(BoundCastExpression* node) override;
         void visit(BoundConditionalExpression* node) override;
         void visit(BoundThisExpression* node) override;
-        void visit(BoundTypeOfExpression* node) override;
-        void visit(BoundSizeOfExpression* node) override;
         void visit(BoundParenthesizedExpression* node) override;
         void visit(BoundConversionExpression* node) override;
         void visit(BoundTypeExpression* node) override;

@@ -84,8 +84,6 @@ namespace Fern
         void visit(NewExprSyntax *node) override { enter(node, "NewExprSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(LambdaExprSyntax *node) override { enter(node, "LambdaExprSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(ConditionalExprSyntax *node) override { enter(node, "ConditionalExprSyntax"); DefaultVisitor::visit(node); leave(); }
-        void visit(TypeOfExprSyntax *node) override { enter(node, "TypeOfExprSyntax"); DefaultVisitor::visit(node); leave(); }
-        void visit(SizeOfExprSyntax *node) override { enter(node, "SizeOfExprSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(IfStmtSyntax *node) override { enter(node, "IfStmtSyntax"); DefaultVisitor::visit(node); leave(); }
 
         // --- Statements ---

@@ -373,34 +373,6 @@ namespace Fern
             printNode("This", buildExpressionProps(node, extra.str()));
         }
         
-        void visit(BoundTypeOfExpression* node) override
-        {
-            printNode("TypeOf", buildExpressionProps(node));
-            IndentGuard guard(this);
-            
-            printIndent();
-            std::cout << "typeExpr:\n";
-            {
-                IndentGuard typeGuard(this);
-                if (node->typeExpression) node->typeExpression->accept(this);
-                else printNode("null");
-            }
-        }
-        
-        void visit(BoundSizeOfExpression* node) override
-        {
-            printNode("SizeOf", buildExpressionProps(node));
-            IndentGuard guard(this);
-            
-            printIndent();
-            std::cout << "typeExpr:\n";
-            {
-                IndentGuard typeGuard(this);
-                if (node->typeExpression) node->typeExpression->accept(this);
-                else printNode("null");
-            }
-        }
-        
         void visit(BoundParenthesizedExpression* node) override
         {
             printNode("Parenthesized", buildExpressionProps(node));

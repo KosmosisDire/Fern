@@ -34,8 +34,6 @@ namespace Fern
     struct BoundCastExpression;
     struct BoundConditionalExpression;
     struct BoundThisExpression;
-    struct BoundTypeOfExpression;
-    struct BoundSizeOfExpression;
     struct BoundParenthesizedExpression;
     struct BoundConversionExpression;
     struct BoundTypeExpression;
@@ -75,8 +73,6 @@ namespace Fern
         virtual void visit(BoundCastExpression *node) = 0;
         virtual void visit(BoundConditionalExpression *node) = 0;
         virtual void visit(BoundThisExpression *node) = 0;
-        virtual void visit(BoundTypeOfExpression *node) = 0;
-        virtual void visit(BoundSizeOfExpression *node) = 0;
         virtual void visit(BoundParenthesizedExpression *node) = 0;
         virtual void visit(BoundConversionExpression *node) = 0;
         virtual void visit(BoundTypeExpression *node) = 0;
@@ -265,18 +261,6 @@ namespace Fern
     struct BoundThisExpression : BoundExpression
     {
         TypeSymbol *containingType = nullptr; // Resolved in semantic pass
-        BOUND_ACCEPT_VISITOR
-    };
-
-    struct BoundTypeOfExpression : BoundExpression
-    {
-        BoundExpression *typeExpression = nullptr;
-        BOUND_ACCEPT_VISITOR
-    };
-
-    struct BoundSizeOfExpression : BoundExpression
-    {
-        BoundExpression *typeExpression = nullptr;
         BOUND_ACCEPT_VISITOR
     };
 
@@ -542,18 +526,6 @@ namespace Fern
         void visit(BoundThisExpression *node) override
         {
             // No children to visit
-        }
-
-        void visit(BoundTypeOfExpression *node) override
-        {
-            if (node->typeExpression)
-                node->typeExpression->accept(this);
-        }
-
-        void visit(BoundSizeOfExpression *node) override
-        {
-            if (node->typeExpression)
-                node->typeExpression->accept(this);
         }
 
         void visit(BoundParenthesizedExpression *node) override

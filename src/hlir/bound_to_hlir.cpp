@@ -471,16 +471,6 @@ void BoundToHLIR::visit(BoundThisExpression* node) {
     expression_values[node] = current_function->params[0];
 }
 
-void BoundToHLIR::visit(BoundTypeOfExpression* node) {
-    // TODO
-    expression_values[node] = nullptr;
-}
-
-void BoundToHLIR::visit(BoundSizeOfExpression* node) {
-    // TODO
-    expression_values[node] = nullptr;
-}
-
 void BoundToHLIR::visit(BoundParenthesizedExpression* node) {
     expression_values[node] = evaluate_expression(node->expression);
 }

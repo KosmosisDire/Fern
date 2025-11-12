@@ -1392,14 +1392,6 @@ namespace Fern
         {
             expr = parseNewExpression();
         }
-        else if (check(TokenKind::Typeof))
-        {
-            expr = parseTypeOfExpression();
-        }
-        else if (check(TokenKind::Sizeof))
-        {
-            expr = parseSizeOfExpression();
-        }
 
         if (!expr)
         {
@@ -1914,38 +1906,6 @@ namespace Fern
         }
         lambda->location = SourceRange(startToken.location.start, previous().location.end());
         return lambda;
-    }
-
-    BaseExprSyntax *Parser::parseTypeOfExpression()
-    {
-        auto startToken = tokens.current();
-        auto typeOf = arena.make<TypeOfExprSyntax>();
-        consume(TokenKind::Typeof);
-        expect(TokenKind::LeftParen, "Expected '(' after 'typeof'");
-
-        typeOf->type = parseTypeExpression();
-        if (!typeOf->type)
-            typeOf->type = errorExpr("Expected type");
-
-        expect(TokenKind::RightParen, "Expected ')' after type");
-        typeOf->location = SourceRange(startToken.location.start, previous().location.end());
-        return typeOf;
-    }
-
-    BaseExprSyntax *Parser::parseSizeOfExpression()
-    {
-        auto startToken = tokens.current();
-        auto sizeOf = arena.make<SizeOfExprSyntax>();
-        consume(TokenKind::Sizeof);
-        expect(TokenKind::LeftParen, "Expected '(' after 'sizeof'");
-
-        sizeOf->type = parseTypeExpression();
-        if (!sizeOf->type)
-            sizeOf->type = errorExpr("Expected type");
-
-        expect(TokenKind::RightParen, "Expected ')' after type");
-        sizeOf->location = SourceRange(startToken.location.start, previous().location.end());
-        return sizeOf;
     }
 
     #pragma endregion

@@ -241,19 +241,6 @@ namespace Fern
             emit(" : ");
             node->elseExpr->accept(this);
         }
-        void visit(TypeOfExprSyntax *node) override
-        {
-            emit("typeof(");
-            node->type->accept(this);
-            emit(")");
-        }
-        void visit(SizeOfExprSyntax *node) override
-        {
-            emit("sizeof(");
-            node->type->accept(this);
-            emit(")");
-        }
-
         // --- CORRECTED VISITORS ---
 
         void visit(BlockSyntax *node) override

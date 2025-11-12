@@ -69,8 +69,6 @@ namespace Fern
         Using,
         Namespace,
         Where,
-        Typeof,
-        Sizeof,
         By, // (for 0..10 by 2) syntax
 
         // Operators - Arithmetic
@@ -177,8 +175,6 @@ namespace Fern
         Where = (int)TokenKind::Where,
         Using = (int)TokenKind::Using,
         Namespace = (int)TokenKind::Namespace,
-        Typeof = (int)TokenKind::Typeof,
-        Sizeof = (int)TokenKind::Sizeof,
         By = (int)TokenKind::By
     };
 
@@ -1015,8 +1011,6 @@ namespace Fern
             case TokenKind::Identifier:
             case TokenKind::This:
             case TokenKind::New:
-            case TokenKind::Typeof:
-            case TokenKind::Sizeof:
             // Unary operators
             case TokenKind::Plus:
             case TokenKind::Minus:
@@ -1129,8 +1123,6 @@ namespace Fern
             {"this", TokenKind::This},
             {"using", TokenKind::Using},
             {"namespace", TokenKind::Namespace},
-            {"typeof", TokenKind::Typeof},
-            {"sizeof", TokenKind::Sizeof},
             {"where", TokenKind::Where},
             {"in", TokenKind::In},
             {"at", TokenKind::At},
