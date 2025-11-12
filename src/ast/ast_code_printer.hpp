@@ -233,14 +233,6 @@ namespace Fern
             if (node->body)
                 node->body->accept(this);
         }
-        void visit(ConditionalExprSyntax *node) override
-        {
-            node->condition->accept(this);
-            emit(" ? ");
-            node->thenExpr->accept(this);
-            emit(" : ");
-            node->elseExpr->accept(this);
-        }
         // --- CORRECTED VISITORS ---
 
         void visit(BlockSyntax *node) override

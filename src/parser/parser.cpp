@@ -1288,30 +1288,6 @@ namespace Fern
             Token op = tokens.current();
             int precedence = op.get_binary_precedence();
 
-            if (op.kind == TokenKind::Question)
-            {
-                if (minPrecedence > precedence)
-                    break;
-
-                tokens.advance();
-
-                auto conditional = arena.make<ConditionalExprSyntax>();
-                conditional->condition = left;
-
-                conditional->thenExpr = parseExpression(precedence + 1);
-                if (!conditional->thenExpr)
-                    conditional->thenExpr = errorExpr("Expected expression after '?'");
-
-                expect(TokenKind::Colon, "Expected ':' in conditional expression");
-
-                conditional->elseExpr = parseExpression(precedence);
-                if (!conditional->elseExpr)
-                    conditional->elseExpr = errorExpr("Expected expression after ':'");
-
-                conditional->location = SourceRange(left->location.start, conditional->elseExpr->location.end());
-                return conditional;
-            }
-
             if (precedence < minPrecedence || precedence == 0)
                 break;
 

@@ -40,7 +40,6 @@ namespace Fern
     struct UnaryExprSyntax;
     struct BinaryExprSyntax;
     struct AssignmentExprSyntax;
-    struct ConditionalExprSyntax;
 
     // Member/element access
     struct MemberAccessExprSyntax;
@@ -128,7 +127,6 @@ namespace Fern
         virtual void visit(UnaryExprSyntax *node) = 0;
         virtual void visit(BinaryExprSyntax *node) = 0;
         virtual void visit(AssignmentExprSyntax *node) = 0;
-        virtual void visit(ConditionalExprSyntax *node) = 0;
         virtual void visit(MemberAccessExprSyntax *node) = 0;
         virtual void visit(IndexerExprSyntax *node) = 0;
         virtual void visit(CallExprSyntax *node) = 0;
@@ -362,14 +360,6 @@ namespace Fern
         BaseExprSyntax *target;
         AssignmentOperatorKind op;
         BaseExprSyntax *value;
-        ACCEPT_VISITOR
-    };
-
-    struct ConditionalExprSyntax : BaseExprSyntax
-    {
-        BaseExprSyntax *condition;
-        BaseExprSyntax *thenExpr;
-        BaseExprSyntax *elseExpr;
         ACCEPT_VISITOR
     };
 
@@ -741,17 +731,6 @@ namespace Fern
                 node->target->accept(this);
             if (node->value)
                 node->value->accept(this);
-        }
-
-        void visit(ConditionalExprSyntax *node) override
-        {
-            visit(static_cast<BaseExprSyntax *>(node));
-            if (node->condition)
-                node->condition->accept(this);
-            if (node->thenExpr)
-                node->thenExpr->accept(this);
-            if (node->elseExpr)
-                node->elseExpr->accept(this);
         }
 
         void visit(MemberAccessExprSyntax *node) override

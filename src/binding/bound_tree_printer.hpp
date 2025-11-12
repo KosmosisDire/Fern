@@ -336,36 +336,6 @@ namespace Fern
             }
         }
         
-        void visit(BoundConditionalExpression* node) override
-        {
-            printNode("Conditional", buildExpressionProps(node));
-            IndentGuard guard(this);
-            
-            printIndent();
-            std::cout << "condition:\n";
-            {
-                IndentGuard condGuard(this);
-                if (node->condition) node->condition->accept(this);
-                else printNode("null");
-            }
-            
-            printIndent();
-            std::cout << "then:\n";
-            {
-                IndentGuard thenGuard(this);
-                if (node->thenExpression) node->thenExpression->accept(this);
-                else printNode("null");
-            }
-            
-            printIndent();
-            std::cout << "else:\n";
-            {
-                IndentGuard elseGuard(this);
-                if (node->elseExpression) node->elseExpression->accept(this);
-                else printNode("null");
-            }
-        }
-        
         void visit(BoundThisExpression* node) override
         {
             std::stringstream extra;

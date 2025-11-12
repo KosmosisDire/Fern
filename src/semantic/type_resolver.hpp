@@ -76,7 +76,6 @@ namespace Fern
         void visit(BoundNewExpression* node) override;
         void visit(BoundArrayCreationExpression* node) override;
         void visit(BoundCastExpression* node) override;
-        void visit(BoundConditionalExpression* node) override;
         void visit(BoundThisExpression* node) override;
         void visit(BoundParenthesizedExpression* node) override;
         void visit(BoundConversionExpression* node) override;

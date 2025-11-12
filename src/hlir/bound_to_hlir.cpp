@@ -450,11 +450,6 @@ void BoundToHLIR::visit(BoundCastExpression* node) {
     expression_values[node] = result;
 }
 
-void BoundToHLIR::visit(BoundConditionalExpression* node) {
-    // TODO: Implement ternary operator
-    expression_values[node] = nullptr;
-}
-
 void BoundToHLIR::visit(BoundThisExpression* node) {
     if (!current_function || current_function->is_static) {
         std::cerr << "ERROR: 'this' used in static or non-member context\n";

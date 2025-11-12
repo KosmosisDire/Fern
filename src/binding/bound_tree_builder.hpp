@@ -140,7 +140,6 @@ namespace Fern
         BoundCallExpression* bind_call_expression(CallExprSyntax* syntax);
         BoundMemberAccessExpression* bind_member_access(MemberAccessExprSyntax* syntax);
         BoundIndexExpression* bind_index_expression(IndexerExprSyntax* syntax);
-        BoundConditionalExpression* bind_conditional_expression(ConditionalExprSyntax* syntax);
         BoundCastExpression* bind_cast_expression(CastExprSyntax* syntax);
         BoundNewExpression* bind_new_expression(NewExprSyntax* syntax);
         BoundThisExpression* bind_this_expression(ThisExprSyntax* syntax);

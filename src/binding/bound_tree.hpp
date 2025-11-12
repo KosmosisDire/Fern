@@ -32,7 +32,6 @@ namespace Fern
     struct BoundNewExpression;
     struct BoundArrayCreationExpression;
     struct BoundCastExpression;
-    struct BoundConditionalExpression;
     struct BoundThisExpression;
     struct BoundParenthesizedExpression;
     struct BoundConversionExpression;
@@ -71,7 +70,6 @@ namespace Fern
         virtual void visit(BoundNewExpression *node) = 0;
         virtual void visit(BoundArrayCreationExpression *node) = 0;
         virtual void visit(BoundCastExpression *node) = 0;
-        virtual void visit(BoundConditionalExpression *node) = 0;
         virtual void visit(BoundThisExpression *node) = 0;
         virtual void visit(BoundParenthesizedExpression *node) = 0;
         virtual void visit(BoundConversionExpression *node) = 0;
@@ -247,14 +245,6 @@ namespace Fern
         BoundExpression *expression = nullptr;
         BoundExpression *targetTypeExpression = nullptr;
         ConversionKind conversionKind = ConversionKind::NoConversion; // Set in semantic pass
-        BOUND_ACCEPT_VISITOR
-    };
-
-    struct BoundConditionalExpression : BoundExpression
-    {
-        BoundExpression *condition = nullptr;
-        BoundExpression *thenExpression = nullptr;
-        BoundExpression *elseExpression = nullptr;
         BOUND_ACCEPT_VISITOR
     };
 
@@ -511,16 +501,6 @@ namespace Fern
                 node->expression->accept(this);
             if (node->targetTypeExpression)
                 node->targetTypeExpression->accept(this);
-        }
-
-        void visit(BoundConditionalExpression *node) override
-        {
-            if (node->condition)
-                node->condition->accept(this);
-            if (node->thenExpression)
-                node->thenExpression->accept(this);
-            if (node->elseExpression)
-                node->elseExpression->accept(this);
         }
 
         void visit(BoundThisExpression *node) override

@@ -1314,35 +1314,6 @@ namespace Fern
         annotate_expression(node, targetType);
     }
 
-    void TypeResolver::visit(BoundConditionalExpression *node)
-    {
-        if (node->condition)
-            node->condition->accept(this);
-        if (node->thenExpression)
-            node->thenExpression->accept(this);
-        if (node->elseExpression)
-            node->elseExpression->accept(this);
-
-        TypePtr condType = node->condition ? apply_substitution(node->condition->type) : nullptr;
-        TypePtr thenType = node->thenExpression ? apply_substitution(node->thenExpression->type) : nullptr;
-        TypePtr elseType = node->elseExpression ? apply_substitution(node->elseExpression->type) : nullptr;
-
-        if (condType)
-        {
-            unify(condType, typeSystem.get_bool(), node, "conditional expression condition");
-        }
-
-        if (thenType && elseType)
-        {
-            unify(thenType, elseType, node, "conditional expression branches");
-            annotate_expression(node, apply_substitution(thenType));
-        }
-        else
-        {
-            annotate_expression(node, typeSystem.get_unresolved());
-        }
-    }
-
     void TypeResolver::visit(BoundThisExpression *node)
     {
         if (!currentType)

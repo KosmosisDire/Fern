@@ -530,8 +530,6 @@ namespace Fern
             return bind_member_access(member);
         if (auto indexer = syntax->as<IndexerExprSyntax>())
             return bind_index_expression(indexer);
-        if (auto conditional = syntax->as<ConditionalExprSyntax>())
-            return bind_conditional_expression(conditional);
         if (auto cast = syntax->as<CastExprSyntax>())
             return bind_cast_expression(cast);
         if (auto new_expr = syntax->as<NewExprSyntax>())
@@ -844,16 +842,6 @@ namespace Fern
             }
         }
 
-        return bound;
-    }
-
-    BoundConditionalExpression *BoundTreeBuilder::bind_conditional_expression(ConditionalExprSyntax *syntax)
-    {
-        auto bound = arena_.make<BoundConditionalExpression>();
-        bound->location = syntax->location;
-        bound->condition = bind_expression(syntax->condition);
-        bound->thenExpression = bind_expression(syntax->thenExpr);
-        bound->elseExpression = bind_expression(syntax->elseExpr);
         return bound;
     }
 
