@@ -8,6 +8,7 @@
 #include <variant>
 #include "common/source_location.hpp"
 #include "type.hpp"
+#include "common/token.hpp"
 
 namespace Fern
 {
@@ -25,21 +26,6 @@ namespace Fern
     
     using SymbolPtr = Symbol*;
     
-    enum class SymbolKind {
-        Namespace,
-        Type,
-        Function,
-        Variable,   // Covers fields, locals, parameters
-        Property,
-        EnumCase,
-        Block,      // Anonymous block scope
-    };
-    
-    enum class Accessibility {
-        Private,
-        Protected,
-        Public,
-    };
     
     #pragma region Symbol
     
@@ -47,7 +33,7 @@ namespace Fern
         SymbolKind kind;
         std::string name;
         SourceRange location;
-        Accessibility access = Accessibility::Private;
+        AccessModifierKind access = AccessModifierKind::Private;
         
         // Tree structure
         Symbol* parent = nullptr;
@@ -86,28 +72,6 @@ namespace Fern
                 current = current->parent;
             }
             return nullptr;
-        }
-
-        inline static std::string access_name(Accessibility access) {
-            switch (access) {
-                case Accessibility::Private: return "private";
-                case Accessibility::Protected: return "protected";
-                case Accessibility::Public: return "public";
-                default: return "unknown";
-            }
-        }
-
-        inline static std::string kind_name(SymbolKind kind) {
-            switch (kind) {
-                case SymbolKind::Namespace: return "namespace";
-                case SymbolKind::Type: return "type";
-                case SymbolKind::Function: return "function";
-                case SymbolKind::Variable: return "variable";
-                case SymbolKind::Property: return "property";
-                case SymbolKind::EnumCase: return "enum_case";
-                case SymbolKind::Block: return "block";
-                default: return "unknown";
-            }
         }
     };
     

@@ -22,8 +22,6 @@ private:
 
     void push_error(const std::string& error);
     TypePtr get_type_from_expr(BaseExprSyntax* typeExpr);
-    Accessibility get_access_level(ModifierKindFlags modifiers);
-    bool has_flag(ModifierKindFlags flags, ModifierKindFlags flag);
 
 public:
     explicit SymbolTableBuilder(SymbolTable& st)

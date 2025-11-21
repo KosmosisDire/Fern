@@ -509,13 +509,7 @@ namespace Fern
 
     struct PropertyAccessorSyntax : BaseSyntax
     {
-        enum class Kind
-        {
-            Get,
-            Set
-        };
-
-        Kind kind;
+        PropertyKind kind;
         ModifierKindFlags modifiers;
 
         // Body representation
@@ -563,16 +557,7 @@ namespace Fern
 
     struct TypeDeclSyntax : BaseDeclSyntax
     {
-        enum class Kind
-        {
-            Type,       // type
-            RefType,    // ref type
-            StaticType, // static type (all members implicitly static)
-            Enum        // enum
-        };
-
         BaseNameExprSyntax *name;
-        Kind kind;
         List<TypeParameterDeclSyntax *> typeParameters;
         List<BaseExprSyntax *> baseTypes;
         List<BaseDeclSyntax *> members;

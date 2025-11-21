@@ -333,7 +333,7 @@ std::string SymbolTable::to_string() const {
         if (current_scope == global_namespace.get()) {
             ss << "global namespace\n";
         } else {
-            ss << current_scope->get_qualified_name() << " (" << Symbol::kind_name(current_scope->kind) << ")\n";
+            ss << current_scope->get_qualified_name() << " (" << Fern::to_string(current_scope->kind) << ")\n";
         }
     }
     
@@ -360,8 +360,8 @@ std::string SymbolTable::to_string() const {
         ss << " " << sym->name;
         
         // Add access modifier if not public
-        if (sym->access != Accessibility::Public) {
-            ss << " [" << Symbol::access_name(sym->access) << "]";
+        if (sym->access != AccessModifierKind::Public) {
+            ss << " [" << Fern::to_string(sym->access) << "]";
         }
         
         // Add modifiers

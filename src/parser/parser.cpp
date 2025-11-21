@@ -14,7 +14,7 @@ namespace Fern
 
     #pragma region Public API
 
-    Parser::Parser(TokenStream &tokens) : tokens(tokens)
+    Parser::Parser(TokenStream &tokens) : tokens(tokens), DiagnosticSystem("Parser")
     {
         contextStack.push_back(Context::TOP_LEVEL);
     }
@@ -50,41 +50,24 @@ namespace Fern
         return unit;
     }
 
-    const std::vector<Parser::ParseError> &Parser::getErrors() const
-    {
-        return errors;
-    }
-
-    bool Parser::hasErrors() const
-    {
-        return !errors.empty();
-    }
-
     #pragma endregion
     
     #pragma region Error Handling
 
-    void Parser::error(const std::string &msg)
+    void Parser::parse_error(const std::string &msg)
     {
-        static int lastPos = 0;
-        if (lastPos == tokens.position())
-        {
-            synchronize();
-            return;
-        }
-        lastPos = tokens.position();
-
-        errors.push_back({msg, tokens.current().location, ParseError::ERROR});
+        error(msg, tokens.current().location);
+        synchronize();
     }
 
-    void Parser::warning(const std::string &msg)
+    void Parser::parse_warning(const std::string &msg)
     {
-        errors.push_back({msg, tokens.current().location, ParseError::WARNING});
+        warn(msg, tokens.current().location);
     }
 
     MissingExprSyntax *Parser::errorExpr(const std::string &msg)
     {
-        error(msg);
+        parse_error(msg);
         auto err = arena.make<MissingExprSyntax>();
         err->message = msg;
         err->location = tokens.previous().location;
@@ -93,7 +76,7 @@ namespace Fern
 
     MissingStmtSyntax *Parser::errorStmt(const std::string &msg)
     {
-        error(msg);
+        parse_error(msg);
         auto err = arena.make<MissingStmtSyntax>();
         err->message = msg;
         err->location = tokens.previous().location;
@@ -192,7 +175,7 @@ namespace Fern
     {
         if (!consume(kind))
         {
-            error(msg);
+            parse_error(msg);
             return false;
         }
         return true;
@@ -234,9 +217,10 @@ namespace Fern
         {
             return parseExpressionStatement();
         }
-        error("Unexpected token at top level");
+        
+        auto err = errorStmt("Invalid top level construct");
         synchronize();
-        return errorStmt("Invalid top level construct");
+        return err;
     }
 
     #pragma endregion
@@ -266,7 +250,7 @@ namespace Fern
             ns->modifiers = modifiers;
             return ns;
         }
-        if (checkAny({TokenKind::Type, TokenKind::Ref, TokenKind::Enum, TokenKind::Static}))
+        if (checkAny({TokenKind::Type}))
         {
             return parseTypeDecl(modifiers, startToken);
         }
@@ -294,7 +278,7 @@ namespace Fern
         }
 
         tokens.restore(checkpoint);
-        error("Expected declaration");
+        parse_error("Expected declaration");
         return nullptr;
     }
 
@@ -314,28 +298,7 @@ namespace Fern
         auto decl = arena.make<TypeDeclSyntax>();
         decl->modifiers = modifiers;
 
-        if (consume(TokenKind::Static))
-        {
-            expect(TokenKind::Type, "Expected 'type' after 'static'");
-            decl->kind = TypeDeclSyntax::Kind::StaticType;
-        }
-        else if (consume(TokenKind::Ref))
-        {
-            expect(TokenKind::Type, "Expected 'type' after 'ref'");
-            decl->kind = TypeDeclSyntax::Kind::RefType;
-        }
-        else if (consume(TokenKind::Enum))
-        {
-            decl->kind = TypeDeclSyntax::Kind::Enum;
-        }
-        else if (consume(TokenKind::Type))
-        {
-            decl->kind = TypeDeclSyntax::Kind::Type;
-        }
-        else
-        {
-            return nullptr;
-        }
+        expect(TokenKind::Type, "Expected 'type' keyword for type declaration");
 
         if (check(TokenKind::Identifier))
         {
@@ -343,7 +306,7 @@ namespace Fern
         }
         else
         {
-            error("Expected type name");
+            parse_error("Expected type name");
             decl->name = arena.makeIdentifier(Token::invalid_token(tokens.current()));
         }
 
@@ -370,37 +333,37 @@ namespace Fern
 
         std::vector<BaseDeclSyntax *> members;
         withContext(Context::TYPE_BODY, [&]()
+        {
+            while (!check(TokenKind::RightBrace) && !tokens.at_end()) {
+                if (has_flag(decl->modifiers, ModifierKindFlags::Enum)) {
+                    if (tokens.current().is_modifier() || check(TokenKind::Fn)) {
+                        if (auto member = parseDeclaration()) members.push_back(member);
+                    } else if (check(TokenKind::Identifier)) {
+                        if (auto enumCase = parseEnumCase()) members.push_back(enumCase);
+                    } else {
+                        parse_error("Unexpected token in enum body");
+                        tokens.advance();
+                    }
+                } else {
+                    // Check if this is a typed declaration that could have multiple comma-separated variables
+                    auto checkpoint = tokens.checkpoint();
+                    auto type = parseTypeExpression();
+                    if (type && check(TokenKind::Identifier))
                     {
-        while (!check(TokenKind::RightBrace) && !tokens.at_end()) {
-            if (decl->kind == TypeDeclSyntax::Kind::Enum) {
-                if (tokens.current().is_modifier() || check(TokenKind::Fn)) {
-                    if (auto member = parseDeclaration()) members.push_back(member);
-                } else if (check(TokenKind::Identifier)) {
-                    if (auto enumCase = parseEnumCase()) members.push_back(enumCase);
-                } else {
-                    error("Unexpected token in enum body");
-                    tokens.advance();
-                }
-            } else {
-                // Check if this is a typed declaration that could have multiple comma-separated variables
-                auto checkpoint = tokens.checkpoint();
-                auto type = parseTypeExpression();
-                if (type && check(TokenKind::Identifier))
-                {
-                    // Parse all comma-separated declarations with the same type
-                    auto declarations = parseTypedMemberDeclarations(ModifierKindFlags::None, type, previous());
-                    for (auto decl : declarations) {
-                        members.push_back(decl);
-                    }
-                } else {
-                    tokens.restore(checkpoint);
-                    if (auto member = parseDeclaration()) {
-                        members.push_back(member);
+                        // Parse all comma-separated declarations with the same type
+                        auto declarations = parseTypedMemberDeclarations(ModifierKindFlags::None, type, previous());
+                        for (auto decl : declarations) {
+                            members.push_back(decl);
+                        }
+                    } else {
+                        tokens.restore(checkpoint);
+                        if (auto member = parseDeclaration()) {
+                            members.push_back(member);
+                        }
                     }
                 }
-            }
-            consume(TokenKind::Comma);
-            consume(TokenKind::Semicolon);
+                consume(TokenKind::Comma);
+                consume(TokenKind::Semicolon);
         } });
 
         decl->members = arena.makeList(members);
@@ -474,7 +437,7 @@ namespace Fern
                 // Couldn't parse as return type, or ambiguous
                 // Default to requiring parentheses for clarity
                 tokens.restore(checkpoint);
-                error("Expected '(' for parameter list, ':' for return type, or '{' for function body");
+                parse_error("Expected '(' for parameter list, ':' for return type, or '{' for function body");
                 decl->parameters = arena.emptyList<ParameterDeclSyntax *>();
             }
         }
@@ -499,7 +462,7 @@ namespace Fern
             // External functions should not have a body
             if (has_flag(modifiers, ModifierKindFlags::Extern))
             {
-                error("External function cannot have a body");
+                parse_error("External function cannot have a body");
                 decl->body = nullptr;
                 // Skip the block to recover
                 parseBlock();
@@ -515,12 +478,12 @@ namespace Fern
             // Expression body not allowed for external functions
             if (has_flag(modifiers, ModifierKindFlags::Extern))
             {
-                error("External function cannot have a body");
+                parse_error("External function cannot have a body");
                 decl->body = nullptr;
             }
             else
             {
-                error("Expression-bodied functions not yet supported");
+                parse_error("Expression-bodied functions not yet supported");
                 decl->body = nullptr;
             }
         }
@@ -570,11 +533,11 @@ namespace Fern
             auto currentToken = tokens.current();
             if (currentToken.is_keyword())
             {
-                error("Cannot use keyword '" + std::string(currentToken.text) + "' as an identifier");
+                parse_error("Cannot use keyword '" + std::string(currentToken.text) + "' as an identifier");
             }
             else
             {
-                error("Expected identifier after 'var', found '" + std::string(currentToken.text) + "' instead");
+                parse_error("Expected identifier after 'var', found '" + std::string(currentToken.text) + "' instead");
             }
             // Skip the invalid token to avoid infinite loop
             tokens.advance();
@@ -632,7 +595,7 @@ namespace Fern
             if (consume(TokenKind::FatArrow))
             {
                 auto getter = arena.make<PropertyAccessorSyntax>();
-                getter->kind = PropertyAccessorSyntax::Kind::Get;
+                getter->kind = PropertyKind::Get;
                 getter->body = parseExpression();
                 prop->getter = getter;
                 prop->setter = nullptr;
@@ -746,7 +709,7 @@ namespace Fern
                 if (consume(TokenKind::FatArrow))
                 {
                     auto getter = arena.make<PropertyAccessorSyntax>();
-                    getter->kind = PropertyAccessorSyntax::Kind::Get;
+                    getter->kind = PropertyKind::Get;
                     getter->body = parseExpression();
                     prop->getter = getter;
                     prop->setter = nullptr;
@@ -804,14 +767,14 @@ namespace Fern
             if (consume(TokenKind::Get))
             {
                 auto getter = arena.make<PropertyAccessorSyntax>();
-                getter->kind = PropertyAccessorSyntax::Kind::Get;
+                getter->kind = PropertyKind::Get;
                 getter->modifiers = accessorMods;
 
                 if (consume(TokenKind::FatArrow))
                 {
                     if (check(TokenKind::LeftBrace))
                     {
-                        error("Unexpected '{' after '=>' in property getter. Use either '=> expression' or '{ statements }'");
+                        parse_error("Unexpected '{' after '=>' in property getter. Use either '=> expression' or '{ statements }'");
                         getter->body = withContext(Context::PROPERTY_GETTER, [this]()
                                                    { return parseBlock(); });
                     }
@@ -836,14 +799,14 @@ namespace Fern
             else if (consume(TokenKind::Set))
             {
                 auto setter = arena.make<PropertyAccessorSyntax>();
-                setter->kind = PropertyAccessorSyntax::Kind::Set;
+                setter->kind = PropertyKind::Set;
                 setter->modifiers = accessorMods;
 
                 if (consume(TokenKind::FatArrow))
                 {
                     if (check(TokenKind::LeftBrace))
                     {
-                        error("Unexpected '{' after '=>' in property setter. Use either '=> expression' or '{ statements }'");
+                        parse_error("Unexpected '{' after '=>' in property setter. Use either '=> expression' or '{ statements }'");
                         setter->body = withContext(Context::PROPERTY_SETTER, [this]()
                                                    { return parseBlock(); });
                     }
@@ -867,7 +830,7 @@ namespace Fern
             }
             else
             {
-                error("Expected 'get' or 'set' in property accessor");
+                parse_error("Expected 'get' or 'set' in property accessor");
                 while (!tokens.at_end() &&
                        !check(TokenKind::Semicolon) &&
                        !check(TokenKind::RightBrace) &&
@@ -925,7 +888,7 @@ namespace Fern
         }
         else
         {
-            error("Expected ';' or '{' after namespace declaration");
+            parse_error("Expected ';' or '{' after namespace declaration");
             decl->isFileScoped = true;
             decl->body = std::nullopt;
         }
@@ -1188,7 +1151,7 @@ namespace Fern
         HANDLE_SEMI
         if (!inFunction() && !inGetter() && !inSetter())
         {
-            warning("Return statement outside function or property");
+            parse_warning("Return statement outside function or property");
         }
         stmt->location = SourceRange(startToken.location.start, previous().location.end());
         return stmt;
@@ -1202,7 +1165,7 @@ namespace Fern
         HANDLE_SEMI
         if (!inLoop())
         {
-            warning("Break statement outside loop");
+            parse_warning("Break statement outside loop");
         }
         stmt->location = SourceRange(startToken.location.start, previous().location.end());
         return stmt;
@@ -1216,7 +1179,7 @@ namespace Fern
         HANDLE_SEMI
         if (!inLoop())
         {
-            warning("Continue statement outside loop");
+            parse_warning("Continue statement outside loop");
         }
         stmt->location = SourceRange(startToken.location.start, previous().location.end());
         return stmt;
@@ -1429,16 +1392,6 @@ namespace Fern
                 indexer->location = SourceRange(expr->location.start, previous().location.end());
                 expr = indexer;
             }
-            else if (checkAny({TokenKind::Increment, TokenKind::Decrement}))
-            {
-                auto unary = arena.make<UnaryExprSyntax>();
-                unary->operand = expr;
-                unary->op = tokens.current().to_unary_operator_kind();
-                unary->isPostfix = true;
-                tokens.advance();
-                unary->location = SourceRange(expr->location.start, previous().location.end());
-                expr = unary;
-            }
             else
             {
                 break;
@@ -1503,7 +1456,7 @@ namespace Fern
                 auto right = parseNameExpression(); // Recursive call
                 if (!right)
                 {
-                    error("Expected identifier after '.'");
+                    parse_error("Expected identifier after '.'");
                     return nameExpr;
                 }
 
@@ -1709,7 +1662,7 @@ namespace Fern
             consume(TokenKind::LeftParen);
             if (check(TokenKind::RightParen))
             {
-                error("Empty parentheses are not a valid expression");
+                parse_error("Empty parentheses are not a valid expression");
                 consume(TokenKind::RightParen);
                 return errorExpr("Expected expression in parentheses");
             }
@@ -1732,7 +1685,7 @@ namespace Fern
         auto targetType = parseTypeExpression();
         if (!targetType)
         {
-            error("Expected type in cast expression");
+            parse_error("Expected type in cast expression");
             targetType = errorExpr("Expected cast type");
         }
 
@@ -1917,7 +1870,7 @@ namespace Fern
             ti->type = parseTypeExpression();
             if (!ti->type)
             {
-                error("Expected type specification");
+                parse_error("Expected type specification");
                 ti->type = errorExpr("Expected type");
             }
             ti->name = parseIdentifier();
@@ -2040,7 +1993,7 @@ namespace Fern
             // we require a semicolon
             if (isOnSameLine(prev, curr))
             {
-                error("Expected ';' between statements on the same line");
+                parse_error("Expected ';' between statements on the same line");
                 return false;
             }
         }

@@ -111,7 +111,7 @@ namespace Fern
         }
 
         // Set access level
-        type_symbol->access = get_access_level(node->modifiers);
+        type_symbol->access = get_access_modifier(node->modifiers);
 
         // Enter type scope
         symbolTable.push_scope(type_symbol);
@@ -169,7 +169,7 @@ namespace Fern
             }
         }
 
-        func_symbol->access = get_access_level(node->modifiers);
+        func_symbol->access = get_access_modifier(node->modifiers);
 
         // Enter function scope
         symbolTable.push_scope(func_symbol);
@@ -235,7 +235,7 @@ namespace Fern
 
         // Mark as constructor
         func_symbol->is_constructor = true;
-        func_symbol->access = get_access_level(node->modifiers);
+        func_symbol->access = get_access_modifier(node->modifiers);
         func_symbol->location = node->location;
 
         // Map AST node to symbol for binding phase
@@ -470,22 +470,6 @@ namespace Fern
             node->body->accept(this);
 
         symbolTable.pop_scope();
-    }
-
-    // === Private Helper Methods ===
-
-    Accessibility SymbolTableBuilder::get_access_level(ModifierKindFlags modifiers)
-    {
-        if (has_flag(modifiers, ModifierKindFlags::Public))
-            return Accessibility::Public;
-        if (has_flag(modifiers, ModifierKindFlags::Protected))
-            return Accessibility::Protected;
-        return Accessibility::Private;
-    }
-
-    bool SymbolTableBuilder::has_flag(ModifierKindFlags flags, ModifierKindFlags flag)
-    {
-        return (static_cast<uint32_t>(flags) & static_cast<uint32_t>(flag)) != 0;
     }
 
 } // namespace Fern

@@ -112,7 +112,7 @@ set(SOURCE_FILES
     
     # Common Utilities
     src/common/logger.cpp
-    src/common/token.cpp
+    src/common/error.cpp
 
     src/compiler.cpp
     src/jit.cpp

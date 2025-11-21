@@ -306,7 +306,7 @@ int main(int argc, char* argv[])
     if (!result || !result->is_valid())
     {
         std::cerr << "Compilation failed with errors:\n" << std::endl;
-        const auto& errors = result->get_errors();
+        const auto& errors = result->get_diagnostics();
         if (errors.empty())
         {
             std::cerr << "  (No error details available)" << std::endl;
@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
         {
             for (const auto& error : errors)
             {
-                std::cerr << "  " << error << std::endl;
+                std::cerr << "  " << error.message << std::endl;
             }
         }
         return 1;

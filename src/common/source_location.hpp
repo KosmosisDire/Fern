@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace Fern
 {
     // Source range with absolute positioning

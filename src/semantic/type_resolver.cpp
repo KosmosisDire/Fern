@@ -819,10 +819,6 @@ namespace Fern
         case UnaryOperatorKind::Plus:
         case UnaryOperatorKind::Minus:
         case UnaryOperatorKind::BitwiseNot:
-        case UnaryOperatorKind::PreIncrement:
-        case UnaryOperatorKind::PreDecrement:
-        case UnaryOperatorKind::PostIncrement:
-        case UnaryOperatorKind::PostDecrement:
             resultType = operandType;
             break;
 
@@ -1617,6 +1613,12 @@ namespace Fern
                 if (auto propSym = node->symbol->as<PropertySymbol>())
                 {
                     propSym->type = resolve_type_expression(node->typeExpression);
+
+                    // Also update the getter function's return type if it exists
+                    if (node->getter && node->getter->function_symbol)
+                    {
+                        node->getter->function_symbol->return_type = propSym->type;
+                    }
                 }
             }
         }

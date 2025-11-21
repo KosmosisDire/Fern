@@ -3,16 +3,18 @@
 #include "ast/ast.hpp"
 #include "ast/arena.hpp"
 #include "token_stream.hpp"
-#include "common/token.hpp"
+#include "common/token_kind.hpp"
 #include <vector>
 #include <optional>
 #include <string>
 #include <initializer_list>
 #include <functional> // For std::invoke_result_t
+#include "common/error.hpp"
 
 namespace Fern {
 
-class Parser {
+class Parser : public DiagnosticSystem
+{
 public:
     Parser(TokenStream& tokens);
     ~Parser();
@@ -20,21 +22,10 @@ public:
     // Main entry point
     CompilationUnitSyntax* parse();
 
-    // Error tracking
-    struct ParseError {
-        std::string message;
-        SourceRange location;
-        enum Level { WARNING, ERROR, FATAL } level;
-    };
-
-    const std::vector<ParseError>& getErrors() const;
-    bool hasErrors() const;
-
 private:
     // Data Members
     Arena arena;
     TokenStream& tokens;
-    std::vector<ParseError> errors;
 
     // Context tracking
     enum class Context {
@@ -49,8 +40,8 @@ private:
     std::vector<Context> contextStack;
 
     // ================== Error Handling ==================
-    void error(const std::string& msg);
-    void warning(const std::string& msg);
+    void parse_error(const std::string& msg);
+    void parse_warning(const std::string& msg);
     MissingExprSyntax* errorExpr(const std::string& msg);
     MissingStmtSyntax* errorStmt(const std::string& msg);
     void synchronize();

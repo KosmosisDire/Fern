@@ -7,7 +7,7 @@
 #include <variant>
 #include <optional>
 #include "common/source_location.hpp"
-#include "common/token.hpp"
+#include "common/token_kind.hpp"
 #include "semantic/symbol.hpp"
 #include "conversions.hpp"
 #include "semantic/type.hpp"

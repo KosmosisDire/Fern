@@ -48,8 +48,8 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
             result.compile_failed = true;
             if (compile_result) {
                 std::stringstream ss;
-                for (const auto& error : compile_result->get_errors()) {
-                    ss << error << "; ";
+                for (const auto& error : compile_result->get_diagnostics()) {
+                    ss << error.message << "; ";
                 }
                 result.error_message = ss.str();
             } else {

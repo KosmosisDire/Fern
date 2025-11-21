@@ -7,6 +7,7 @@
 #include "parser/token_stream.hpp"
 #include "binding/bound_tree.hpp"
 #include "binding/bound_tree_builder.hpp"
+#include "common/error.hpp"
 
 #include <string>
 #include <memory>
@@ -34,7 +35,7 @@ namespace Fern
         BoundCompilationUnit *boundTree;          // pointer to the bound tree root
         
 
-        std::vector<std::string> errors;
+        std::vector<Diagnostic> diagnostics;
 
         bool parse_complete = false;
         bool symbols_complete = false;
@@ -52,6 +53,7 @@ namespace Fern
         void add_builtin_functions(SymbolTable& global_symbols);
 
     public:
+
         // Main compilation function
         std::unique_ptr<CompiledModule> compile(const std::vector<SourceFile> &source_files);
         std::unique_ptr<CompiledModule> compile(const SourceFile &source)

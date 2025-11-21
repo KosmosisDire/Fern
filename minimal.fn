@@ -1,9 +1,19 @@
+type Player
+{
+    f32 health
+    f32 healthModifier
+
+    new(f32 h, f32 mod)
+    {
+        health = h
+        healthModifier = mod
+    }
+}
+
 
 fn Main
 {
-    var test = 0.0
-    test += 10.0
-    return test
+    var player = new Player(100.0, 1.0)
+    f32 total = player.health * player.healthModifier
+    return total
 }
- 
-

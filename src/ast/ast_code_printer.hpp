@@ -501,7 +501,7 @@ namespace Fern
         {
             emit_indent();
             print_modifiers(node->modifiers);
-            emit(node->kind == PropertyAccessorSyntax::Kind::Get ? "get" : "set");
+            emit(node->kind == PropertyKind::Get ? "get" : "set");
 
             if (auto expr = std::get_if<BaseExprSyntax *>(&node->body))
             {
@@ -546,21 +546,7 @@ namespace Fern
         {
             emit_indent();
             print_modifiers(node->modifiers);
-            switch (node->kind)
-            {
-            case TypeDeclSyntax::Kind::Type:
-                emit("type ");
-                break;
-            case TypeDeclSyntax::Kind::RefType:
-                emit("ref type ");
-                break;
-            case TypeDeclSyntax::Kind::StaticType:
-                emit("static type ");
-                break;
-            case TypeDeclSyntax::Kind::Enum:
-                emit("enum ");
-                break;
-            }
+            emit("type ");
             node->name->accept(this);
 
             if (!node->baseTypes.empty())

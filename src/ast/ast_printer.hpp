@@ -266,7 +266,7 @@ namespace Fern
 
     inline void AstPrinter::visit(PropertyAccessorSyntax *node)
     {
-        std::string kind = (node->kind == PropertyAccessorSyntax::Kind::Get) ? "Get" : "Set";
+        std::string kind = (node->kind == PropertyKind::Get) ? "Get" : "Set";
         enter(node, "PropertyAccessorSyntax", " (" + kind + ")" + to_string(node->modifiers));
         DefaultVisitor::visit(node);
         leave();
@@ -282,13 +282,8 @@ namespace Fern
     inline void AstPrinter::visit(TypeDeclSyntax *node)
     {
         std::string kind_str;
-        switch (node->kind)
-        {
-        case TypeDeclSyntax::Kind::Type: kind_str = "type"; break;
-        case TypeDeclSyntax::Kind::RefType: kind_str = "ref type"; break;
-        case TypeDeclSyntax::Kind::StaticType: kind_str = "static type"; break;
-        case TypeDeclSyntax::Kind::Enum: kind_str = "enum"; break;
-        }
+        kind_str += to_string(node->modifiers);
+        kind_str += " type";
         enter(node, "TypeDeclSyntax", " (" + node->name->get_name() + ", Kind: " + kind_str + ")" + to_string(node->modifiers));
         
         // Print type parameters with label

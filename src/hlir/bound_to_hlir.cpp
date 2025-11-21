@@ -745,7 +745,15 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
         size_t param_idx = is_member_function && !func_sym->isStatic ? i + 1 : i;
         auto param_value = func->params[param_idx];
 
-        auto param_addr = builder.alloc(param_sym->type, /*stack=*/true);
+        // For array parameters (which are really pointers), allocate space for the pointer
+        // rather than trying to allocate the entire array
+        TypePtr alloc_type = param_sym->type;
+        if (auto array_type = param_sym->type->as<ArrayType>()) {
+            // Array parameters are passed as pointers
+            alloc_type = type_system->get_pointer(array_type->element);
+        }
+
+        auto param_addr = builder.alloc(alloc_type, /*stack=*/true);
         builder.store(param_value, param_addr);
         variable_addresses[param_sym] = param_addr;
     }

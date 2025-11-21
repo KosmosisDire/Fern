@@ -12,37 +12,34 @@
 #include <type_traits>
 #include "jit.hpp"
 #include "common/logger.hpp"
+#include "common/error.hpp"
 
 namespace Fern
 {
     // Forward declaration
     class JIT;
 
-    class CompiledModule
+    class CompiledModule : public DiagnosticSystem
     {
     private:
         std::unique_ptr<llvm::LLVMContext> context;
         std::unique_ptr<llvm::Module> module;
         std::string module_name;
-        bool has_errors;
-        std::vector<std::string> errors;
 
     public:
-        CompiledModule()
-            : context(nullptr), module(nullptr), has_errors(true) {}
+        CompiledModule() : context(nullptr), module(nullptr), DiagnosticSystem("CompiledModule") {}
 
-        CompiledModule(const std::vector<std::string> &compilation_errors)
-            : context(nullptr), module(nullptr), has_errors(true), errors(compilation_errors) {}
+        CompiledModule(const std::vector<Diagnostic> &diagnostics)
+            : context(nullptr), module(nullptr), DiagnosticSystem("CompiledModule", diagnostics)  {}
 
         CompiledModule(std::unique_ptr<llvm::LLVMContext> ctx,
                        std::unique_ptr<llvm::Module> mod,
                        const std::string &name,
-                       const std::vector<std::string> &compilation_errors = {})
+                       const std::vector<Diagnostic> &diagnostics = {})
             : context(std::move(ctx)),
               module(std::move(mod)),
               module_name(name),
-              has_errors(!compilation_errors.empty()),
-              errors(compilation_errors) {}
+              DiagnosticSystem("CompiledModule", diagnostics) {}
 
         // Move-only type
         CompiledModule(CompiledModule &&) = default;
@@ -51,8 +48,7 @@ namespace Fern
         CompiledModule &operator=(const CompiledModule &) = delete;
 
         // Check if compilation succeeded
-        bool is_valid() const { return module != nullptr && !has_errors; }
-        const std::vector<std::string> &get_errors() const { return errors; }
+        bool is_valid() const { return module != nullptr && !has_errors(); }
 
         // Output options
         bool write_ir(const std::string &filename) const;
@@ -87,9 +83,9 @@ namespace Fern
         if (!is_valid())
         {
             LOG_ERROR("Cannot execute: module is invalid.", LogCategory::JIT);
-            for (const auto &error : errors)
+            for (const auto &error : get_diagnostics())
             {
-                LOG_ERROR("  - " + error, LogCategory::JIT);
+                LOG_ERROR("  - " + error.message, LogCategory::JIT);
             }
             return std::nullopt;
         }
@@ -149,9 +145,9 @@ namespace Fern
         if (!is_valid())
         {
             LOG_ERROR("Cannot execute: module is invalid.", LogCategory::JIT);
-            for (const auto &error : errors)
+            for (const auto &error : get_diagnostics())
             {
-                LOG_ERROR("  - " + error, LogCategory::JIT);
+                LOG_ERROR("  - " + error.message, LogCategory::JIT);
             }
             return false;
         }

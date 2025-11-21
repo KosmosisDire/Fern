@@ -43,14 +43,14 @@ namespace Fern
     NamespaceSymbol::NamespaceSymbol(const std::string& name) {
         kind = SymbolKind::Namespace;
         this->name = name;
-        access = Accessibility::Public;
+        access = AccessModifierKind::Public;
     }
 
     // BlockSymbol implementation
     BlockSymbol::BlockSymbol(const std::string& debug_name) {
         kind = SymbolKind::Block;
         this->name = debug_name;
-        access = Accessibility::Private;  // Blocks are always private
+        access = AccessModifierKind::Private;  // Blocks are always private
     }
 
     // TypeSymbol implementation

@@ -55,7 +55,7 @@ namespace Fern
     };
     
     struct UnresolvedType {
-        uint32_t id;  // For type inference
+        uint32_t id;  // For type resolution
     };
     
     #pragma region Type

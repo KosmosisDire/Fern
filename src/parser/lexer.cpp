@@ -1,15 +1,16 @@
 #include "parser/lexer.hpp"
 #include "parser/token_stream.hpp"
-// Token utilities now in common/token.hpp
 #include <unordered_map>
 #include <cctype>
 #include <algorithm>
 
+#define TAB_SIZE 4
+
 namespace Fern
 {
 
-    Lexer::Lexer(std::string_view source, LexerOptions options)
-        : source_(source), current_offset_(0), current_location_(0, 1, 1), options_(options), error_count_(0), cache_start_offset_(0)
+    Lexer::Lexer(std::string_view source): 
+        DiagnosticSystem("Lexer"), source_(source), current_offset_(0), current_location_(0, 1, 1), cache_start_offset_(0)  
     {
         context_stack_.push_back(LexicalContext::Normal);
     }
@@ -108,7 +109,6 @@ namespace Fern
     {
         current_offset_ = 0;
         current_location_ = SourceLocation(0, 1, 1);
-        error_count_ = 0;
         context_stack_.clear();
         context_stack_.push_back(LexicalContext::Normal);
         token_cache_.clear();
@@ -160,7 +160,7 @@ namespace Fern
         }
         else if (ch == '\t')
         {
-            current_location_.column += options_.tab_size - ((current_location_.column - 1) % options_.tab_size);
+            current_location_.column += TAB_SIZE - ((current_location_.column - 1) % TAB_SIZE);
         }
         else
         {
@@ -180,7 +180,7 @@ namespace Fern
             }
             else if (ch == '\t')
             {
-                current_location_.column += options_.tab_size - ((current_location_.column - 1) % options_.tab_size);
+                current_location_.column += TAB_SIZE - ((current_location_.column - 1) % TAB_SIZE);
             }
             else
             {
@@ -194,16 +194,7 @@ namespace Fern
     {
         // Skip leading trivia
         std::vector<Trivia> leading_trivia;
-        if (options_.preserve_trivia)
-        {
-            leading_trivia = scan_leading_trivia();
-        }
-        else
-        {
-            // When not preserving trivia, still skip whitespace and comments
-            // but don't save them
-            scan_leading_trivia();
-        }
+        leading_trivia = scan_leading_trivia();
 
         // Check for end of file
         if (at_end())
@@ -243,13 +234,8 @@ namespace Fern
 
         // Add leading trivia
         token.leading_trivia = std::move(leading_trivia);
-
-        // Scan trailing trivia
-        if (options_.preserve_trivia)
-        {
-            token.trailing_trivia = scan_trailing_trivia();
-        }
-
+        token.trailing_trivia = scan_trailing_trivia();
+        
         return token;
     }
 
@@ -263,7 +249,7 @@ namespace Fern
     Token Lexer::make_invalid_token(const std::string &error_message)
     {
         Token token(TokenKind::Invalid, SourceRange(current_location_, 1), source_);
-        report_error(error_message);
+        error(error_message, SourceRange(current_location_, 1));
         advance_char();
         return token;
     }
@@ -371,18 +357,13 @@ namespace Fern
         // Skip "//"
         advance_chars(2);
 
-        // Check if this is a doc comment "///"
-        bool is_doc = !at_end() && current_char() == '/';
-
         // Read until end of line
         while (!at_end() && !is_newline(current_char()))
         {
             advance_char();
         }
 
-        TriviaKind kind = (is_doc && options_.preserve_doc_comments) ? TriviaKind::DocComment : TriviaKind::LineComment;
-
-        return Trivia(kind, current_offset_ - start);
+        return Trivia(TriviaKind::LineComment, current_offset_ - start);
     }
 
     Trivia Lexer::scan_block_comment()
@@ -392,23 +373,18 @@ namespace Fern
         // Skip "---"
         advance_chars(3);
 
-        // Check if this is a doc comment "/**"
-        bool is_doc = !at_end() && current_char() == '*';
-
-        // Read until "*/"
+        // Read until "---"
         while (!at_end())
         {
-            if (current_char() == '*' && peek_char() == '/')
+            if (current_char() == '-' && peek_char() == '-' && peek_char(2) == '-')
             {
-                advance_chars(2);
+                advance_chars(3);
                 break;
             }
             advance_char();
         }
 
-        TriviaKind kind = (is_doc && options_.preserve_doc_comments) ? TriviaKind::DocComment : TriviaKind::BlockComment;
-
-        return Trivia(kind, current_offset_ - start);
+        return Trivia(TriviaKind::BlockComment, current_offset_ - start);
     }
 
     Token Lexer::scan_number()
@@ -511,7 +487,7 @@ namespace Fern
             }
             else if (current_char() == '\n')
             {
-                report_error("Unterminated string literal");
+                error("Unterminated string literal", SourceRange(start_location, current_offset_ - start));
                 break;
             }
             else
@@ -527,7 +503,7 @@ namespace Fern
         }
         else
         {
-            report_error("Unterminated string literal");
+            error("Unterminated string literal", SourceRange(start_location, current_offset_ - start));
         }
 
         Token token(TokenKind::LiteralString, SourceRange(start_location, current_offset_ - start), source_);
@@ -561,13 +537,13 @@ namespace Fern
         }
         else
         {
-            report_error("Empty character literal");
+            error("Empty character literal", SourceRange(start_location, current_offset_ - start));
         }
 
         // Check for additional characters (invalid)
         if (!at_end() && current_char() != '\'')
         {
-            report_error("Character literal contains multiple characters");
+            error("Character literal contains multiple characters", SourceRange(start_location, current_offset_ - start));
             // Skip to closing quote or end
             while (!at_end() && current_char() != '\'')
             {
@@ -581,7 +557,7 @@ namespace Fern
         }
         else
         {
-            report_error("Unterminated character literal");
+            error("Unterminated character literal", SourceRange(start_location, current_offset_ - start));
         }
 
         Token token(TokenKind::LiteralChar, SourceRange(start_location, current_offset_ - start), source_);
@@ -614,15 +590,11 @@ namespace Fern
         switch (ch)
         {
         case '+':
-            if (peek_char() == '+')
-                return make_token(TokenKind::Increment, 2);
             if (peek_char() == '=')
                 return make_token(TokenKind::PlusAssign, 2);
             return make_token(TokenKind::Plus, 1);
 
         case '-':
-            if (peek_char() == '-')
-                return make_token(TokenKind::Decrement, 2);
             if (peek_char() == '=')
                 return make_token(TokenKind::MinusAssign, 2);
             if (peek_char() == '>')
@@ -691,9 +663,9 @@ namespace Fern
 
         case '.':
             if (peek_char() == '.' && peek_char(2) == '=')
-                return make_token(TokenKind::DotDotEquals, 3);
+                return make_token(TokenKind::DotDot, 3);
             if (peek_char() == '.')
-                return make_token(TokenKind::DotDot, 2);
+                return make_token(TokenKind::DotDotDot, 2);
             return make_token(TokenKind::Dot, 1);
 
         case '?':
@@ -722,18 +694,6 @@ namespace Fern
 
         case ',':
             return make_token(TokenKind::Comma, 1);
-
-        case '_':
-            return make_token(TokenKind::Underscore, 1);
-
-        case '@':
-            return make_token(TokenKind::AtSymbol, 1);
-
-        case '#':
-            return make_token(TokenKind::Hash, 1);
-
-        case '$':
-            return make_token(TokenKind::Dollar, 1);
 
         default:
             return make_invalid_token("Unexpected character");
@@ -790,23 +750,12 @@ namespace Fern
         return ch == '0' || ch == '1';
     }
 
-    void Lexer::report_error(const std::string &message)
-    {
-        error_count_++;
-        diagnostics_.emplace_back(current_location_, message, true);
-    }
-
-    void Lexer::report_warning(const std::string &message)
-    {
-        diagnostics_.emplace_back(current_location_, message, false);
-    }
-
     char Lexer::interpret_escape_sequence()
     {
         // Current character should be backslash
         if (current_char() != '\\')
         {
-            report_error("Expected escape sequence");
+            error("Expected escape sequence", SourceRange(current_location_, 1));
             return '\0';
         }
 
@@ -814,7 +763,7 @@ namespace Fern
 
         if (at_end())
         {
-            report_error("Unexpected end of file in escape sequence");
+            error("Unexpected end of file in escape sequence", SourceRange(current_location_, 0));
             return '\0';
         }
 
@@ -850,7 +799,7 @@ namespace Fern
             // Hexadecimal escape sequence \xHH
             if (at_end() || !is_hex_digit(current_char()))
             {
-                report_error("Invalid hexadecimal escape sequence");
+                error("Invalid hexadecimal escape sequence", SourceRange(current_location_, 1));
                 return '\0';
             }
             
@@ -871,7 +820,7 @@ namespace Fern
             return static_cast<char>(hex_value);
         }
         default:
-            report_error("Invalid escape sequence: \\" + std::string(1, escaped_char));
+            error("Invalid escape sequence: \\" + std::string(1, escaped_char), SourceRange(current_location_, 1));
             return escaped_char; // Return the character as-is
         }
     }
