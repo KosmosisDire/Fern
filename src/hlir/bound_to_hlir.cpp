@@ -68,13 +68,13 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
         auto parent = node->symbol->parent;
         if (parent && parent->is<TypeSymbol>()) {
             // Field of a type - need 'this' pointer
-            if (current_function && !current_function->is_static && 
+            if (current_function && !current_function->is_static &&
                 current_function->params.size() > 0) {
-                
+
                 auto this_param = current_function->params[0];
                 size_t field_index = get_field_index(parent->as<TypeSymbol>(), node->symbol);
-                auto field_addr = builder.field_addr(this_param, field_index, node->type);
-                auto field_value = builder.load(field_addr, node->type);
+                auto field_addr = builder.field_addr(this_param, field_index, node->type, node->symbol->name);
+                auto field_value = builder.load(field_addr, node->type, node->symbol->name);
                 expression_values[node] = field_value;
                 return;
             }
@@ -88,8 +88,8 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
         expression_values[node] = nullptr;
         return;
     }
-    
-    auto value = builder.load(var_addr, node->type);
+
+    auto value = builder.load(var_addr, node->type, node->symbol->name);
     expression_values[node] = value;
 }
 
@@ -307,24 +307,24 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
     // Field access - get address and load
     if (auto field = node->member->as<FieldSymbol>()) {
         size_t field_index = get_field_index(field->parent->as<TypeSymbol>(), field);
-        auto field_addr = builder.field_addr(obj_addr, field_index, field->type);
-        auto field_value = builder.load(field_addr, field->type);
+        auto field_addr = builder.field_addr(obj_addr, field_index, field->type, field->name);
+        auto field_value = builder.load(field_addr, field->type, field->name);
         expression_values[node] = field_value;
         return;
     }
-    
+
     // Variable member
     if (auto var = node->member->as<VariableSymbol>()) {
         if (obj_addr) {
             size_t field_index = get_field_index(var->parent->as<TypeSymbol>(), var);
-            auto field_addr = builder.field_addr(obj_addr, field_index, var->type);
-            auto field_value = builder.load(field_addr, var->type);
+            auto field_addr = builder.field_addr(obj_addr, field_index, var->type, var->name);
+            auto field_value = builder.load(field_addr, var->type, var->name);
             expression_values[node] = field_value;
         } else {
             // Static member
             auto var_addr = variable_addresses[var];
             if (var_addr) {
-                auto value = builder.load(var_addr, var->type);
+                auto value = builder.load(var_addr, var->type, var->name);
                 expression_values[node] = value;
             } else {
                 expression_values[node] = nullptr;
@@ -675,7 +675,7 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node) {
     if (!var_sym) return;
 
     if (var_sym->type->is_reference_type()) {
-        auto ref_ptr = builder.alloc_nested(var_sym->type, true);
+        auto ref_ptr = builder.alloc_nested(var_sym->type, true, node->name);
         variable_addresses[node->symbol] = ref_ptr;
 
         if (node->initializer) {
@@ -691,10 +691,25 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node) {
         }
     } else {
         // Value type
-        auto var_addr = builder.alloc(var_sym->type, true);
+        auto var_addr = builder.alloc(var_sym->type, true, node->name);
         variable_addresses[node->symbol] = var_addr;
 
         if (node->initializer) {
+            // Optimization: if initializer is a new expression for a value type,
+            // call the constructor directly with var_addr as 'this' to avoid
+            // creating a temporary allocation and copying
+            if (auto new_expr = node->initializer->as<BoundNewExpression>()) {
+                bool is_new_value_type = new_expr->type &&
+                    new_expr->type->as<NamedType>() &&
+                    new_expr->type->is_value_type();
+
+                if (is_new_value_type) {
+                    emit_constructor_to_address(new_expr, var_addr);
+                    return;
+                }
+            }
+
+            // Default path: evaluate initializer and store
             auto init_value = evaluate_expression(node->initializer);
             if (init_value) {
                 builder.store(init_value, var_addr);
@@ -750,21 +765,19 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     builder.set_function(func);
     builder.set_block(entry);
 
-    // Allocate stack space for parameters
+    // Allocate stack space for parameters (mem2reg will promote to SSA)
     for (size_t i = 0; i < node->parameters.size(); i++) {
         auto param_sym = node->parameters[i]->symbol->as<ParameterSymbol>();
         size_t param_idx = is_member_function && !func_sym->isStatic ? i + 1 : i;
         auto param_value = func->params[param_idx];
 
         // For array parameters (which are really pointers), allocate space for the pointer
-        // rather than trying to allocate the entire array
         TypePtr alloc_type = param_sym->type;
         if (auto array_type = param_sym->type->as<ArrayType>()) {
-            // Array parameters are passed as pointers
             alloc_type = type_system->get_pointer(array_type->element);
         }
 
-        auto param_addr = builder.alloc(alloc_type, /*stack=*/true);
+        auto param_addr = builder.alloc(alloc_type, /*stack=*/true, param_sym->name + ".addr");
         builder.store(param_value, param_addr);
         variable_addresses[param_sym] = param_addr;
     }
@@ -961,6 +974,27 @@ HLIR::Opcode BoundToHLIR::get_compound_opcode(AssignmentOperatorKind kind) {
         case AssignmentOperatorKind::RightShift: return HLIR::Opcode::Shr;
         default: return HLIR::Opcode::Add;
     }
+}
+
+void BoundToHLIR::emit_constructor_to_address(BoundNewExpression* new_expr, HLIR::Value* dest_addr) {
+    // Call constructor directly with dest_addr as 'this', avoiding temporary allocation
+    if (new_expr->constructor) {
+        auto ctor_func = module->find_function(new_expr->constructor);
+        if (ctor_func) {
+            std::vector<HLIR::Value*> args;
+            args.push_back(dest_addr);  // 'this' pointer
+
+            for (auto arg : new_expr->arguments) {
+                auto arg_val = evaluate_expression(arg);
+                if (arg_val) {
+                    args.push_back(arg_val);
+                }
+            }
+
+            builder.call(ctor_func, args);
+        }
+    }
+    // No need to load/return - the constructor writes directly to dest_addr
 }
 
 void BoundToHLIR::generate_property_getter(BoundPropertyDeclaration* prop_decl, BoundPropertyAccessor* getter) {

@@ -83,7 +83,11 @@ namespace Fern
 
     llvm::Value* LLVMIRBuilder::create_alloca(llvm::Type* type, const std::string& name)
     {
-        return builder.CreateAlloca(type, nullptr, name);
+        // Use proper alignment based on the type's ABI alignment
+        llvm::Align align = module->getDataLayout().getABITypeAlign(type);
+        llvm::AllocaInst* alloca = builder.CreateAlloca(type, nullptr, name);
+        alloca->setAlignment(align);
+        return alloca;
     }
 
     llvm::Value* LLVMIRBuilder::create_malloc(llvm::Type* type, const std::string& name)

@@ -23,7 +23,7 @@ namespace Fern::HLIR
         #pragma region Variable Tracking
         // Variable to address mapping (all variables are addresses in non-SSA)
         std::unordered_map<Symbol*, HLIR::Value*> variable_addresses;
-        
+
         // Expression results cache (these are VALUES, not addresses)
         std::unordered_map<BoundExpression*, HLIR::Value*> expression_values;
         
@@ -88,6 +88,9 @@ namespace Fern::HLIR
         HLIR::Opcode get_unary_opcode(UnaryOperatorKind kind);
         HLIR::Opcode get_compound_opcode(AssignmentOperatorKind kind);
         size_t get_field_index(TypeSymbol* type_sym, Symbol* field_sym);
+
+        // Emit a constructor call directly to a destination address (avoids temporary allocation)
+        void emit_constructor_to_address(BoundNewExpression* new_expr, HLIR::Value* dest_addr);
         
         // Property helper methods
         void generate_property_getter(BoundPropertyDeclaration* prop_decl, BoundPropertyAccessor* getter);

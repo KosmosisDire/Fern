@@ -60,10 +60,10 @@ namespace Fern::HLIR
             return result;
         }
         
-        Value* alloc(TypePtr type, bool stack = false) {
+        Value* alloc(TypePtr type, bool stack = false, const std::string& name = "") {
             // Result type is pointer to the allocated type
             auto ptr_type = type_system ? type_system->get_pointer(type) : type;
-            auto result = current_func->create_value(ptr_type);
+            auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<AllocInst>(result, type);
             inst->on_stack = stack;
             result->def = inst.get();
@@ -71,13 +71,13 @@ namespace Fern::HLIR
             return result;
         }
 
-        Value* alloc_nested(TypePtr type, bool stack = false) {
-            // Result type is pointer to a pointer to the allocated type
-            return alloc(type_system->get_pointer(type), stack);
+        // Result type is pointer to a pointer to the allocated type
+        Value* alloc_nested(TypePtr type, bool stack = false, const std::string& name = "") {
+            return alloc(type_system->get_pointer(type), stack, name);
         }
-        
-        Value* load(Value* addr, TypePtr type) {
-            auto result = current_func->create_value(type);
+
+        Value* load(Value* addr, TypePtr type, const std::string& name = "") {
+            auto result = current_func->create_value(type, name);
             auto inst = std::make_unique<LoadInst>(result, addr);
             result->def = inst.get();
             addr->uses.push_back(inst.get());
@@ -132,10 +132,10 @@ namespace Fern::HLIR
             return result;
         }
         
-        Value* field_addr(Value* object, uint32_t field_index, TypePtr field_type) {
+        Value* field_addr(Value* object, uint32_t field_index, TypePtr field_type, const std::string& name = "") {
             // Result type is pointer to field type
             auto ptr_type = type_system ? type_system->get_pointer(field_type) : field_type;
-            auto result = current_func->create_value(ptr_type);
+            auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<FieldAddrInst>(result, object, field_index);
             result->def = inst.get();
             object->uses.push_back(inst.get());
@@ -143,10 +143,10 @@ namespace Fern::HLIR
             return result;
         }
 
-        Value* element_addr(Value* array, Value* index, TypePtr element_type) {
+        Value* element_addr(Value* array, Value* index, TypePtr element_type, const std::string& name = "") {
             // Result type is pointer to element type
             auto ptr_type = type_system ? type_system->get_pointer(element_type) : element_type;
-            auto result = current_func->create_value(ptr_type);
+            auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<ElementAddrInst>(result, array, index);
             result->def = inst.get();
             array->uses.push_back(inst.get());
@@ -154,11 +154,11 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* call(Function* func, std::vector<Value*> args) {
+
+        Value* call(Function* func, std::vector<Value*> args, const std::string& name = "") {
             Value* result = nullptr;
             if (func->return_type() && !func->return_type()->is_void()) {
-                result = current_func->create_value(func->return_type());
+                result = current_func->create_value(func->return_type(), name);
             }
             auto inst = std::make_unique<CallInst>(result, func, args);
             if (result) result->def = inst.get();

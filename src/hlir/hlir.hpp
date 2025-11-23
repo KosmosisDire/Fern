@@ -630,12 +630,7 @@ namespace Fern::HLIR
             {
                 if (i > 0)
                     ss << ", ";
-                ss << "%" << func->params[i]->id;
-                if (!func->params[i]->debug_name.empty())
-                {
-                    ss << " <" << func->params[i]->debug_name << ">";
-                }
-                ss << ": " << type_to_string(func->params[i]->type);
+                ss << value_ref(func->params[i]) << ": " << type_to_string(func->params[i]->type);
             }
             ss << ") -> " << type_to_string(func->return_type());
 
@@ -697,12 +692,7 @@ namespace Fern::HLIR
             // Result value if any
             if (inst->result)
             {
-                ss << "%" << inst->result->id;
-                if (!inst->result->debug_name.empty())
-                {
-                    ss << " <" << inst->result->debug_name << ">";
-                }
-                ss << " = ";
+                ss << value_ref(inst->result) << " = ";
             }
 
             // Opcode and operands
@@ -878,10 +868,14 @@ namespace Fern::HLIR
             if (!val)
                 return "<null>";
             std::stringstream ss;
-            ss << "%" << val->id;
+            // Use name as primary identifier if available, otherwise use numeric ID
             if (!val->debug_name.empty())
             {
-                ss << "<" << val->debug_name << ">";
+                ss << "%" << val->debug_name;
+            }
+            else
+            {
+                ss << "%" << val->id;
             }
             return ss.str();
         }

@@ -228,14 +228,17 @@ namespace Fern
             alloc_type = CGF.get_module().get_or_create_type(inst->alloc_type);
         }
 
+        // Use debug_name if available, otherwise default names
+        std::string name = inst->result->debug_name.empty() ? "alloc" : inst->result->debug_name;
+
         llvm::Value* ptr;
         if (inst->on_stack)
         {
-            ptr = ir.create_alloca(alloc_type, "alloc");
+            ptr = ir.create_alloca(alloc_type, name);
         }
         else
         {
-            ptr = ir.create_malloc(alloc_type, "heap_alloc");
+            ptr = ir.create_malloc(alloc_type, name);
         }
 
         CGF.map_value(inst->result, ptr);
@@ -262,7 +265,8 @@ namespace Fern
         }
 
         llvm::Type* load_type = CGF.get_module().get_or_create_type(inst->result->type);
-        llvm::Value* loaded = ir.create_load(load_type, addr, "load");
+        std::string name = inst->result->debug_name.empty() ? "load" : inst->result->debug_name;
+        llvm::Value* loaded = ir.create_load(load_type, addr, name);
         CGF.map_value(inst->result, loaded);
     }
 
@@ -289,11 +293,12 @@ namespace Fern
         }
 
         // GEP to get field address
+        std::string name = inst->result->debug_name.empty() ? "field_addr" : inst->result->debug_name;
         llvm::Value* field_ptr = ir.create_struct_gep(
             struct_type,
             obj,
             inst->field_index,
-            "field_addr");
+            name);
 
         CGF.map_value(inst->result, field_ptr);
     }
@@ -660,7 +665,12 @@ namespace Fern
         }
 
         // Create call - only name the result if it's not void
-        std::string call_name = callee->getReturnType()->isVoidTy() ? "" : "call";
+        std::string call_name = "";
+        if (!callee->getReturnType()->isVoidTy())
+        {
+            call_name = (inst->result && !inst->result->debug_name.empty())
+                        ? inst->result->debug_name : "call";
+        }
         llvm::Value* call_result = ir.create_call(callee, args, call_name);
 
         // Map result if not void
