@@ -99,6 +99,7 @@ set(SOURCE_FILES
     
     # Binding
     src/binding/bound_tree_builder.cpp
+    src/binding/conversion_inserter.cpp
 
     # HLIR
     src/hlir/bound_to_hlir.cpp

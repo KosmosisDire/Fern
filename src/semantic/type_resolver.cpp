@@ -7,7 +7,7 @@ namespace Fern
 
     bool TypeResolver::resolve(BoundCompilationUnit *unit)
     {
-        errors.clear();
+        clear_diagnostics();
         substitution.clear();
         pendingConstraints.clear();
         constraintNodes.clear();
@@ -16,7 +16,7 @@ namespace Fern
         for (int pass = 0; pass < MAX_PASSES; ++pass)
         {
             // Clear errors at start of each pass (we'll re-encounter them if they persist)
-            errors.clear();
+            clear_diagnostics();
 
             size_t constraintsBefore = pendingConstraints.size();
 
@@ -35,7 +35,7 @@ namespace Fern
         // Report any remaining unresolved types
         report_final_errors();
 
-        return errors.empty();
+        return !has_errors();
     }
 
     // === Core Type Resolution ===
@@ -508,16 +508,8 @@ namespace Fern
 
     void TypeResolver::report_error(BoundNode *node, const std::string &message)
     {
-        std::stringstream ss;
-        if (node)
-        {
-            ss << "Error at " << node->location.start.to_string() << ": " << message;
-        }
-        else
-        {
-            ss << "Error: " << message;
-        }
-        errors.push_back(ss.str());
+        SourceRange loc = node ? node->location : SourceRange();
+        error(message, loc);
     }
 
     void TypeResolver::report_final_errors()
@@ -529,37 +521,36 @@ namespace Fern
             if (nodeIt != constraintNodes.end() && nodeIt->second)
             {
                 BoundNode* node = nodeIt->second;
-                std::stringstream ss;
-                ss << "Error at " << node->location.start.to_string() << ": Could not infer type";
+                std::string message = "Could not infer type";
 
                 // Try to add more context about what variable/expression this is
                 if (auto varDecl = node->as<BoundVariableDeclaration>())
                 {
-                    ss << " for variable '" << varDecl->name << "'";
+                    message += " for variable '" + varDecl->name + "'";
                 }
                 else if (auto nameExpr = node->as<BoundNameExpression>())
                 {
                     if (!nameExpr->parts.empty())
                     {
-                        ss << " for name '" << nameExpr->parts.back() << "'";
+                        message += " for name '" + nameExpr->parts.back() + "'";
                     }
                 }
                 else if (auto memberExpr = node->as<BoundMemberAccessExpression>())
                 {
-                    ss << " for member '" << memberExpr->memberName << "'";
+                    message += " for member '" + memberExpr->memberName + "'";
                 }
                 else
                 {
                     // For other expressions, just mention it's an expression
-                    ss << " for expression";
+                    message += " for expression";
                 }
 
-                errors.push_back(ss.str());
+                error(message, node->location);
             }
             else
             {
                 // Fallback to old error message if we can't find the node
-                errors.push_back("Could not infer type: " + constraint->get_name());
+                error("Could not infer type: " + constraint->get_name(), SourceRange());
             }
         }
     }
@@ -1205,8 +1196,39 @@ namespace Fern
                     if (!node->constructor && !argTypes.empty())
                     {
                         std::string typeName = type->get_name();
-                        report_error(node, "No matching constructor found for type '" + typeName + "' with " +
-                                     std::to_string(argTypes.size()) + " argument(s)");
+                        std::stringstream ss;
+                        ss << "No matching constructor found for type '" << typeName << "' with arguments (";
+                        for (size_t i = 0; i < argTypes.size(); ++i)
+                        {
+                            if (i > 0) ss << ", ";
+                            ss << argTypes[i]->get_name();
+                        }
+                        ss << ")";
+
+                        // Look for a constructor with matching argument count to suggest correct types
+                        FunctionSymbol* suggestion = nullptr;
+                        for (auto* ctor : ctors)
+                        {
+                            if (ctor->parameters.size() == argTypes.size())
+                            {
+                                suggestion = ctor;
+                                break;
+                            }
+                        }
+
+                        if (suggestion)
+                        {
+                            ss << ". Did you mean (";
+                            for (size_t i = 0; i < suggestion->parameters.size(); ++i)
+                            {
+                                if (i > 0) ss << ", ";
+                                TypePtr paramType = apply_substitution(suggestion->parameters[i]->type);
+                                ss << paramType->get_name();
+                            }
+                            ss << ")?";
+                        }
+
+                        report_error(node, ss.str());
                     }
 
                     // Type inference for constructor parameters

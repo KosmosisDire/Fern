@@ -10,7 +10,7 @@ namespace Fern
     class BoundTreeBuilder
     {
     private:
-        BindingArena arena_;
+        BindingArena& arena_;
         SymbolTable& symbol_table_;
         
         #pragma region Symbol Resolution Helpers
@@ -103,7 +103,7 @@ namespace Fern
         };
         
     public:
-        BoundTreeBuilder(SymbolTable& symbol_table);
+        BoundTreeBuilder(BindingArena& arena, SymbolTable& symbol_table);
         
         // Main entry point
         BoundCompilationUnit* bind(CompilationUnitSyntax* syntax);

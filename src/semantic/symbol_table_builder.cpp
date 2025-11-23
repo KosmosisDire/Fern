@@ -6,11 +6,6 @@ namespace Fern
 
     // === Core Helper Methods ===
 
-    void SymbolTableBuilder::push_error(const std::string &error)
-    {
-        errors.push_back(error);
-    }
-
     TypePtr SymbolTableBuilder::get_type_from_expr(BaseExprSyntax *typeExpr)
     {
         // For now, return unresolved type
@@ -58,7 +53,7 @@ namespace Fern
 
         if (!ns_symbol)
         {
-            push_error("Failed to define namespace '" + name + "'");
+            error("Failed to define namespace '" + name + "'", node->location);
             return;
         }
 
@@ -96,7 +91,7 @@ namespace Fern
 
         if (!type_symbol)
         {
-            push_error("Failed to define type '" + name + "'");
+            error("Failed to define type '" + name + "'", node->location);
             return;
         }
 
@@ -138,7 +133,7 @@ namespace Fern
         auto func_symbol = symbolTable.define_function(name, return_type);
         if (!func_symbol)
         {
-            push_error("Failed to define function '" + name + "'");
+            error("Failed to define function '" + name + "'", node->location);
             return;
         }
 
@@ -165,7 +160,7 @@ namespace Fern
             // Validate: extern functions must not have a body
             if (node->body != nullptr)
             {
-                push_error("External function '" + name + "' cannot have a body");
+                error("External function '" + name + "' cannot have a body", node->location);
             }
         }
 
@@ -219,7 +214,7 @@ namespace Fern
         auto containing_type = symbolTable.get_current_scope()->as<TypeSymbol>();
         if (!containing_type)
         {
-            push_error("Constructor must be defined within a type");
+            error("Constructor must be defined within a type", node->location);
             return;
         }
 
@@ -229,7 +224,7 @@ namespace Fern
         auto func_symbol = symbolTable.define_function(name, return_type);
         if (!func_symbol)
         {
-            push_error("Failed to define constructor for type '" + name + "'");
+            error("Failed to define constructor for type '" + containing_type->name + "'", node->location);
             return;
         }
 
@@ -303,7 +298,7 @@ namespace Fern
         auto param_symbol = symbolTable.define_parameter(name, type, currentParameterIndex++);
         if (!param_symbol)
         {
-            push_error("Failed to define parameter '" + name + "'");
+            error("Failed to define parameter '" + name + "'", node->location);
         }
         else
         {
@@ -332,7 +327,7 @@ namespace Fern
             auto field_symbol = symbolTable.define_field(name, type);
             if (!field_symbol)
             {
-                push_error("Failed to define field '" + name + "'");
+                error("Failed to define field '" + name + "'", node->location);
             }
         }
         else
@@ -341,7 +336,7 @@ namespace Fern
             auto local_symbol = symbolTable.define_local(name, type);
             if (!local_symbol)
             {
-                push_error("Failed to define local variable '" + name + "'");
+                error("Failed to define local variable '" + name + "'", node->location);
             }
         }
 
@@ -366,7 +361,7 @@ namespace Fern
         auto prop_symbol = symbolTable.define_property(name, type);
         if (!prop_symbol)
         {
-            push_error("Failed to define property '" + name + "'");
+            error("Failed to define property '" + name + "'", node->location);
             return;
         }
 
@@ -381,18 +376,18 @@ namespace Fern
         if (node->getter) {
             auto getter_symbol = symbolTable.define_function("get", type);
             if (!getter_symbol) {
-                push_error("Failed to define getter function for property '" + name + "'");
+                error("Failed to define getter function for property '" + name + "'", node->location);
             } else {
                 getter_symbol->isStatic = false; // Properties are instance members
             }
         }
-        
-        // Create setter function symbol if present  
+
+        // Create setter function symbol if present
         if (node->setter) {
             auto void_type = typeSystem.get_void();
             auto setter_symbol = symbolTable.define_function("set", void_type);
             if (!setter_symbol) {
-                push_error("Failed to define setter function for property '" + name + "'");
+                error("Failed to define setter function for property '" + name + "'", node->location);
             } else {
                 setter_symbol->isStatic = false; // Properties are instance members
             }
@@ -410,7 +405,7 @@ namespace Fern
         auto block_symbol = symbolTable.define_block("$block");
         if (!block_symbol)
         {
-            push_error("Failed to create block scope");
+            error("Failed to create block scope", node->location);
             return;
         }
 

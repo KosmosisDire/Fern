@@ -3,8 +3,8 @@
 
 namespace Fern
 {
-    BoundTreeBuilder::BoundTreeBuilder(SymbolTable &symbol_table)
-        : arena_(), symbol_table_(symbol_table) {}
+    BoundTreeBuilder::BoundTreeBuilder(BindingArena& arena, SymbolTable &symbol_table)
+        : arena_(arena), symbol_table_(symbol_table) {}
 
     BoundCompilationUnit *BoundTreeBuilder::bind(CompilationUnitSyntax *syntax)
     {

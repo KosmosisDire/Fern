@@ -14,7 +14,7 @@
 #include "semantic/symbol_table_builder.hpp"
 #include "hlir/hlir.hpp"
 #include "hlir/bound_to_hlir.hpp"
-// #include "hlir/mem2reg.hpp"
+#include "binding/conversion_inserter.hpp"
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
@@ -34,9 +34,37 @@
 #include <llvm/Analysis/LoopAnalysisManager.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <optional>
+#include <iostream>
 
 namespace Fern
 {
+    bool Compiler::has_any_errors(const std::vector<FileCompilationState>& states)
+    {
+        for (const auto& state : states)
+        {
+            if (state.has_errors())
+                return true;
+        }
+        return false;
+    }
+
+    void Compiler::print_all_diagnostics(const std::vector<FileCompilationState>& states)
+    {
+        for (const auto& state : states)
+        {
+            state.print_diagnostics();
+        }
+    }
+
+    std::vector<Diagnostic> Compiler::gather_all_diagnostics(const std::vector<FileCompilationState>& states)
+    {
+        std::vector<Diagnostic> all_diagnostics;
+        for (const auto& state : states)
+        {
+            all_diagnostics.insert(all_diagnostics.end(), state.diagnostics.begin(), state.diagnostics.end());
+        }
+        return all_diagnostics;
+    }
 
     std::unique_ptr<CompiledModule> Compiler::compile(const std::vector<SourceFile> &source_files)
     {
@@ -45,7 +73,6 @@ namespace Fern
             return std::make_unique<CompiledModule>();
         }
 
-        std::vector<Diagnostic> all_errors;
         std::vector<FileCompilationState> file_states(source_files.size());
 
         // === Parse all files sequentially ===
@@ -66,7 +93,7 @@ namespace Fern
 
             if (lexer.has_errors())
             {
-                state.diagnostics.insert(state.diagnostics.end(), lexer.get_diagnostics().begin(), lexer.get_diagnostics().end());
+                state.collect_diagnostics(lexer);
                 continue;
             }
 
@@ -81,7 +108,7 @@ namespace Fern
 
             if (state.parser->has_errors())
             {
-                state.diagnostics.insert(state.diagnostics.end(), state.parser->get_diagnostics().begin(), state.parser->get_diagnostics().end());
+                state.collect_diagnostics(*state.parser);
                 continue;
             }
 
@@ -95,20 +122,10 @@ namespace Fern
             state.parse_complete = true;
         }
 
-        // Collect parsing errors
-        for (const auto &state : file_states)
+        // Early return if parsing failed - can't continue without ASTs
+        if (has_any_errors(file_states))
         {
-            all_errors.insert(all_errors.end(), state.diagnostics.begin(), state.diagnostics.end());
-        }
-
-        if (!all_errors.empty())
-        {
-            LOG_HEADER("Parsing errors encountered", LogCategory::COMPILER);
-            for (const auto &error : all_errors)
-            {
-                LOG_ERROR(error.to_string(), LogCategory::COMPILER);
-            }
-            return std::make_unique<CompiledModule>(all_errors);
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
         // // === Build local symbol tables sequentially ===
@@ -132,10 +149,8 @@ namespace Fern
             SymbolTableBuilder builder(*state.symbolTable);
             builder.build(state.ast);
 
-            for (const auto &error : builder.get_errors())
-            {
-                // state.diagnostics.push_back(state.file.filename + " - Declaration: " + error);
-            }
+            // Collect symbol table builder diagnostics
+            state.collect_diagnostics(builder);
 
             if (print_symbols)
             {
@@ -146,20 +161,10 @@ namespace Fern
             state.symbols_complete = true;
         }
 
-        // Collect symbol building errors
-        for (const auto &state : file_states)
+        // Early return if symbol building failed - can't continue without symbols
+        if (has_any_errors(file_states))
         {
-            all_errors.insert(all_errors.end(), state.diagnostics.begin(), state.diagnostics.end());
-        }
-
-        if (!all_errors.empty())
-        {
-            LOG_HEADER("Symbol building errors encountered", LogCategory::COMPILER);
-            for (const auto &error : all_errors)
-            {
-                LOG_ERROR(error.message, LogCategory::COMPILER);
-            }
-            return std::make_unique<CompiledModule>(all_errors);
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
         // === Merge symbol tables ===
@@ -180,22 +185,22 @@ namespace Fern
             // Merge the local table into global
             auto conflicts = global_symbols->merge(*state.symbolTable);
 
-            // Report conflicts as errors
+            // Report conflicts as errors (TODO: convert conflicts to proper Diagnostics)
             for (const auto &conflict : conflicts)
             {
-                // all_errors.push_back(state.file.filename + " - " + conflict);
+                state.diagnostics.push_back(Diagnostic(
+                    Diagnostic::Severity::Error,
+                    "Symbol merge conflict: " + conflict,
+                    SourceRange(),
+                    "SymbolMerge"
+                ));
             }
         }
 
-        // Check for merge conflicts
-        if (!all_errors.empty())
+        // Early return if merge conflicts - can't continue with conflicting symbols
+        if (has_any_errors(file_states))
         {
-            LOG_HEADER("Symbol merge conflicts", LogCategory::COMPILER);
-            for (const auto &error : all_errors)
-            {
-                LOG_ERROR(error.message, LogCategory::COMPILER);
-            }
-            return std::make_unique<CompiledModule>(all_errors);
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
         // Add built-in functions to global symbol table
@@ -214,9 +219,10 @@ namespace Fern
 
             LOG_INFO("Binding AST for: " + state.file.filename, LogCategory::COMPILER);
 
-            // Create binder and bind the AST
-            state.boundTreeBuilder = std::make_unique<BoundTreeBuilder>(*global_symbols.get());
-            state.boundTree = state.boundTreeBuilder->bind(state.ast);
+            // Create arena and binder
+            state.arena = std::make_unique<BindingArena>();
+            BoundTreeBuilder builder(*state.arena, *global_symbols);
+            state.boundTree = builder.bind(state.ast);
             // resolver_visitor.visit(state.boundTree);
 
             if (!state.boundTree)
@@ -240,20 +246,10 @@ namespace Fern
             state.parse_complete = true;
         }
 
-        // Collect errors
-        for (const auto &state : file_states)
+        // Early return if binding failed - can't continue without bound trees
+        if (has_any_errors(file_states))
         {
-            all_errors.insert(all_errors.end(), state.diagnostics.begin(), state.diagnostics.end());
-        }
-
-        if (!all_errors.empty())
-        {
-            LOG_HEADER("Binding errors encountered", LogCategory::COMPILER);
-            for (const auto &error : all_errors)
-            {
-                LOG_ERROR(error.message, LogCategory::COMPILER);
-            }
-            return std::make_unique<CompiledModule>(all_errors);
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
         // === Type resolution with global symbol table ===
@@ -272,7 +268,7 @@ namespace Fern
         }
 
         // run the resolver a second time to do a final pass after all files have run
-        for (const auto &state : file_states)
+        for (auto &state : file_states)
         {
             if (state.boundTree)
             {
@@ -285,10 +281,10 @@ namespace Fern
                     printer.visit(state.boundTree);
                 }
 
-                for (const auto &error : resolver.get_errors())
-                {
-                    // all_errors.push_back(state.file.filename + " - " + error);
-                }
+                // Collect type resolver diagnostics for this file
+                // Note: TypeResolver diagnostics are collected per-file after each file's resolution
+                state.collect_diagnostics(resolver);
+                resolver.clear_diagnostics();
             }
         }
 
@@ -298,15 +294,22 @@ namespace Fern
             LOG_INFO(global_symbols->to_string(), LogCategory::COMPILER);
         }
 
-        if (!all_errors.empty())
+        // Early return if type resolution failed - can't continue with unresolved types
+        if (has_any_errors(file_states))
         {
-            LOG_HEADER("Type resolution errors", LogCategory::COMPILER);
-            for (const auto &error : all_errors)
-            {
-                LOG_ERROR(error.message, LogCategory::COMPILER);
-            }
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+        }
 
-            return std::make_unique<CompiledModule>(all_errors);
+        // === Insert implicit conversions ===
+        LOG_HEADER("Conversion insertion", LogCategory::COMPILER);
+
+        for (auto &state : file_states)
+        {
+            if (!state.boundTree)
+                continue;
+
+            ConversionInserter inserter(*state.arena);
+            inserter.transform(state.boundTree);
         }
 
         // === Convert bound tree to HLIR ===
@@ -348,17 +351,22 @@ namespace Fern
         }
         catch (const std::exception &e)
         {
-            LOG_ERROR("LLVM code generation error: " + std::string(e.what()));
+            // CodeGen errors are global - add to first file's diagnostics
+            if (!file_states.empty())
+            {
+                file_states[0].diagnostics.push_back(Diagnostic(
+                    Diagnostic::Severity::Error,
+                    "LLVM code generation error: " + std::string(e.what()),
+                    SourceRange(),
+                    "CodeGen"
+                ));
+            }
         }
 
-        if (!all_errors.empty())
+        // Early return if code generation failed
+        if (has_any_errors(file_states))
         {
-            LOG_HEADER("Code generation errors", LogCategory::COMPILER);
-            for (const auto &error : all_errors)
-            {
-                LOG_ERROR(error.message, LogCategory::COMPILER);
-            }
-            return std::make_unique<CompiledModule>(all_errors);
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
         // === Run optimization passes ===
@@ -392,7 +400,7 @@ namespace Fern
             std::move(llvm_context),
             std::move(llvm_module),
             "FernProgram",
-            all_errors);
+            gather_all_diagnostics(file_states));
     }
 
 } // namespace Fern

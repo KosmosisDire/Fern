@@ -66,6 +66,7 @@ namespace Fern
         void error(const std::string& msg, const SourceRange& loc);
         void fatal(const std::string& msg, const SourceRange& loc);
 
+        void clear_diagnostics();
         const std::vector<Diagnostic>& get_diagnostics() const;
         const bool has_errors() const;
         const size_t error_count() const;

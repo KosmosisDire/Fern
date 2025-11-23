@@ -471,7 +471,18 @@ void BoundToHLIR::visit(BoundParenthesizedExpression* node) {
 }
 
 void BoundToHLIR::visit(BoundConversionExpression* node) {
-    expression_values[node] = evaluate_expression(node->expression);
+    auto expr_val = evaluate_expression(node->expression);
+    if (!expr_val) {
+        expression_values[node] = nullptr;
+        return;
+    }
+
+    // Only emit cast if conversion is not identity
+    if (node->conversionKind != ConversionKind::Identity && node->type) {
+        expression_values[node] = builder.cast(expr_val, node->type);
+    } else {
+        expression_values[node] = expr_val;
+    }
 }
 
 void BoundToHLIR::visit(BoundTypeExpression* node) {

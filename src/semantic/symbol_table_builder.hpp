@@ -2,35 +2,32 @@
 
 #include "ast/ast.hpp"
 #include "symbol_table.hpp"
+#include "common/error.hpp"
 #include <vector>
 #include <string>
 
 namespace Fern
 {
 
-class SymbolTableBuilder : public DefaultVisitor
+class SymbolTableBuilder : public DefaultVisitor, public DiagnosticSystem
 {
 private:
     SymbolTable& symbolTable;
     TypeSystem& typeSystem;
-    std::vector<std::string> errors;
-    
+
     // Track parameter indices within function scopes
     uint32_t currentParameterIndex = 0;
 
     // === Core Helper Methods ===
 
-    void push_error(const std::string& error);
     TypePtr get_type_from_expr(BaseExprSyntax* typeExpr);
 
 public:
     explicit SymbolTableBuilder(SymbolTable& st)
-        : symbolTable(st), typeSystem(st.get_type_system()) {}
-    
+        : DiagnosticSystem("SymbolTableBuilder"),
+          symbolTable(st), typeSystem(st.get_type_system()) {}
+
     void build(CompilationUnitSyntax* unit);
-    
-    const std::vector<std::string>& get_errors() const { return errors; }
-    bool has_errors() const { return !errors.empty(); }
 
     // === Visitor Implementations ===
     

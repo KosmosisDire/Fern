@@ -6,11 +6,12 @@
 #include "compiled_module.hpp"
 #include "parser/token_stream.hpp"
 #include "binding/bound_tree.hpp"
-#include "binding/bound_tree_builder.hpp"
+#include "binding/binding_arena.hpp"
 #include "common/error.hpp"
 
 #include <string>
 #include <memory>
+#include <iostream>
 
 namespace Fern
 {
@@ -30,15 +31,45 @@ namespace Fern
         std::unique_ptr<Parser> parser;           // store the parser since it owns the AST
         std::unique_ptr<TypeSystem> typeSystem;   // type system for this file
         std::unique_ptr<SymbolTable> symbolTable; // symbols local to this file
-        std::unique_ptr<BoundTreeBuilder> boundTreeBuilder;       // binder for this file
+        std::unique_ptr<BindingArena> arena;      // owns all bound tree nodes
         CompilationUnitSyntax *ast;               // pointer to the AST root
         BoundCompilationUnit *boundTree;          // pointer to the bound tree root
-        
 
         std::vector<Diagnostic> diagnostics;
 
         bool parse_complete = false;
         bool symbols_complete = false;
+
+        // Diagnostic helpers
+        void collect_diagnostics(const DiagnosticSystem& system)
+        {
+            const auto& diags = system.get_diagnostics();
+            diagnostics.insert(diagnostics.end(), diags.begin(), diags.end());
+        }
+
+        bool has_errors() const
+        {
+            for (const auto& diag : diagnostics)
+            {
+                if (diag.severity == Diagnostic::Severity::Error ||
+                    diag.severity == Diagnostic::Severity::Fatal)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void print_diagnostics() const
+        {
+            if (diagnostics.empty())
+                return;
+            std::cerr << "\n=== Diagnostics for " << file.filename << " ===\n";
+            for (const auto& diag : diagnostics)
+            {
+                std::cerr << diag.to_string() << "\n";
+            }
+        }
     };
 
     class Compiler
@@ -51,6 +82,11 @@ namespace Fern
         bool print_hlir = false;
 
         void add_builtin_functions(SymbolTable& global_symbols);
+
+        // Multi-file diagnostic helpers
+        static bool has_any_errors(const std::vector<FileCompilationState>& states);
+        static void print_all_diagnostics(const std::vector<FileCompilationState>& states);
+        static std::vector<Diagnostic> gather_all_diagnostics(const std::vector<FileCompilationState>& states);
 
     public:
 

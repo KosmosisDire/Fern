@@ -4,6 +4,7 @@
 #include "semantic/symbol_table.hpp"
 #include "semantic/type_system.hpp"
 #include "binding/conversions.hpp"
+#include "common/error.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -12,31 +13,30 @@
 namespace Fern
 {
 
-    class TypeResolver : public BoundVisitor
+    class TypeResolver : public BoundVisitor, public DiagnosticSystem
     {
     private:
         SymbolTable& symbolTable;
         TypeSystem& typeSystem;
-        std::vector<std::string> errors;
-        
+
         // Type inference via unification
         std::unordered_map<TypePtr, TypePtr> substitution;
         std::unordered_set<TypePtr> pendingConstraints;
         std::unordered_map<TypePtr, BoundNode*> constraintNodes;  // Track where each constraint originated
-        
+
         // Context tracking
         FunctionSymbol* currentFunction = nullptr;
         TypeSymbol* currentType = nullptr;  // For 'this' resolution
-        
+
         // Multiple passes for type inference
         static constexpr int MAX_PASSES = 10;
-        
+
     public:
-        explicit TypeResolver(SymbolTable& st) 
-            : symbolTable(st), typeSystem(st.get_type_system()) {}
-        
+        explicit TypeResolver(SymbolTable& st)
+            : DiagnosticSystem("TypeResolver"),
+              symbolTable(st), typeSystem(st.get_type_system()) {}
+
         bool resolve(BoundCompilationUnit* unit);
-        const std::vector<std::string>& get_errors() const { return errors; }
         
     private:
         // === Core Type Resolution ===

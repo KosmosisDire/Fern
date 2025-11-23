@@ -45,6 +45,11 @@ namespace Fern
         report(Diagnostic(Diagnostic::Severity::Fatal, msg, loc, system_name_));
     }
 
+    void DiagnosticSystem::clear_diagnostics()
+    {
+        diagnostics_.clear();
+    }
+
     const std::vector<Diagnostic>& DiagnosticSystem::get_diagnostics() const
     {
         return diagnostics_;

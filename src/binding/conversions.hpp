@@ -177,8 +177,9 @@ namespace Fern
          */
         static bool is_implicit_conversion(ConversionKind kind)
         {
-            // TODO: Support implicit casting
-            return kind == ConversionKind::Identity;
+            return kind == ConversionKind::Identity ||
+                   kind == ConversionKind::ImplicitNumeric ||
+                   kind == ConversionKind::ImplicitReference;
         }
 
         /**
@@ -186,9 +187,7 @@ namespace Fern
          */
         static bool is_explicit_conversion(ConversionKind kind)
         {
-            // TODO: Support implicit casting without forcing explicit
             return kind == ConversionKind::ExplicitNumeric ||
-                   kind == ConversionKind::ImplicitNumeric ||
                    kind == ConversionKind::ExplicitReference;
         }
 
