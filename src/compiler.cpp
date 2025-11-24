@@ -38,12 +38,21 @@
 
 namespace Fern
 {
-    bool Compiler::has_any_errors(const std::vector<FileCompilationState>& states)
+    bool Compiler::has_any_errors(const std::vector<FileCompilationState>& states,
+                                   const std::vector<Diagnostic>& global_diagnostics)
     {
         for (const auto& state : states)
         {
             if (state.has_errors())
                 return true;
+        }
+        for (const auto& diag : global_diagnostics)
+        {
+            if (diag.severity == Diagnostic::Severity::Error ||
+                diag.severity == Diagnostic::Severity::Fatal)
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -56,13 +65,15 @@ namespace Fern
         }
     }
 
-    std::vector<Diagnostic> Compiler::gather_all_diagnostics(const std::vector<FileCompilationState>& states)
+    std::vector<Diagnostic> Compiler::gather_all_diagnostics(const std::vector<FileCompilationState>& states,
+                                                              const std::vector<Diagnostic>& global_diagnostics)
     {
         std::vector<Diagnostic> all_diagnostics;
         for (const auto& state : states)
         {
             all_diagnostics.insert(all_diagnostics.end(), state.diagnostics.begin(), state.diagnostics.end());
         }
+        all_diagnostics.insert(all_diagnostics.end(), global_diagnostics.begin(), global_diagnostics.end());
         return all_diagnostics;
     }
 
@@ -74,6 +85,10 @@ namespace Fern
         }
 
         std::vector<FileCompilationState> file_states(source_files.size());
+
+        // Global diagnostics for errors not associated with a specific file
+        // (e.g., codegen errors that operate on merged HLIR)
+        std::vector<Diagnostic> global_diagnostics;
 
         // === Parse all files sequentially ===
         LOG_HEADER("Sequential parsing", LogCategory::COMPILER);
@@ -223,18 +238,14 @@ namespace Fern
             state.arena = std::make_unique<BindingArena>();
             BoundTreeBuilder builder(*state.arena, *global_symbols);
             state.boundTree = builder.bind(state.ast);
-            // resolver_visitor.visit(state.boundTree);
+
+            // Collect binder diagnostics
+            state.collect_diagnostics(builder);
 
             if (!state.boundTree)
             {
-                // state.diagnostics.push_back(state.file.filename + ": Invalid Bound Tree");
                 continue;
             }
-
-            // for (const auto &error : binder.)
-            // {
-            //     state.errors.push_back(state.file.filename + " - Binding: " + error);
-            // }
 
             if (print_ast)
             {
@@ -310,6 +321,15 @@ namespace Fern
 
             ConversionInserter inserter(*state.arena);
             inserter.transform(state.boundTree);
+
+            // Collect conversion inserter diagnostics
+            state.collect_diagnostics(inserter);
+        }
+
+        // Early return if conversion insertion failed
+        if (has_any_errors(file_states))
+        {
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
         // === Convert bound tree to HLIR ===
@@ -323,13 +343,22 @@ namespace Fern
         {
             if (!state.boundTree)
                 continue;
-                
+
             LOG_INFO("Generating HLIR for: " + state.file.filename, LogCategory::COMPILER);
-            
+
             HLIR::BoundToHLIR converter(hlir_module.get(), global_type_system.get());
             converter.build(state.boundTree);
+
+            // Collect HLIR generation diagnostics
+            state.collect_diagnostics(converter);
         }
-        
+
+        // Early return if HLIR generation failed
+        if (has_any_errors(file_states))
+        {
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+        }
+
         // Dump non-SSA HLIR if requested
         if (print_hlir)
         {
@@ -351,22 +380,22 @@ namespace Fern
         }
         catch (const std::exception &e)
         {
-            // CodeGen errors are global - add to first file's diagnostics
-            if (!file_states.empty())
-            {
-                file_states[0].diagnostics.push_back(Diagnostic(
-                    Diagnostic::Severity::Error,
-                    "LLVM code generation error: " + std::string(e.what()),
-                    SourceRange(),
-                    "CodeGen"
-                ));
-            }
+            global_diagnostics.push_back(Diagnostic(
+                Diagnostic::Severity::Error,
+                "LLVM code generation error: " + std::string(e.what()),
+                SourceRange(),
+                "CodeGen"
+            ));
         }
 
+        // Collect any codegen diagnostics (in addition to exceptions)
+        const auto& codegen_diags = codegen.get_diagnostics();
+        global_diagnostics.insert(global_diagnostics.end(), codegen_diags.begin(), codegen_diags.end());
+
         // Early return if code generation failed
-        if (has_any_errors(file_states))
+        if (has_any_errors(file_states, global_diagnostics))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics));
         }
 
         // === Run optimization passes ===
@@ -400,7 +429,7 @@ namespace Fern
             std::move(llvm_context),
             std::move(llvm_module),
             "FernProgram",
-            gather_all_diagnostics(file_states));
+            gather_all_diagnostics(file_states, global_diagnostics));
     }
 
 } // namespace Fern

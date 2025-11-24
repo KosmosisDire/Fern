@@ -45,13 +45,13 @@ void BoundToHLIR::visit(BoundLiteralExpression* node) {
         result = builder.const_string(std::get<std::string>(node->constantValue), node->type);
     }
     else if (std::holds_alternative<std::monostate>(node->constantValue)) {
-        std::cerr << "ERROR: BoundLiteralExpression has monostate (not a constant)\n";
-        std::cerr << "  Type: " << (node->type ? node->type->get_name() : "null") << "\n";
+        error("Literal expression has no constant value (type: " +
+              (node->type ? node->type->get_name() : "null") + ")", node->location);
     }
     else {
-        std::cerr << "ERROR: BoundLiteralExpression has unknown variant type\n";
-        std::cerr << "  Variant index: " << node->constantValue.index() << "\n";
-        std::cerr << "  Type: " << (node->type ? node->type->get_name() : "null") << "\n";
+        error("Literal expression has unknown variant type (index: " +
+              std::to_string(node->constantValue.index()) + ", type: " +
+              (node->type ? node->type->get_name() : "null") + ")", node->location);
     }
 
     expression_values[node] = result;
@@ -84,7 +84,7 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
     // Regular local variable/parameter - just load it
     auto var_addr = variable_addresses[node->symbol];
     if (!var_addr) {
-        std::cerr << "ERROR: Undefined variable: " << node->symbol->name << "\n";
+        error("Undefined variable: " + node->symbol->name, node->location);
         expression_values[node] = nullptr;
         return;
     }
@@ -98,19 +98,14 @@ void BoundToHLIR::visit(BoundBinaryExpression* node) {
     auto right = evaluate_expression(node->right);
 
     if (!left || !right) {
-        std::cerr << "ERROR: Null operand in binary expression\n";
-        if (!left) {
-            std::cerr << "  Left operand is null - type: " << typeid(*node->left).name() << "\n";
-            if (node->left->type) {
-                std::cerr << "    Left type: " << node->left->type->get_name() << "\n";
-            }
+        std::string msg = "Null operand in binary expression";
+        if (!left && node->left && node->left->type) {
+            msg += " (left operand type: " + node->left->type->get_name() + ")";
         }
-        if (!right) {
-            std::cerr << "  Right operand is null - type: " << typeid(*node->right).name() << "\n";
-            if (node->right->type) {
-                std::cerr << "    Right type: " << node->right->type->get_name() << "\n";
-            }
+        if (!right && node->right && node->right->type) {
+            msg += " (right operand type: " + node->right->type->get_name() + ")";
         }
+        error(msg, node->location);
         expression_values[node] = nullptr;
         return;
     }
@@ -192,7 +187,7 @@ void BoundToHLIR::visit(BoundAssignmentExpression* node) {
     // Get target address (lvalue)
     auto target_addr = get_lvalue_address(node->target);
     if (!target_addr) {
-        std::cerr << "ERROR: Invalid assignment target\n";
+        error("Invalid assignment target", node->location);
         expression_values[node] = nullptr;
         return;
     }
@@ -361,7 +356,7 @@ void BoundToHLIR::visit(BoundIndexExpression* node) {
     }
 
     if (!element_type) {
-        std::cerr << "ERROR: Cannot index non-array type\n";
+        error("Cannot index non-array/non-pointer type", node->location);
         expression_values[node] = nullptr;
         return;
     }
@@ -452,17 +447,17 @@ void BoundToHLIR::visit(BoundCastExpression* node) {
 
 void BoundToHLIR::visit(BoundThisExpression* node) {
     if (!current_function || current_function->is_static) {
-        std::cerr << "ERROR: 'this' used in static or non-member context\n";
+        error("'this' used in static or non-member context", node->location);
         expression_values[node] = nullptr;
         return;
     }
-    
+
     if (current_function->params.empty()) {
-        std::cerr << "ERROR: 'this' parameter missing\n";
+        error("'this' parameter missing from function", node->location);
         expression_values[node] = nullptr;
         return;
     }
-    
+
     expression_values[node] = current_function->params[0];
 }
 
@@ -563,18 +558,20 @@ void BoundToHLIR::visit(BoundWhileStatement* node) {
 
     auto cond = evaluate_expression(node->condition);
     if (!cond) {
-        std::cerr << "ERROR: While condition evaluated to null!\n";
-        std::cerr << "Condition type: " << typeid(*node->condition).name() << "\n";
-        if (node->condition->type) {
-            std::cerr << "Condition result type: " << node->condition->type->get_name() << "\n";
+        std::string msg = "While condition evaluated to null";
+        if (node->condition && node->condition->type) {
+            msg += " (condition type: " + node->condition->type->get_name() + ")";
         }
-    }
-    if (cond) {
-        builder.cond_br(cond, body, exit);
-    } else {
-        // Fallback: create unconditional branch to exit to avoid invalid IR
+        error(msg, node->location);
+        // Early exit: branch to exit and skip body generation
         builder.br(exit);
+        loop_stack.pop();
+        builder.set_block(exit);
+        current_block = exit;
+        return;
     }
+
+    builder.cond_br(cond, body, exit);
 
     builder.set_block(body);
     current_block = body;

@@ -4,7 +4,7 @@
 namespace Fern
 {
     BoundTreeBuilder::BoundTreeBuilder(BindingArena& arena, SymbolTable &symbol_table)
-        : arena_(arena), symbol_table_(symbol_table) {}
+        : DiagnosticSystem("Binder"), arena_(arena), symbol_table_(symbol_table) {}
 
     BoundCompilationUnit *BoundTreeBuilder::bind(CompilationUnitSyntax *syntax)
     {
@@ -572,7 +572,7 @@ namespace Fern
             }
             else
             {
-                std::cerr << "ERROR: Empty char literal\n";
+                error("Empty character literal", syntax->location);
                 bound->constantValue = static_cast<int64_t>(0);
             }
             break;

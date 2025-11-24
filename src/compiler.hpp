@@ -84,9 +84,11 @@ namespace Fern
         void add_builtin_functions(SymbolTable& global_symbols);
 
         // Multi-file diagnostic helpers
-        static bool has_any_errors(const std::vector<FileCompilationState>& states);
+        static bool has_any_errors(const std::vector<FileCompilationState>& states,
+                                   const std::vector<Diagnostic>& global_diagnostics = {});
         static void print_all_diagnostics(const std::vector<FileCompilationState>& states);
-        static std::vector<Diagnostic> gather_all_diagnostics(const std::vector<FileCompilationState>& states);
+        static std::vector<Diagnostic> gather_all_diagnostics(const std::vector<FileCompilationState>& states,
+                                                              const std::vector<Diagnostic>& global_diagnostics = {});
 
     public:
 

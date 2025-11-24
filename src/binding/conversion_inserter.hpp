@@ -3,12 +3,13 @@
 #include "bound_tree.hpp"
 #include "binding_arena.hpp"
 #include "conversions.hpp"
+#include "common/error.hpp"
 
 namespace Fern
 {
     // Inserts explicit BoundConversionExpression nodes where implicit conversions occur.
     // Run this after TypeResolver has annotated all types.
-    class ConversionInserter : public BoundVisitor
+    class ConversionInserter : public BoundVisitor, public DiagnosticSystem
     {
     private:
         BindingArena& arena_;
@@ -16,7 +17,8 @@ namespace Fern
         BoundExpression* wrap_if_needed(BoundExpression* expr, TypePtr targetType);
 
     public:
-        explicit ConversionInserter(BindingArena& arena) : arena_(arena) {}
+        explicit ConversionInserter(BindingArena& arena)
+            : DiagnosticSystem("ConversionInserter"), arena_(arena) {}
 
         void transform(BoundCompilationUnit* unit);
 

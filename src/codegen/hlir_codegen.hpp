@@ -5,6 +5,7 @@
 #include "codegen_function.hpp"
 #include "llvm_ir_builder.hpp"
 #include "hlir/hlir.hpp"
+#include "common/error.hpp"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
@@ -20,7 +21,7 @@ namespace Fern
      * HLIR instructions to LLVM IR using the CodeGenModule, CodeGenFunction,
      * and LLVMIRBuilder abstractions.
      */
-    class HLIRCodeGen
+    class HLIRCodeGen : public DiagnosticSystem
     {
     private:
         llvm::LLVMContext& context;
@@ -29,7 +30,7 @@ namespace Fern
 
     public:
         HLIRCodeGen(llvm::LLVMContext& ctx, const std::string& module_name)
-            : context(ctx)
+            : DiagnosticSystem("CodeGen"), context(ctx)
         {
             module = std::make_unique<llvm::Module>(module_name, context);
             builder = std::make_unique<llvm::IRBuilder<>>(context);

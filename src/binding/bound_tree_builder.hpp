@@ -4,10 +4,11 @@
 #include "ast/ast.hpp"
 #include "binding_arena.hpp"
 #include "semantic/symbol_table.hpp"
+#include "common/error.hpp"
 
 namespace Fern
 {
-    class BoundTreeBuilder
+    class BoundTreeBuilder : public DiagnosticSystem
     {
     private:
         BindingArena& arena_;

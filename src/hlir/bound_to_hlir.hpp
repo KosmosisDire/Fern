@@ -4,12 +4,13 @@
 #include "binding/bound_tree.hpp"
 #include "semantic/type_system.hpp"
 #include "hlir_builder.hpp"
+#include "common/error.hpp"
 #include <unordered_map>
 #include <stack>
 
 namespace Fern::HLIR
 {
-    class BoundToHLIR : public BoundVisitor {
+    class BoundToHLIR : public BoundVisitor, public DiagnosticSystem {
     private:
         #pragma region Core State
         HLIR::Module* module;
@@ -36,7 +37,7 @@ namespace Fern::HLIR
         
     public:
         BoundToHLIR(HLIR::Module* mod, TypeSystem* types)
-            : module(mod), builder(types), type_system(types) {}
+            : DiagnosticSystem("BoundToHLIR"), module(mod), builder(types), type_system(types) {}
         
         void build(BoundCompilationUnit* unit);
         
