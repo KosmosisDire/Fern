@@ -459,33 +459,14 @@ namespace Fern
         // Parse function body
         if (check(TokenKind::LeftBrace))
         {
-            // External functions should not have a body
-            if (has_flag(modifiers, ModifierKindFlags::Extern))
-            {
-                parse_error("External function cannot have a body");
-                decl->body = nullptr;
-                // Skip the block to recover
-                parseBlock();
-            }
-            else
-            {
-                decl->body = withContext(Context::FUNCTION, [this]()
-                                        { return parseBlock(); });
-            }
+            // Parse the body
+            decl->body = withContext(Context::FUNCTION, [this]()
+                                    { return parseBlock(); });
         }
         else if (check(TokenKind::FatArrow))
         {
-            // Expression body not allowed for external functions
-            if (has_flag(modifiers, ModifierKindFlags::Extern))
-            {
-                parse_error("External function cannot have a body");
-                decl->body = nullptr;
-            }
-            else
-            {
-                parse_error("Expression-bodied functions not yet supported");
-                decl->body = nullptr;
-            }
+            parse_error("Expression-bodied functions not yet supported");
+            decl->body = nullptr;
         }
         else
         {

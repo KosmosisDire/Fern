@@ -2,6 +2,17 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Fern (custom args)",
+			"type": "cppvsdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/Debug/Fern.exe",
+			"args": "${input:args}",
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"preLaunchTask": "CMake: Build"
+		},
+		{
 			"name": "Build and Run Fern",
 			"type": "cppdbg",
 			"request": "launch",
@@ -13,6 +24,14 @@
 			"externalConsole": false,
 			"MIMode": "gdb",
 			"preLaunchTask": "CMake: Build"
+		}
+	],
+	"inputs": [
+		{
+			"id": "args",
+			"type": "promptString",
+			"description": "Command line arguments",
+			"default": "minimal.fn runtime/print.fn"
 		}
 	]
 }

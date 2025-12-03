@@ -12,6 +12,7 @@
 #include "binding/bound_tree_printer.hpp"
 #include "semantic/type_resolver.hpp"
 #include "semantic/symbol_table_builder.hpp"
+#include "semantic/syntax_validator.hpp"
 #include "hlir/hlir.hpp"
 #include "hlir/bound_to_hlir.hpp"
 #include "binding/conversion_inserter.hpp"
@@ -138,6 +139,28 @@ namespace Fern
         }
 
         // Early return if parsing failed - can't continue without ASTs
+        if (has_any_errors(file_states))
+        {
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+        }
+
+        // === Syntax validation (AST structural validation) ===
+        LOG_HEADER("Syntax validation", LogCategory::COMPILER);
+
+        for (size_t i = 0; i < file_states.size(); ++i)
+        {
+            auto &state = file_states[i];
+            if (!state.parse_complete)
+                continue;
+
+            LOG_INFO("Validating: " + state.file.filename, LogCategory::COMPILER);
+
+            SyntaxValidator validator;
+            validator.validate(state.ast);
+
+            state.collect_diagnostics(validator);
+        }
+
         if (has_any_errors(file_states))
         {
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));

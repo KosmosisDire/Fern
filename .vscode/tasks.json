@@ -7,7 +7,7 @@
 			"command": "cmake",
 			"args": [
 				"--build",
-				"build",
+				"build/Debug",
 				"--target",
 				"Fern",
 				"-j",

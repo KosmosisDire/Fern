@@ -13,7 +13,7 @@ type Animal
         return 1.0
     }
 
-    fn Heal(var amount)
+    fn Heal(i32 amount)
     {
         health += amount
         return health

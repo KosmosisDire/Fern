@@ -96,6 +96,7 @@ set(SOURCE_FILES
     src/semantic/type_system.cpp
     src/semantic/symbol_table_builder.cpp
     src/semantic/type_resolver.cpp
+    src/semantic/syntax_validator.cpp
     
     # Binding
     src/binding/bound_tree_builder.cpp
