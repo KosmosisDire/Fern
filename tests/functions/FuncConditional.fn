@@ -1,0 +1,14 @@
+-- Expected: 15.0
+fn Max(f32 a, f32 b) -> f32
+{
+    if a > b
+    {
+        return a
+    }
+    return b
+}
+
+fn Main
+{
+    return Max(15.0, 10.0)
+}

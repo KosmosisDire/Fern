@@ -161,7 +161,7 @@ CommandLineArgs parse_args(int argc, char* argv[]) {
         #ifdef FERN_DEBUG
         // Default debug mode behavior
         args.mode = CompileMode::Run;
-        args.source_files = {"minimal.fn", "runtime/print.fn"};
+        args.source_files = {"minimal.fn", "runtime/string.fn"};
         #else
         args.show_help = true;
         #endif

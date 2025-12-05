@@ -1,0 +1,13 @@
+-- Expected: 0.0
+fn Main
+{
+    var x = 3.0
+    if x > 5.0
+    {
+        return 1.0
+    }
+    else
+    {
+        return 0.0
+    }
+}

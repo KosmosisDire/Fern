@@ -39,6 +39,30 @@
 
 namespace Fern
 {
+
+    bool define_intrinsics(SymbolTable* global_symbols, TypeSystem* type_system)
+    {
+        if (!global_symbols || !type_system)
+            return false;
+
+        // void* alloc(i32 size)
+        {
+            auto temp_return_type = type_system->get_pointer(type_system->get_primitive("char"));
+
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+            
+            auto func_symbol = global_symbols->define_function("alloc", temp_return_type);
+            func_symbol->is_intrinsic = true;
+            global_symbols->push_scope(func_symbol);
+            auto param_symbol = global_symbols->define_parameter("size", type_system->get_i32(), 0);
+            func_symbol->parameters.push_back(param_symbol);
+
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+        }
+
+        return true;
+    }
+
     bool Compiler::has_any_errors(const std::vector<FileCompilationState>& states,
                                    const std::vector<Diagnostic>& global_diagnostics)
     {
@@ -105,7 +129,7 @@ namespace Fern
             auto lexer = Lexer(state.file.source);
             auto tokens = lexer.tokenize_all();
 
-            std::cout << tokens.to_string();
+            LOG_INFO(tokens.to_string(), LogCategory::PARSER);
 
             if (lexer.has_errors())
             {
@@ -132,7 +156,7 @@ namespace Fern
             {
                 LOG_INFO("\nAST for " + state.file.filename + ":\n", LogCategory::COMPILER);
                 AstPrinter printer;
-                std::cout << printer.get_string(state.ast) << "\n";
+                LOG_INFO(printer.get_string(state.ast) + "\n", LogCategory::PARSER);
             }
 
             state.parse_complete = true;
@@ -235,14 +259,19 @@ namespace Fern
             }
         }
 
+
         // Early return if merge conflicts - can't continue with conflicting symbols
         if (has_any_errors(file_states))
         {
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
-        // Add built-in functions to global symbol table
-        // add_builtin_functions(*global_symbols);
+        // Define built-in functions (intrinsics) in global symbol table
+        define_intrinsics(global_symbols.get(), global_type_system.get());
+        
+        // get the String symbol and initialize string type in global type system
+        auto string_symbol = global_symbols->resolve("String")->as<TypeSymbol>();
+        global_type_system->init_string_type(string_symbol);
 
         // print global symbol table
         LOG_INFO("\nGlobal Symbol Table after Merging:\n", LogCategory::COMPILER);
@@ -386,14 +415,14 @@ namespace Fern
         if (print_hlir)
         {
             LOG_HEADER("HLIR Output (Non-SSA)", LogCategory::COMPILER);
-            std::cout << hlir_module->dump() << "\n";
+            LOG_INFO(hlir_module->dump() + "\n", LogCategory::COMPILER);
         }
 
         // === LLVM Code Generation from HLIR ===
         LOG_HEADER("LLVM code generation", LogCategory::COMPILER);
 
         auto llvm_context = std::make_unique<llvm::LLVMContext>();
-        HLIRCodeGen codegen(*llvm_context, "FernProgram");
+        HLIRCodeGen codegen(*llvm_context, "FernProgram", global_type_system.get());
 
         std::unique_ptr<llvm::Module> llvm_module;
         try

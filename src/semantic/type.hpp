@@ -4,26 +4,18 @@
 #include <vector>
 #include <memory>
 #include <variant>
+#include "common/token_kind.hpp"
 
 namespace Fern
 {
     struct Type;
     struct TypeSymbol;
     using TypePtr = std::shared_ptr<Type>;
-    
-    enum class PrimitiveKind : uint32_t {
-        Void,
-        Bool,
-        Char,
-        I32,
-        F32,
-        String
-    };
 
     #pragma region Type Variants
 
     struct PrimitiveType {
-        PrimitiveKind kind;
+        LiteralKind kind;
     };
     
     struct PointerType {

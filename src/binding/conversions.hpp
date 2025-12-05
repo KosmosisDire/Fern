@@ -3,6 +3,7 @@
 #include "semantic/type.hpp"
 #include <string>
 #include <unordered_map>
+#include "common/token_kind.hpp"
 
 // inspired by https://github.com/dotnet/roslyn/blob/main/src/Compilers/CSharp/Portable/Binder/Semantics/Conversions/ConversionEasyOut.cs
 // from the roslyn project, licensed under the MIT license.
@@ -56,7 +57,7 @@ namespace Fern
         static constexpr ConversionKind IMP = ConversionKind::ImplicitNumeric;
         static constexpr ConversionKind EXP = ConversionKind::ExplicitNumeric;
 
-        // Conversion matrix using PrimitiveKind as indices
+        // Conversion matrix using LiteralKind as indices
         // Rows = source type, Columns = target type
         static constexpr ConversionKind conversionMatrix[6][6] = {
             // Converting FROM (row) TO (column):
@@ -73,28 +74,28 @@ namespace Fern
         /**
          * Get primitive type kind from string name
          */
-        static PrimitiveKind get_primitive_kind(const std::string &typeName)
+        static LiteralKind get_primitive_kind(const std::string &typeName)
         {
-            static const std::unordered_map<std::string, PrimitiveKind> typeMap = {
-                {"void", PrimitiveKind::Void},
-                {"bool", PrimitiveKind::Bool},
-                {"char", PrimitiveKind::Char},
-                {"i32", PrimitiveKind::I32},
-                {"f32", PrimitiveKind::F32},
-                {"string", PrimitiveKind::String}};
-
+            static const std::unordered_map<std::string, LiteralKind> typeMap = {
+                {"void", LiteralKind::Void},
+                {"bool", LiteralKind::Bool},
+                {"char", LiteralKind::Char},
+                {"i32", LiteralKind::I32},
+                {"f32", LiteralKind::F32},
+                {"string", LiteralKind::String}};
+                
             auto it = typeMap.find(typeName);
             if (it != typeMap.end())
                 return it->second;
 
             // Return void as default for unknown types
-            return PrimitiveKind::Void;
+            return LiteralKind::Void;
         }
 
         /**
          * Classify the conversion between two primitive types
          */
-        static ConversionKind classify_conversion(PrimitiveKind source, PrimitiveKind target)
+        static ConversionKind classify_conversion(LiteralKind source, LiteralKind target)
         {
             // Direct indexing using the enum values
             return conversionMatrix[(uint32_t)source][(uint32_t)target];

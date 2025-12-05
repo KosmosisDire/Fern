@@ -1,9 +1,0 @@
-fn Add(f32 a, f32 b) -> f32
-{
-    return a + b
-}
-
-fn Main
-{
-    return Add(10.0, 5.0)
-}

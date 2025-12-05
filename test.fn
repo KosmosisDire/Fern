@@ -28,11 +28,6 @@ fn Test(Animal a)
 
 fn Main
 {
-    if 10 > 5 && 5 < 10
-    {
-        return 0.0
-    }
-
     if 10 < 5
     {
         return 5.0

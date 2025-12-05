@@ -22,6 +22,7 @@ namespace Fern
         LiteralChar,
         LiteralBool,
         Null,
+        Void,
 
         // Identifiers and keywords
         Identifier,
@@ -270,6 +271,7 @@ namespace Fern
         Char = (int)TokenKind::LiteralChar,
         Bool = (int)TokenKind::LiteralBool,
         Null = (int)TokenKind::Null,
+        Void = (int)TokenKind::Void,
     };
 
     // Trivia kinds - whitespace and comments
@@ -366,6 +368,8 @@ namespace Fern
             return "bool";
         case TokenKind::Null:
             return "null";
+        case TokenKind::Void:
+            return "void";
 
         // Identifiers and keywords
         case TokenKind::Identifier:

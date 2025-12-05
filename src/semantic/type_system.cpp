@@ -45,7 +45,7 @@ bool TypeSystem::compare_types(const UnresolvedType& a, const UnresolvedType& b)
 }
 
 void TypeSystem::init_primitives() {
-    auto add_primitive = [this](PrimitiveKind kind) {
+    auto add_primitive = [this](LiteralKind kind) {
         auto type = std::make_shared<Type>();
         type->kind = PrimitiveType{kind};
         all_types.push_back(type);
@@ -53,38 +53,62 @@ void TypeSystem::init_primitives() {
         return type;
     };
 
-    add_primitive(PrimitiveKind::Void);
-    add_primitive(PrimitiveKind::Bool);
-    add_primitive(PrimitiveKind::Char);
-    add_primitive(PrimitiveKind::String);
-    add_primitive(PrimitiveKind::I32);
-    add_primitive(PrimitiveKind::F32);
+    add_primitive(LiteralKind::Void);
+    add_primitive(LiteralKind::Bool);
+    add_primitive(LiteralKind::Char);
+    add_primitive(LiteralKind::I32);
+    add_primitive(LiteralKind::F32);
+
+    // add string as an empty named type
+    // String type will be initialized later with its symbol
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = NamedType{nullptr};
+    all_types.push_back(new_type);
+    primitives[LiteralKind::String] = new_type;
+}
+
+void TypeSystem::init_string_type(TypeSymbol* string_symbol)
+{
+    primitives[LiteralKind::String] = get_named(string_symbol);
+}
+
+TypePtr TypeSystem::get_string_type() const
+{
+    auto it = primitives.find(LiteralKind::String);
+    return it != primitives.end() ? it->second : nullptr;
+}
+
+bool TypeSystem::is_string_type(TypePtr type) const
+{
+    if (!type) return false;
+    auto string_type = get_string_type();
+    return string_type && type == string_type;
 }
 
 TypePtr TypeSystem::get_void() { 
-    return primitives[PrimitiveKind::Void]; 
+    return primitives[LiteralKind::Void]; 
 }
 
 TypePtr TypeSystem::get_bool() { 
-    return primitives[PrimitiveKind::Bool]; 
+    return primitives[LiteralKind::Bool]; 
 }
 
 TypePtr TypeSystem::get_i32() {
-    return primitives[PrimitiveKind::I32];
+    return primitives[LiteralKind::I32];
 }
 
 TypePtr TypeSystem::get_f32() {
-    return primitives[PrimitiveKind::F32];
+    return primitives[LiteralKind::F32];
 }
 
 TypePtr TypeSystem::get_primitive(const std::string& name) {
-    static std::unordered_map<std::string, PrimitiveKind> name_map = {
-        {"void", PrimitiveKind::Void},
-        {"bool", PrimitiveKind::Bool},
-        {"char", PrimitiveKind::Char},
-        {"i32", PrimitiveKind::I32},
-        {"f32", PrimitiveKind::F32},
-        {"string", PrimitiveKind::String}
+    static std::unordered_map<std::string, LiteralKind> name_map = {
+        {"void", LiteralKind::Void},
+        {"bool", LiteralKind::Bool},
+        {"char", LiteralKind::Char},
+        {"i32", LiteralKind::I32},
+        {"f32", LiteralKind::F32},
+        {"string", LiteralKind::String}
     };
 
     auto it = name_map.find(name);

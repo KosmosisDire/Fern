@@ -1,0 +1,6 @@
+-- Expected: 10.0
+fn Main
+{
+    var x = 10.0
+    return x
+}

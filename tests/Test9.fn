@@ -1,6 +1,0 @@
-fn Main
-{
-    var x = 10.0
-    x += 5.0
-    return x
-}

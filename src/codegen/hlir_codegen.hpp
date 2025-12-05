@@ -5,6 +5,7 @@
 #include "codegen_function.hpp"
 #include "llvm_ir_builder.hpp"
 #include "hlir/hlir.hpp"
+#include "semantic/type_system.hpp"
 #include "common/error.hpp"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
@@ -27,10 +28,11 @@ namespace Fern
         llvm::LLVMContext& context;
         std::unique_ptr<llvm::Module> module;
         std::unique_ptr<llvm::IRBuilder<>> builder;
+        TypeSystem* type_system = nullptr;
 
     public:
-        HLIRCodeGen(llvm::LLVMContext& ctx, const std::string& module_name)
-            : DiagnosticSystem("CodeGen"), context(ctx)
+        HLIRCodeGen(llvm::LLVMContext& ctx, const std::string& module_name, TypeSystem* types = nullptr)
+            : DiagnosticSystem("CodeGen"), context(ctx), type_system(types)
         {
             module = std::make_unique<llvm::Module>(module_name, context);
             builder = std::make_unique<llvm::IRBuilder<>>(context);
@@ -61,6 +63,7 @@ namespace Fern
 
         // === Memory Instructions ===
         void gen_alloc(CodeGenFunction& CGF, HLIR::AllocInst* inst);
+        void gen_alloc_bytes(CodeGenFunction& CGF, HLIR::AllocBytesInst* inst);
         void gen_load(CodeGenFunction& CGF, HLIR::LoadInst* inst);
         void gen_store(CodeGenFunction& CGF, HLIR::StoreInst* inst);
         void gen_field_addr(CodeGenFunction& CGF, HLIR::FieldAddrInst* inst);

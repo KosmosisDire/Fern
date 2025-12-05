@@ -1,4 +1,0 @@
-fn Main
-{
-    return 42.0
-}

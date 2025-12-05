@@ -1,4 +1,0 @@
-fn Main
-{
-    return 10.0 + 5.0
-}

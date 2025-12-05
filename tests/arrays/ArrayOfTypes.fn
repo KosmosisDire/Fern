@@ -1,0 +1,17 @@
+-- Expected: 6.0
+type Point
+{
+    f32 x
+    f32 y
+}
+
+fn Main
+{
+    var points = [new Point(), new Point(), new Point()]
+    points[0].x = 1.0
+    points[1].x = 2.0
+    points[2].x = 3.0
+
+    -- Expected 6.0
+    return points[0].x + points[1].x + points[2].x
+}

@@ -244,6 +244,25 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
         }
     }
 
+    // if it is an intrinsic function, handle it specially
+    if (node->method->is_intrinsic)
+    {
+        if (node->method->name == "alloc")
+        {
+            if (args.size() != 1) {
+                error("Intrinsic 'alloc' expects 1 argument", node->location);
+                expression_values[node] = nullptr;
+                return;
+            }
+            auto size_arg = args[0];
+            auto allocated = builder.alloc_bytes(size_arg, true);
+            expression_values[node] = allocated;
+            return;
+        }
+
+        return;
+    }
+
     if (!node->method || !node->method->as<FunctionSymbol>()) {
         expression_values[node] = nullptr;
         return;
@@ -706,6 +725,18 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node) {
                 }
             }
 
+            // Special handling for String initialization from string literal
+            if (type_system->is_string_type(var_sym->type)) {
+                if (auto lit_expr = node->initializer->as<BoundLiteralExpression>()) {
+                    if (std::holds_alternative<std::string>(lit_expr->constantValue)) {
+                        const auto& str_val = std::get<std::string>(lit_expr->constantValue);
+                        auto data_ptr = builder.const_string(str_val, type_system->get_pointer(type_system->get_primitive("char")));
+                        emit_string_init(var_addr, data_ptr, str_val.length());
+                        return;
+                    }
+                }
+            }
+
             // Default path: evaluate initializer and store
             auto init_value = evaluate_expression(node->initializer);
             if (init_value) {
@@ -725,7 +756,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     auto func = module->find_function(func_sym);
     if (!func) return;
 
-    func->is_external = func_sym->isExtern;
+    func->is_external = func_sym->is_extern;
 
     // Clear state
     variable_addresses.clear();
@@ -750,7 +781,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     }
 
     // Skip body for external functions
-    if (func_sym->isExtern) {
+    if (func_sym->is_extern) {
         current_function = nullptr;
         return;
     }
@@ -992,6 +1023,18 @@ void BoundToHLIR::emit_constructor_to_address(BoundNewExpression* new_expr, HLIR
         }
     }
     // No need to load/return - the constructor writes directly to dest_addr
+}
+
+void BoundToHLIR::emit_string_init(HLIR::Value* string_addr, HLIR::Value* data_ptr, size_t length) {
+    // String.data = data_ptr (field 0)
+    auto char_ptr_type = type_system->get_pointer(type_system->get_primitive("char"));
+    auto data_field = builder.field_addr(string_addr, 0, char_ptr_type, "data");
+    builder.store(data_ptr, data_field);
+
+    // String.length = length (field 1)
+    auto len_val = builder.const_int(static_cast<int64_t>(length), type_system->get_i32());
+    auto len_field = builder.field_addr(string_addr, 1, type_system->get_i32(), "length");
+    builder.store(len_val, len_field);
 }
 
 void BoundToHLIR::generate_property_getter(BoundPropertyDeclaration* prop_decl, BoundPropertyAccessor* getter) {

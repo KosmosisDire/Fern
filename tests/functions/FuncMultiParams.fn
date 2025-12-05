@@ -1,0 +1,10 @@
+-- Expected: 17.0
+fn Calculate(f32 a, f32 b, f32 c) -> f32
+{
+    return a * b + c
+}
+
+fn Main
+{
+    return Calculate(3.0, 4.0, 5.0)
+}

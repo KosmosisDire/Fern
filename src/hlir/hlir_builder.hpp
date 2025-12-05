@@ -59,6 +59,18 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
+
+        Value* alloc_bytes(Value* size, bool stack = false, const std::string& name = "") {
+            // Result type is pointer to i8 (char*)
+            auto ptr_type = type_system->get_pointer(type_system->get_primitive("char"));
+            auto result = current_func->create_value(ptr_type, name);
+            auto inst = std::make_unique<AllocBytesInst>(result, size);
+            inst->on_stack = stack;
+            result->def = inst.get();
+            size->uses.push_back(inst.get());
+            current_block->add_inst(std::move(inst));
+            return result;
+        }
         
         Value* alloc(TypePtr type, bool stack = false, const std::string& name = "") {
             // Result type is pointer to the allocated type

@@ -1,0 +1,6 @@
+-- Expected: 5.5
+fn Main
+{
+    f32 x = 5.5
+    return x
+}

@@ -49,6 +49,7 @@ namespace Fern::HLIR
 
         // Memory
         Alloc,
+        AllocBytes,
         Load,
         Store,
         FieldAddr,
@@ -187,6 +188,19 @@ namespace Fern::HLIR
             op = Opcode::Alloc;
             this->result = result;
             this->alloc_type = type;
+        }
+    };
+
+    struct AllocBytesInst : Instruction
+    {
+        Value *size;
+        bool on_stack = false;
+
+        AllocBytesInst(Value *result, Value *size_val)
+        {
+            op = Opcode::AllocBytes;
+            this->result = result;
+            this->size = size_val;
         }
     };
 
@@ -481,6 +495,9 @@ namespace Fern::HLIR
                 }
                 else if (auto func_sym = member->as<FunctionSymbol>())
                 {
+                    if (func_sym->is_intrinsic) {
+                        continue; // Skip intrinsic functions
+                    }
                     create_function(func_sym);
                 }
             }
@@ -736,6 +753,14 @@ namespace Fern::HLIR
                     ss << " [stack]";
                 if (!alloc->escapes)
                     ss << " [no-escape]";
+                break;
+            }
+            case Opcode::AllocBytes:
+            {
+                auto *alloc = static_cast<const AllocBytesInst *>(inst);
+                ss << "alloc.bytes " << value_ref(alloc->size);
+                if (alloc->on_stack)
+                    ss << " [stack]";
                 break;
             }
             case Opcode::Load:

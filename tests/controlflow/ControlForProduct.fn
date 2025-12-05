@@ -1,0 +1,10 @@
+-- Expected: 24.0
+fn Main
+{
+    var product = 1.0
+    for (var i = 1.0; i <= 4.0; i += 1.0)
+    {
+        product *= i
+    }
+    return product
+}

@@ -424,8 +424,8 @@ namespace Fern
         auto bound = arena_.make<BoundForStatement>();
         bound->location = syntax->location;
 
-        // Find and enter the for loop scope that was created by SymbolTableBuilder
-        auto for_scope = symbol_table_.resolve("$for");
+        // Find and enter the for loop scope
+        auto for_scope = symbol_table_.get_symbol_for_ast(syntax);
         ScopeGuard scope(symbol_table_, for_scope);
 
         if (syntax->initializer)

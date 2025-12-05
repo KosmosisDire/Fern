@@ -4,7 +4,7 @@
 namespace Fern
 {
     bool Type::is_void() const {
-        return is<PrimitiveType>() && as<PrimitiveType>()->kind == PrimitiveKind::Void;
+        return is<PrimitiveType>() && as<PrimitiveType>()->kind == LiteralKind::Void;
     }
     
     bool Type::is_value_type() const {
@@ -28,12 +28,12 @@ namespace Fern
             
             if constexpr (std::is_same_v<T, PrimitiveType>) {
                 switch (t.kind) {
-                    case PrimitiveKind::Void: return "void";
-                    case PrimitiveKind::Bool: return "bool";
-                    case PrimitiveKind::Char: return "char";
-                    case PrimitiveKind::I32: return "i32";
-                    case PrimitiveKind::F32: return "f32";
-                    case PrimitiveKind::String: return "string";
+                    case LiteralKind::Void: return "void";
+                    case LiteralKind::Bool: return "bool";
+                    case LiteralKind::Char: return "char";
+                    case LiteralKind::I32: return "i32";
+                    case LiteralKind::F32: return "f32";
+                    case LiteralKind::String: return "string";
                 }
                 return "primitive?";
             }

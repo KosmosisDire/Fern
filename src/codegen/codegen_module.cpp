@@ -65,22 +65,22 @@ namespace Fern
         {
             switch (prim_type->kind)
             {
-            case PrimitiveKind::Void:
+            case LiteralKind::Void:
                 llvm_type = llvm::Type::getVoidTy(context);
                 break;
-            case PrimitiveKind::Bool:
+            case LiteralKind::Bool:
                 llvm_type = llvm::Type::getInt1Ty(context);
                 break;
-            case PrimitiveKind::Char:
+            case LiteralKind::Char:
                 llvm_type = llvm::Type::getInt8Ty(context);
                 break;
-            case PrimitiveKind::I32:
+            case LiteralKind::I32:
                 llvm_type = llvm::Type::getInt32Ty(context);
                 break;
-            case PrimitiveKind::F32:
+            case LiteralKind::F32:
                 llvm_type = llvm::Type::getFloatTy(context);
                 break;
-            case PrimitiveKind::String:
+            case LiteralKind::String:
                 // just generic pointer
                 llvm_type = llvm::PointerType::get(context, 0);
                 break;
@@ -264,7 +264,7 @@ namespace Fern
     {
         if (auto* prim = type->as<PrimitiveType>())
         {
-            return prim->kind == PrimitiveKind::I32;
+            return prim->kind == LiteralKind::I32;
         }
         return false;
     }
@@ -279,7 +279,7 @@ namespace Fern
     {
         if (auto* prim = type->as<PrimitiveType>())
         {
-            return prim->kind == PrimitiveKind::F32;
+            return prim->kind == LiteralKind::F32;
         }
         return false;
     }

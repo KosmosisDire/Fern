@@ -280,12 +280,6 @@ namespace Fern
             // Check for primitive types
             if (boundType->parts.size() == 1)
             {
-                // Special case: "string" is an alias for "char*"
-                if (boundType->parts[0] == "string")
-                {
-                    return typeSystem.get_pointer(typeSystem.get_primitive("char"));
-                }
-
                 TypePtr primitive = typeSystem.get_primitive(boundType->parts[0]);
                 if (primitive)
                 {
@@ -467,8 +461,8 @@ namespace Fern
         auto is_integer = [](TypePtr t) -> bool {
             if (auto* prim = t->as<PrimitiveType>()) {
                 switch (prim->kind) {
-                    case PrimitiveKind::I32:
-                    case PrimitiveKind::Char:
+                    case LiteralKind::I32:
+                    case LiteralKind::Char:
                         return true;
                     default:
                         return false;
@@ -690,8 +684,8 @@ namespace Fern
                 auto is_integer = [](TypePtr t) -> bool {
                     if (auto* prim = t->as<PrimitiveType>()) {
                         switch (prim->kind) {
-                            case PrimitiveKind::I32:
-                            case PrimitiveKind::Char:
+                            case LiteralKind::I32:
+                            case LiteralKind::Char:
                                 return true;
                             default:
                                 return false;

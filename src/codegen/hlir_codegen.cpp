@@ -110,6 +110,9 @@ namespace Fern
         case HLIR::Opcode::Alloc:
             gen_alloc(CGF, static_cast<HLIR::AllocInst*>(inst));
             break;
+        case HLIR::Opcode::AllocBytes:
+            gen_alloc_bytes(CGF, static_cast<HLIR::AllocBytesInst*>(inst));
+            break;
         case HLIR::Opcode::Load:
             gen_load(CGF, static_cast<HLIR::LoadInst*>(inst));
             break;
@@ -239,6 +242,29 @@ namespace Fern
         else
         {
             ptr = ir.create_malloc(alloc_type, name);
+        }
+
+        CGF.map_value(inst->result, ptr);
+    }
+
+    void HLIRCodeGen::gen_alloc_bytes(CodeGenFunction& CGF, HLIR::AllocBytesInst* inst)
+    {
+        auto& ir = CGF.get_ir_builder();
+        llvm::Value* size_val = CGF.get_value(inst->size);
+
+        std::string name = inst->result->debug_name.empty() ? "bytes" : inst->result->debug_name;
+
+        llvm::Type* i8_type = llvm::Type::getInt8Ty(context);
+
+        llvm::Value* ptr;
+        if (inst->on_stack)
+        {
+            // Stack allocation: alloca i8, <size>
+            ptr = ir.get_builder().CreateAlloca(i8_type, size_val, name);
+        }
+        else
+        {
+            throw std::runtime_error("Heap allocation of arbitrary bytes not implemented yet");
         }
 
         CGF.map_value(inst->result, ptr);
@@ -392,18 +418,6 @@ namespace Fern
         llvm::Value* array = CGF.get_value(inst->array);
         llvm::Value* index = CGF.get_value(inst->index);
 
-        // Debug: Print GEP operation details
-        std::cout << "\n=== Pointer GEP Operation Debug ===" << std::endl;
-        std::cout << "Array value: ";
-        array->print(llvm::outs());
-        std::cout << "\nArray value type: ";
-        array->getType()->print(llvm::outs());
-        std::cout << "\nIndex value: ";
-        index->print(llvm::outs());
-        std::cout << "\nIndex value type: ";
-        index->getType()->print(llvm::outs());
-        std::cout << "\nHLIR array type: " << inst->array->type->get_name() << std::endl;
-
         // Determine the element type
         TypePtr hlir_type = inst->array->type;
         llvm::Type* elem_type = nullptr;
@@ -411,21 +425,18 @@ namespace Fern
         // If it's a pointer, unwrap to get the pointee type
         if (auto* ptr_type = hlir_type->as<PointerType>())
         {
-            std::cout << "Pointer pointee type: " << ptr_type->pointee->get_name() << std::endl;
             hlir_type = ptr_type->pointee;
         }
 
         // Check if the pointee is an array type (e.g., for pointer to array)
         if (auto* array_type = hlir_type->as<ArrayType>())
         {
-            std::cout << "Array element type: " << array_type->element->get_name() << std::endl;
             elem_type = CGF.get_module().get_or_create_type(array_type->element);
         }
         else
         {
             // Direct pointer arithmetic (e.g., char* + 5)
             // The element type is just the pointee type itself
-            std::cout << "Direct pointer arithmetic - element type: " << hlir_type->get_name() << std::endl;
             elem_type = CGF.get_module().get_or_create_type(hlir_type);
         }
 
@@ -434,16 +445,7 @@ namespace Fern
             throw std::runtime_error("Cannot determine element type for pointer GEP");
         }
 
-        std::cout << "LLVM element type: ";
-        elem_type->print(llvm::outs());
-        std::cout << std::endl;
-
         auto* result = ir.create_gep(elem_type, array, index, "elem_addr");
-        std::cout << "GEP result: ";
-        result->print(llvm::outs());
-        std::cout << "\nGEP result type: ";
-        result->getType()->print(llvm::outs());
-        std::cout << "\n=== End Pointer GEP Debug ===\n" << std::endl;
 
         return result;
     }

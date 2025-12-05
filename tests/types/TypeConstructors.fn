@@ -1,0 +1,137 @@
+-- Expected: 21.0
+type Point
+{
+    f32 x
+    f32 y
+
+    -- Default constructor
+    new()
+    {
+        x = 0.0
+        y = 0.0
+    }
+
+    -- Two parameter constructor
+    new(f32 xVal, f32 yVal)
+    {
+        x = xVal
+        y = yVal
+    }
+
+    -- Single parameter constructor (sets both to same value)
+    new(f32 val)
+    {
+        x = val
+        y = val
+    }
+
+    -- Copy from another point (constructor chaining simulation)
+    new(Point other)
+    {
+        x = other.x
+        y = other.y
+    }
+
+    fn GetLength() -> f32
+    {
+        return x * x + y * y
+    }
+
+    fn Add(Point other) -> Point
+    {
+        return new Point(x + other.x, y + other.y)
+    }
+}
+
+type Vector3
+{
+    f32 x, y, z
+
+    new(f32 xVal, f32 yVal, f32 zVal)
+    {
+        x = xVal
+        y = yVal
+        z = zVal
+    }
+
+    -- Constructor from Point (extends 2D to 3D)
+    new(Point p, f32 zVal)
+    {
+        x = p.x
+        y = p.y
+        z = zVal
+    }
+
+    fn GetMagnitude() -> f32
+    {
+        return x * x + y * y + z * z
+    }
+}
+
+type Rectangle
+{
+    Point topLeft
+    Point bottomRight
+
+    -- Constructor taking two points
+    new(Point tl, Point br)
+    {
+        topLeft = tl
+        bottomRight = br
+    }
+
+    fn GetArea() -> f32
+    {
+        var width = bottomRight.x - topLeft.x
+        var height = bottomRight.y - topLeft.y
+        return width * height
+    }
+}
+
+fn Main
+{
+    -- Test default constructor
+    var p1 = new Point()
+
+    -- Test two parameter constructor
+    var p2 = new Point(3.0, 4.0)
+
+    -- Test single parameter constructor
+    var p3 = new Point(5.0)
+
+    -- Test copy constructor
+    var p4 = new Point(p2)
+
+    -- Test constructor with method call result
+    var p5 = p2.Add(p3)
+
+    -- Test Vector3 from Point
+    var v1 = new Vector3(p2, 10.0)
+
+    -- Test nested types as constructor parameters
+    var rect = new Rectangle(new Point(0.0, 0.0), new Point(10.0, 20.0))
+
+    -- Test constructor inside constructor
+    var rect2 = new Rectangle(p2, new Point(p2.x + 5.0, p2.y + 5.0))
+
+    -- Test member access chain after construction
+    var area1 = rect.GetArea()
+    var area2 = rect2.GetArea()
+
+    -- Test constructor with compound expressions
+    var p6 = new Point(p2.x + p3.x, p2.y * p3.y)
+
+    -- Test multiple constructors in one expression
+    var v2 = new Vector3(new Point(1.0, 2.0), 3.0)
+
+    -- Test assignment of constructed value
+    var p7 = p2
+    p7 = new Point(100.0, 200.0)
+
+    -- Complex nested expression
+    var result = new Point(rect.topLeft.x + rect2.bottomRight.x, v1.z + v2.z)
+
+    -- Return final computed value
+    -- Expected: 0 + 8 + 10 + 3 = 21
+    return rect.topLeft.x + rect2.bottomRight.x + v1.z + v2.z
+}

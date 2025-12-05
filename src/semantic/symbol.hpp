@@ -151,7 +151,8 @@ namespace Fern
         // Special kinds
         bool is_constructor = false;
         bool is_operator = false;
-        bool isExtern = false; 
+        bool is_extern = false; 
+        bool is_intrinsic = false;
         
         FunctionSymbol(const std::string& name, TypePtr return_type);
         

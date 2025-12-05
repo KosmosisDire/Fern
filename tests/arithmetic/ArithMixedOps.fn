@@ -1,0 +1,7 @@
+-- Expected: 16.0
+fn Main
+{
+    var x = 10.0
+    var y = 3.0
+    return x + y * 2.0
+}

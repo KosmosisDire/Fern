@@ -31,7 +31,7 @@
 			"id": "args",
 			"type": "promptString",
 			"description": "Command line arguments",
-			"default": "minimal.fn runtime/print.fn"
+			"default": "minimal.fn runtime/string.fn"
 		}
 	]
 }

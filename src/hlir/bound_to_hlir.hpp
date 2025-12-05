@@ -92,7 +92,10 @@ namespace Fern::HLIR
 
         // Emit a constructor call directly to a destination address (avoids temporary allocation)
         void emit_constructor_to_address(BoundNewExpression* new_expr, HLIR::Value* dest_addr);
-        
+
+        // String initialization helper - initializes String struct from char* and length
+        void emit_string_init(HLIR::Value* string_addr, HLIR::Value* data_ptr, size_t length);
+
         // Property helper methods
         void generate_property_getter(BoundPropertyDeclaration* prop_decl, BoundPropertyAccessor* getter);
         void generate_property_setter(BoundPropertyDeclaration* prop_decl, BoundPropertyAccessor* setter);

@@ -156,7 +156,7 @@ namespace Fern
         }
         if (has_flag(node->modifiers, ModifierKindFlags::Extern))
         {
-            func_symbol->isExtern = true;
+            func_symbol->is_extern = true;
             // Validate: extern functions must not have a body
             if (node->body != nullptr)
             {

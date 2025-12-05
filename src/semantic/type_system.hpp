@@ -16,7 +16,7 @@ namespace Fern
         std::vector<TypePtr> all_types;
         
         // Quick lookup for primitives
-        std::unordered_map<PrimitiveKind, TypePtr> primitives;
+        std::unordered_map<LiteralKind, TypePtr> primitives;
         
         // Quick lookup for named types
         std::unordered_map<TypeSymbol*, TypePtr> named_types;
@@ -42,7 +42,12 @@ namespace Fern
         TypeSystem();
         
         void init_primitives();
-        
+        void init_string_type(TypeSymbol* string_symbol);
+
+        // Built-in type queries
+        TypePtr get_string_type() const;
+        bool is_string_type(TypePtr type) const;
+
         // Type creation methods
         TypePtr get_void();
         TypePtr get_bool();

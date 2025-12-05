@@ -1,0 +1,11 @@
+-- Expected: 14.0
+fn Double(f32 x) -> f32
+{
+    return x * 2.0
+}
+
+fn Main
+{
+    var result = Double(7.0)
+    return result
+}
