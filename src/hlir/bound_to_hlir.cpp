@@ -272,8 +272,9 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
                 // Pass address directly
                 args.push_back(this_addr);
             } else {
-                // Load pointer and pass it
-                auto this_ptr = builder.load(this_addr, member_expr->object->type);
+                // Reference types store a pointer (T*) - load it with the correct pointer type
+                auto ptr_type = type_system->get_pointer(member_expr->object->type);
+                auto this_ptr = builder.load(this_addr, ptr_type);
                 args.push_back(this_ptr);
             }
         }
@@ -404,9 +405,11 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
         }
     } else {
         // We have the address - for reference types, load the pointer
+        // EXCEPT for 'this' which is already the direct pointer (not a storage location)
+        bool is_this = node->object->as<BoundThisExpression>() != nullptr;
         bool is_value_type = node->object->type->as<NamedType>() &&
                             node->object->type->is_value_type();
-        if (!is_value_type) {
+        if (!is_value_type && !is_this) {
             // Load the pointer for reference types (stored as T*, not T)
             auto ptr_type = type_system->get_pointer(node->object->type);
             obj_addr = builder.load(obj_addr, ptr_type);
@@ -1017,9 +1020,11 @@ HLIR::Value* BoundToHLIR::get_lvalue_address(BoundExpression* expr)
             }
         } else {
             // For reference types, load the pointer
+            // EXCEPT for 'this' which is already the direct pointer
+            bool is_this = member->object->as<BoundThisExpression>() != nullptr;
             bool is_value_type = member->object->type->as<NamedType>() &&
                                 member->object->type->is_value_type();
-            if (!is_value_type) {
+            if (!is_value_type && !is_this) {
                 // Load the pointer for reference types (stored as T*, not T)
                 auto ptr_type = type_system->get_pointer(member->object->type);
                 obj_addr = builder.load(obj_addr, ptr_type);

@@ -1,0 +1,19 @@
+-- Test: Basic Reference Type and Method Call
+-- Expected: 75.0
+ref type Enemy
+{
+    i32 health
+
+    fn TakeDamage(i32 amount)
+    {
+        this.health = this.health - amount
+    }
+}
+
+fn Main
+{
+    var e = new Enemy()
+    e.health = 100
+    e.TakeDamage(25)
+    return (f32)e.health
+}

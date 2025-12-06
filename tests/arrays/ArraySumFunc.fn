@@ -1,3 +1,5 @@
+-- Expected: 39.0
+
 fn Sum(i32[] arr, i32 length) -> i32
 {
     var total = 0
