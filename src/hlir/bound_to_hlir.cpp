@@ -42,7 +42,17 @@ void BoundToHLIR::visit(BoundLiteralExpression* node) {
         result = builder.const_float(std::get<double>(node->constantValue), node->type);
     }
     else if (std::holds_alternative<std::string>(node->constantValue)) {
-        result = builder.const_string(std::get<std::string>(node->constantValue), node->type);
+        const auto& str_val = std::get<std::string>(node->constantValue);
+
+        if (type_system->is_string_type(node->type)) {
+            // Allocate temp String struct, initialize fields, and load the value
+            auto string_addr = builder.alloc(node->type, true);
+            auto data_ptr = builder.const_string(str_val, type_system->get_pointer(type_system->get_primitive("char")));
+            emit_string_init(string_addr, data_ptr, str_val.length());
+            result = builder.load(string_addr, node->type);
+        } else {
+            result = builder.const_string(str_val, node->type);
+        }
     }
     else if (std::holds_alternative<std::monostate>(node->constantValue)) {
         error("Literal expression has no constant value (type: " +
@@ -722,18 +732,6 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node) {
                 if (is_new_value_type) {
                     emit_constructor_to_address(new_expr, var_addr);
                     return;
-                }
-            }
-
-            // Special handling for String initialization from string literal
-            if (type_system->is_string_type(var_sym->type)) {
-                if (auto lit_expr = node->initializer->as<BoundLiteralExpression>()) {
-                    if (std::holds_alternative<std::string>(lit_expr->constantValue)) {
-                        const auto& str_val = std::get<std::string>(lit_expr->constantValue);
-                        auto data_ptr = builder.const_string(str_val, type_system->get_pointer(type_system->get_primitive("char")));
-                        emit_string_init(var_addr, data_ptr, str_val.length());
-                        return;
-                    }
                 }
             }
 
