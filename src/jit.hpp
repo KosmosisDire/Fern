@@ -28,10 +28,10 @@ namespace Fern
             auto addr_or_err = lookup(name);
             
             // Check if lookup returned an error
-            if (!addr_or_err)
+            if (auto E = addr_or_err.takeError())
             {
                 // Handle the error - consume it to avoid assertion failure
-                llvm::consumeError(addr_or_err.takeError());
+                llvm::consumeError(std::move(E));
                 return nullptr;
             }
             

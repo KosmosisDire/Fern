@@ -1,29 +1,47 @@
 
+-- ref type Enemy
+-- {
+--     i32 health
+
+--     fn TakeDamage(i32 amount)
+--     {
+--         this.health = this.health - amount
+--     }
+-- }
+
+-- fn Main
+-- {
+--     var e = new Enemy()
+--     e.health = 100
+--     e.TakeDamage(25)
+--     return (f32)e.health
+-- }
+
+fn Sum(i32[] arr, i32 length) -> i32
+{
+    var total = 0
+    for (var i = 0; i < length; i = i + 1)
+    {
+        total = total + arr[i]
+    }
+    return total
+}
 
 fn Main
 {
-    var message = "Hello World!"
-    var messages = ["Hello", "from", "Fern", "Language", "!"]
-    var messagesNested = [["This", "is"], ["a", "nested"], ["array", "!"]]
-    
-    for (var i = 0; i < 5; i = i + 1)
-    {
-        Print(message)
-    }
+    var array1 = [1, 2, 3, 4, 5]
+    var array2 = array1
+    array2[0] = 10
 
-    for (var j = 0; j < 5; j += 1)
-    {
-        Print(messages[j])
-    }
+    var sum1 = Sum(array1, 5)
+    var sum2 = Sum(array2, 5)
 
-    for (var k = 0; k < 3; k = k + 1)
-    {
-        for (var l = 0; l < 2; l = l + 1)
-        {
-            Print(messagesNested[k][l])
-        }
-    }
+    var str1 = IntToString(sum1)
+    var str2 = IntToString(sum2)
 
-    return (f32)message.Length()
+    Print(str1)
+    Print(str2)
+
+    return 0.0
 }
-
+  

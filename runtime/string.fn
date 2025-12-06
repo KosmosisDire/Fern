@@ -9,6 +9,27 @@ type String
     {
         return length
     }
+
+    fn Concat(string other) -> string
+    {
+        var newLength = this.length + other.length
+        var newData = (char*)malloc(newLength + 1)
+
+        -- Copy first string
+        memcpy(newData, this.data, this.length)
+
+        -- Copy second string (offset by first string's length)
+        memcpy(newData + this.length, other.data, other.length)
+
+        -- Null terminate
+        newData[newLength] = '\0'
+
+        -- Create new string struct
+        var result = new String()
+        result.data = newData
+        result.length = newLength
+        return result
+    }
 }
 
 fn Print(string msg)
@@ -16,116 +37,60 @@ fn Print(string msg)
     puts(msg.data)
 }
 
--- fn PrintInt(i32 value)
--- {
---     var buffer = new char[12];  -- Enough for 32-bit int
---     IntToString(value, buffer);
---     Print(buffer);
--- }
 
--- fn IntToString(i32 num, char[] buffer) -> i32
--- {
---     if num == 0
---     {
---         buffer[0] = (char)48  -- '0' ASCII value
---         buffer[1] = (char)0   -- '\0' null terminator
---         return 1
---     }
+fn IntToString(i32 num) -> string
+{
+    var result = new String()
+    result.data = malloc(12)  -- Enough for int32 including sign and null terminator
+    result.length = 0;
+    if num == 0
+    {
+        result.data[0] = '0'  -- '0' ASCII value
+        result.data[1] = '\0'   -- '\0' null terminator
+        result.length = 1
+        return result
+    }
 
---     var isNegative = num < 0
---     if isNegative
---     {
---         num = -num  -- Make positive for digit extraction
---     }
+    var isNegative = num < 0
+    if isNegative
+    {
+        num = -num  -- Make positive for digit extraction
+    }
 
---     var index = 0
---     var digit = 0
+    var index = 0
+    var digit = 0
 
---     -- Extract digits (builds string backwards)
---     while num > 0
---     {
---         digit = num % 10
---         buffer[index] = (char)(digit + 48)  -- Convert digit to ASCII ('0' is 48)
---         index += 1
---         num /= 10
---     }
+    -- Extract digits (builds string backwards)
+    while num > 0
+    {
+        digit = num % 10
+        result.data[index] = (char)(digit + 48)  -- Convert digit to ASCII ('0' is 48)
+        index += 1
+        num /= 10
+    }
 
---     -- Add negative sign if needed
---     if isNegative
---     {
---         buffer[index] = (char)45  -- '-' ASCII value
---         index += 1
---     }
+    -- Add negative sign if needed
+    if isNegative
+    {
+        result.data[index] = (char)45  -- '-' ASCII value
+        index += 1
+    }
 
---     buffer[index] = (char)0  -- Null terminate
+    result.data[index] = (char)0  -- Null terminate
 
---     -- Reverse the string in-place
---     var start = 0
---     var end = index - 1
---     char temp = (char)0
---     while start < end
---     {
---         temp = buffer[start]
---         buffer[start] = buffer[end]
---         buffer[end] = temp
---         start += 1
---         end -= 1
---     }
+    -- Reverse the string in-place
+    var start = 0
+    var end = index - 1
+    var temp = (char)0
+    while start < end
+    {
+        temp = result.data[start]
+        result.data[start] = result.data[end]
+        result.data[end] = temp
+        start += 1
+        end -= 1
+    }
 
---     return index  -- Return length
--- }
-
--- fn PrintFloat(f32 value)
--- {
---     var buffer = new char[32];  -- Enough for float representation
---     FloatToString(value, buffer, 6);  -- 6 decimal places by default
---     Print(buffer);
--- }
-
--- fn FloatToString(f32 num, char[] buffer, i32 precision) -> i32
--- {
---     var index = 0
-    
---     -- Handle negative numbers
---     if num < 0.0
---     {
---         buffer[index] = (char)45  -- '-'
---         index += 1
---         num = -num
---     }
-    
---     -- Extract integer part
---     var intPart = (i32)num
---     var fracPart = num - (f32)intPart
-    
---     -- Convert integer part
---     var tempBuffer = new char[12]
---     var intLen = IntToString(intPart, tempBuffer)
-    
---     var i = 0
---     while i < intLen
---     {
---         buffer[index] = tempBuffer[i]
---         index += 1
---         i += 1
---     }
-    
---     -- Add decimal point
---     buffer[index] = (char)46  -- '.'
---     index += 1
-    
---     -- Convert fractional part
---     var j = 0
---     while j < precision
---     {
---         fracPart *= 10.0
---         var digit = (i32)fracPart
---         buffer[index] = (char)(digit + 48)
---         index += 1
---         fracPart -= (f32)digit
---         j += 1
---     }
-    
---     buffer[index] = (char)0  -- Null terminate
---     return index
--- }
+    result.length = index  -- Set length
+    return result
+}

@@ -60,32 +60,56 @@ namespace Fern::HLIR
             return result;
         }
 
-        Value* alloc_bytes(Value* size, bool stack = false, const std::string& name = "") {
-            // Result type is pointer to i8 (char*)
-            auto ptr_type = type_system->get_pointer(type_system->get_primitive("char"));
-            auto result = current_func->create_value(ptr_type, name);
-            auto inst = std::make_unique<AllocBytesInst>(result, size);
-            inst->on_stack = stack;
-            result->def = inst.get();
-            size->uses.push_back(inst.get());
-            current_block->add_inst(std::move(inst));
-            return result;
-        }
-        
-        Value* alloc(TypePtr type, bool stack = false, const std::string& name = "") {
-            // Result type is pointer to the allocated type
+        // Stack allocation of a typed value
+        Value* stack_alloc(TypePtr type, const std::string& name = "") {
             auto ptr_type = type_system ? type_system->get_pointer(type) : type;
             auto result = current_func->create_value(ptr_type, name);
-            auto inst = std::make_unique<AllocInst>(result, type);
-            inst->on_stack = stack;
+            auto inst = std::make_unique<StackAllocInst>(result, type);
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
         }
 
-        // Result type is pointer to a pointer to the allocated type
-        Value* alloc_nested(TypePtr type, bool stack = false, const std::string& name = "") {
-            return alloc(type_system->get_pointer(type), stack, name);
+        // Stack allocation of dynamic byte count
+        Value* stack_alloc_bytes(Value* size, const std::string& name = "") {
+            auto ptr_type = type_system->get_pointer(type_system->get_void());
+            auto result = current_func->create_value(ptr_type, name);
+            auto inst = std::make_unique<StackAllocBytesInst>(result, size);
+            result->def = inst.get();
+            size->uses.push_back(inst.get());
+            current_block->add_inst(std::move(inst));
+            return result;
+        }
+
+        // Stack allocation of pointer to type (for nested pointers like T**)
+        Value* stack_alloc_nested(TypePtr type, const std::string& name = "") {
+            return stack_alloc(type_system->get_pointer(type), name);
+        }
+
+        // Heap allocation of a typed value
+        Value* heap_alloc(TypePtr type, const std::string& name = "") {
+            auto ptr_type = type_system ? type_system->get_pointer(type) : type;
+            auto result = current_func->create_value(ptr_type, name);
+            auto inst = std::make_unique<HeapAllocInst>(result, type);
+            result->def = inst.get();
+            current_block->add_inst(std::move(inst));
+            return result;
+        }
+
+        // Heap allocation of dynamic byte count
+        Value* heap_alloc_bytes(Value* size, const std::string& name = "") {
+            auto ptr_type = type_system->get_pointer(type_system->get_void());
+            auto result = current_func->create_value(ptr_type, name);
+            auto inst = std::make_unique<HeapAllocBytesInst>(result, size);
+            result->def = inst.get();
+            size->uses.push_back(inst.get());
+            current_block->add_inst(std::move(inst));
+            return result;
+        }
+
+        // Heap allocation of pointer to type (for nested pointers like T**)
+        Value* heap_alloc_nested(TypePtr type, const std::string& name = "") {
+            return heap_alloc(type_system->get_pointer(type), name);
         }
 
         Value* load(Value* addr, TypePtr type, const std::string& name = "") {
@@ -165,6 +189,31 @@ namespace Fern::HLIR
             index->uses.push_back(inst.get());
             current_block->add_inst(std::move(inst));
             return result;
+        }
+
+        // Heap deallocation (lowered to free call)
+        void heap_free(Value* ptr) {
+            auto inst = std::make_unique<HeapFreeInst>(ptr);
+            ptr->uses.push_back(inst.get());
+            current_block->add_inst(std::move(inst));
+        }
+
+        // Memory copy (lowered to llvm.memcpy intrinsic)
+        void memcpy(Value* dest, Value* src, Value* size, bool is_volatile = false) {
+            auto inst = std::make_unique<MemCpyInst>(dest, src, size, is_volatile);
+            dest->uses.push_back(inst.get());
+            src->uses.push_back(inst.get());
+            size->uses.push_back(inst.get());
+            current_block->add_inst(std::move(inst));
+        }
+
+        // Memory set (lowered to llvm.memset intrinsic)
+        void memset(Value* dest, Value* value, Value* size, bool is_volatile = false) {
+            auto inst = std::make_unique<MemSetInst>(dest, value, size, is_volatile);
+            dest->uses.push_back(inst.get());
+            value->uses.push_back(inst.get());
+            size->uses.push_back(inst.get());
+            current_block->add_inst(std::move(inst));
         }
 
         Value* call(Function* func, std::vector<Value*> args, const std::string& name = "") {

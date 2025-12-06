@@ -33,18 +33,25 @@ namespace Fern
         SymbolKind kind;
         std::string name;
         SourceRange location;
-        AccessModifierKind access = AccessModifierKind::Private;
+        ModifierKindFlags modifiers = ModifierKindFlags::None;
         
         // Tree structure
         Symbol* parent = nullptr;
         
-        // Modifiers as simple flags
-        bool isStatic = false;
-        bool isAbstract = false;
-        bool isVirtual = false;
-        bool isOverride = false;
-        bool isConst = false;
-        bool isRef = false;  // For ref types or ref parameters
+        // Modifier helper functions
+        bool is_static() const { return has_flag(modifiers, ModifierKindFlags::Static); }
+        bool is_abstract() const { return has_flag(modifiers, ModifierKindFlags::Abstract); }
+        bool is_virtual() const { return has_flag(modifiers, ModifierKindFlags::Virtual); }
+        bool is_override() const { return has_flag(modifiers, ModifierKindFlags::Override); }
+        bool is_ref() const { return has_flag(modifiers, ModifierKindFlags::Ref); }
+        bool is_extern() const { return has_flag(modifiers, ModifierKindFlags::Extern); }
+        bool is_public() const { return get_access_modifier() == AccessModifierKind::Public; }
+        bool is_private() const { return get_access_modifier() == AccessModifierKind::Private; }
+        bool is_protected() const { return get_access_modifier() == AccessModifierKind::Protected; }
+        
+        AccessModifierKind get_access_modifier() const {
+            return Fern::get_access_modifier(modifiers);
+        }
         
         virtual ~Symbol() = default;
         
@@ -130,9 +137,6 @@ namespace Fern
         std::vector<FunctionSymbol*> vtable;
         
         TypeSymbol(const std::string& name, TypePtr type);
-        
-        bool is_value_type() const;
-        bool is_reference_type() const;
     };
 
     #pragma region Function Symbol
@@ -151,7 +155,6 @@ namespace Fern
         // Special kinds
         bool is_constructor = false;
         bool is_operator = false;
-        bool is_extern = false; 
         bool is_intrinsic = false;
         
         FunctionSymbol(const std::string& name, TypePtr return_type);

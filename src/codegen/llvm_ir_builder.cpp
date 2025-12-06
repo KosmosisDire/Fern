@@ -83,10 +83,28 @@ namespace Fern
 
     llvm::Value* LLVMIRBuilder::create_alloca(llvm::Type* type, const std::string& name)
     {
-        // Use proper alignment based on the type's ABI alignment
+        // IMPORTANT: Always insert allocas at the function entry block
+        // This ensures stack space is allocated once at function entry,
+        // not repeatedly inside loops (which would cause stack overflow)
+
+        // Get the entry block of the current function
+        llvm::Function* func = builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock* entry_block = &func->getEntryBlock();
+
+        // Save current insert point
+        auto saved_point = builder.saveIP();
+
+        // Set insert point at the start of the entry block
+        builder.SetInsertPoint(entry_block, entry_block->getFirstInsertionPt());
+
+        // Create the alloca at entry
         llvm::Align align = module->getDataLayout().getABITypeAlign(type);
         llvm::AllocaInst* alloca = builder.CreateAlloca(type, nullptr, name);
         alloca->setAlignment(align);
+
+        // Restore original insert point
+        builder.restoreIP(saved_point);
+
         return alloca;
     }
 
@@ -102,6 +120,62 @@ namespace Fern
         llvm::FunctionCallee malloc_func = module->getOrInsertFunction("malloc", malloc_type);
 
         return builder.CreateCall(malloc_func, {size}, name);
+    }
+
+    llvm::Value* LLVMIRBuilder::create_malloc_bytes(llvm::Value* size, const std::string& name)
+    {
+        // Ensure size is i64
+        if (size->getType() != i64_type()) {
+            size = builder.CreateZExtOrTrunc(size, i64_type(), "size_ext");
+        }
+
+        // Declare/get malloc function
+        llvm::FunctionType* malloc_type = llvm::FunctionType::get(
+            ptr_type(),
+            {i64_type()},
+            false);
+        llvm::FunctionCallee malloc_func = module->getOrInsertFunction("malloc", malloc_type);
+
+        return builder.CreateCall(malloc_func, {size}, name);
+    }
+
+    void LLVMIRBuilder::create_free(llvm::Value* ptr)
+    {
+        // Declare/get free function
+        llvm::FunctionType* free_type = llvm::FunctionType::get(
+            void_type(),
+            {ptr_type()},
+            false);
+        llvm::FunctionCallee free_func = module->getOrInsertFunction("free", free_type);
+
+        builder.CreateCall(free_func, {ptr});
+    }
+
+    void LLVMIRBuilder::create_memcpy(llvm::Value* dest, llvm::Value* src, llvm::Value* size, bool is_volatile)
+    {
+        // Ensure size is i64
+        if (size->getType() != i64_type()) {
+            size = builder.CreateZExtOrTrunc(size, i64_type(), "size_ext");
+        }
+
+        // Use LLVM's memcpy intrinsic
+        builder.CreateMemCpy(dest, llvm::MaybeAlign(), src, llvm::MaybeAlign(), size, is_volatile);
+    }
+
+    void LLVMIRBuilder::create_memset(llvm::Value* dest, llvm::Value* value, llvm::Value* size, bool is_volatile)
+    {
+        // Ensure value is i8
+        if (value->getType() != i8_type()) {
+            value = builder.CreateTrunc(value, i8_type(), "byte_val");
+        }
+
+        // Ensure size is i64
+        if (size->getType() != i64_type()) {
+            size = builder.CreateZExtOrTrunc(size, i64_type(), "size_ext");
+        }
+
+        // Use LLVM's memset intrinsic
+        builder.CreateMemSet(dest, value, size, llvm::MaybeAlign(), is_volatile);
     }
 
     llvm::Value* LLVMIRBuilder::create_load(llvm::Type* type, llvm::Value* ptr, const std::string& name)

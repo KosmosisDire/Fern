@@ -95,18 +95,7 @@ namespace Fern
             return;
         }
 
-        // Apply modifiers
-        if (has_flag(node->modifiers, ModifierKindFlags::Static))
-        {
-            type_symbol->isStatic = true;
-        }
-        if (has_flag(node->modifiers, ModifierKindFlags::Abstract))
-        {
-            type_symbol->isAbstract = true;
-        }
-
-        // Set access level
-        type_symbol->access = get_access_modifier(node->modifiers);
+        type_symbol->modifiers = node->modifiers;
 
         // Enter type scope
         symbolTable.push_scope(type_symbol);
@@ -138,33 +127,15 @@ namespace Fern
         }
 
         // Apply modifiers
-        if (has_flag(node->modifiers, ModifierKindFlags::Static))
+        func_symbol->modifiers = node->modifiers;
+        if (func_symbol->is_extern())
         {
-            func_symbol->isStatic = true;
-        }
-        if (has_flag(node->modifiers, ModifierKindFlags::Virtual))
-        {
-            func_symbol->isVirtual = true;
-        }
-        if (has_flag(node->modifiers, ModifierKindFlags::Override))
-        {
-            func_symbol->isOverride = true;
-        }
-        if (has_flag(node->modifiers, ModifierKindFlags::Abstract))
-        {
-            func_symbol->isAbstract = true;
-        }
-        if (has_flag(node->modifiers, ModifierKindFlags::Extern))
-        {
-            func_symbol->is_extern = true;
             // Validate: extern functions must not have a body
             if (node->body != nullptr)
             {
                 error("External function '" + name + "' cannot have a body", node->location);
             }
         }
-
-        func_symbol->access = get_access_modifier(node->modifiers);
 
         // Enter function scope
         symbolTable.push_scope(func_symbol);
@@ -230,7 +201,7 @@ namespace Fern
 
         // Mark as constructor
         func_symbol->is_constructor = true;
-        func_symbol->access = get_access_modifier(node->modifiers);
+        func_symbol->modifiers = node->modifiers;
         func_symbol->location = node->location;
 
         // Map AST node to symbol for binding phase
@@ -377,8 +348,6 @@ namespace Fern
             auto getter_symbol = symbolTable.define_function("get", type);
             if (!getter_symbol) {
                 error("Failed to define getter function for property '" + name + "'", node->location);
-            } else {
-                getter_symbol->isStatic = false; // Properties are instance members
             }
         }
 
@@ -388,8 +357,6 @@ namespace Fern
             auto setter_symbol = symbolTable.define_function("set", void_type);
             if (!setter_symbol) {
                 error("Failed to define setter function for property '" + name + "'", node->location);
-            } else {
-                setter_symbol->isStatic = false; // Properties are instance members
             }
         }
         

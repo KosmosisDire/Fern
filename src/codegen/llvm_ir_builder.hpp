@@ -55,6 +55,10 @@ namespace Fern
         // === Memory Operations ===
         llvm::Value* create_alloca(llvm::Type* type, const std::string& name = "");
         llvm::Value* create_malloc(llvm::Type* type, const std::string& name = "");
+        llvm::Value* create_malloc_bytes(llvm::Value* size, const std::string& name = "");
+        void create_free(llvm::Value* ptr);
+        void create_memcpy(llvm::Value* dest, llvm::Value* src, llvm::Value* size, bool is_volatile = false);
+        void create_memset(llvm::Value* dest, llvm::Value* value, llvm::Value* size, bool is_volatile = false);
         llvm::Value* create_load(llvm::Type* type, llvm::Value* ptr, const std::string& name = "");
         void create_store(llvm::Value* value, llvm::Value* ptr);
 

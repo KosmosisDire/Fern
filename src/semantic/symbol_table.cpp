@@ -347,40 +347,12 @@ std::string SymbolTable::to_string() const {
         ss << indent_str;
         
         // Print kind
-        switch (sym->kind) {
-            case SymbolKind::Namespace: ss << "namespace"; break;
-            case SymbolKind::Type: ss << "type"; break;
-            case SymbolKind::Function: ss << "function"; break;
-            case SymbolKind::Variable: ss << "variable"; break;
-            case SymbolKind::Property: ss << "property"; break;
-            case SymbolKind::EnumCase: ss << "enum_case"; break;
-            case SymbolKind::Block: ss << "block"; break;
-        }
+        ss << Fern::to_string(sym->kind);
         
         ss << " " << sym->name;
         
-        // Add access modifier if not public
-        if (sym->access != AccessModifierKind::Public) {
-            ss << " [" << Fern::to_string(sym->access) << "]";
-        }
-        
         // Add modifiers
-        std::vector<std::string> modifiers;
-        if (sym->isStatic) modifiers.push_back("static");
-        if (sym->isAbstract) modifiers.push_back("abstract");
-        if (sym->isVirtual) modifiers.push_back("virtual");
-        if (sym->isOverride) modifiers.push_back("override");
-        if (sym->isConst) modifiers.push_back("const");
-        if (sym->isRef) modifiers.push_back("ref");
-        
-        if (!modifiers.empty()) {
-            ss << " (";
-            for (size_t i = 0; i < modifiers.size(); ++i) {
-                if (i > 0) ss << ", ";
-                ss << modifiers[i];
-            }
-            ss << ")";
-        }
+        ss << "[" << Fern::to_string(sym->modifiers) << "] ";
         
         // Add type-specific information
         if (auto type_sym = sym->as<TypeSymbol>()) {

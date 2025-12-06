@@ -1,0 +1,34 @@
+-- Expected: 51.0
+
+-- Value type (default)
+type Vector3
+{
+    var x = 0.0
+    var y = 0.0
+    var z = 0.0
+}
+
+-- Reference type
+ref type Enemy
+{
+    var health = 100.0
+}
+
+fn Main
+{
+    -- Test 1: Value type - should copy on assignment
+    var a = new Vector3()
+    a.x = 1.0
+    var b = a
+    b.x = 99.0
+    -- a.x should still be 1.0 (value type copies)
+
+    -- Test 2: Reference type - should alias on assignment
+    var e1 = new Enemy()
+    e1.health = 100.0
+    var e2 = e1
+    e2.health = 50.0
+    -- e1.health should now be 50 (reference type aliases)
+
+    return e1.health + a.x
+}

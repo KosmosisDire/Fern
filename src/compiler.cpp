@@ -45,17 +45,70 @@ namespace Fern
         if (!global_symbols || !type_system)
             return false;
 
-        // void* alloc(i32 size)
-        {
-            auto temp_return_type = type_system->get_pointer(type_system->get_primitive("char"));
+        auto void_ptr_type = type_system->get_pointer(type_system->get_void());
+        auto void_type = type_system->get_void();
+        auto i32_type = type_system->get_i32();
 
+        // void* alloc(i32 size) - stack allocation
+        {
             global_symbols->push_scope(global_symbols->get_global_namespace());
-            
-            auto func_symbol = global_symbols->define_function("alloc", temp_return_type);
+
+            auto func_symbol = global_symbols->define_function("alloca", void_ptr_type);
             func_symbol->is_intrinsic = true;
             global_symbols->push_scope(func_symbol);
-            auto param_symbol = global_symbols->define_parameter("size", type_system->get_i32(), 0);
-            func_symbol->parameters.push_back(param_symbol);
+            func_symbol->parameters.push_back(global_symbols->define_parameter("size", i32_type, 0));
+
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+        }
+
+        // void* malloc(i32 size) - heap allocation
+        {
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+
+            auto func_symbol = global_symbols->define_function("malloc", void_ptr_type);
+            func_symbol->is_intrinsic = true;
+            global_symbols->push_scope(func_symbol);
+            func_symbol->parameters.push_back(global_symbols->define_parameter("size", i32_type, 0));
+
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+        }
+
+        // void free(void* ptr) - heap deallocation
+        {
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+
+            auto func_symbol = global_symbols->define_function("free", void_type);
+            func_symbol->is_intrinsic = true;
+            global_symbols->push_scope(func_symbol);
+            func_symbol->parameters.push_back(global_symbols->define_parameter("ptr", void_ptr_type, 0));
+
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+        }
+
+        // void* memcpy(void* dest, void* src, i32 size) - memory copy
+        {
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+
+            auto func_symbol = global_symbols->define_function("memcpy", void_ptr_type);
+            func_symbol->is_intrinsic = true;
+            global_symbols->push_scope(func_symbol);
+            func_symbol->parameters.push_back(global_symbols->define_parameter("dest", void_ptr_type, 0));
+            func_symbol->parameters.push_back(global_symbols->define_parameter("src", void_ptr_type, 1));
+            func_symbol->parameters.push_back(global_symbols->define_parameter("size", i32_type, 2));
+
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+        }
+
+        // void* memset(void* dest, i32 value, i32 size) - memory set
+        {
+            global_symbols->push_scope(global_symbols->get_global_namespace());
+
+            auto func_symbol = global_symbols->define_function("memset", void_ptr_type);
+            func_symbol->is_intrinsic = true;
+            global_symbols->push_scope(func_symbol);
+            func_symbol->parameters.push_back(global_symbols->define_parameter("dest", void_ptr_type, 0));
+            func_symbol->parameters.push_back(global_symbols->define_parameter("value", i32_type, 1));
+            func_symbol->parameters.push_back(global_symbols->define_parameter("size", i32_type, 2));
 
             global_symbols->push_scope(global_symbols->get_global_namespace());
         }

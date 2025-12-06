@@ -246,7 +246,7 @@ namespace Fern
 
     enum class AccessModifierKind
     {
-        Invalid = (int)ModifierKindFlags::Invalid,
+        None = (int)ModifierKindFlags::None,
         Public = (int)ModifierKindFlags::Public,
         Private = (int)ModifierKindFlags::Private,
         Protected = (int)ModifierKindFlags::Protected,
@@ -340,7 +340,7 @@ namespace Fern
         else if (has_flag(flags, ModifierKindFlags::Protected))
             return AccessModifierKind::Protected;
         else
-            return AccessModifierKind::Invalid;
+            return AccessModifierKind::None;
     }
 
     constexpr inline std::string_view to_string(TokenKind kind)

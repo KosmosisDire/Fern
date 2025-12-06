@@ -57,7 +57,15 @@ namespace Fern
         static constexpr ConversionKind IMP = ConversionKind::ImplicitNumeric;
         static constexpr ConversionKind EXP = ConversionKind::ExplicitNumeric;
 
-        // Conversion matrix using LiteralKind as indices
+        // Matrix indices (LiteralKind values are non-sequential from TokenKind)
+        static constexpr int VOID_IDX = 0;
+        static constexpr int BOOL_IDX = 1;
+        static constexpr int CHAR_IDX = 2;
+        static constexpr int I32_IDX = 3;
+        static constexpr int F32_IDX = 4;
+        static constexpr int STRING_IDX = 5;
+
+        // Conversion matrix using normalized indices
         // Rows = source type, Columns = target type
         static constexpr ConversionKind conversionMatrix[6][6] = {
             // Converting FROM (row) TO (column):
@@ -69,6 +77,21 @@ namespace Fern
             /*  f32 */   {NOC, EXP,  EXP,  EXP,  IDN,  NOC},
             /*string */  {NOC, NOC,  NOC,  NOC,  NOC,  IDN},
         };
+
+        // Convert LiteralKind to matrix index
+        static constexpr int to_matrix_index(LiteralKind kind)
+        {
+            switch (kind)
+            {
+            case LiteralKind::Void:   return VOID_IDX;
+            case LiteralKind::Bool:   return BOOL_IDX;
+            case LiteralKind::Char:   return CHAR_IDX;
+            case LiteralKind::I32:    return I32_IDX;
+            case LiteralKind::F32:    return F32_IDX;
+            case LiteralKind::String: return STRING_IDX;
+            default:                  return -1;  // Invalid/Null
+            }
+        }
 
     public:
         /**
@@ -97,8 +120,14 @@ namespace Fern
          */
         static ConversionKind classify_conversion(LiteralKind source, LiteralKind target)
         {
-            // Direct indexing using the enum values
-            return conversionMatrix[(uint32_t)source][(uint32_t)target];
+            int sourceIdx = to_matrix_index(source);
+            int targetIdx = to_matrix_index(target);
+
+            // Return NoConversion for invalid/null types
+            if (sourceIdx < 0 || targetIdx < 0)
+                return ConversionKind::NoConversion;
+
+            return conversionMatrix[sourceIdx][targetIdx];
         }
 
         /**
@@ -151,6 +180,11 @@ namespace Fern
                     sourcePointer->pointee->get_name() == targetPointer->pointee->get_name())
                 {
                     return ConversionKind::Identity;
+                }
+                // void* is implicitly convertible to/from any pointer type (like C)
+                if (sourcePointer->pointee->is_void() || targetPointer->pointee->is_void())
+                {
+                    return ConversionKind::ImplicitReference;
                 }
                 // Allow explicit casts between different pointer types
                 // Pointers are inherently unsafe, so allow conversions with explicit cast

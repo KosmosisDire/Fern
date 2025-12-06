@@ -48,8 +48,13 @@ namespace Fern::HLIR
         ConstString,
 
         // Memory
-        Alloc,
-        AllocBytes,
+        StackAlloc,       // Stack allocation of typed value
+        StackAllocBytes,  // Stack allocation of dynamic byte count
+        HeapAlloc,        // Heap allocation of typed value
+        HeapAllocBytes,   // Heap allocation of dynamic byte count
+        HeapFree,         // Heap deallocation (free)
+        MemCpy,         // Memory copy (llvm.memcpy)
+        MemSet,         // Memory set (llvm.memset)
         Load,
         Store,
         FieldAddr,
@@ -176,29 +181,29 @@ namespace Fern::HLIR
 
 #pragma region Memory Inst
 
-    struct AllocInst : Instruction
+    // Stack allocation of a typed value (lowered to alloca)
+    struct StackAllocInst : Instruction
     {
         TypePtr alloc_type;
-        bool on_stack = false;
         bool escapes = true;            // Pessimistic default
         std::set<Function *> escape_to; // Functions it escapes to
 
-        AllocInst(Value *result, TypePtr type)
+        StackAllocInst(Value *result, TypePtr type)
         {
-            op = Opcode::Alloc;
+            op = Opcode::StackAlloc;
             this->result = result;
             this->alloc_type = type;
         }
     };
 
-    struct AllocBytesInst : Instruction
+    // Stack allocation of dynamic byte count (lowered to alloca with size)
+    struct StackAllocBytesInst : Instruction
     {
         Value *size;
-        bool on_stack = false;
 
-        AllocBytesInst(Value *result, Value *size_val)
+        StackAllocBytesInst(Value *result, Value *size_val)
         {
-            op = Opcode::AllocBytes;
+            op = Opcode::StackAllocBytes;
             this->result = result;
             this->size = size_val;
         }
@@ -254,6 +259,80 @@ namespace Fern::HLIR
             this->result = result;
             this->array = arr;
             this->index = idx;
+        }
+    };
+
+    // Heap allocation of a typed value (lowered to malloc with computed size)
+    struct HeapAllocInst : Instruction
+    {
+        TypePtr alloc_type;
+
+        HeapAllocInst(Value *result, TypePtr type)
+        {
+            op = Opcode::HeapAlloc;
+            this->result = result;
+            this->alloc_type = type;
+        }
+    };
+
+    // Heap allocation of dynamic byte count (lowered to malloc call)
+    struct HeapAllocBytesInst : Instruction
+    {
+        Value *size;  // Size in bytes
+
+        HeapAllocBytesInst(Value *result, Value *size_val)
+        {
+            op = Opcode::HeapAllocBytes;
+            this->result = result;
+            this->size = size_val;
+        }
+    };
+
+    // Heap deallocation (lowered to free call)
+    struct HeapFreeInst : Instruction
+    {
+        Value *ptr;
+
+        HeapFreeInst(Value *ptr_val)
+        {
+            op = Opcode::HeapFree;
+            this->ptr = ptr_val;
+        }
+    };
+
+    // Memory copy (lowered to llvm.memcpy intrinsic)
+    struct MemCpyInst : Instruction
+    {
+        Value *dest;
+        Value *src;
+        Value *size;
+        bool is_volatile = false;
+
+        MemCpyInst(Value *dest_val, Value *src_val, Value *size_val, bool volatile_flag = false)
+        {
+            op = Opcode::MemCpy;
+            this->dest = dest_val;
+            this->src = src_val;
+            this->size = size_val;
+            this->is_volatile = volatile_flag;
+        }
+    };
+
+    // Memory set (lowered to llvm.memset intrinsic)
+    struct MemSetInst : Instruction
+    {
+        Value *dest;
+        Value *value;  // Byte value to set (i8)
+        Value *size;
+        bool is_volatile = false;
+
+        MemSetInst(Value *dest_val, Value *byte_val, Value *size_val, bool volatile_flag = false)
+        {
+            op = Opcode::MemSet;
+            this->dest = dest_val;
+            this->value = byte_val;
+            this->size = size_val;
+            this->is_volatile = volatile_flag;
         }
     };
 
@@ -745,22 +824,18 @@ namespace Fern::HLIR
                 ss << "const.null " << type_to_string(cn->null_type);
                 break;
             }
-            case Opcode::Alloc:
+            case Opcode::StackAlloc:
             {
-                auto *alloc = static_cast<const AllocInst *>(inst);
-                ss << "alloc " << type_to_string(alloc->alloc_type);
-                if (alloc->on_stack)
-                    ss << " [stack]";
+                auto *alloc = static_cast<const StackAllocInst *>(inst);
+                ss << "stack.alloc " << type_to_string(alloc->alloc_type);
                 if (!alloc->escapes)
                     ss << " [no-escape]";
                 break;
             }
-            case Opcode::AllocBytes:
+            case Opcode::StackAllocBytes:
             {
-                auto *alloc = static_cast<const AllocBytesInst *>(inst);
-                ss << "alloc.bytes " << value_ref(alloc->size);
-                if (alloc->on_stack)
-                    ss << " [stack]";
+                auto *alloc = static_cast<const StackAllocBytesInst *>(inst);
+                ss << "stack.alloc.bytes " << value_ref(alloc->size);
                 break;
             }
             case Opcode::Load:
@@ -785,6 +860,38 @@ namespace Fern::HLIR
             {
                 auto *elem = static_cast<const ElementAddrInst *>(inst);
                 ss << "elementaddr " << value_ref(elem->array) << ", " << value_ref(elem->index);
+                break;
+            }
+            case Opcode::HeapAlloc:
+            {
+                auto *alloc = static_cast<const HeapAllocInst *>(inst);
+                ss << "heap.alloc " << type_to_string(alloc->alloc_type);
+                break;
+            }
+            case Opcode::HeapAllocBytes:
+            {
+                auto *alloc = static_cast<const HeapAllocBytesInst *>(inst);
+                ss << "heap.alloc.bytes " << value_ref(alloc->size);
+                break;
+            }
+            case Opcode::HeapFree:
+            {
+                auto *free_inst = static_cast<const HeapFreeInst *>(inst);
+                ss << "heap.free " << value_ref(free_inst->ptr);
+                break;
+            }
+            case Opcode::MemCpy:
+            {
+                auto *memcpy = static_cast<const MemCpyInst *>(inst);
+                ss << "memcpy " << value_ref(memcpy->dest) << ", " << value_ref(memcpy->src) << ", " << value_ref(memcpy->size);
+                if (memcpy->is_volatile) ss << " [volatile]";
+                break;
+            }
+            case Opcode::MemSet:
+            {
+                auto *memset = static_cast<const MemSetInst *>(inst);
+                ss << "memset " << value_ref(memset->dest) << ", " << value_ref(memset->value) << ", " << value_ref(memset->size);
+                if (memset->is_volatile) ss << " [volatile]";
                 break;
             }
             case Opcode::Add:

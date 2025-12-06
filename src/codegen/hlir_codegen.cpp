@@ -107,11 +107,20 @@ namespace Fern
         case HLIR::Opcode::ConstString:
             gen_const_string(CGF, static_cast<HLIR::ConstStringInst*>(inst));
             break;
-        case HLIR::Opcode::Alloc:
-            gen_alloc(CGF, static_cast<HLIR::AllocInst*>(inst));
+        case HLIR::Opcode::StackAlloc:
+            gen_stack_alloc(CGF, static_cast<HLIR::StackAllocInst*>(inst));
             break;
-        case HLIR::Opcode::AllocBytes:
-            gen_alloc_bytes(CGF, static_cast<HLIR::AllocBytesInst*>(inst));
+        case HLIR::Opcode::StackAllocBytes:
+            gen_stack_alloc_bytes(CGF, static_cast<HLIR::StackAllocBytesInst*>(inst));
+            break;
+        case HLIR::Opcode::HeapAlloc:
+            gen_heap_alloc(CGF, static_cast<HLIR::HeapAllocInst*>(inst));
+            break;
+        case HLIR::Opcode::HeapAllocBytes:
+            gen_heap_alloc_bytes(CGF, static_cast<HLIR::HeapAllocBytesInst*>(inst));
+            break;
+        case HLIR::Opcode::HeapFree:
+            gen_heap_free(CGF, static_cast<HLIR::HeapFreeInst*>(inst));
             break;
         case HLIR::Opcode::Load:
             gen_load(CGF, static_cast<HLIR::LoadInst*>(inst));
@@ -124,6 +133,12 @@ namespace Fern
             break;
         case HLIR::Opcode::ElementAddr:
             gen_element_addr(CGF, static_cast<HLIR::ElementAddrInst*>(inst));
+            break;
+        case HLIR::Opcode::MemCpy:
+            gen_memcpy(CGF, static_cast<HLIR::MemCpyInst*>(inst));
+            break;
+        case HLIR::Opcode::MemSet:
+            gen_memset(CGF, static_cast<HLIR::MemSetInst*>(inst));
             break;
         case HLIR::Opcode::Add:
         case HLIR::Opcode::Sub:
@@ -214,12 +229,12 @@ namespace Fern
 
     #pragma region Memory Gen
 
-    void HLIRCodeGen::gen_alloc(CodeGenFunction& CGF, HLIR::AllocInst* inst)
+    void HLIRCodeGen::gen_stack_alloc(CodeGenFunction& CGF, HLIR::StackAllocInst* inst)
     {
         auto& ir = CGF.get_ir_builder();
-        
+
         llvm::Type* alloc_type;
-        
+
         // Special handling for array types - allocate the data, not a pointer
         if (auto* array_type = inst->alloc_type->as<ArrayType>())
         {
@@ -231,43 +246,83 @@ namespace Fern
             alloc_type = CGF.get_module().get_or_create_type(inst->alloc_type);
         }
 
-        // Use debug_name if available, otherwise default names
-        std::string name = inst->result->debug_name.empty() ? "alloc" : inst->result->debug_name;
-
-        llvm::Value* ptr;
-        if (inst->on_stack)
-        {
-            ptr = ir.create_alloca(alloc_type, name);
-        }
-        else
-        {
-            ptr = ir.create_malloc(alloc_type, name);
-        }
-
+        std::string name = inst->result->debug_name.empty() ? "stack_alloc" : inst->result->debug_name;
+        llvm::Value* ptr = ir.create_alloca(alloc_type, name);
         CGF.map_value(inst->result, ptr);
     }
 
-    void HLIRCodeGen::gen_alloc_bytes(CodeGenFunction& CGF, HLIR::AllocBytesInst* inst)
+    void HLIRCodeGen::gen_stack_alloc_bytes(CodeGenFunction& CGF, HLIR::StackAllocBytesInst* inst)
     {
         auto& ir = CGF.get_ir_builder();
         llvm::Value* size_val = CGF.get_value(inst->size);
 
-        std::string name = inst->result->debug_name.empty() ? "bytes" : inst->result->debug_name;
-
+        std::string name = inst->result->debug_name.empty() ? "stack_bytes" : inst->result->debug_name;
         llvm::Type* i8_type = llvm::Type::getInt8Ty(context);
+        llvm::Value* ptr = ir.get_builder().CreateAlloca(i8_type, size_val, name);
+        CGF.map_value(inst->result, ptr);
+    }
 
-        llvm::Value* ptr;
-        if (inst->on_stack)
+    void HLIRCodeGen::gen_heap_alloc(CodeGenFunction& CGF, HLIR::HeapAllocInst* inst)
+    {
+        auto& ir = CGF.get_ir_builder();
+
+        llvm::Type* alloc_type;
+
+        // Special handling for array types
+        if (auto* array_type = inst->alloc_type->as<ArrayType>())
         {
-            // Stack allocation: alloca i8, <size>
-            ptr = ir.get_builder().CreateAlloca(i8_type, size_val, name);
+            llvm::Type* elem_type = CGF.get_module().get_or_create_type(array_type->element);
+            alloc_type = llvm::ArrayType::get(elem_type, array_type->size);
         }
         else
         {
-            throw std::runtime_error("Heap allocation of arbitrary bytes not implemented yet");
+            alloc_type = CGF.get_module().get_or_create_type(inst->alloc_type);
         }
 
+        std::string name = inst->result->debug_name.empty() ? "heap_alloc" : inst->result->debug_name;
+        llvm::Value* ptr = ir.create_malloc(alloc_type, name);
         CGF.map_value(inst->result, ptr);
+    }
+
+    void HLIRCodeGen::gen_heap_alloc_bytes(CodeGenFunction& CGF, HLIR::HeapAllocBytesInst* inst)
+    {
+        auto& ir = CGF.get_ir_builder();
+        llvm::Value* size_val = CGF.get_value(inst->size);
+
+        std::string name = inst->result->debug_name.empty() ? "heap_bytes" : inst->result->debug_name;
+        llvm::Value* ptr = ir.create_malloc_bytes(size_val, name);
+        CGF.map_value(inst->result, ptr);
+    }
+
+    void HLIRCodeGen::gen_heap_free(CodeGenFunction& CGF, HLIR::HeapFreeInst* inst)
+    {
+        auto& ir = CGF.get_ir_builder();
+        llvm::Value* ptr_val = CGF.get_value(inst->ptr);
+
+        // Call free
+        ir.create_free(ptr_val);
+    }
+
+    void HLIRCodeGen::gen_memcpy(CodeGenFunction& CGF, HLIR::MemCpyInst* inst)
+    {
+        auto& ir = CGF.get_ir_builder();
+        llvm::Value* dest = CGF.get_value(inst->dest);
+        llvm::Value* src = CGF.get_value(inst->src);
+        llvm::Value* size = CGF.get_value(inst->size);
+
+        // Call llvm.memcpy intrinsic
+        ir.create_memcpy(dest, src, size, inst->is_volatile);
+    }
+
+    void HLIRCodeGen::gen_memset(CodeGenFunction& CGF, HLIR::MemSetInst* inst)
+    {
+        auto& ir = CGF.get_ir_builder();
+        llvm::Value* dest = CGF.get_value(inst->dest);
+        llvm::Value* value = CGF.get_value(inst->value);
+        llvm::Value* size = CGF.get_value(inst->size);
+
+        // Call llvm.memset intrinsic
+        ir.create_memset(dest, value, size, inst->is_volatile);
     }
 
     void HLIRCodeGen::gen_load(CodeGenFunction& CGF, HLIR::LoadInst* inst)
@@ -437,7 +492,15 @@ namespace Fern
         {
             // Direct pointer arithmetic (e.g., char* + 5)
             // The element type is just the pointee type itself
-            elem_type = CGF.get_module().get_or_create_type(hlir_type);
+            // Special case: void* is treated as i8* for pointer arithmetic (like C)
+            if (hlir_type->is_void())
+            {
+                elem_type = llvm::Type::getInt8Ty(context);
+            }
+            else
+            {
+                elem_type = CGF.get_module().get_or_create_type(hlir_type);
+            }
         }
 
         if (!elem_type)

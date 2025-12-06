@@ -62,8 +62,13 @@ namespace Fern
         void gen_const_string(CodeGenFunction& CGF, HLIR::ConstStringInst* inst);
 
         // === Memory Instructions ===
-        void gen_alloc(CodeGenFunction& CGF, HLIR::AllocInst* inst);
-        void gen_alloc_bytes(CodeGenFunction& CGF, HLIR::AllocBytesInst* inst);
+        void gen_stack_alloc(CodeGenFunction& CGF, HLIR::StackAllocInst* inst);
+        void gen_stack_alloc_bytes(CodeGenFunction& CGF, HLIR::StackAllocBytesInst* inst);
+        void gen_heap_alloc(CodeGenFunction& CGF, HLIR::HeapAllocInst* inst);
+        void gen_heap_alloc_bytes(CodeGenFunction& CGF, HLIR::HeapAllocBytesInst* inst);
+        void gen_heap_free(CodeGenFunction& CGF, HLIR::HeapFreeInst* inst);
+        void gen_memcpy(CodeGenFunction& CGF, HLIR::MemCpyInst* inst);
+        void gen_memset(CodeGenFunction& CGF, HLIR::MemSetInst* inst);
         void gen_load(CodeGenFunction& CGF, HLIR::LoadInst* inst);
         void gen_store(CodeGenFunction& CGF, HLIR::StoreInst* inst);
         void gen_field_addr(CodeGenFunction& CGF, HLIR::FieldAddrInst* inst);

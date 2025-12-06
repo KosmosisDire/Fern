@@ -46,7 +46,7 @@ void BoundToHLIR::visit(BoundLiteralExpression* node) {
 
         if (type_system->is_string_type(node->type)) {
             // Allocate temp String struct, initialize fields, and load the value
-            auto string_addr = builder.alloc(node->type, true);
+            auto string_addr = builder.stack_alloc(node->type);
             auto data_ptr = builder.const_string(str_val, type_system->get_pointer(type_system->get_primitive("char")));
             emit_string_init(string_addr, data_ptr, str_val.length());
             result = builder.load(string_addr, node->type);
@@ -99,7 +99,30 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
         return;
     }
 
-    auto value = builder.load(var_addr, node->type, node->symbol->name);
+    // TODO: Clean up arrays into a runtime type
+    // For arrays (value types), handle based on whether it's a parameter or local variable
+    if (node->type->is<ArrayType>()) {
+        // Array parameters store a pointer to the array data - need to load it
+        // Local array variables ARE the array storage - return address directly
+        if (node->symbol->is<ParameterSymbol>()) {
+            // Parameter: var_addr holds a pointer, load it
+            auto ptr_type = type_system->get_pointer(node->type->as<ArrayType>()->element);
+            auto value = builder.load(var_addr, ptr_type, node->symbol->name);
+            expression_values[node] = value;
+        } else {
+            // Local variable: var_addr IS the array storage
+            expression_values[node] = var_addr;
+        }
+        return;
+    }
+
+    // For reference types, the variable stores a pointer, so load as pointer type
+    TypePtr load_type = node->type;
+    if (node->type->is_reference_type()) {
+        load_type = type_system->get_pointer(node->type);
+    }
+
+    auto value = builder.load(var_addr, load_type, node->symbol->name);
     expression_values[node] = value;
 }
 
@@ -210,8 +233,18 @@ void BoundToHLIR::visit(BoundAssignmentExpression* node) {
         final_value = builder.binary(opcode, current_value, rhs_value);
     }
 
-    // Store result
-    builder.store(final_value, target_addr);
+    // Store result - use memcpy for arrays (value semantics)
+    if (auto array_type = node->target->type->as<ArrayType>()) {
+        if (array_type->size > 0) {
+            size_t byte_size = array_type->element->get_size() * array_type->size;
+            auto size_val = builder.const_int(byte_size, type_system->get_i32());
+            builder.memcpy(target_addr, final_value, size_val);
+        } else {
+            builder.store(final_value, target_addr);
+        }
+    } else {
+        builder.store(final_value, target_addr);
+    }
     expression_values[node] = final_value;
 }
 
@@ -257,19 +290,70 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
     // if it is an intrinsic function, handle it specially
     if (node->method->is_intrinsic)
     {
-        if (node->method->name == "alloc")
+        if (node->method->name == "alloca")
         {
             if (args.size() != 1) {
-                error("Intrinsic 'alloc' expects 1 argument", node->location);
+                error("Intrinsic 'alloca' expects 1 argument", node->location);
                 expression_values[node] = nullptr;
                 return;
             }
             auto size_arg = args[0];
-            auto allocated = builder.alloc_bytes(size_arg, true);
+            auto allocated = builder.stack_alloc_bytes(size_arg);
             expression_values[node] = allocated;
             return;
         }
 
+        if (node->method->name == "malloc")
+        {
+            if (args.size() != 1) {
+                error("Intrinsic 'malloc' expects 1 argument", node->location);
+                expression_values[node] = nullptr;
+                return;
+            }
+            auto size_arg = args[0];
+            auto allocated = builder.heap_alloc_bytes(size_arg);
+            expression_values[node] = allocated;
+            return;
+        }
+
+        if (node->method->name == "free")
+        {
+            if (args.size() != 1) {
+                error("Intrinsic 'free' expects 1 argument", node->location);
+                expression_values[node] = nullptr;
+                return;
+            }
+            builder.heap_free(args[0]);
+            expression_values[node] = nullptr;  // free returns void
+            return;
+        }
+
+        if (node->method->name == "memcpy")
+        {
+            if (args.size() != 3) {
+                error("Intrinsic 'memcpy' expects 3 arguments", node->location);
+                expression_values[node] = nullptr;
+                return;
+            }
+            builder.memcpy(args[0], args[1], args[2]);
+            expression_values[node] = args[0];  // memcpy returns dest
+            return;
+        }
+
+        if (node->method->name == "memset")
+        {
+            if (args.size() != 3) {
+                error("Intrinsic 'memset' expects 3 arguments", node->location);
+                expression_values[node] = nullptr;
+                return;
+            }
+            builder.memset(args[0], args[1], args[2]);
+            expression_values[node] = args[0];  // memset returns dest
+            return;
+        }
+
+        error("Unknown intrinsic: " + node->method->name, node->location);
+        expression_values[node] = nullptr;
         return;
     }
 
@@ -311,7 +395,7 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
                             node->object->type->is_value_type();
         if (is_value_type) {
             // Materialize into temporary storage
-            auto temp = builder.alloc(node->object->type, /*stack=*/true);
+            auto temp = builder.stack_alloc(node->object->type);
             builder.store(obj_val, temp);
             obj_addr = temp;
         } else {
@@ -320,11 +404,12 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
         }
     } else {
         // We have the address - for reference types, load the pointer
-        bool is_value_type = node->object->type->as<NamedType>() && 
+        bool is_value_type = node->object->type->as<NamedType>() &&
                             node->object->type->is_value_type();
         if (!is_value_type) {
-            // Load the pointer for reference types
-            obj_addr = builder.load(obj_addr, node->object->type);
+            // Load the pointer for reference types (stored as T*, not T)
+            auto ptr_type = type_system->get_pointer(node->object->type);
+            obj_addr = builder.load(obj_addr, ptr_type);
         }
     }
 
@@ -403,9 +488,14 @@ void BoundToHLIR::visit(BoundNewExpression* node) {
     }
 
     bool is_value_type = node->type->as<NamedType>() && node->type->is_value_type();
-    
-    // Allocate storage
-    auto storage = builder.alloc(node->type, /*stack=*/is_value_type);
+
+    // Allocate storage: stack for value types, heap for reference types
+    HLIR::Value* storage;
+    if (is_value_type) {
+        storage = builder.stack_alloc(node->type);
+    } else {
+        storage = builder.heap_alloc(node->type);
+    }
     
     // Call constructor if present
     if (node->constructor) {
@@ -437,7 +527,7 @@ void BoundToHLIR::visit(BoundNewExpression* node) {
 }
 
 void BoundToHLIR::visit(BoundArrayCreationExpression* node) {
-    auto alloc_result = builder.alloc(node->type, /*stack=*/true);
+    auto alloc_result = builder.stack_alloc(node->type);
 
     // Initialize elements
     if (!node->initializers.empty()) {
@@ -701,23 +791,26 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node) {
     if (!var_sym) return;
 
     if (var_sym->type->is_reference_type()) {
-        auto ref_ptr = builder.alloc_nested(var_sym->type, true, node->name);
+        // Reference types: variable stores a pointer to heap-allocated object
+        // alloc_nested creates storage for a pointer (T**)
+        auto ref_ptr = builder.stack_alloc_nested(var_sym->type, node->name);
         variable_addresses[node->symbol] = ref_ptr;
 
         if (node->initializer) {
             auto init_value = evaluate_expression(node->initializer);
-            if (init_value && init_value->type->as<PointerType>()) {
+            if (init_value) {
+                // For ref types, new expression returns a pointer - store it directly
                 builder.store(init_value, ref_ptr);
-            } else {
-                throw std::runtime_error("Reference variable must be initialized to a pointer");
             }
         } else {
-            auto null_ptr = builder.const_null(var_sym->type);
+            // Initialize to null pointer
+            auto ptr_type = type_system->get_pointer(var_sym->type);
+            auto null_ptr = builder.const_null(ptr_type);
             builder.store(null_ptr, ref_ptr);
         }
     } else {
         // Value type
-        auto var_addr = builder.alloc(var_sym->type, true, node->name);
+        auto var_addr = builder.stack_alloc(var_sym->type, node->name);
         variable_addresses[node->symbol] = var_addr;
 
         if (node->initializer) {
@@ -738,7 +831,18 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node) {
             // Default path: evaluate initializer and store
             auto init_value = evaluate_expression(node->initializer);
             if (init_value) {
-                builder.store(init_value, var_addr);
+                // For arrays, use memcpy to copy contents (value semantics)
+                if (auto array_type = var_sym->type->as<ArrayType>()) {
+                    if (array_type->size > 0) {
+                        size_t byte_size = array_type->element->get_size() * array_type->size;
+                        auto size_val = builder.const_int(byte_size, type_system->get_i32());
+                        builder.memcpy(var_addr, init_value, size_val);
+                    } else {
+                        builder.store(init_value, var_addr);
+                    }
+                } else {
+                    builder.store(init_value, var_addr);
+                }
             }
         } else {
             auto default_value = builder.const_null(var_sym->type);
@@ -754,7 +858,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     auto func = module->find_function(func_sym);
     if (!func) return;
 
-    func->is_external = func_sym->is_extern;
+    func->is_external = func_sym->is_extern();
 
     // Clear state
     variable_addresses.clear();
@@ -764,7 +868,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     bool is_member_function = func_sym->parent && func_sym->parent->is<TypeSymbol>();
 
     // Add 'this' parameter for member functions
-    if (is_member_function && !func_sym->isStatic) {
+    if (is_member_function && !func_sym->is_static()) {
         auto parent_type = func_sym->parent->as<TypeSymbol>();
         auto this_ptr_type = type_system->get_pointer(parent_type->type);
         auto this_param = func->create_value(this_ptr_type, "this");
@@ -779,7 +883,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     }
 
     // Skip body for external functions
-    if (func_sym->is_extern) {
+    if (func_sym->is_extern()) {
         current_function = nullptr;
         return;
     }
@@ -794,7 +898,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     // Allocate stack space for parameters (mem2reg will promote to SSA)
     for (size_t i = 0; i < node->parameters.size(); i++) {
         auto param_sym = node->parameters[i]->symbol->as<ParameterSymbol>();
-        size_t param_idx = is_member_function && !func_sym->isStatic ? i + 1 : i;
+        size_t param_idx = is_member_function && !func_sym->is_static() ? i + 1 : i;
         auto param_value = func->params[param_idx];
 
         // For array parameters (which are really pointers), allocate space for the pointer
@@ -803,7 +907,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
             alloc_type = type_system->get_pointer(array_type->element);
         }
 
-        auto param_addr = builder.alloc(alloc_type, /*stack=*/true, param_sym->name + ".addr");
+        auto param_addr = builder.stack_alloc(alloc_type, param_sym->name + ".addr");
         builder.store(param_value, param_addr);
         variable_addresses[param_sym] = param_addr;
     }
@@ -905,7 +1009,7 @@ HLIR::Value* BoundToHLIR::get_lvalue_address(BoundExpression* expr)
             bool is_value_type = member->object->type->as<NamedType>() && 
                                 member->object->type->is_value_type();
             if (is_value_type) {
-                auto temp = builder.alloc(member->object->type, /*stack=*/true);
+                auto temp = builder.stack_alloc(member->object->type);
                 builder.store(obj_val, temp);
                 obj_addr = temp;
             } else {
@@ -913,13 +1017,15 @@ HLIR::Value* BoundToHLIR::get_lvalue_address(BoundExpression* expr)
             }
         } else {
             // For reference types, load the pointer
-            bool is_value_type = member->object->type->as<NamedType>() && 
+            bool is_value_type = member->object->type->as<NamedType>() &&
                                 member->object->type->is_value_type();
             if (!is_value_type) {
-                obj_addr = builder.load(obj_addr, member->object->type);
+                // Load the pointer for reference types (stored as T*, not T)
+                auto ptr_type = type_system->get_pointer(member->object->type);
+                obj_addr = builder.load(obj_addr, ptr_type);
             }
         }
-        
+
         if (!member->member) return nullptr;
         
         size_t field_index = get_field_index(
