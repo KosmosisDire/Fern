@@ -107,7 +107,9 @@ TypePtr TypeSystem::get_primitive(const std::string& name) {
         {"bool", LiteralKind::Bool},
         {"char", LiteralKind::Char},
         {"i32", LiteralKind::I32},
+        {"int", LiteralKind::I32},
         {"f32", LiteralKind::F32},
+        {"float", LiteralKind::F32},
         {"string", LiteralKind::String}
     };
 

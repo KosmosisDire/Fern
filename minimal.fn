@@ -1,28 +1,35 @@
-fn Sum(i32[] arr, i32 length) -> i32
-{
-    var total = 0
-    for (var i = 0; i < length; i = i + 1)
-    {
-        total = total + arr[i]
-    }
-    return total
-}
 
 fn Main
 {
-    var array1 = [1, 2, 3, 4, 5]
-    var array2 = array1
-    array2[0] = 10
+    int x = 0
+    while (true)
+    {
+        if (x == 2 || x == 5)
+        {
+            Print("Skipping iteration")
+            x = x + 1
+            continue
+        }
 
-    var sum1 = Sum(array1, 5)
-    var sum2 = Sum(array2, 5)
+        if (x == 10)
+        {
+            break
+        }
+        x = x + 1
+    }
 
-    var str1 = IntToString(sum1)
-    var str2 = IntToString(sum2)
+    -- works
+    var s = "Final value of x: ";
+    s = s.Concat(IntToString(x))
+    Print(s)
 
-    Print(str1)
-    Print(str2)
+    -- doesn't work
+    var s1 = "Final value of x: ".Concat(IntToString(x))
+    Print(s1)
 
-    return (f32)(sum1 + sum2)
+    -- doesn't work
+    Print("Final value of x: ".Concat(IntToString(x)))
+
+    return 0.0
 }
   

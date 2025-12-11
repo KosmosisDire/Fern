@@ -260,7 +260,19 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
             // Fallback: evaluate as rvalue
             auto this_val = evaluate_expression(member_expr->object);
             if (this_val) {
-                args.push_back(this_val);
+                // For value types, we need to materialize into a temporary
+                // since member functions expect a pointer to 'this'
+                bool is_value_type = member_expr->object->type->as<NamedType>() &&
+                                    member_expr->object->type->is_value_type();
+                if (is_value_type) {
+                    // Materialize into temporary storage
+                    auto temp = builder.stack_alloc(member_expr->object->type);
+                    builder.store(this_val, temp);
+                    args.push_back(temp);
+                } else {
+                    // Reference types - the value is already a pointer
+                    args.push_back(this_val);
+                }
             }
         } else {
             // For value types, pass the address
