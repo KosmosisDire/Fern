@@ -1,0 +1,28 @@
+-- Expected: 10.0
+
+type Value
+{
+    float val
+
+    new(float v)
+    {
+        val = v
+    }
+
+    fn Inc()
+    {
+        val = val + 10.0
+        return true
+    }
+}
+
+fn Main
+{
+    var x = new Value(10.0)
+    if false && x.Inc()
+    {
+        return 0.0
+    }
+
+    return x.val
+}
