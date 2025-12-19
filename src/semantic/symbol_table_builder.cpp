@@ -290,25 +290,10 @@ namespace Fern
         std::string name = node->variable->name->get_name();
         TypePtr type = get_type_from_expr(node->variable->type);
 
-        // Determine if we're in a type (field) or function/block (local)
-        auto current = symbolTable.get_current_scope();
-        if (current && current->kind == SymbolKind::Type)
+        auto symbol = symbolTable.define_variable(name, type);
+        if (!symbol)
         {
-            // Field
-            auto field_symbol = symbolTable.define_field(name, type);
-            if (!field_symbol)
-            {
-                error("Failed to define field '" + name + "'", node->location);
-            }
-        }
-        else
-        {
-            // Local variable
-            auto local_symbol = symbolTable.define_local(name, type);
-            if (!local_symbol)
-            {
-                error("Failed to define local variable '" + name + "'", node->location);
-            }
+            error("Failed to define variable '" + name + "'", node->location);
         }
 
         // Visit children

@@ -27,6 +27,9 @@ namespace Fern
         void visit(ContinueStmtSyntax* node) override;
         void visit(LambdaExprSyntax* node) override;
         void visit(PropertyAccessorSyntax* node) override;
+        void visit(TypeDeclSyntax* node) override;
+        void visit(GenericNameSyntax* node) override;
+        void visit(NamespaceDeclSyntax* node) override;
     };
 
 } // namespace Fern

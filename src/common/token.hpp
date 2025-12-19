@@ -499,6 +499,7 @@ namespace Fern
             {"at", TokenKind::At},
             {"by", TokenKind::By},
             {"true", TokenKind::LiteralBool},
-            {"false", TokenKind::LiteralBool}};
+            {"false", TokenKind::LiteralBool},
+            {"null", TokenKind::Null}};
 
 } // namespace Fern

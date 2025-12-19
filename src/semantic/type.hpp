@@ -6,8 +6,10 @@
 #include <variant>
 #include "common/token_kind.hpp"
 
+
 namespace Fern
 {
+    class TypeSystem;
     struct Type;
     struct TypeSymbol;
     using TypePtr = std::shared_ptr<Type>;
@@ -49,9 +51,13 @@ namespace Fern
     struct UnresolvedType {
         uint32_t id;  // For type resolution
     };
-    
+
+    struct MetaType {
+        TypePtr inner;  // The type this meta-type represents
+    };
+
     #pragma region Type
-    
+
     struct Type {
         std::variant<
             PrimitiveType,
@@ -61,7 +67,8 @@ namespace Fern
             NamedType,
             GenericType,
             TypeParameter,
-            UnresolvedType
+            UnresolvedType,
+            MetaType
         > kind;
         
         // Helper methods
@@ -82,6 +89,7 @@ namespace Fern
         std::string get_name() const;
         int get_size() const;
         int get_alignment() const;
+        TypePtr lower_references_to_ptrs(TypeSystem* type_system) const;
     };
 
 } // namespace Fern

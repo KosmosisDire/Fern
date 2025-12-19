@@ -112,6 +112,14 @@ namespace Fern::HLIR
             return heap_alloc(type_system->get_pointer(type), name);
         }
 
+        Value* smart_alloc(TypePtr type, const std::string& name = "") {
+            if (type->is_reference_type()) {
+                return heap_alloc(type, name);
+            } else {
+                return stack_alloc(type, name);
+            }
+        }
+
         Value* load(Value* addr, TypePtr type, const std::string& name = "") {
             auto result = current_func->create_value(type, name);
             auto inst = std::make_unique<LoadInst>(result, addr);
@@ -218,8 +226,8 @@ namespace Fern::HLIR
 
         Value* call(Function* func, std::vector<Value*> args, const std::string& name = "") {
             Value* result = nullptr;
-            if (func->return_type() && !func->return_type()->is_void()) {
-                result = current_func->create_value(func->return_type(), name);
+            if (func->return_type && !func->return_type->is_void()) {
+                result = current_func->create_value(func->return_type, name);
             }
             auto inst = std::make_unique<CallInst>(result, func, args);
             if (result) result->def = inst.get();
@@ -253,12 +261,5 @@ namespace Fern::HLIR
             f->predecessors.push_back(current_block);
         }
         
-        Value* phi(TypePtr type) {
-            auto result = current_func->create_value(type);
-            auto inst = std::make_unique<PhiInst>(result);
-            result->def = inst.get();
-            current_block->add_inst(std::move(inst));
-            return result;
-        }
     };
 }

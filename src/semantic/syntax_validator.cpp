@@ -88,11 +88,12 @@ namespace Fern
 
     void SyntaxValidator::visit(PropertyDeclSyntax* node)
     {
-        // For properties, we skip the VariableDeclSyntax validation because:
-        // - Arrow properties (var X => expr) have no initializer on the variable but have a getter
-        // - Properties with get/set blocks also don't need initializers
-        // We still need to validate the accessors themselves
+        // Properties are not yet supported
+        std::string name = (node->variable && node->variable->variable && node->variable->variable->name)
+            ? node->variable->variable->name->get_name() : "<unknown>";
+        error("Properties are not yet supported: '" + name + "'", node->location);
 
+        // Still visit accessors to catch other errors
         if (node->getter)
             node->getter->accept(this);
         if (node->setter)
@@ -196,6 +197,9 @@ namespace Fern
 
     void SyntaxValidator::visit(LambdaExprSyntax* node)
     {
+        // Lambdas are not yet supported
+        error("Lambda expressions are not yet supported", node->location);
+
         // Check for duplicate parameter names
         std::unordered_set<std::string> paramNames;
         for (auto param : node->parameters)
@@ -240,6 +244,63 @@ namespace Fern
         DefaultVisitor::visit(node);
 
         inFunction = wasInFunction;
+    }
+
+    void SyntaxValidator::visit(TypeDeclSyntax* node)
+    {
+        std::string name = node->name ? node->name->get_name() : "<unknown>";
+
+        // Check for enums (not yet supported)
+        if (has_flag(node->modifiers, ModifierKindFlags::Enum))
+        {
+            error("Enums are not yet supported: '" + name + "'", node->location);
+        }
+
+        // Check for generics (not yet supported)
+        if (!node->typeParameters.empty())
+        {
+            error("Generic types are not yet supported: '" + name + "'", node->location);
+        }
+
+        // Check for inheritance (not yet supported)
+        if (!node->baseTypes.empty())
+        {
+            error("Type inheritance is not yet supported: '" + name + "'", node->location);
+        }
+
+        // Visit members
+        for (auto member : node->members)
+        {
+            if (member)
+                member->accept(this);
+        }
+    }
+
+    void SyntaxValidator::visit(GenericNameSyntax* node)
+    {
+        // Generic type usage is not yet supported (e.g., List<int>)
+        std::string name = node->identifier ? node->identifier->get_name() : "<unknown>";
+        error("Generic type arguments are not yet supported: '" + name + "<...>'", node->location);
+
+        // Still visit children to catch other errors
+        DefaultVisitor::visit(node);
+    }
+
+    void SyntaxValidator::visit(NamespaceDeclSyntax* node)
+    {
+        // Namespaces are not yet supported
+        std::string name = node->name ? node->name->get_name() : "<unknown>";
+        error("Namespaces are not yet supported: '" + name + "'", node->location);
+
+        // Still visit body to catch other errors
+        if (node->body.has_value())
+        {
+            for (auto stmt : node->body.value())
+            {
+                if (stmt)
+                    stmt->accept(this);
+            }
+        }
     }
 
 } // namespace Fern

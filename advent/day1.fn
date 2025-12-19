@@ -1,0 +1,42 @@
+-- requires stringtools and file runtime modules
+
+fn Main
+{
+    var file = new File("advent/day1.in")
+    if (!file.OpenReadOnly())
+    {
+        PrintLn("Failed to open input file")
+        return -1.0
+    }
+
+    int position = 50
+    int totalZeros = 0
+
+    while (true)
+    {
+        var line = file.ReadLine()
+        var len = line.Length()
+        if (len == 0)
+        {
+            break
+        }
+
+        var dir = line.data[0]
+        var num = StringToInt(line.SubstringRange(1, len))
+
+        if (dir == 'L')
+        {
+            num = - num
+        }
+        
+        position = ((position + num) % 100 + 100) % 100
+
+        if (position == 0)
+        {
+            totalZeros += 1
+        }
+    }
+
+    file.Close()
+    return (f32)(totalZeros)
+}

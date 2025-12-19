@@ -33,9 +33,6 @@ namespace Fern
         std::unordered_map<HLIR::Value*, llvm::Value*> value_map;
         std::unordered_map<HLIR::BasicBlock*, llvm::BasicBlock*> block_map;
 
-        // Pending phi nodes
-        std::vector<std::pair<llvm::PHINode*, HLIR::PhiInst*>> pending_phis;
-
     public:
         CodeGenFunction(CodeGenModule& cgm, LLVMIRBuilder& builder,
                        HLIR::Function* hlir_func, llvm::Function* llvm_func)
@@ -82,18 +79,6 @@ namespace Fern
          * @brief Create all basic blocks for function
          */
         void create_all_blocks();
-
-        // === Phi Management ===
-
-        /**
-         * @brief Register a phi node to be resolved later
-         */
-        void add_pending_phi(llvm::PHINode* llvm_phi, HLIR::PhiInst* hlir_phi);
-
-        /**
-         * @brief Resolve all pending phi nodes
-         */
-        void resolve_pending_phis();
 
         // === Parameter Mapping ===
 

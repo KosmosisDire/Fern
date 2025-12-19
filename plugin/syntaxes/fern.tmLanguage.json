@@ -115,7 +115,7 @@
         },
         {
           "name": "storage.type.primitive.fern",
-          "match": "\\b(i32|i64|u32|u64|f32|f64|bool|string|int|float|double|uint|long|ulong)\\b"
+          "match": "\\b(i32|i64|u32|u64|f32|f64|bool|string|int|float|double|uint|long|ulong|char|ptr|void)\\b"
         },
         {
           "name": "keyword.operator.arrow.fern",

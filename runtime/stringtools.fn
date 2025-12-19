@@ -1,0 +1,232 @@
+extern fn fn_get_input(char* buffer, i32 max_size) -> void
+extern fn fn_print(char* s) -> void
+
+fn CharToString(char c) -> string
+{
+    var strData = (char*)malloc(2)
+    strData[0] = c
+    strData[1] = '\0'
+    return new String(strData, 1)
+}
+
+fn Print(string msg)
+{
+    fn_print(msg.data)
+}
+
+fn PrintLn(string msg)
+{
+    Print(msg)
+    Print("\n")
+}
+
+fn Input(i32 maxLength) -> string
+{
+    var buffer = (char*)malloc(maxLength)
+    fn_get_input(buffer, maxLength)
+    var length = 0
+    while (length < maxLength && buffer[length] != '\0')
+    {
+        length = length + 1
+    }
+    var result = new String(buffer, length)
+    return result
+}
+
+
+fn IntToString(i32 num) -> string
+{
+    var result = new String()
+    result.data = malloc(12)  -- Enough for int32 including sign and null terminator
+    result.length = 0;
+    if num == 0
+    {
+        result.data[0] = '0'  -- '0' ASCII value
+        result.data[1] = '\0'   -- '\0' null terminator
+        result.length = 1
+        return result
+    }
+
+    var isNegative = num < 0
+    if isNegative
+    {
+        num = -num  -- Make positive for digit extraction
+    }
+
+    var index = 0
+    var digit = 0
+
+    -- Extract digits (builds string backwards)
+    while num > 0
+    {
+        digit = num % 10
+        result.data[index] = (char)(digit + 48)  -- Convert digit to ASCII ('0' is 48)
+        index += 1
+        num /= 10
+    }
+
+    -- Add negative sign if needed
+    if isNegative
+    {
+        result.data[index] = (char)45  -- '-' ASCII value
+        index += 1
+    }
+
+    result.data[index] = (char)0  -- Null terminate
+
+    -- Reverse the string in-place
+    var start = 0
+    var end = index - 1
+    var temp = (char)0
+    while start < end
+    {
+        temp = result.data[start]
+        result.data[start] = result.data[end]
+        result.data[end] = temp
+        start += 1
+        end -= 1
+    }
+
+    result.length = index  -- Set length
+    return result
+}
+
+fn FloatToString(f32 num) -> string
+{
+    var result = new String()
+    result.data = malloc(32)  -- Enough for float with precision
+    result.length = 0
+    
+    -- Handle special cases
+    if num != num  -- NaN check
+    {
+        result.data[0] = 'N'
+        result.data[1] = 'a'
+        result.data[2] = 'N'
+        result.data[3] = '\0'
+        result.length = 3
+        return result
+    }
+    
+    var index = 0
+    var isNegative = num < 0.0
+    if isNegative
+    {
+        result.data[index] = '-'
+        index += 1
+        num = -num
+    }
+    
+    -- Extract integer part
+    var intPart = (i32)num
+    var intStr = IntToString(intPart)
+    memcpy(result.data + index, intStr.data, intStr.length)
+    index += intStr.length
+    
+    -- Add decimal point
+    result.data[index] = '.'
+    index += 1
+    
+    -- Extract fractional part (6 digits precision)
+    var fracPart = num - (f32)intPart
+    var precision = 6
+    var i = 0
+    while i < precision
+    {
+        fracPart *= 10.0
+        var digit = (i32)fracPart
+        result.data[index] = (char)(digit + 48)
+        index += 1
+        fracPart -= (f32)digit
+        i += 1
+    }
+    
+    result.data[index] = '\0'
+    result.length = index
+    return result
+}
+
+fn StringToInt(string str) -> i32
+{
+    var result = 0
+    var isNegative = false
+    var startIndex = 0
+
+    if str.length == 0
+    {
+        return 0
+    }
+
+    if str.data[0] == '-'
+    {
+        isNegative = true
+        startIndex = 1
+    }
+
+    for (int i = startIndex; i < str.length; i += 1)
+    {
+        var c = str.data[i]
+        if c < '0' || c > '9'
+        {
+            break
+        }
+        result = result * 10 + (i32)(c - '0')
+    }
+
+    if isNegative
+    {
+        result = -result
+    }
+
+    return result
+}
+
+fn StringToFloat(string str) -> f32
+{
+    var result = 0.0
+    var isNegative = false
+    var startIndex = 0
+    var decimalFound = false
+    var decimalFactor = 0.1
+
+    if str.length == 0
+    {
+        return 0.0
+    }
+
+    if str.data[0] == '-'
+    {
+        isNegative = true
+        startIndex = 1
+    }
+
+    for (int i = startIndex; i < str.length; i += 1)
+    {
+        var c = str.data[i]
+        if c == '.'
+        {
+            decimalFound = true
+            continue
+        }
+        if c < '0' || c > '9'
+        {
+            break
+        }
+        if !decimalFound
+        {
+            result = result * 10.0 + (f32)(c - '0')
+        }
+        else
+        {
+            result = result + (f32)(c - '0') * decimalFactor
+            decimalFactor *= 0.1
+        }
+    }
+
+    if isNegative
+    {
+        result = -result
+    }
+
+    return result
+}

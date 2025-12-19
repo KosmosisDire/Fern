@@ -111,18 +111,10 @@ namespace Fern
         kind = SymbolKind::Variable;
     }
     
-    // FieldSymbol implementation
-    FieldSymbol::FieldSymbol(const std::string& name, TypePtr type)
-        : VariableSymbol(name, type) {}
-    
     // ParameterSymbol implementation
     ParameterSymbol::ParameterSymbol(const std::string& name, TypePtr type, uint32_t idx)
         : VariableSymbol(name, type), index(idx) {}
-    
-    // LocalSymbol implementation
-    LocalSymbol::LocalSymbol(const std::string& name, TypePtr type)
-        : VariableSymbol(name, type) {}
-    
+
     // PropertySymbol implementation
     PropertySymbol::PropertySymbol(const std::string& name, TypePtr type) {
         kind = SymbolKind::Property;

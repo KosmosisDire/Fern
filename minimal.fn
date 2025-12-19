@@ -1,35 +1,52 @@
 
-fn Main
+ref type Test
 {
-    int x = 0
-    while (true)
-    {
-        if (x == 2 || x == 5)
-        {
-            Print("Skipping iteration")
-            x = x + 1
-            continue
-        }
+    i32 value
 
-        if (x == 10)
-        {
-            break
-        }
-        x = x + 1
+    new(i32 v)
+    {
+        value = v
+    }
+}
+
+ref type Array
+{
+    Test* items
+    i32 length
+    i32 capacity
+
+    new(i32 initialCapacity)
+    {
+        capacity = initialCapacity
+        length = 0
+        items = (Test*)malloc(capacity * 8)
     }
 
-    -- works
-    var s = "Final value of x: ";
-    s = s.Concat(IntToString(x))
-    Print(s)
+    fn Get(i32 index) -> Test
+    {
+        if (index < 0 || index >= length)
+        {
+            return new Test(0)
+        }
+        return items[index]
+    }
 
-    -- doesn't work
-    var s1 = "Final value of x: ".Concat(IntToString(x))
-    Print(s1)
+    fn Set(i32 index, Test value)
+    {
+        if (index < 0 || index >= length)
+        {
+            return
+        }
+        items[index] = value
+    }
 
-    -- doesn't work
-    Print("Final value of x: ".Concat(IntToString(x)))
-
-    return 0.0
 }
-  
+
+fn Main
+{
+    var a = new Array(10)
+    a.Set(0, new Test(42))
+    var t = a.Get(0)
+
+    return (f32)t.value
+}

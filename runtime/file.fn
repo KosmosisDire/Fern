@@ -1,9 +1,24 @@
+extern fn fopen(char* filename, char* mode) -> ptr
+extern fn fclose(ptr stream) -> i32
+extern fn fputs(char* str, ptr stream) -> i32
+extern fn fgets(char* str, i32 num, ptr stream) -> char*
+extern fn strlen(char* str) -> i32
+extern fn free(ptr addr) -> void
 
-extern fn fopen(char* filename, char *mode) -> void*
-extern fn fclose(void* stream) -> i32
-extern fn fputs(char* str, void* stream) -> i32
-extern fn fgets(char* str, i32 num, void* stream) -> char*
+fn StringFromCStr(char* cstr) -> string
+{
+    var len = strlen(cstr)
+    var data = (char*)malloc(len + 1)
+    memcpy(data, cstr, len + 1)
+    return new String(data, len)
+}
 
+fn EmptyString() -> string
+{
+    var data = (char*)malloc(1)
+    data[0] = '\0'
+    return new String(data, 0)
+}
 
 type File
 {
@@ -11,102 +26,161 @@ type File
     bool isOpen
     bool canRead
     bool canWrite
-    void* handle
+    ptr handle
 
-    new(char* filename)
+    new(string name)
     {
-        this.filename = new String(filename)
+        this.filename = name
         this.isOpen = false
         this.canRead = false
         this.canWrite = false
+        this.handle = (ptr)0
     }
 
-    fn OpenReadOnly()
+    fn OpenReadOnly() -> bool
     {
         if (isOpen)
         {
-            Print("File already open.\n")
-            return
+            return false
         }
 
-        handle = fopen(filename.data, "r")
+        handle = fopen(filename.data, "r".data)
+        if (handle == (ptr)0)
+        {
+            return false
+        }
         isOpen = true
         canRead = true
         canWrite = false
+        return true
     }
 
-    fn OpenWriteOnly(bool append)
+    fn OpenWriteOnly(bool append) -> bool
     {
         if (isOpen)
         {
-            Print("File already open.\n")
-            return
+            return false
         }
-        
+
         if (append)
         {
-            handle = fopen(filename.data, "a")
+            handle = fopen(filename.data, "a".data)
         }
         else
         {
-            handle = fopen(filename.data, "w")
+            handle = fopen(filename.data, "w".data)
         }
 
+        if (handle == (ptr)0)
+        {
+            return false
+        }
         isOpen = true
         canRead = false
         canWrite = true
+        return true
     }
 
-    fn OpenReadWrite(bool append)
+    fn OpenReadWrite(bool append) -> bool
     {
         if (isOpen)
         {
-            Print("File already open.\n")
-            return
+            return false
         }
 
         if (append)
         {
-            handle = fopen(filename.data, "a+")
+            handle = fopen(filename.data, "a+".data)
         }
         else
         {
-            handle = fopen(filename.data, "w+")
+            handle = fopen(filename.data, "w+".data)
         }
 
+        if (handle == (ptr)0)
+        {
+            return false
+        }
         isOpen = true
         canRead = true
         canWrite = true
+        return true
     }
 
-    fn Write(char* content)
+    fn Write(string content) -> bool
     {
         if (!isOpen || !canWrite)
         {
-            Print("File not open for writing.\n")
-            return
+            return false
         }
 
-        fputs(content, handle)
+        fputs(content.data, handle)
+        return true
     }
 
-    fn Read()
+    fn WriteLine(string content) -> bool
+    {
+        if (!isOpen || !canWrite)
+        {
+            return false
+        }
+
+        fputs(content.data, handle)
+        fputs("\n".data, handle)
+        return true
+    }
+
+    fn ReadAll() -> string
     {
         if (!isOpen || !canRead)
         {
-            Print("File not open for reading.\n")
-            return new String("")
+            return EmptyString()
         }
 
-        var str = new String("")
+        var result = EmptyString()
+        var buffer = (char*)malloc(1024)
 
-        char* buffer = AllocateString(1024)
         while (fgets(buffer, 1024, handle) != (char*)0)
         {
-            str = str.Concat(new String(buffer))
+            var chunk = StringFromCStr(buffer)
+            result = result.Concat(chunk)
         }
-        Free((void*)buffer)
+
+        free((ptr)buffer)
+        return result
+    }
+
+    fn ReadLine() -> string
+    {
+        if (!isOpen || !canRead)
+        {
+            return EmptyString()
+        }
+
+        var buffer = (char*)malloc(1024)
+        var result = fgets(buffer, 1024, handle)
+
+        if (result == (char*)0)
+        {
+            free((ptr)buffer)
+            return EmptyString()
+        }
+
+        -- Remove trailing newline if present
+        var len = strlen(buffer)
+        if (len > 0 && buffer[len - 1] == '\n')
+        {
+            buffer[len - 1] = '\0'
+            len -= 1
+        }
+
+        var str = new String(buffer, len)
         return str
+    }
+
+    fn IsOpen() -> bool
+    {
+        return isOpen
     }
 
     fn Close()
@@ -117,5 +191,9 @@ type File
         }
 
         fclose(handle)
+        isOpen = false
+        canRead = false
+        canWrite = false
+        handle = (ptr)0
     }
 }

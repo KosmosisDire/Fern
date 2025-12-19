@@ -141,8 +141,6 @@ namespace Fern
         void create_br(llvm::BasicBlock* target);
         void create_cond_br(llvm::Value* condition, llvm::BasicBlock* true_block,
                            llvm::BasicBlock* false_block);
-        llvm::PHINode* create_phi(llvm::Type* type, unsigned num_incoming,
-                                  const std::string& name = "");
 
         // === Function Calls ===
         llvm::Value* create_call(llvm::Function* callee,

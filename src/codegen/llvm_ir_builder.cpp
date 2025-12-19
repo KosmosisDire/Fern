@@ -185,7 +185,6 @@ namespace Fern
 
     void LLVMIRBuilder::create_store(llvm::Value* value, llvm::Value* ptr)
     {
-        // Validate pointer argument
         if (!ptr) {
             std::cerr << "ERROR: Null pointer passed to create_store\n";
             return;
@@ -199,15 +198,10 @@ namespace Fern
             return;
         }
 
-        // Validate value argument
         if (!value) {
             std::cerr << "ERROR: Null value passed to create_store\n";
             return;
         }
-
-        // Note: Type validation removed for opaque pointers (LLVM 15+)
-        // Opaque pointers don't have getPointerElementType()
-        // LLVM will validate the store operation internally
 
         builder.CreateStore(value, ptr);
     }
@@ -457,12 +451,6 @@ namespace Fern
                                       llvm::BasicBlock* false_block)
     {
         builder.CreateCondBr(condition, true_block, false_block);
-    }
-
-    llvm::PHINode* LLVMIRBuilder::create_phi(llvm::Type* type, unsigned num_incoming,
-                                            const std::string& name)
-    {
-        return builder.CreatePHI(type, num_incoming, name);
     }
 
     // === Function Calls ===

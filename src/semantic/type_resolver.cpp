@@ -379,7 +379,7 @@ namespace Fern
         // Check symbol type
         if (symbol)
         {
-            if (symbol->is<VariableSymbol>() || symbol->is<ParameterSymbol>() || symbol->is<FieldSymbol>())
+            if (symbol->is<VariableSymbol>())
                 return ValueCategory::LValue;
 
             if (auto prop = symbol->as<PropertySymbol>())
@@ -440,6 +440,19 @@ namespace Fern
         }
         else
         {
+            // Check for null-to-value-type error and give helpful message
+            if (auto* fromPrim = canonicalFrom->as<PrimitiveType>()) {
+                if (fromPrim->kind == LiteralKind::Null) {
+                    if (auto* toNamed = canonicalTo->as<NamedType>()) {
+                        if (toNamed->symbol && !toNamed->symbol->is_ref()) {
+                            report_error(node, "Cannot assign 'null' to value type '" +
+                                               canonicalTo->get_name() + "'");
+                            return false;
+                        }
+                    }
+                }
+            }
+
             report_error(node, context + ": Cannot convert '" + canonicalFrom->get_name() +
                                    "' to '" + canonicalTo->get_name() + "'");
             return false;
@@ -573,6 +586,10 @@ namespace Fern
             // String literals are char* (pointer to null-terminated char array)
             type = typeSystem.get_primitive("string");
             break;
+        case LiteralKind::Null:
+            // Null literal has its own type, convertible to any pointer/reference type
+            type = typeSystem.get_null();
+            break;
         default:
             type = typeSystem.get_unresolved();
             break;
@@ -660,8 +677,23 @@ namespace Fern
                 if (!Conversions::is_implicit_conversion(ltr) &&
                     !Conversions::is_implicit_conversion(rtl))
                 {
-                    report_error(node, "Cannot compare '" + leftType->get_name() +
-                                           "' and '" + rightType->get_name() + "'");
+                    // Check for null comparison with value type and give helpful message
+                    auto* leftPrim = leftType->as<PrimitiveType>();
+                    auto* rightPrim = rightType->as<PrimitiveType>();
+                    auto* leftNamed = leftType->as<NamedType>();
+                    auto* rightNamed = rightType->as<NamedType>();
+
+                    bool leftIsNull = leftPrim && leftPrim->kind == LiteralKind::Null;
+                    bool rightIsNull = rightPrim && rightPrim->kind == LiteralKind::Null;
+
+                    if (leftIsNull && rightNamed && rightNamed->symbol && !rightNamed->symbol->is_ref()) {
+                        report_error(node, "Cannot compare 'null' with value type '" + rightType->get_name() + "'");
+                    } else if (rightIsNull && leftNamed && leftNamed->symbol && !leftNamed->symbol->is_ref()) {
+                        report_error(node, "Cannot compare value type '" + leftType->get_name() + "' with 'null'");
+                    } else {
+                        report_error(node, "Cannot compare '" + leftType->get_name() +
+                                               "' and '" + rightType->get_name() + "'");
+                    }
                 }
             }
             else
@@ -1370,7 +1402,8 @@ namespace Fern
     {
         // Type expressions resolve to themselves
         node->resolvedTypeReference = resolve_type_expression(node);
-        node->type = node->resolvedTypeReference;
+        // The type of a type expression is Type<T>, not T itself
+        node->type = typeSystem.get_type_type(node->resolvedTypeReference);
     }
 
     // === Statement Visitors ===

@@ -58,9 +58,9 @@ FunctionSymbol* SymbolTable::define_function(const std::string& name, TypePtr re
     return static_cast<FunctionSymbol*>(container->add_member(std::move(sym)));
 }
 
-FieldSymbol* SymbolTable::define_field(const std::string& name, TypePtr type) {
-    auto sym = std::make_unique<FieldSymbol>(name, type);
-    return static_cast<FieldSymbol*>(
+VariableSymbol* SymbolTable::define_variable(const std::string& name, TypePtr type) {
+    auto sym = std::make_unique<VariableSymbol>(name, type);
+    return static_cast<VariableSymbol*>(
         get_current_container()->add_member(std::move(sym))
     );
 }
@@ -75,13 +75,6 @@ PropertySymbol* SymbolTable::define_property(const std::string& name, TypePtr ty
 ParameterSymbol* SymbolTable::define_parameter(const std::string& name, TypePtr type, uint32_t index) {
     auto sym = std::make_unique<ParameterSymbol>(name, type, index);
     return static_cast<ParameterSymbol*>(
-        get_current_container()->add_member(std::move(sym))
-    );
-}
-
-LocalSymbol* SymbolTable::define_local(const std::string& name, TypePtr type) {
-    auto sym = std::make_unique<LocalSymbol>(name, type);
-    return static_cast<LocalSymbol*>(
         get_current_container()->add_member(std::move(sym))
     );
 }
@@ -345,14 +338,21 @@ std::string SymbolTable::to_string() const {
         
         // Print symbol info
         ss << indent_str;
+
+        // Add modifiers
+        ss << Fern::to_string(sym->modifiers);
+
+        if (sym->modifiers != ModifierKindFlags::None) {
+            ss << " ";
+        }
         
         // Print kind
-        ss << Fern::to_string(sym->kind);
+        if (sym->kind != SymbolKind::Variable)
+        {
+            ss << Fern::to_string(sym->kind);
+            ss << " " << sym->name;
+        }
         
-        ss << " " << sym->name;
-        
-        // Add modifiers
-        ss << "[" << Fern::to_string(sym->modifiers) << "] ";
         
         // Add type-specific information
         if (auto type_sym = sym->as<TypeSymbol>()) {
@@ -375,12 +375,13 @@ std::string SymbolTable::to_string() const {
             for (size_t i = 0; i < func_sym->parameters.size(); ++i) {
                 if (i > 0) ss << ", ";
                 auto param = func_sym->parameters[i];
-                ss << param->name << ": ";
                 if (param->type) {
                     ss << param->type->get_name();
                 } else {
                     ss << "?";
                 }
+                ss << " " << param->name;
+                
             }
             ss << ")";
             if (func_sym->return_type) {
@@ -397,24 +398,22 @@ std::string SymbolTable::to_string() const {
             }
         }
         else if (auto var_sym = sym->as<VariableSymbol>()) {
+            if (auto param = sym->as<ParameterSymbol>())
+            {
+                ss << "param";
+                if (param->is_ref) ss << " ref";
+                if (param->is_out) ss << " out";
+                ss << " ";
+            }
             if (var_sym->type) {
-                ss << " : " << var_sym->type->get_name();
+                ss << var_sym->type->get_name();
             }
-            
-            // Add variable-specific info
-            if (auto field = sym->as<FieldSymbol>()) {
-                ss << " [offset=" << field->offset << ", align=" << field->alignment << "]";
+            else
+            {
+                ss << "?";
             }
-            else if (auto param = sym->as<ParameterSymbol>()) {
-                ss << " [param #" << param->index << "]";
-                if (param->has_default) ss << " [has default]";
-                if (param->is_ref) ss << " [ref]";
-                if (param->is_out) ss << " [out]";
-            }
-            else if (auto local = sym->as<LocalSymbol>()) {
-                ss << " [local]";
-                if (local->is_captured) ss << " [captured]";
-            }
+
+            ss << " " << sym->name;
         }
         else if (auto prop_sym = sym->as<PropertySymbol>()) {
             if (prop_sym->type) {

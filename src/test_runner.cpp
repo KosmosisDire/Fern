@@ -84,8 +84,17 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
 
         // Compile the test file with stdlib
         std::vector<SourceFile> source_files = {{test_file, source}};
-        std::string stdlib = read_file("runtime/string.fn");
-        source_files.push_back({"runtime/string.fn", stdlib});
+
+        std::vector<std::string> stdlib_files = {
+            "runtime/string.fn",
+            "runtime/stringtools.fn",
+            "runtime/file.fn",
+        };
+
+        for (const auto& lib_file : stdlib_files) {
+            std::string lib_source = read_file(lib_file);
+            source_files.push_back({lib_file, lib_source});
+        }
 
         auto compile_result = compiler.compile(source_files);
 

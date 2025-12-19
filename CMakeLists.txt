@@ -111,6 +111,9 @@ set(SOURCE_FILES
     src/codegen/codegen_module.cpp
     src/codegen/codegen_function.cpp
     src/codegen/hlir_codegen.cpp
+
+    # Runtime
+    runtime/runtime.cpp
     
     # Common Utilities
     src/common/logger.cpp

@@ -8,8 +8,11 @@
 #include <unordered_map>
 #include "semantic/type.hpp"
 #include "semantic/symbol.hpp"
+#include "semantic/type_system.hpp"
 #include <set>
 #include <sstream>
+#include "magic_enum.hpp"
+#include <iostream>
 
 namespace Fern::HLIR
 {
@@ -86,8 +89,8 @@ namespace Fern::HLIR
         BitOr,
         BitXor,
         BitNot,
-        Shl,
-        Shr,
+        ShiftL,
+        ShiftR,
 
         // Conversion
         Cast,
@@ -98,12 +101,13 @@ namespace Fern::HLIR
         Ret,
         Br,
         CondBr,
-        Switch,
-        Phi,
-
-        // Misc
-        Copy,
+        Switch
     };
+
+    static std::string to_string(Opcode op)
+    {
+        return std::string(magic_enum::enum_name(op));
+    }
 
 #pragma region Base Inst
 
@@ -437,24 +441,6 @@ namespace Fern::HLIR
         }
     };
 
-    struct PhiInst : Instruction
-    {
-        std::vector<std::pair<Value *, BasicBlock *>> incoming;
-
-        PhiInst(Value *result)
-        {
-            op = Opcode::Phi;
-            this->result = result;
-        }
-
-        void add_incoming(Value *val, BasicBlock *block)
-        {
-            incoming.push_back({val, block});
-            if (val) {
-                val->uses.push_back(this);
-            }
-        }
-    };
 
 #pragma region Basic Block
 
@@ -500,7 +486,7 @@ namespace Fern::HLIR
 
     struct Function
     {
-        FunctionSymbol *symbol = nullptr;
+        TypePtr return_type;
         std::vector<Value *> params;
         std::vector<bool> param_escapes;  // Which params escape
         std::vector<bool> param_modified; // Which params are modified
@@ -514,6 +500,13 @@ namespace Fern::HLIR
 
         bool is_external = false;
         bool is_static = false; // if not then we need a this pointer as first arg
+
+        Function(FunctionSymbol *symbol) : symbol(symbol){}
+
+        bool is_empty() const
+        {
+            return blocks.empty();
+        }
 
         Value *create_value(TypePtr type, const std::string &name = "")
         {
@@ -535,22 +528,68 @@ namespace Fern::HLIR
 
         std::string name() const
         {
-            return symbol ? symbol->get_qualified_name() : "<!null symbol!>";
+            return symbol ? (is_external ? symbol->name : symbol->get_qualified_name()) : "<!null symbol!>";
         }
 
-        TypePtr return_type() const
-        {
-            return symbol ? symbol->return_type : nullptr;
-        }
+    private:
+        FunctionSymbol *symbol = nullptr;
+
     };
 
 #pragma region Type Definition
 
+    struct Field
+    {
+        public:
+        TypePtr type;
+        uint32_t offset = 0;
+        uint32_t alignment = 1;
+
+        Field(VariableSymbol *symbol)
+            : symbol(symbol) {}
+
+        std::string qualified_name() const
+        {
+            return symbol ? symbol->get_qualified_name() : "<!null symbol!>";
+        }
+
+        std::string name() const
+        {
+            return symbol ? symbol->name : "<!null symbol!>";
+        }
+
+        private:
+        VariableSymbol *symbol;
+    };
+
     struct TypeDefinition
     {
-        TypeSymbol *symbol;
+        std::vector<std::unique_ptr<Field>> fields;
+        std::vector<Function*> functions;
         TypeDefinition *base_type = nullptr;
-        std::vector<Function *> vtable;
+        
+        TypeDefinition(TypeSymbol *symbol)
+            : symbol(symbol)
+        {
+        }
+
+        bool is_empty() const
+        {
+            return symbol->member_order.empty();
+        }
+
+        std::string name() const
+        {
+            return symbol ? symbol->get_qualified_name() : "<!null symbol!>";
+        }
+
+        TypePtr type() const
+        {
+            return symbol ? symbol->type : nullptr;
+        }
+
+    private:
+        TypeSymbol *symbol;
     };
 
 #pragma region Module
@@ -559,12 +598,14 @@ namespace Fern::HLIR
     {
         std::string name;
         std::vector<std::unique_ptr<Function>> functions;
+        std::unordered_map<FunctionSymbol*, Function*> function_map;
         std::vector<std::unique_ptr<TypeDefinition>> types;
+        std::unordered_map<TypeSymbol*, TypeDefinition*> type_map;
+        TypeSystem *type_system;
 
-        Module(const std::string &name, NamespaceSymbol *global_ns)
+        Module(const std::string &name, NamespaceSymbol *global_ns, TypeSystem *type_system)
+            : name(name), type_system(type_system)
         {
-            this->name = name;
-
             // Recursively define all types and functions in the global namespace
             for (const auto &member : global_ns->member_order)
             {
@@ -581,28 +622,26 @@ namespace Fern::HLIR
                 }
             }
         }
-        
+
         // Lookup function by symbol
         Function* find_function(FunctionSymbol* sym)
         {
-            for (const auto& func : functions)
+            auto it = function_map.find(sym);
+            if (it != function_map.end())
             {
-                if (func->symbol == sym)
-                {
-                    return func.get();
-                }
+                return it->second;
             }
+            std::cout << "Function not found: " << sym->get_qualified_name() << "\n";
             return nullptr;
         }
-        
-        // Lookup type definition by symbol
-        TypeDefinition* find_type(TypeSymbol* sym)
+ 
+        Function* find_function_by_name(const std::string& name)
         {
-            for (const auto& type : types)
+            for (const auto& func : functions)
             {
-                if (type->symbol == sym)
+                if (func->name() == name)
                 {
-                    return type.get();
+                    return func.get();
                 }
             }
             return nullptr;
@@ -610,19 +649,19 @@ namespace Fern::HLIR
 
         Function *create_function(FunctionSymbol *sym)
         {
-            auto func = std::make_unique<Function>();
-            func->symbol = sym;
+            auto func = std::make_unique<Function>(sym);
+
+            func->return_type = sym->return_type->lower_references_to_ptrs(type_system);
+
             Function *ptr = func.get();
             functions.push_back(std::move(func));
+            function_map[sym] = ptr; 
             return ptr;
         }
         
         TypeDefinition *define_type(TypeSymbol *sym)
         {
-            auto def = std::make_unique<TypeDefinition>();
-            def->symbol = sym;
-            TypeDefinition *ptr = def.get();
-            types.push_back(std::move(def));
+            auto def = std::make_unique<TypeDefinition>(sym);
 
             // define all the members as well
             for (const auto &member : sym->member_order) {
@@ -640,8 +679,18 @@ namespace Fern::HLIR
                         }
                     }
                 }
+                else if (auto var_sym = member->as<VariableSymbol>())
+                {
+                    // Fields are handled within the TypeDefinition itself
+                    auto field = std::make_unique<Field>(var_sym);
+                    field->type = var_sym->type->lower_references_to_ptrs(type_system);
+                    def->fields.push_back(std::move(field));
+                }
             }
-
+            
+            TypeDefinition *ptr = def.get();
+            types.push_back(std::move(def));
+            type_map[sym] = ptr;
             return ptr;
         }
 
@@ -671,45 +720,40 @@ namespace Fern::HLIR
 #pragma region Dump Functions
 
     private:
+    
         static std::string dump_type_definition(const TypeDefinition *type_def)
         {
             std::stringstream ss;
 
-            ss << "type @" << type_def->symbol->get_qualified_name();
+            ss << "type " << type_def->name();
 
             if (type_def->base_type)
             {
-                ss << " extends @" << type_def->base_type->symbol->get_qualified_name();
+                ss << " extends " << type_def->base_type->name();
             }
 
-            ss << " {\n";
-
-            // Dump vtable if present
-            if (!type_def->vtable.empty())
+            if (type_def->is_empty())
             {
-                ss << "  vtable:\n";
-                for (size_t i = 0; i < type_def->vtable.size(); ++i)
-                {
-                    ss << "    [" << i << "] @" << type_def->vtable[i]->name() << "\n";
-                }
+                ss << " { }\n";
+                return ss.str();
             }
 
-            // dump member variables from symbol
-            for (const auto &member : type_def->symbol->member_order)
+            ss << " \n{\n";
+
+            // dump fields
+            for (const auto &field : type_def->fields)
             {
-                if (auto var_sym = member->as<VariableSymbol>())
+                ss << "  ";
+                if (field->type)
                 {
-                    ss << "  " << var_sym->name << ": ";
-                    if (var_sym->type)
-                    {
-                        ss << var_sym->type->get_name();
-                    }
-                    else
-                    {
-                        ss << "?";
-                    }
-                    ss << ";\n";
+                    ss << field->type->get_name();
                 }
+                else
+                {
+                    ss << "?";
+                }
+
+                ss << " " << field->name() << "\n";
             }
 
             ss << "}\n";
@@ -720,23 +764,33 @@ namespace Fern::HLIR
         {
             std::stringstream ss;
 
+            if (func->is_external)
+            {
+                ss << "extern ";
+            }
+
             // Function signature
-            ss << "function @" << func->name() << "(";
+            ss << "fn " << func->name() << "(";
             for (size_t i = 0; i < func->params.size(); ++i)
             {
                 if (i > 0)
                     ss << ", ";
-                ss << value_ref(func->params[i]) << ": " << type_to_string(func->params[i]->type);
+                ss << value_ref(func->params[i]) << ": " << func->params[i]->type->get_name();
             }
-            ss << ") -> " << type_to_string(func->return_type());
+            ss << ") -> " << func->return_type->get_name();
 
             if (func->is_external)
             {
-                ss << " [external]\n";
                 return ss.str();
             }
 
-            ss << " {\n";
+            if (func->is_empty())
+            {
+                ss << " { }\n";
+                return ss.str();
+            }
+
+            ss << "\n{\n";
 
             // Dump all blocks
             for (const auto &block : func->blocks)
@@ -821,13 +875,13 @@ namespace Fern::HLIR
             case Opcode::ConstNull:
             {
                 auto *cn = static_cast<const ConstNullInst *>(inst);
-                ss << "const.null " << type_to_string(cn->null_type);
+                ss << "const.null " << cn->null_type->get_name();
                 break;
             }
             case Opcode::StackAlloc:
             {
                 auto *alloc = static_cast<const StackAllocInst *>(inst);
-                ss << "stack.alloc " << type_to_string(alloc->alloc_type);
+                ss << "stack.alloc " << alloc->alloc_type->get_name();
                 if (!alloc->escapes)
                     ss << " [no-escape]";
                 break;
@@ -865,7 +919,7 @@ namespace Fern::HLIR
             case Opcode::HeapAlloc:
             {
                 auto *alloc = static_cast<const HeapAllocInst *>(inst);
-                ss << "heap.alloc " << type_to_string(alloc->alloc_type);
+                ss << "heap.alloc " << alloc->alloc_type->get_name();
                 break;
             }
             case Opcode::HeapAllocBytes:
@@ -910,11 +964,11 @@ namespace Fern::HLIR
             case Opcode::BitAnd:
             case Opcode::BitOr:
             case Opcode::BitXor:
-            case Opcode::Shl:
-            case Opcode::Shr:
+            case Opcode::ShiftL:
+            case Opcode::ShiftR:
             {
                 auto *bin = static_cast<const BinaryInst *>(inst);
-                ss << opcode_to_string(inst->op) << " "
+                ss << to_string(inst->op) << " "
                    << value_ref(bin->left) << ", " << value_ref(bin->right);
                 break;
             }
@@ -923,13 +977,13 @@ namespace Fern::HLIR
             case Opcode::BitNot:
             {
                 auto *un = static_cast<const UnaryInst *>(inst);
-                ss << opcode_to_string(inst->op) << " " << value_ref(un->operand);
+                ss << to_string(inst->op) << " " << value_ref(un->operand);
                 break;
             }
             case Opcode::Cast:
             {
                 auto *cast = static_cast<const CastInst *>(inst);
-                ss << "cast " << value_ref(cast->value) << " to " << type_to_string(cast->target_type);
+                ss << "cast " << value_ref(cast->value) << " to " << cast->target_type->get_name();
                 break;
             }
             case Opcode::Call:
@@ -969,19 +1023,6 @@ namespace Fern::HLIR
                    << ", bb" << cbr->false_block->id;
                 break;
             }
-            case Opcode::Phi:
-            {
-                auto *phi = static_cast<const PhiInst *>(inst);
-                ss << "phi ";
-                for (size_t i = 0; i < phi->incoming.size(); ++i)
-                {
-                    if (i > 0)
-                        ss << ", ";
-                    ss << "[" << value_ref(phi->incoming[i].first)
-                       << ", bb" << phi->incoming[i].second->id << "]";
-                }
-                break;
-            }
             default:
                 ss << "unknown_op_" << static_cast<int>(inst->op);
             }
@@ -1012,63 +1053,7 @@ namespace Fern::HLIR
             return ss.str();
         }
 
-        static std::string type_to_string(TypePtr type)
-        {
-            if (!type)
-                return "void";
-            return type->get_name();
-        }
-
-        static std::string opcode_to_string(Opcode op)
-        {
-            switch (op)
-            {
-            case Opcode::Add:
-                return "add";
-            case Opcode::Sub:
-                return "sub";
-            case Opcode::Mul:
-                return "mul";
-            case Opcode::Div:
-                return "div";
-            case Opcode::Rem:
-                return "rem";
-            case Opcode::Neg:
-                return "neg";
-            case Opcode::Eq:
-                return "eq";
-            case Opcode::Ne:
-                return "ne";
-            case Opcode::Lt:
-                return "lt";
-            case Opcode::Le:
-                return "le";
-            case Opcode::Gt:
-                return "gt";
-            case Opcode::Ge:
-                return "ge";
-            case Opcode::And:
-                return "and";
-            case Opcode::Or:
-                return "or";
-            case Opcode::Not:
-                return "not";
-            case Opcode::BitAnd:
-                return "bitand";
-            case Opcode::BitOr:
-                return "bitor";
-            case Opcode::BitXor:
-                return "bitxor";
-            case Opcode::BitNot:
-                return "bitnot";
-            case Opcode::Shl:
-                return "shl";
-            case Opcode::Shr:
-                return "shr";
-            default:
-                return "unknown";
-            }
-        }
+        
     };
 
 } // namespace Fern::HLIR

@@ -67,27 +67,6 @@ namespace Fern
         }
     }
 
-    // === Phi Management ===
-
-    void CodeGenFunction::add_pending_phi(llvm::PHINode* llvm_phi, HLIR::PhiInst* hlir_phi)
-    {
-        pending_phis.push_back({llvm_phi, hlir_phi});
-    }
-
-    void CodeGenFunction::resolve_pending_phis()
-    {
-        for (const auto& [llvm_phi, hlir_phi] : pending_phis)
-        {
-            for (const auto& incoming : hlir_phi->incoming)
-            {
-                llvm::Value* value = get_value(incoming.first);
-                llvm::BasicBlock* block = get_block(incoming.second);
-                llvm_phi->addIncoming(value, block);
-            }
-        }
-        pending_phis.clear();
-    }
-
     // === Parameter Mapping ===
 
     void CodeGenFunction::map_parameters()

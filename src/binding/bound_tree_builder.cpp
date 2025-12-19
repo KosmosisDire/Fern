@@ -657,9 +657,9 @@ namespace Fern
             bool is_static = false;
             
             // TODO: fill in is_static
-            if (auto field = symbol->as<FieldSymbol>())
+            if (VariableSymbol *variable = symbol->as<VariableSymbol>(); variable && variable->is_field())
             {
-                member_of = field->parent;
+                member_of = variable->parent;
                 // is_static = field->is_static;
             }
             else if (auto prop = symbol->as<PropertySymbol>())

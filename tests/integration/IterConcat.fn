@@ -1,0 +1,36 @@
+-- Expected: 42.0
+
+fn Main
+{
+    int x = 0
+    while (true)
+    {
+        if (x == 2 || x == 5)
+        {
+            Print("Skipping iteration")
+            x = x + 1
+            continue
+        }
+
+        if (x == 10)
+        {
+            break
+        }
+        x = x + 1
+    }
+
+    -- works
+    var s = "Final value of x: ";
+    s = s.Concat(IntToString(x))
+    Print(s)
+
+    -- doesn't work
+    var s1 = "Final value of x: ".Concat(IntToString(x))
+    Print(s1)
+
+    -- doesn't work
+    Print("Final value of x: ".Concat(IntToString(x)))
+
+    return 42.0
+}
+  

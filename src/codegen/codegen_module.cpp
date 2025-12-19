@@ -13,12 +13,12 @@ namespace Fern
         // Declare all struct types first (opaque)
         for (const auto& type_def : hlir_module->types)
         {
-            std::string type_name = type_def->symbol->get_qualified_name();
+            std::string type_name = type_def->name();
             auto* struct_type = llvm::StructType::create(context, type_name);
             struct_cache[type_def.get()] = struct_type;
 
             // Also map the TypePtr (shared_ptr) to the struct type
-            type_cache[type_def->symbol->type] = struct_type;
+            type_cache[type_def->type()] = struct_type;
         }
 
         // Now define the struct bodies
@@ -28,13 +28,10 @@ namespace Fern
 
             // Collect field types
             std::vector<llvm::Type*> field_types;
-            for (const auto& member : type_def->symbol->member_order)
+            for (const auto& member : type_def->fields)
             {
-                if (auto* var_sym = member->as<VariableSymbol>())
-                {
-                    llvm::Type* field_type = get_or_create_type(var_sym->type);
-                    field_types.push_back(field_type);
-                }
+                llvm::Type* field_type = get_or_create_type(member->type);
+                field_types.push_back(field_type);
             }
 
             // Set the struct body
@@ -82,6 +79,10 @@ namespace Fern
                 break;
             case LiteralKind::String:
                 // just generic pointer
+                llvm_type = llvm::PointerType::get(context, 0);
+                break;
+            case LiteralKind::Null:
+                // null is a pointer type at runtime
                 llvm_type = llvm::PointerType::get(context, 0);
                 break;
             default:
@@ -144,7 +145,7 @@ namespace Fern
             return it->second;
         }
 
-        std::string type_name = type_def->symbol->get_qualified_name();
+        std::string type_name = type_def->name();
         auto* struct_type = llvm::StructType::create(context, type_name);
         struct_cache[type_def] = struct_type;
         return struct_type;
@@ -172,17 +173,7 @@ namespace Fern
         // Get function type
         llvm::FunctionType* func_type = get_function_type(hlir_func);
 
-        // For external functions, use the simple name (not mangled)
-        // For regular functions, use the fully qualified name
-        std::string func_name;
-        if (hlir_func->is_external && hlir_func->symbol)
-        {
-            func_name = hlir_func->symbol->name; // Simple name for external linkage
-        }
-        else
-        {
-            func_name = hlir_func->name(); // Qualified name for Fern functions
-        }
+        std::string func_name = hlir_func->name();
 
         // Create function
         llvm::Function* llvm_func = llvm::Function::Create(
@@ -226,7 +217,7 @@ namespace Fern
     llvm::FunctionType* CodeGenModule::get_function_type(HLIR::Function* hlir_func)
     {
         // Return type
-        llvm::Type* ret_type = get_or_create_type(hlir_func->return_type());
+        llvm::Type* ret_type = get_or_create_type(hlir_func->return_type);
 
         // Parameter types - HLIR already includes 'this' parameter explicitly for member functions
         std::vector<llvm::Type*> param_types;
@@ -248,6 +239,14 @@ namespace Fern
         props.is_signed = is_signed_int(type);
         props.is_integer = is_signed_int(type) || is_unsigned_int(type);
         props.is_pointer = type && type->is<PointerType>();
+
+        // Null type is also a pointer at runtime
+        if (!props.is_pointer && type) {
+            if (auto* prim = type->as<PrimitiveType>()) {
+                props.is_pointer = (prim->kind == LiteralKind::Null);
+            }
+        }
+
         return props;
     }
 

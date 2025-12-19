@@ -1,9 +1,13 @@
-extern fn puts(char* s) -> i32
-
-type String
+ref type String
 {
     char* data
     i32 length
+
+    new(char* d, i32 len)
+    {
+        data = d
+        length = len
+    }
 
     fn Length
     {
@@ -15,82 +19,34 @@ type String
         var newLength = this.length + other.length
         var newData = (char*)malloc(newLength + 1)
 
-        -- Copy first string
         memcpy(newData, this.data, this.length)
-
-        -- Copy second string (offset by first string's length)
         memcpy(newData + this.length, other.data, other.length)
-
-        -- Null terminate
         newData[newLength] = '\0'
 
-        -- Create new string struct
-        var result = new String()
-        result.data = newData
-        result.length = newLength
-        return result
+        return new String(newData, newLength)
     }
-}
 
-fn Print(string msg)
-{
-    puts(msg.data)
-}
-
-
-fn IntToString(i32 num) -> string
-{
-    var result = new String()
-    result.data = malloc(12)  -- Enough for int32 including sign and null terminator
-    result.length = 0;
-    if num == 0
+    fn Substring(i32 start, i32 len) -> string
     {
-        result.data[0] = '0'  -- '0' ASCII value
-        result.data[1] = '\0'   -- '\0' null terminator
-        result.length = 1
-        return result
+        if (start < 0 || len < 0 || start + len > this.length)
+        {
+            return ""
+        }
+
+        var newData = (char*)malloc(len + 1)
+        memcpy(newData, this.data + start, len)
+        newData[len] = '\0'
+
+        return new String(newData, len)
     }
 
-    var isNegative = num < 0
-    if isNegative
+    fn SubstringRange(i32 start, i32 end) -> string
     {
-        num = -num  -- Make positive for digit extraction
+        return this.Substring(start, end - start)
     }
 
-    var index = 0
-    var digit = 0
-
-    -- Extract digits (builds string backwards)
-    while num > 0
+    fn IsEmpty() -> bool
     {
-        digit = num % 10
-        result.data[index] = (char)(digit + 48)  -- Convert digit to ASCII ('0' is 48)
-        index += 1
-        num /= 10
+        return this.length == 0
     }
-
-    -- Add negative sign if needed
-    if isNegative
-    {
-        result.data[index] = (char)45  -- '-' ASCII value
-        index += 1
-    }
-
-    result.data[index] = (char)0  -- Null terminate
-
-    -- Reverse the string in-place
-    var start = 0
-    var end = index - 1
-    var temp = (char)0
-    while start < end
-    {
-        temp = result.data[start]
-        result.data[start] = result.data[end]
-        result.data[end] = temp
-        start += 1
-        end -= 1
-    }
-
-    result.length = index  -- Set length
-    return result
 }

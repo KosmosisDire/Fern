@@ -44,6 +44,10 @@ bool TypeSystem::compare_types(const UnresolvedType& a, const UnresolvedType& b)
     return a.id == b.id;
 }
 
+bool TypeSystem::compare_types(const MetaType& a, const MetaType& b) const {
+    return a.inner == b.inner;
+}
+
 void TypeSystem::init_primitives() {
     auto add_primitive = [this](LiteralKind kind) {
         auto type = std::make_shared<Type>();
@@ -58,6 +62,7 @@ void TypeSystem::init_primitives() {
     add_primitive(LiteralKind::Char);
     add_primitive(LiteralKind::I32);
     add_primitive(LiteralKind::F32);
+    add_primitive(LiteralKind::Null);
 
     // add string as an empty named type
     // String type will be initialized later with its symbol
@@ -101,7 +106,18 @@ TypePtr TypeSystem::get_f32() {
     return primitives[LiteralKind::F32];
 }
 
+TypePtr TypeSystem::get_null() {
+    return primitives[LiteralKind::Null];
+}
+
 TypePtr TypeSystem::get_primitive(const std::string& name) {
+
+    // alias ptr as void*
+    if (name == "ptr")
+    {
+        return get_pointer(get_void());
+    }
+
     static std::unordered_map<std::string, LiteralKind> name_map = {
         {"void", LiteralKind::Void},
         {"bool", LiteralKind::Bool},
@@ -153,6 +169,10 @@ TypePtr TypeSystem::get_type_parameter(const std::string& name, uint32_t index) 
 
 TypePtr TypeSystem::get_unresolved() {
     return find_or_create(UnresolvedType{next_unresolved_id++});
+}
+
+TypePtr TypeSystem::get_type_type(TypePtr inner) {
+    return find_or_create(MetaType{inner});
 }
 
 bool TypeSystem::are_equal(TypePtr a, TypePtr b) const {

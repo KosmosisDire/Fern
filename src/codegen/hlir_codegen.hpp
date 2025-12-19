@@ -60,6 +60,7 @@ namespace Fern
         void gen_const_float(CodeGenFunction& CGF, HLIR::ConstFloatInst* inst);
         void gen_const_bool(CodeGenFunction& CGF, HLIR::ConstBoolInst* inst);
         void gen_const_string(CodeGenFunction& CGF, HLIR::ConstStringInst* inst);
+        void gen_const_null(CodeGenFunction& CGF, HLIR::ConstNullInst* inst);
 
         // === Memory Instructions ===
         void gen_stack_alloc(CodeGenFunction& CGF, HLIR::StackAllocInst* inst);
@@ -107,7 +108,6 @@ namespace Fern
         void gen_ret(CodeGenFunction& CGF, HLIR::RetInst* inst);
         void gen_br(CodeGenFunction& CGF, HLIR::BrInst* inst);
         void gen_cond_br(CodeGenFunction& CGF, HLIR::CondBrInst* inst);
-        void gen_phi(CodeGenFunction& CGF, HLIR::PhiInst* inst);
 
         // === Validation ===
         void verify_module();

@@ -34,7 +34,8 @@ namespace Fern
         bool compare_types(const ArrayType& a, const ArrayType& b) const;
         bool compare_types(const NamedType& a, const NamedType& b) const;
         bool compare_types(const UnresolvedType& a, const UnresolvedType& b) const;
-        
+        bool compare_types(const MetaType& a, const MetaType& b) const;
+
         template<typename T, typename U>
         bool compare_types(const T&, const U&) const { return false; }
         
@@ -50,9 +51,11 @@ namespace Fern
 
         // Type creation methods
         TypePtr get_void();
+        TypePtr get_ptr();
         TypePtr get_bool();
         TypePtr get_i32();
         TypePtr get_f32();
+        TypePtr get_null();
         
         TypePtr get_primitive(const std::string& name);
         TypePtr get_pointer(TypePtr pointee);
@@ -62,6 +65,7 @@ namespace Fern
         TypePtr get_generic(TypeSymbol* generic, std::vector<TypePtr> args);
         TypePtr get_type_parameter(const std::string& name, uint32_t index);
         TypePtr get_unresolved();
+        TypePtr get_type_type(TypePtr inner);
         
         // Type checking
         bool are_equal(TypePtr a, TypePtr b) const;

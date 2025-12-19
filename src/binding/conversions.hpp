@@ -1,6 +1,7 @@
 #pragma once
 
 #include "semantic/type.hpp"
+#include "semantic/symbol.hpp"
 #include <string>
 #include <unordered_map>
 #include "common/token_kind.hpp"
@@ -64,7 +65,7 @@ namespace Fern
         static constexpr int I32_IDX = 3;
         static constexpr int F32_IDX = 4;
         static constexpr int STRING_IDX = 5;
-
+        
         // Conversion matrix using normalized indices
         // Rows = source type, Columns = target type
         static constexpr ConversionKind conversionMatrix[6][6] = {
@@ -191,10 +192,43 @@ namespace Fern
                 return ConversionKind::ExplicitReference;
             }
 
-            // Handle primitive types
+            // Handle null type conversions
             auto sourcePrim = sourceType->as<PrimitiveType>();
             auto targetPrim = targetType->as<PrimitiveType>();
+            auto targetNamed = targetType->as<NamedType>();
+            auto sourceNamed = sourceType->as<NamedType>();
 
+            // null -> reference type (for null assignment)
+            if (sourcePrim && sourcePrim->kind == LiteralKind::Null && targetNamed)
+            {
+                if (targetNamed->symbol && targetNamed->symbol->is_ref())
+                {
+                    return ConversionKind::ImplicitReference;
+                }
+            }
+
+            // null -> pointer type
+            if (sourcePrim && sourcePrim->kind == LiteralKind::Null && targetPointer)
+            {
+                return ConversionKind::ImplicitReference;
+            }
+
+            // reference type -> null (for null comparison)
+            if (sourceNamed && targetPrim && targetPrim->kind == LiteralKind::Null)
+            {
+                if (sourceNamed->symbol && sourceNamed->symbol->is_ref())
+                {
+                    return ConversionKind::ImplicitReference;
+                }
+            }
+
+            // pointer type -> null (for null comparison)
+            if (sourcePointer && targetPrim && targetPrim->kind == LiteralKind::Null)
+            {
+                return ConversionKind::ImplicitReference;
+            }
+
+            // Handle other primitive type conversions
             if (sourcePrim && targetPrim)
             {
                 return classify_conversion(sourcePrim->kind, targetPrim->kind);

@@ -28,10 +28,9 @@ public:
     BlockSymbol* define_block(const std::string& debug_name);
     TypeSymbol* define_type(const std::string& name, TypePtr type);
     FunctionSymbol* define_function(const std::string& name, TypePtr return_type);
-    FieldSymbol* define_field(const std::string& name, TypePtr type);
+    VariableSymbol* define_variable(const std::string& name, TypePtr type);
     PropertySymbol* define_property(const std::string& name, TypePtr type);
     ParameterSymbol* define_parameter(const std::string& name, TypePtr type, uint32_t index);
-    LocalSymbol* define_local(const std::string& name, TypePtr type);
     
     // Symbol resolution
     Symbol* resolve(const std::string& name);

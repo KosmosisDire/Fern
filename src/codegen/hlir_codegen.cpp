@@ -72,9 +72,6 @@ namespace Fern
         {
             generate_basic_block(CGF, hlir_block.get());
         }
-
-        // Resolve pending phi nodes
-        CGF.resolve_pending_phis();
     }
 
     void HLIRCodeGen::generate_basic_block(CodeGenFunction& CGF, HLIR::BasicBlock* hlir_block)
@@ -106,6 +103,9 @@ namespace Fern
             break;
         case HLIR::Opcode::ConstString:
             gen_const_string(CGF, static_cast<HLIR::ConstStringInst*>(inst));
+            break;
+        case HLIR::Opcode::ConstNull:
+            gen_const_null(CGF, static_cast<HLIR::ConstNullInst*>(inst));
             break;
         case HLIR::Opcode::StackAlloc:
             gen_stack_alloc(CGF, static_cast<HLIR::StackAllocInst*>(inst));
@@ -156,8 +156,8 @@ namespace Fern
         case HLIR::Opcode::BitAnd:
         case HLIR::Opcode::BitOr:
         case HLIR::Opcode::BitXor:
-        case HLIR::Opcode::Shl:
-        case HLIR::Opcode::Shr:
+        case HLIR::Opcode::ShiftL:
+        case HLIR::Opcode::ShiftR:
             gen_binary(CGF, static_cast<HLIR::BinaryInst*>(inst));
             break;
         case HLIR::Opcode::Neg:
@@ -180,12 +180,9 @@ namespace Fern
         case HLIR::Opcode::CondBr:
             gen_cond_br(CGF, static_cast<HLIR::CondBrInst*>(inst));
             break;
-        case HLIR::Opcode::Phi:
-            gen_phi(CGF, static_cast<HLIR::PhiInst*>(inst));
-            break;
         default:
             throw std::runtime_error("Unsupported HLIR opcode: " +
-                std::to_string(static_cast<int>(inst->op)));
+                Fern::HLIR::to_string(inst->op));
         }
     }
 
@@ -225,6 +222,13 @@ namespace Fern
         auto& ir = CGF.get_ir_builder();
         llvm::Value* str_ptr = ir.create_global_string(inst->value, ".str");
         CGF.map_value(inst->result, str_ptr);
+    }
+
+    void HLIRCodeGen::gen_const_null(CodeGenFunction& CGF, HLIR::ConstNullInst* inst)
+    {
+        llvm::Type* type = CGF.get_module().get_or_create_type(inst->null_type);
+        llvm::Value* null_val = llvm::Constant::getNullValue(type);
+        CGF.map_value(inst->result, null_val);
     }
 
     #pragma region Memory Gen
@@ -389,32 +393,31 @@ namespace Fern
         // Determine the underlying type we're indexing into
         TypePtr hlir_type = inst->array->type;
 
-        // If it's a pointer, get the pointee type
-        if (auto ptr_type = hlir_type->as<PointerType>()) {
-            hlir_type = ptr_type->pointee;
+        // Check if this is a pointer type - if so, use pointer arithmetic
+        if (hlir_type->as<PointerType>()) {
+            CGF.map_value(inst->result, gen_pointer_element_addr(CGF, inst));
+            return;
         }
 
-        llvm::Type* array_llvm_type = CGF.get_module().get_or_create_type(hlir_type);
+        // Check the HLIR type for arrays
+        if (auto array_type = hlir_type->as<ArrayType>()) {
+            // If the array value came from a load instruction, it's actually a pointer
+            // in LLVM representation (e.g., loaded nested array), so use pointer arithmetic
+            if (inst->array->def && inst->array->def->op == HLIR::Opcode::Load) {
+                CGF.map_value(inst->result, gen_pointer_element_addr(CGF, inst));
+                return;
+            }
 
-        llvm::Value* elem_ptr;
-
-        // Check if this is a fixed-size array [N x T]
-        if (array_llvm_type->isArrayTy())
-        {
-            elem_ptr = gen_fixed_array_element_addr(CGF, inst);
-        }
-        // Check if this is a dynamic array (struct { i32, ptr })
-        else if (array_llvm_type->isStructTy())
-        {
-            elem_ptr = gen_dynamic_array_element_addr(CGF, inst);
-        }
-        else
-        {
-            // Direct pointer - simple GEP
-            elem_ptr = gen_pointer_element_addr(CGF, inst);
+            if (array_type->size < 0) {
+                CGF.map_value(inst->result, gen_dynamic_array_element_addr(CGF, inst));
+            } else {
+                CGF.map_value(inst->result, gen_fixed_array_element_addr(CGF, inst));
+            }
+            return;
         }
 
-        CGF.map_value(inst->result, elem_ptr);
+        // Fallback: direct pointer arithmetic
+        CGF.map_value(inst->result, gen_pointer_element_addr(CGF, inst));
     }
 
     llvm::Value* HLIRCodeGen::gen_fixed_array_element_addr(CodeGenFunction& CGF,
@@ -550,8 +553,8 @@ namespace Fern
         case HLIR::Opcode::BitAnd:
         case HLIR::Opcode::BitOr:
         case HLIR::Opcode::BitXor:
-        case HLIR::Opcode::Shl:
-        case HLIR::Opcode::Shr:
+        case HLIR::Opcode::ShiftL:
+        case HLIR::Opcode::ShiftR:
             result = gen_bitwise_op(ir, inst->op, left, right, props.is_signed);
             break;
 
@@ -620,9 +623,9 @@ namespace Fern
             return ir.create_or(left, right, "or");
         case HLIR::Opcode::BitXor:
             return ir.create_xor(left, right, "xor");
-        case HLIR::Opcode::Shl:
+        case HLIR::Opcode::ShiftL:
             return ir.create_shl(left, right, "shl");
-        case HLIR::Opcode::Shr:
+        case HLIR::Opcode::ShiftR:
             return ir.create_shr(left, right, is_signed, "shr");
         default:
             throw std::runtime_error("Invalid bitwise operation");
@@ -776,19 +779,6 @@ namespace Fern
         llvm::BasicBlock* true_block = CGF.get_block(inst->true_block);
         llvm::BasicBlock* false_block = CGF.get_block(inst->false_block);
         ir.create_cond_br(cond, true_block, false_block);
-    }
-
-    void HLIRCodeGen::gen_phi(CodeGenFunction& CGF, HLIR::PhiInst* inst)
-    {
-        auto& ir = CGF.get_ir_builder();
-        llvm::Type* phi_type = CGF.get_module().get_or_create_type(inst->result->type);
-        llvm::PHINode* phi = ir.create_phi(phi_type, inst->incoming.size(), "phi");
-
-        // Register the phi node result immediately so it can be referenced
-        CGF.map_value(inst->result, phi);
-
-        // Defer adding incoming values until all blocks are processed
-        CGF.add_pending_phi(phi, inst);
     }
 
     #pragma region Verification

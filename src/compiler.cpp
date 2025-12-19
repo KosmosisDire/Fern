@@ -113,6 +113,7 @@ namespace Fern
             global_symbols->push_scope(global_symbols->get_global_namespace());
         }
 
+
         return true;
     }
 
@@ -441,7 +442,7 @@ namespace Fern
         LOG_HEADER("HLIR generation", LogCategory::COMPILER);
 
         // Create HLIR module
-        auto hlir_module = std::make_unique<HLIR::Module>("FernProgram", global_symbols->get_global_namespace());
+        auto hlir_module = std::make_unique<HLIR::Module>("FernProgram", global_symbols->get_global_namespace(), global_type_system.get());
         
         // Convert each bound tree to HLIR
         for (auto &state : file_states)
@@ -470,6 +471,8 @@ namespace Fern
             LOG_HEADER("HLIR Output (Non-SSA)", LogCategory::COMPILER);
             LOG_INFO(hlir_module->dump() + "\n", LogCategory::COMPILER);
         }
+
+        // return nullptr;
 
         // === LLVM Code Generation from HLIR ===
         LOG_HEADER("LLVM code generation", LogCategory::COMPILER);

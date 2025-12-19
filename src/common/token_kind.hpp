@@ -618,13 +618,13 @@ namespace Fern
         case SymbolKind::Type:
             return "type";
         case SymbolKind::Function:
-            return "function";
+            return "fn";
         case SymbolKind::Variable:
-            return "variable";
+            return "var";
         case SymbolKind::Property:
-            return "property";
+            return "prop";
         case SymbolKind::EnumCase:
-            return "enum_case";
+            return "case";
         case SymbolKind::Block:
             return "block";
         default:

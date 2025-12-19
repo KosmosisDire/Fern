@@ -18,9 +18,7 @@ namespace Fern
     struct TypeSymbol;
     struct FunctionSymbol;
     struct VariableSymbol;
-    struct FieldSymbol;
     struct ParameterSymbol;
-    struct LocalSymbol;
     struct PropertySymbol;
     struct EnumCaseSymbol;
     
@@ -171,17 +169,14 @@ namespace Fern
     // Base for all variables
     struct VariableSymbol : Symbol
     {
-        
         TypePtr type;
+
+        bool is_field() const
+        {
+            return parent && parent->is<TypeSymbol>();
+        }
         
         VariableSymbol(const std::string& name, TypePtr type);
-    };
-
-    struct FieldSymbol : VariableSymbol {
-        uint32_t offset = 0;
-        uint32_t alignment = 0;
-        
-        FieldSymbol(const std::string& name, TypePtr type);
     };
 
     struct ParameterSymbol : VariableSymbol {
@@ -193,15 +188,8 @@ namespace Fern
         ParameterSymbol(const std::string& name, TypePtr type, uint32_t idx);
     };
 
-    struct LocalSymbol : VariableSymbol {
-        bool is_captured = false;
-        
-        LocalSymbol(const std::string& name, TypePtr type);
-    };
-
     #pragma region Property Symbol
     
-    // TODO: Maybe we sould actually be creating function symbols out of properties to begin with?
     struct PropertySymbol : ContainerSymbol {
         TypePtr type;
         bool has_getter = false;
