@@ -1,41 +1,43 @@
-// bound_to_hlir.hpp
+// bound_to_fnir.hpp
 #pragma once
 
 #include "binding/bound_tree.hpp"
-#include "semantic/type_system.hpp"
-#include "hlir_builder.hpp"
+#include "fnir_builder.hpp"
 #include "common/error.hpp"
 #include <unordered_map>
 #include <stack>
 #include <optional>
 #include <functional>
 
-namespace Fern::HLIR
+namespace Fern::FNIR
 {
 
 #pragma region Types
 
 struct LoweredExpr {
-    HLIR::Value* result = nullptr;
+    FNIR::Value* result = nullptr;
     bool is_address = false;
 };
 
 struct LoopContext {
-    HLIR::BasicBlock* continue_target;
-    HLIR::BasicBlock* break_target;
+    FNIR::BasicBlock* continue_target;
+    FNIR::BasicBlock* break_target;
 };
 
 #pragma endregion
 
-class BoundToHLIR : public BoundVisitor, public DiagnosticSystem {
+class BoundToFNIR : public BoundVisitor, public DiagnosticSystem {
 public:
-    BoundToHLIR(HLIR::Module* mod, TypeSystem* types)
-        : DiagnosticSystem("BoundToHLIR")
+    BoundToFNIR(FNIR::Module* mod)
+        : DiagnosticSystem("BoundToFNIR")
         , module(mod)
-        , builder(types)
-        , type_system(types) {}
+        , builder(&mod->ir_types) {}
 
-    void build(BoundCompilationUnit* unit);
+    // Initialize module with types and function declarations (call once)
+    void init_module(NamespaceSymbol* global_ns);
+
+    // Generate function bodies for a compilation unit (call per file)
+    void generate(BoundCompilationUnit* unit);
 
     #pragma region Expression Visitors
 
@@ -84,7 +86,7 @@ public:
 
     #pragma region Public State (for intrinsic handlers)
 
-    HLIR::HLIRBuilder builder;
+    FNIR::FNIRBuilder builder;
 
     #pragma endregion
 
@@ -93,13 +95,12 @@ private:
 
     #pragma region Core State
 
-    HLIR::Module* module;
-    TypeSystem* type_system;
+    FNIR::Module* module;
 
-    HLIR::Function* current_function = nullptr;
-    HLIR::BasicBlock* current_block = nullptr;
+    FNIR::Function* current_function = nullptr;
+    FNIR::BasicBlock* current_block = nullptr;
 
-    std::unordered_map<Symbol*, HLIR::Value*> variable_addresses;
+    std::unordered_map<Symbol*, FNIR::Value*> variable_addresses;
     std::unordered_map<BoundExpression*, LoweredExpr> lowered;
     std::stack<LoopContext> loop_stack;
 
@@ -107,38 +108,41 @@ private:
 
     #pragma region Expression Evaluation
 
-    HLIR::Value* emit_rvalue(BoundExpression* expr);
-    HLIR::Value* emit_lvalue(BoundExpression* expr);
+    FNIR::Value* emit_rvalue(BoundExpression* expr);
+    FNIR::Value* emit_lvalue(BoundExpression* expr);
 
     #pragma endregion
 
     #pragma region Helpers
 
-    HLIR::Value* get_this_param();
+    // Type conversion helper
+    FNIR::IRTypePtr convert(TypePtr type) { return module->ir_types.convert(type); }
+
+    FNIR::Value* get_this_param();
     size_t get_field_index(TypeSymbol* type_sym, Symbol* field_sym);
-    HLIR::BasicBlock* create_block(const std::string& name);
-    void branch_if_open(HLIR::BasicBlock* target);
+    FNIR::BasicBlock* create_block(const std::string& name);
+    void branch_if_open(FNIR::BasicBlock* target);
 
-    void emit_store(HLIR::Value* dest, HLIR::Value* src, TypePtr type);
-    void emit_string_init(HLIR::Value* string_addr, HLIR::Value* data_ptr, size_t length);
+    void emit_store(FNIR::Value* dest, FNIR::Value* src, FNIR::IRTypePtr type);
+    void emit_string_init(FNIR::Value* string_addr, FNIR::Value* data_ptr, size_t length);
 
-    std::optional<HLIR::Value*> try_pointer_arithmetic(
+    std::optional<FNIR::Value*> try_pointer_arithmetic(
         BoundBinaryExpression* node,
-        HLIR::Value* left,
-        HLIR::Value* right);
+        FNIR::Value* left,
+        FNIR::Value* right);
 
-    std::optional<HLIR::Value*> try_emit_intrinsic(
+    std::optional<FNIR::Value*> try_emit_intrinsic(
         FunctionSymbol* method,
-        const std::vector<HLIR::Value*>& args,
+        const std::vector<FNIR::Value*>& args,
         const SourceRange& loc);
 
     #pragma endregion
 
     #pragma region Opcode Mapping
 
-    HLIR::Opcode get_binary_opcode(BinaryOperatorKind kind);
-    HLIR::Opcode get_unary_opcode(UnaryOperatorKind kind);
-    HLIR::Opcode get_compound_opcode(AssignmentOperatorKind kind);
+    FNIR::Opcode get_binary_opcode(BinaryOperatorKind kind);
+    FNIR::Opcode get_unary_opcode(UnaryOperatorKind kind);
+    FNIR::Opcode get_compound_opcode(AssignmentOperatorKind kind);
 
     #pragma endregion
 
@@ -156,10 +160,10 @@ private:
 
 class ScopedFunctionContext {
 public:
-    ScopedFunctionContext(BoundToHLIR& hlir, HLIR::Function* func, HLIR::BasicBlock* block)
-        : self(hlir)
-        , prev_function(hlir.current_function)
-        , prev_block(hlir.current_block) 
+    ScopedFunctionContext(BoundToFNIR& fnir, FNIR::Function* func, FNIR::BasicBlock* block)
+        : self(fnir)
+        , prev_function(fnir.current_function)
+        , prev_block(fnir.current_block) 
     {
         self.current_function = func;
         self.current_block = block;
@@ -182,11 +186,11 @@ public:
     ScopedFunctionContext& operator=(const ScopedFunctionContext&) = delete;
 
 private:
-    BoundToHLIR& self;
-    HLIR::Function* prev_function;
-    HLIR::BasicBlock* prev_block;
+    BoundToFNIR& self;
+    FNIR::Function* prev_function;
+    FNIR::BasicBlock* prev_block;
 };
 
 #pragma endregion
 
-} // namespace Fern::HLIR
+} // namespace Fern::FNIR

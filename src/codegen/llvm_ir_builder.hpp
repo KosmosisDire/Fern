@@ -20,7 +20,7 @@ namespace Fern
      * @brief Wraps common LLVM IR construction patterns
      *
      * This class provides convenience methods for LLVM IR generation
-     * without any knowledge of HLIR. It's a thin wrapper around IRBuilder
+     * without any knowledge of FNIR. It's a thin wrapper around IRBuilder
      * that reduces boilerplate.
      */
     class LLVMIRBuilder

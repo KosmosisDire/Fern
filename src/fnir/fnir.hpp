@@ -6,15 +6,15 @@
 #include <memory>
 #include <variant>
 #include <unordered_map>
-#include "semantic/type.hpp"
-#include "semantic/symbol.hpp"
-#include "semantic/type_system.hpp"
 #include <set>
 #include <sstream>
-#include "magic_enum.hpp"
 #include <iostream>
+#include <iomanip>
+#include "ir_type.hpp"
+#include "semantic/symbol.hpp"
+#include "magic_enum.hpp"
 
-namespace Fern::HLIR
+namespace Fern::FNIR
 {
     struct Value;
     struct Instruction;
@@ -31,12 +31,12 @@ namespace Fern::HLIR
     struct Value
     {
         uint32_t id;
-        TypePtr type;
+        IRTypePtr type;
         Instruction *def = nullptr;
         std::vector<Instruction *> uses;
         std::string debug_name;
 
-        Value(uint32_t id, TypePtr type) : id(id), type(type) {}
+        Value(uint32_t id, IRTypePtr type) : id(id), type(type) {}
     };
 
 #pragma region Inst Opcodes
@@ -173,9 +173,9 @@ namespace Fern::HLIR
 
     struct ConstNullInst : Instruction
     {
-        TypePtr null_type;
+        IRTypePtr null_type;
 
-        ConstNullInst(Value *result, TypePtr type)
+        ConstNullInst(Value *result, IRTypePtr type)
         {
             op = Opcode::ConstNull;
             this->result = result;
@@ -188,11 +188,11 @@ namespace Fern::HLIR
     // Stack allocation of a typed value (lowered to alloca)
     struct StackAllocInst : Instruction
     {
-        TypePtr alloc_type;
+        IRTypePtr alloc_type;
         bool escapes = true;            // Pessimistic default
         std::set<Function *> escape_to; // Functions it escapes to
 
-        StackAllocInst(Value *result, TypePtr type)
+        StackAllocInst(Value *result, IRTypePtr type)
         {
             op = Opcode::StackAlloc;
             this->result = result;
@@ -269,9 +269,9 @@ namespace Fern::HLIR
     // Heap allocation of a typed value (lowered to malloc with computed size)
     struct HeapAllocInst : Instruction
     {
-        TypePtr alloc_type;
+        IRTypePtr alloc_type;
 
-        HeapAllocInst(Value *result, TypePtr type)
+        HeapAllocInst(Value *result, IRTypePtr type)
         {
             op = Opcode::HeapAlloc;
             this->result = result;
@@ -375,9 +375,9 @@ namespace Fern::HLIR
     struct CastInst : Instruction
     {
         Value *value;
-        TypePtr target_type;
+        IRTypePtr target_type;
 
-        CastInst(Value *result, Value *val, TypePtr type)
+        CastInst(Value *result, Value *val, IRTypePtr type)
         {
             op = Opcode::Cast;
             this->result = result;
@@ -486,7 +486,7 @@ namespace Fern::HLIR
 
     struct Function
     {
-        TypePtr return_type;
+        IRTypePtr return_type = nullptr;
         std::vector<Value *> params;
         std::vector<bool> param_escapes;  // Which params escape
         std::vector<bool> param_modified; // Which params are modified
@@ -508,7 +508,7 @@ namespace Fern::HLIR
             return blocks.empty();
         }
 
-        Value *create_value(TypePtr type, const std::string &name = "")
+        Value *create_value(IRTypePtr type, const std::string &name = "")
         {
             auto val = std::make_unique<Value>(next_value_id++, type);
             val->debug_name = name;
@@ -541,7 +541,7 @@ namespace Fern::HLIR
     struct Field
     {
         public:
-        TypePtr type;
+        IRTypePtr type = nullptr;
         uint32_t offset = 0;
         uint32_t alignment = 1;
 
@@ -567,26 +567,20 @@ namespace Fern::HLIR
         std::vector<std::unique_ptr<Field>> fields;
         std::vector<Function*> functions;
         TypeDefinition *base_type = nullptr;
-        
+
         TypeDefinition(TypeSymbol *symbol)
             : symbol(symbol)
         {
         }
 
-        bool is_empty() const
-        {
-            return symbol->member_order.empty();
-        }
+        bool is_empty() const { return fields.empty(); }
 
         std::string name() const
         {
             return symbol ? symbol->get_qualified_name() : "<!null symbol!>";
         }
 
-        TypePtr type() const
-        {
-            return symbol ? symbol->type : nullptr;
-        }
+        TypeSymbol* get_symbol() const { return symbol; }
 
     private:
         TypeSymbol *symbol;
@@ -601,27 +595,11 @@ namespace Fern::HLIR
         std::unordered_map<FunctionSymbol*, Function*> function_map;
         std::vector<std::unique_ptr<TypeDefinition>> types;
         std::unordered_map<TypeSymbol*, TypeDefinition*> type_map;
-        TypeSystem *type_system;
 
-        Module(const std::string &name, NamespaceSymbol *global_ns, TypeSystem *type_system)
-            : name(name), type_system(type_system)
-        {
-            // Recursively define all types and functions in the global namespace
-            for (const auto &member : global_ns->member_order)
-            {
-                if (auto type_sym = member->as<TypeSymbol>())
-                {
-                    define_type(type_sym);
-                }
-                else if (auto func_sym = member->as<FunctionSymbol>())
-                {
-                    if (func_sym->is_intrinsic) {
-                        continue; // Skip intrinsic functions
-                    }
-                    create_function(func_sym);
-                }
-            }
-        }
+        // The IR type system - owns all IR types for this module
+        IRTypeSystem ir_types;
+
+        Module(const std::string &name) : name(name) {}
 
         // Lookup function by symbol
         Function* find_function(FunctionSymbol* sym)
@@ -634,7 +612,7 @@ namespace Fern::HLIR
             std::cout << "Function not found: " << sym->get_qualified_name() << "\n";
             return nullptr;
         }
- 
+
         Function* find_function_by_name(const std::string& name)
         {
             for (const auto& func : functions)
@@ -647,51 +625,38 @@ namespace Fern::HLIR
             return nullptr;
         }
 
-        Function *create_function(FunctionSymbol *sym)
+        // Create a function shell (signature will be filled in by lowering)
+        // Returns existing function if already created
+        Function* create_function(FunctionSymbol *sym)
         {
+            // Check if already exists
+            auto it = function_map.find(sym);
+            if (it != function_map.end()) {
+                return it->second;
+            }
+
             auto func = std::make_unique<Function>(sym);
-
-            func->return_type = sym->return_type->lower_references_to_ptrs(type_system);
-
             Function *ptr = func.get();
             functions.push_back(std::move(func));
-            function_map[sym] = ptr; 
+            function_map[sym] = ptr;
             return ptr;
         }
-        
-        TypeDefinition *define_type(TypeSymbol *sym)
+
+        // Create a type definition shell (fields will be filled in by lowering)
+        TypeDefinition* define_type(TypeSymbol *sym)
         {
             auto def = std::make_unique<TypeDefinition>(sym);
-
-            // define all the members as well
-            for (const auto &member : sym->member_order) {
-                if (auto func_sym = member->as<FunctionSymbol>()) {
-                    create_function(func_sym);
-                }
-                else if (auto type_sym = member->as<TypeSymbol>()) {
-                    define_type(type_sym);
-                }
-                else if (auto prop_sym = member->as<PropertySymbol>()) {
-                    // Create functions for property getter/setter
-                    for (const auto &prop_member : prop_sym->member_order) {
-                        if (auto prop_func_sym = prop_member->as<FunctionSymbol>()) {
-                            create_function(prop_func_sym);
-                        }
-                    }
-                }
-                else if (auto var_sym = member->as<VariableSymbol>())
-                {
-                    // Fields are handled within the TypeDefinition itself
-                    auto field = std::make_unique<Field>(var_sym);
-                    field->type = var_sym->type->lower_references_to_ptrs(type_system);
-                    def->fields.push_back(std::move(field));
-                }
-            }
-            
             TypeDefinition *ptr = def.get();
             types.push_back(std::move(def));
             type_map[sym] = ptr;
             return ptr;
+        }
+
+        // Find type definition by symbol
+        TypeDefinition* find_type(TypeSymbol* sym)
+        {
+            auto it = type_map.find(sym);
+            return it != type_map.end() ? it->second : nullptr;
         }
 
         // Dump human-readable text representation
@@ -795,57 +760,25 @@ namespace Fern::HLIR
             // Dump all blocks
             for (const auto &block : func->blocks)
             {
-                ss << dump_block(block.get());
+                ss << "\n" << dump_block(block.get());
             }
 
             ss << "}\n";
             return ss.str();
         }
 
-        static std::string dump_block(const BasicBlock *block)
+        // Helper struct for table-formatted instruction output
+        struct InstructionParts {
+            std::string result;      // e.g., "%x" or ""
+            std::string operation;   // e.g., "const.int 0" or "load %addr"
+            std::string type;        // e.g., "i32" or ""
+        };
+
+        // Get just the operation string (without result prefix or type suffix)
+        static std::string get_operation_string(const Instruction *inst)
         {
             std::stringstream ss;
 
-            // Block label
-            ss << "  bb" << block->id;
-            if (!block->name.empty())
-            {
-                ss << " <" << block->name << ">";
-            }
-
-            // Show predecessors if any
-            if (!block->predecessors.empty())
-            {
-                ss << "  ; preds: ";
-                for (size_t i = 0; i < block->predecessors.size(); ++i)
-                {
-                    if (i > 0)
-                        ss << ", ";
-                    ss << "bb" << block->predecessors[i]->id;
-                }
-            }
-            ss << ":\n";
-
-            // Dump instructions
-            for (const auto &inst : block->instructions)
-            {
-                ss << "    " << dump_instruction(inst.get()) << "\n";
-            }
-
-            return ss.str();
-        }
-
-        static std::string dump_instruction(const Instruction *inst)
-        {
-            std::stringstream ss;
-
-            // Result value if any
-            if (inst->result)
-            {
-                ss << value_ref(inst->result) << " = ";
-            }
-
-            // Opcode and operands
             switch (inst->op)
             {
             case Opcode::ConstInt:
@@ -936,16 +869,16 @@ namespace Fern::HLIR
             }
             case Opcode::MemCpy:
             {
-                auto *memcpy = static_cast<const MemCpyInst *>(inst);
-                ss << "memcpy " << value_ref(memcpy->dest) << ", " << value_ref(memcpy->src) << ", " << value_ref(memcpy->size);
-                if (memcpy->is_volatile) ss << " [volatile]";
+                auto *memcpy_inst = static_cast<const MemCpyInst *>(inst);
+                ss << "memcpy " << value_ref(memcpy_inst->dest) << ", " << value_ref(memcpy_inst->src) << ", " << value_ref(memcpy_inst->size);
+                if (memcpy_inst->is_volatile) ss << " [volatile]";
                 break;
             }
             case Opcode::MemSet:
             {
-                auto *memset = static_cast<const MemSetInst *>(inst);
-                ss << "memset " << value_ref(memset->dest) << ", " << value_ref(memset->value) << ", " << value_ref(memset->size);
-                if (memset->is_volatile) ss << " [volatile]";
+                auto *memset_inst = static_cast<const MemSetInst *>(inst);
+                ss << "memset " << value_ref(memset_inst->dest) << ", " << value_ref(memset_inst->value) << ", " << value_ref(memset_inst->size);
+                if (memset_inst->is_volatile) ss << " [volatile]";
                 break;
             }
             case Opcode::Add:
@@ -968,8 +901,7 @@ namespace Fern::HLIR
             case Opcode::ShiftR:
             {
                 auto *bin = static_cast<const BinaryInst *>(inst);
-                ss << to_string(inst->op) << " "
-                   << value_ref(bin->left) << ", " << value_ref(bin->right);
+                ss << to_string(inst->op) << " " << value_ref(bin->left) << ", " << value_ref(bin->right);
                 break;
             }
             case Opcode::Neg:
@@ -1027,7 +959,120 @@ namespace Fern::HLIR
                 ss << "unknown_op_" << static_cast<int>(inst->op);
             }
 
-            // Debug info
+            return ss.str();
+        }
+
+        static InstructionParts get_instruction_parts(const Instruction *inst)
+        {
+            InstructionParts parts;
+
+            // Result value
+            if (inst->result)
+            {
+                parts.result = value_ref(inst->result);
+            }
+
+            // Operation (reuse existing logic but without result prefix)
+            parts.operation = get_operation_string(inst);
+
+            // Type annotation
+            if (inst->result && inst->result->type)
+            {
+                parts.type = inst->result->type->get_name();
+            }
+
+            return parts;
+        }
+
+        static std::string dump_block(const BasicBlock *block)
+        {
+            std::stringstream ss;
+
+            // Block label
+            ss << "  bb" << block->id;
+            if (!block->name.empty())
+            {
+                ss << " <" << block->name << ">";
+            }
+
+            // Show predecessors if any
+            if (!block->predecessors.empty())
+            {
+                ss << "  ; preds: ";
+                for (size_t i = 0; i < block->predecessors.size(); ++i)
+                {
+                    if (i > 0)
+                        ss << ", ";
+                    ss << "bb" << block->predecessors[i]->id;
+                }
+            }
+            ss << ":\n";
+
+            // First pass: collect parts and compute column widths
+            std::vector<InstructionParts> all_parts;
+            size_t max_result_width = 0;
+            size_t max_op_width = 0;
+
+            for (const auto &inst : block->instructions)
+            {
+                auto parts = get_instruction_parts(inst.get());
+                max_result_width = std::max(max_result_width, parts.result.length());
+                max_op_width = std::max(max_op_width, parts.operation.length());
+                all_parts.push_back(std::move(parts));
+            }
+
+            // Second pass: format with alignment
+            for (const auto &parts : all_parts)
+            {
+                ss << "    ";
+
+                if (!parts.result.empty())
+                {
+                    // Left-align result in its column
+                    ss << std::left << std::setw(max_result_width) << parts.result;
+                    ss << " = ";
+                }
+                else
+                {
+                    // No result - pad to align with instructions that have results
+                    if (max_result_width > 0)
+                    {
+                        ss << std::string(max_result_width + 3, ' '); // +3 for " = "
+                    }
+                }
+
+                // Left-align operation
+                ss << std::left << std::setw(max_op_width) << parts.operation;
+
+                // Type annotation
+                if (!parts.type.empty())
+                {
+                    ss << "  ::  " << parts.type;
+                }
+
+                ss << "\n";
+            }
+
+            return ss.str();
+        }
+
+        // Legacy single-line dump (still used for debug output in some places)
+        static std::string dump_instruction(const Instruction *inst)
+        {
+            std::stringstream ss;
+
+            if (inst->result)
+            {
+                ss << value_ref(inst->result) << " = ";
+            }
+
+            ss << get_operation_string(inst);
+
+            if (inst->result && inst->result->type)
+            {
+                ss << "  ::  " << inst->result->type->get_name();
+            }
+
             if (inst->debug_line > 0)
             {
                 ss << "  ; line " << inst->debug_line;
@@ -1056,4 +1101,4 @@ namespace Fern::HLIR
         
     };
 
-} // namespace Fern::HLIR
+} // namespace Fern::FNIR

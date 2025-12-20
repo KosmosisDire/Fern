@@ -1,7 +1,7 @@
 #include "compiler.hpp"
 
 #include "common/logger.hpp"
-#include "codegen/hlir_codegen.hpp"
+#include "codegen/fnir_codegen.hpp"
 #include "semantic/symbol_table.hpp"
 #include "parser/lexer.hpp"
 #include "parser/parser.hpp"
@@ -13,8 +13,8 @@
 #include "semantic/type_resolver.hpp"
 #include "semantic/symbol_table_builder.hpp"
 #include "semantic/syntax_validator.hpp"
-#include "hlir/hlir.hpp"
-#include "hlir/bound_to_hlir.hpp"
+#include "fnir/fnir.hpp"
+#include "fnir/bound_to_fnir.hpp"
 #include "binding/conversion_inserter.hpp"
 
 #include <llvm/Support/FileSystem.h>
@@ -166,7 +166,7 @@ namespace Fern
         std::vector<FileCompilationState> file_states(source_files.size());
 
         // Global diagnostics for errors not associated with a specific file
-        // (e.g., codegen errors that operate on merged HLIR)
+        // (e.g., codegen errors that operate on merged FNIR)
         std::vector<Diagnostic> global_diagnostics;
 
         // === Parse all files sequentially ===
@@ -438,52 +438,56 @@ namespace Fern
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
-        // === Convert bound tree to HLIR ===
-        LOG_HEADER("HLIR generation", LogCategory::COMPILER);
+        // === Convert bound tree to FNIR ===
+        LOG_HEADER("FNIR generation", LogCategory::COMPILER);
 
-        // Create HLIR module
-        auto hlir_module = std::make_unique<HLIR::Module>("FernProgram", global_symbols->get_global_namespace(), global_type_system.get());
-        
-        // Convert each bound tree to HLIR
+        // Create FNIR module
+        auto fnir_module = std::make_unique<FNIR::Module>("FernProgram");
+        auto global_ns = global_symbols->get_global_namespace();
+
+        // Initialize module with all types and function declarations (once)
+        FNIR::BoundToFNIR converter(fnir_module.get());
+        converter.init_module(global_ns);
+
+        // Generate function bodies for each compilation unit
         for (auto &state : file_states)
         {
             if (!state.boundTree)
                 continue;
 
-            LOG_INFO("Generating HLIR for: " + state.file.filename, LogCategory::COMPILER);
+            LOG_INFO("Generating FNIR for: " + state.file.filename, LogCategory::COMPILER);
 
-            HLIR::BoundToHLIR converter(hlir_module.get(), global_type_system.get());
-            converter.build(state.boundTree);
+            converter.generate(state.boundTree);
 
-            // Collect HLIR generation diagnostics
+            // Collect FNIR generation diagnostics
             state.collect_diagnostics(converter);
         }
 
-        // Early return if HLIR generation failed
+        // Early return if FNIR generation failed
         if (has_any_errors(file_states))
         {
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
-        // Dump non-SSA HLIR if requested
-        if (print_hlir)
+        // Dump non-SSA FNIR if requested
+        if (print_fnir)
         {
-            LOG_HEADER("HLIR Output (Non-SSA)", LogCategory::COMPILER);
-            LOG_INFO(hlir_module->dump() + "\n", LogCategory::COMPILER);
+            LOG_HEADER("FNIR Output (Non-SSA)", LogCategory::COMPILER);
+            LOG_INFO(fnir_module->dump() + "\n", LogCategory::COMPILER);
         }
 
         // return nullptr;
 
-        // === LLVM Code Generation from HLIR ===
+        // === LLVM Code Generation from FNIR ===
         LOG_HEADER("LLVM code generation", LogCategory::COMPILER);
 
         auto llvm_context = std::make_unique<llvm::LLVMContext>();
-        HLIRCodeGen codegen(*llvm_context, "FernProgram", global_type_system.get());
+        FNIRCodeGen codegen(*llvm_context, "FernProgram", global_type_system.get());
 
         std::unique_ptr<llvm::Module> llvm_module;
         try
         {
-            llvm_module = codegen.lower(hlir_module.get());
+            llvm_module = codegen.lower(fnir_module.get());
             LOG_INFO("LLVM IR generation successful", LogCategory::COMPILER);
         }
         catch (const std::exception &e)

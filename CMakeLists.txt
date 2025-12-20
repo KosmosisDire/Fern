@@ -102,15 +102,16 @@ set(SOURCE_FILES
     src/binding/bound_tree_builder.cpp
     src/binding/conversion_inserter.cpp
 
-    # HLIR
-    src/hlir/bound_to_hlir.cpp
-    # src/hlir/mem2reg.cpp
+    # FNIR
+    src/fnir/ir_type.cpp
+    src/fnir/bound_to_fnir.cpp
+    # src/fnir/mem2reg.cpp
 
     # Code Generator
     src/codegen/llvm_ir_builder.cpp
     src/codegen/codegen_module.cpp
     src/codegen/codegen_function.cpp
-    src/codegen/hlir_codegen.cpp
+    src/codegen/fnir_codegen.cpp
 
     # Runtime
     runtime/runtime.cpp

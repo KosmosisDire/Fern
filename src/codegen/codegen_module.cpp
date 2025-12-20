@@ -8,29 +8,28 @@ namespace Fern
 {
     // === Type Management ===
 
-    void CodeGenModule::declare_types(HLIR::Module* hlir_module)
+    void CodeGenModule::declare_types(FNIR::Module* fnir_module)
     {
-        // Declare all struct types first (opaque)
-        for (const auto& type_def : hlir_module->types)
+        // Declare all struct types from IR type system
+        // First pass: create opaque struct types
+        for (const auto& ir_struct_ptr : fnir_module->ir_types.get_all_structs())
         {
-            std::string type_name = type_def->name();
-            auto* struct_type = llvm::StructType::create(context, type_name);
-            struct_cache[type_def.get()] = struct_type;
-
-            // Also map the TypePtr (shared_ptr) to the struct type
-            type_cache[type_def->type()] = struct_type;
+            FNIR::IRStruct* ir_struct = ir_struct_ptr.get();
+            auto* struct_type = llvm::StructType::create(context, ir_struct->name);
+            struct_cache[ir_struct] = struct_type;
         }
 
-        // Now define the struct bodies
-        for (const auto& type_def : hlir_module->types)
+        // Second pass: define struct bodies
+        for (const auto& ir_struct_ptr : fnir_module->ir_types.get_all_structs())
         {
-            auto* struct_type = struct_cache[type_def.get()];
+            FNIR::IRStruct* ir_struct = ir_struct_ptr.get();
+            auto* struct_type = struct_cache[ir_struct];
 
             // Collect field types
             std::vector<llvm::Type*> field_types;
-            for (const auto& member : type_def->fields)
+            for (const auto& field : ir_struct->fields)
             {
-                llvm::Type* field_type = get_or_create_type(member->type);
+                llvm::Type* field_type = get_or_create_type(field.type);
                 field_types.push_back(field_type);
             }
 
@@ -42,7 +41,7 @@ namespace Fern
         }
     }
 
-    llvm::Type* CodeGenModule::get_or_create_type(TypePtr type)
+    llvm::Type* CodeGenModule::get_or_create_type(FNIR::IRTypePtr type)
     {
         if (!type)
         {
@@ -58,63 +57,92 @@ namespace Fern
 
         llvm::Type* llvm_type = nullptr;
 
-        if (auto* prim_type = type->as<PrimitiveType>())
+        switch (type->kind)
         {
-            switch (prim_type->kind)
+        case FNIR::IRTypeKind::Void:
+            llvm_type = llvm::Type::getVoidTy(context);
+            break;
+
+        case FNIR::IRTypeKind::Bool:
+            llvm_type = llvm::Type::getInt1Ty(context);
+            break;
+
+        case FNIR::IRTypeKind::Int:
+            switch (type->bit_width)
             {
-            case LiteralKind::Void:
-                llvm_type = llvm::Type::getVoidTy(context);
-                break;
-            case LiteralKind::Bool:
-                llvm_type = llvm::Type::getInt1Ty(context);
-                break;
-            case LiteralKind::Char:
+            case 8:
                 llvm_type = llvm::Type::getInt8Ty(context);
                 break;
-            case LiteralKind::I32:
+            case 16:
+                llvm_type = llvm::Type::getInt16Ty(context);
+                break;
+            case 32:
                 llvm_type = llvm::Type::getInt32Ty(context);
                 break;
-            case LiteralKind::F32:
-                llvm_type = llvm::Type::getFloatTy(context);
-                break;
-            case LiteralKind::String:
-                // just generic pointer
-                llvm_type = llvm::PointerType::get(context, 0);
-                break;
-            case LiteralKind::Null:
-                // null is a pointer type at runtime
-                llvm_type = llvm::PointerType::get(context, 0);
+            case 64:
+                llvm_type = llvm::Type::getInt64Ty(context);
                 break;
             default:
-                throw std::runtime_error("Unknown primitive type");
+                llvm_type = llvm::Type::getIntNTy(context, type->bit_width);
+                break;
             }
-        }
-        else if (auto* ptr_type = type->as<PointerType>())
-        {
-            // LLVM 19+ uses opaque pointers - just use ptr type
-            llvm_type = llvm::PointerType::get(context, 0);
-        }
-        else if (auto* array_type = type->as<ArrayType>())
-        {
-            // just represent arrays as pointers for now
-            llvm_type = llvm::PointerType::get(context, 0);
-        }
-        else if (auto* named_type = type->as<NamedType>())
-        {
-            // Named types should already be in the map from declare_types
-            auto it = type_cache.find(type);
-            if (it != type_cache.end())
+            break;
+
+        case FNIR::IRTypeKind::Float:
+            if (type->bit_width == 32)
             {
-                llvm_type = it->second;
+                llvm_type = llvm::Type::getFloatTy(context);
+            }
+            else if (type->bit_width == 64)
+            {
+                llvm_type = llvm::Type::getDoubleTy(context);
             }
             else
             {
-                throw std::runtime_error("Named type not declared: " + type->get_name());
+                throw std::runtime_error("Unsupported float bit width");
             }
-        }
-        else
-        {
-            throw std::runtime_error("Cannot convert type to LLVM: " + type->get_name());
+            break;
+
+        case FNIR::IRTypeKind::Pointer:
+            // LLVM 19+ uses opaque pointers
+            llvm_type = llvm::PointerType::get(context, 0);
+            break;
+
+        case FNIR::IRTypeKind::Array:
+            if (type->array_size >= 0)
+            {
+                // Fixed-size array
+                llvm::Type* elem_type = get_or_create_type(type->element);
+                llvm_type = llvm::ArrayType::get(elem_type, type->array_size);
+            }
+            else
+            {
+                // Dynamic array - represent as pointer for now
+                llvm_type = llvm::PointerType::get(context, 0);
+            }
+            break;
+
+        case FNIR::IRTypeKind::Struct:
+            if (type->struct_def)
+            {
+                auto sit = struct_cache.find(type->struct_def);
+                if (sit != struct_cache.end())
+                {
+                    llvm_type = sit->second;
+                }
+                else
+                {
+                    throw std::runtime_error("Struct not declared: " + type->struct_def->name);
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Struct type with null definition");
+            }
+            break;
+
+        default:
+            throw std::runtime_error("Unknown IR type kind");
         }
 
         // Cache and return
@@ -122,9 +150,9 @@ namespace Fern
         return llvm_type;
     }
 
-    llvm::StructType* CodeGenModule::get_struct_type(HLIR::TypeDefinition* type_def)
+    llvm::StructType* CodeGenModule::get_struct_type(FNIR::IRStruct* ir_struct)
     {
-        auto it = struct_cache.find(type_def);
+        auto it = struct_cache.find(ir_struct);
         if (it != struct_cache.end())
         {
             return it->second;
@@ -132,48 +160,34 @@ namespace Fern
         return nullptr;
     }
 
-    bool CodeGenModule::has_type(TypePtr type) const
+    bool CodeGenModule::has_type(FNIR::IRTypePtr type) const
     {
         return type_cache.find(type) != type_cache.end();
     }
 
-    llvm::StructType* CodeGenModule::declare_struct_type(HLIR::TypeDefinition* type_def)
-    {
-        auto it = struct_cache.find(type_def);
-        if (it != struct_cache.end())
-        {
-            return it->second;
-        }
-
-        std::string type_name = type_def->name();
-        auto* struct_type = llvm::StructType::create(context, type_name);
-        struct_cache[type_def] = struct_type;
-        return struct_type;
-    }
-
     // === Function Management ===
 
-    void CodeGenModule::declare_functions(HLIR::Module* hlir_module)
+    void CodeGenModule::declare_functions(FNIR::Module* fnir_module)
     {
-        for (const auto& hlir_func : hlir_module->functions)
+        for (const auto& fnir_func : fnir_module->functions)
         {
-            declare_function(hlir_func.get());
+            declare_function(fnir_func.get());
         }
     }
 
-    llvm::Function* CodeGenModule::declare_function(HLIR::Function* hlir_func)
+    llvm::Function* CodeGenModule::declare_function(FNIR::Function* fnir_func)
     {
         // Check if already declared
-        auto it = function_cache.find(hlir_func);
+        auto it = function_cache.find(fnir_func);
         if (it != function_cache.end())
         {
             return it->second;
         }
 
         // Get function type
-        llvm::FunctionType* func_type = get_function_type(hlir_func);
+        llvm::FunctionType* func_type = get_function_type(fnir_func);
 
-        std::string func_name = hlir_func->name();
+        std::string func_name = fnir_func->name();
 
         // Create function
         llvm::Function* llvm_func = llvm::Function::Create(
@@ -186,22 +200,22 @@ namespace Fern
         size_t param_idx = 0;
         for (auto& arg : llvm_func->args())
         {
-            if (param_idx < hlir_func->params.size())
+            if (param_idx < fnir_func->params.size())
             {
-                HLIR::Value* param_value = hlir_func->params[param_idx];
+                FNIR::Value* param_value = fnir_func->params[param_idx];
                 arg.setName(param_value->debug_name);
             }
             param_idx++;
         }
 
         // Store mapping
-        function_cache[hlir_func] = llvm_func;
+        function_cache[fnir_func] = llvm_func;
         return llvm_func;
     }
 
-    llvm::Function* CodeGenModule::get_function(HLIR::Function* hlir_func)
+    llvm::Function* CodeGenModule::get_function(FNIR::Function* fnir_func)
     {
-        auto it = function_cache.find(hlir_func);
+        auto it = function_cache.find(fnir_func);
         if (it != function_cache.end())
         {
             return it->second;
@@ -209,19 +223,19 @@ namespace Fern
         return nullptr;
     }
 
-    bool CodeGenModule::has_function(HLIR::Function* hlir_func) const
+    bool CodeGenModule::has_function(FNIR::Function* fnir_func) const
     {
-        return function_cache.find(hlir_func) != function_cache.end();
+        return function_cache.find(fnir_func) != function_cache.end();
     }
 
-    llvm::FunctionType* CodeGenModule::get_function_type(HLIR::Function* hlir_func)
+    llvm::FunctionType* CodeGenModule::get_function_type(FNIR::Function* fnir_func)
     {
         // Return type
-        llvm::Type* ret_type = get_or_create_type(hlir_func->return_type);
+        llvm::Type* ret_type = get_or_create_type(fnir_func->return_type);
 
-        // Parameter types - HLIR already includes 'this' parameter explicitly for member functions
+        // Parameter types - FNIR already includes 'this' parameter explicitly for member functions
         std::vector<llvm::Type*> param_types;
-        for (HLIR::Value* param : hlir_func->params)
+        for (FNIR::Value* param : fnir_func->params)
         {
             llvm::Type* param_type = get_or_create_type(param->type);
             param_types.push_back(param_type);
@@ -232,55 +246,41 @@ namespace Fern
 
     // === Type Utilities ===
 
-    CodeGenModule::TypeProperties CodeGenModule::get_type_properties(TypePtr type) const
+    CodeGenModule::TypeProperties CodeGenModule::get_type_properties(FNIR::IRTypePtr type) const
     {
-        TypeProperties props;
-        props.is_float = is_float(type);
-        props.is_signed = is_signed_int(type);
-        props.is_integer = is_signed_int(type) || is_unsigned_int(type);
-        props.is_pointer = type && type->is<PointerType>();
+        TypeProperties props = {};
+        if (!type) return props;
 
-        // Null type is also a pointer at runtime
-        if (!props.is_pointer && type) {
-            if (auto* prim = type->as<PrimitiveType>()) {
-                props.is_pointer = (prim->kind == LiteralKind::Null);
-            }
-        }
+        props.is_float = type->is_float();
+        props.is_signed = type->is_int() && type->is_signed;
+        props.is_integer = type->is_int();
+        props.is_pointer = type->is_pointer();
 
         return props;
     }
 
-    llvm::Type* CodeGenModule::get_pointee_type_or_self(TypePtr type)
+    llvm::Type* CodeGenModule::get_pointee_type_or_self(FNIR::IRTypePtr type)
     {
-        if (auto* ptr_type = type->as<PointerType>())
+        if (type && type->is_pointer() && type->pointee)
         {
-            return get_or_create_type(ptr_type->pointee);
+            return get_or_create_type(type->pointee);
         }
         return get_or_create_type(type);
     }
 
-    bool CodeGenModule::is_signed_int(TypePtr type) const
+    bool CodeGenModule::is_signed_int(FNIR::IRTypePtr type) const
     {
-        if (auto* prim = type->as<PrimitiveType>())
-        {
-            return prim->kind == LiteralKind::I32;
-        }
-        return false;
+        return type && type->is_int() && type->is_signed;
     }
 
-    bool CodeGenModule::is_unsigned_int(TypePtr type) const
+    bool CodeGenModule::is_unsigned_int(FNIR::IRTypePtr type) const
     {
-        // No unsigned types supported
-        return false;
+        return type && type->is_int() && !type->is_signed;
     }
 
-    bool CodeGenModule::is_float(TypePtr type) const
+    bool CodeGenModule::is_float(FNIR::IRTypePtr type) const
     {
-        if (auto* prim = type->as<PrimitiveType>())
-        {
-            return prim->kind == LiteralKind::F32;
-        }
-        return false;
+        return type && type->is_float();
     }
 
 } // namespace Fern

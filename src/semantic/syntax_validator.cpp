@@ -303,4 +303,19 @@ namespace Fern
         }
     }
 
+    void SyntaxValidator::visit(ArrayLiteralExprSyntax* node)
+    {
+        // Check for nested arrays (not yet supported)
+        for (auto element : node->elements)
+        {
+            if (element && element->is<ArrayLiteralExprSyntax>())
+            {
+                error("Nested arrays are not yet supported", element->location);
+            }
+        }
+
+        // Still visit elements to catch other errors
+        DefaultVisitor::visit(node);
+    }
+
 } // namespace Fern

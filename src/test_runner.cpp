@@ -80,7 +80,7 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
         Compiler compiler;
         compiler.set_print_ast(false);
         compiler.set_print_symbols(false);
-        compiler.set_print_hlir(false);
+        compiler.set_print_fnir(false);
 
         // Compile the test file with stdlib
         std::vector<SourceFile> source_files = {{test_file, source}};

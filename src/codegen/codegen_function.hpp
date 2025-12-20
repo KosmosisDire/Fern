@@ -3,7 +3,7 @@
 
 #include "codegen_module.hpp"
 #include "llvm_ir_builder.hpp"
-#include "hlir/hlir.hpp"
+#include "fnir/fnir.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Value.h>
@@ -26,54 +26,54 @@ namespace Fern
         CodeGenModule& CGM;
         LLVMIRBuilder& ir_builder;
 
-        HLIR::Function* hlir_function;
+        FNIR::Function* fnir_function;
         llvm::Function* llvm_function;
 
         // Value and block mappings
-        std::unordered_map<HLIR::Value*, llvm::Value*> value_map;
-        std::unordered_map<HLIR::BasicBlock*, llvm::BasicBlock*> block_map;
+        std::unordered_map<FNIR::Value*, llvm::Value*> value_map;
+        std::unordered_map<FNIR::BasicBlock*, llvm::BasicBlock*> block_map;
 
     public:
         CodeGenFunction(CodeGenModule& cgm, LLVMIRBuilder& builder,
-                       HLIR::Function* hlir_func, llvm::Function* llvm_func)
+                       FNIR::Function* fnir_func, llvm::Function* llvm_func)
             : CGM(cgm), ir_builder(builder),
-              hlir_function(hlir_func), llvm_function(llvm_func) {}
+              fnir_function(fnir_func), llvm_function(llvm_func) {}
 
         // === Value Management ===
 
         /**
-         * @brief Get LLVM value for HLIR value
+         * @brief Get LLVM value for FNIR value
          * @throws std::runtime_error if value not found
          */
-        llvm::Value* get_value(HLIR::Value* hlir_value);
+        llvm::Value* get_value(FNIR::Value* fnir_value);
 
         /**
-         * @brief Map HLIR value to LLVM value
+         * @brief Map FNIR value to LLVM value
          */
-        void map_value(HLIR::Value* hlir_value, llvm::Value* llvm_value);
+        void map_value(FNIR::Value* fnir_value, llvm::Value* llvm_value);
 
         /**
          * @brief Check if value has been mapped
          */
-        bool has_value(HLIR::Value* hlir_value) const;
+        bool has_value(FNIR::Value* fnir_value) const;
 
         // === Block Management ===
 
         /**
-         * @brief Get LLVM basic block for HLIR block
+         * @brief Get LLVM basic block for FNIR block
          * @throws std::runtime_error if block not found
          */
-        llvm::BasicBlock* get_block(HLIR::BasicBlock* hlir_block);
+        llvm::BasicBlock* get_block(FNIR::BasicBlock* fnir_block);
 
         /**
-         * @brief Map HLIR block to LLVM block
+         * @brief Map FNIR block to LLVM block
          */
-        void map_block(HLIR::BasicBlock* hlir_block, llvm::BasicBlock* llvm_block);
+        void map_block(FNIR::BasicBlock* fnir_block, llvm::BasicBlock* llvm_block);
 
         /**
          * @brief Check if block has been mapped
          */
-        bool has_block(HLIR::BasicBlock* hlir_block) const;
+        bool has_block(FNIR::BasicBlock* fnir_block) const;
 
         /**
          * @brief Create all basic blocks for function
@@ -90,13 +90,13 @@ namespace Fern
         // Accessors
         CodeGenModule& get_module() { return CGM; }
         LLVMIRBuilder& get_ir_builder() { return ir_builder; }
-        HLIR::Function* get_hlir_function() { return hlir_function; }
+        FNIR::Function* get_fnir_function() { return fnir_function; }
         llvm::Function* get_llvm_function() { return llvm_function; }
 
     private:
         // Error helpers
-        std::string format_value_error(HLIR::Value* value, const std::string& message);
-        std::string format_block_error(HLIR::BasicBlock* block, const std::string& message);
+        std::string format_value_error(FNIR::Value* value, const std::string& message);
+        std::string format_block_error(FNIR::BasicBlock* block, const std::string& message);
     };
 
 } // namespace Fern

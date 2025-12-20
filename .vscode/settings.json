@@ -93,5 +93,6 @@
         "future": "cpp",
         "*.def": "cpp",
         "queue": "cpp"
-    }
+    },
+    "terminal.integrated.scrollback": 10000
 }

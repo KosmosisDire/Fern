@@ -1,58 +1,56 @@
+#pragma once
 
+#include "fnir.hpp"
 
-#include "hlir.hpp"
-#include "../semantic/type_system.hpp"
-
-namespace Fern::HLIR
+namespace Fern::FNIR
 {
-    class HLIRBuilder {
+    class FNIRBuilder {
         Function* current_func = nullptr;
         BasicBlock* current_block = nullptr;
-        TypeSystem* type_system = nullptr;
+        IRTypeSystem* ir_types = nullptr;
 
     public:
-        HLIRBuilder() = default;
-        HLIRBuilder(TypeSystem* ts) : type_system(ts) {}
+        FNIRBuilder() = default;
+        FNIRBuilder(IRTypeSystem* ts) : ir_types(ts) {}
 
         void set_function(Function* f) { current_func = f; }
         void set_block(BasicBlock* b) { current_block = b; }
-        void set_type_system(TypeSystem* ts) { type_system = ts; }
-        
-        Value* const_int(int64_t val, TypePtr type) {
+        void set_type_system(IRTypeSystem* ts) { ir_types = ts; }
+        IRTypeSystem* types() const { return ir_types; }
+
+        Value* const_int(int64_t val, IRTypePtr type) {
             auto result = current_func->create_value(type);
             auto inst = std::make_unique<ConstIntInst>(result, val);
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* const_bool(bool val, TypePtr type) {
+
+        Value* const_bool(bool val, IRTypePtr type) {
             auto result = current_func->create_value(type);
             auto inst = std::make_unique<ConstBoolInst>(result, val);
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* const_float(double val, TypePtr type) {
+
+        Value* const_float(double val, IRTypePtr type) {
             auto result = current_func->create_value(type);
             auto inst = std::make_unique<ConstFloatInst>(result, val);
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* const_string(const std::string& val, TypePtr type) {
+
+        Value* const_string(const std::string& val, IRTypePtr type) {
             auto result = current_func->create_value(type);
             auto inst = std::make_unique<ConstStringInst>(result, val);
             result->def = inst.get();
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* const_null(TypePtr type) {
-            // Create a proper ConstNull instruction for any type
-            // The backend will lower this appropriately for each type
+
+        Value* const_null(IRTypePtr type) {
             auto result = current_func->create_value(type);
             auto inst = std::make_unique<ConstNullInst>(result, type);
             result->def = inst.get();
@@ -61,8 +59,8 @@ namespace Fern::HLIR
         }
 
         // Stack allocation of a typed value
-        Value* stack_alloc(TypePtr type, const std::string& name = "") {
-            auto ptr_type = type_system ? type_system->get_pointer(type) : type;
+        Value* stack_alloc(IRTypePtr type, const std::string& name = "") {
+            auto ptr_type = ir_types->get_pointer(type);
             auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<StackAllocInst>(result, type);
             result->def = inst.get();
@@ -72,7 +70,7 @@ namespace Fern::HLIR
 
         // Stack allocation of dynamic byte count
         Value* stack_alloc_bytes(Value* size, const std::string& name = "") {
-            auto ptr_type = type_system->get_pointer(type_system->get_void());
+            auto ptr_type = ir_types->get_pointer(ir_types->get_void());
             auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<StackAllocBytesInst>(result, size);
             result->def = inst.get();
@@ -82,13 +80,13 @@ namespace Fern::HLIR
         }
 
         // Stack allocation of pointer to type (for nested pointers like T**)
-        Value* stack_alloc_nested(TypePtr type, const std::string& name = "") {
-            return stack_alloc(type_system->get_pointer(type), name);
+        Value* stack_alloc_nested(IRTypePtr type, const std::string& name = "") {
+            return stack_alloc(ir_types->get_pointer(type), name);
         }
 
         // Heap allocation of a typed value
-        Value* heap_alloc(TypePtr type, const std::string& name = "") {
-            auto ptr_type = type_system ? type_system->get_pointer(type) : type;
+        Value* heap_alloc(IRTypePtr type, const std::string& name = "") {
+            auto ptr_type = ir_types->get_pointer(type);
             auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<HeapAllocInst>(result, type);
             result->def = inst.get();
@@ -98,7 +96,7 @@ namespace Fern::HLIR
 
         // Heap allocation of dynamic byte count
         Value* heap_alloc_bytes(Value* size, const std::string& name = "") {
-            auto ptr_type = type_system->get_pointer(type_system->get_void());
+            auto ptr_type = ir_types->get_pointer(ir_types->get_void());
             auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<HeapAllocBytesInst>(result, size);
             result->def = inst.get();
@@ -108,19 +106,23 @@ namespace Fern::HLIR
         }
 
         // Heap allocation of pointer to type (for nested pointers like T**)
-        Value* heap_alloc_nested(TypePtr type, const std::string& name = "") {
-            return heap_alloc(type_system->get_pointer(type), name);
+        Value* heap_alloc_nested(IRTypePtr type, const std::string& name = "") {
+            return heap_alloc(ir_types->get_pointer(type), name);
         }
 
-        Value* smart_alloc(TypePtr type, const std::string& name = "") {
-            if (type->is_reference_type()) {
-                return heap_alloc(type, name);
-            } else {
-                return stack_alloc(type, name);
+        // Smart allocation - allocates on heap for pointer types (ref types), stack otherwise
+        // For pointer types (T*), allocates T on heap and returns T*
+        // For value types, allocates on stack
+        Value* smart_alloc(IRTypePtr type, const std::string& name = "") {
+            if (type->is_pointer() && type->pointee) {
+                // Type is T* (reference type) - allocate T on heap
+                return heap_alloc(type->pointee, name);
             }
+            // Value type - allocate on stack
+            return stack_alloc(type, name);
         }
 
-        Value* load(Value* addr, TypePtr type, const std::string& name = "") {
+        Value* load(Value* addr, IRTypePtr type, const std::string& name = "") {
             auto result = current_func->create_value(type, name);
             auto inst = std::make_unique<LoadInst>(result, addr);
             result->def = inst.get();
@@ -128,22 +130,22 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
+
         void store(Value* val, Value* addr) {
             auto inst = std::make_unique<StoreInst>(val, addr);
             val->uses.push_back(inst.get());
             addr->uses.push_back(inst.get());
             current_block->add_inst(std::move(inst));
         }
-        
+
         Value* binary(Opcode op, Value* left, Value* right) {
             // Determine result type based on operation
-            TypePtr result_type;
+            IRTypePtr result_type;
             if (op == Opcode::Eq || op == Opcode::Ne ||
                 op == Opcode::Lt || op == Opcode::Le ||
                 op == Opcode::Gt || op == Opcode::Ge) {
                 // Comparison operations return bool
-                result_type = type_system->get_bool();
+                result_type = ir_types->get_bool();
             } else {
                 // Arithmetic/logical operations return operand type
                 result_type = left->type;
@@ -157,7 +159,7 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
+
         Value* unary(Opcode op, Value* operand) {
             auto result = current_func->create_value(operand->type);
             auto inst = std::make_unique<UnaryInst>(op, result, operand);
@@ -166,8 +168,8 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* cast(Value* value, TypePtr target_type) {
+
+        Value* cast(Value* value, IRTypePtr target_type) {
             auto result = current_func->create_value(target_type);
             auto inst = std::make_unique<CastInst>(result, value, target_type);
             result->def = inst.get();
@@ -175,10 +177,10 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
-        Value* field_addr(Value* object, uint32_t field_index, TypePtr field_type, const std::string& name = "") {
+
+        Value* field_addr(Value* object, uint32_t field_index, IRTypePtr field_type, const std::string& name = "") {
             // Result type is pointer to field type
-            auto ptr_type = type_system ? type_system->get_pointer(field_type) : field_type;
+            auto ptr_type = ir_types->get_pointer(field_type);
             auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<FieldAddrInst>(result, object, field_index);
             result->def = inst.get();
@@ -187,9 +189,9 @@ namespace Fern::HLIR
             return result;
         }
 
-        Value* element_addr(Value* array, Value* index, TypePtr element_type, const std::string& name = "") {
+        Value* element_addr(Value* array, Value* index, IRTypePtr element_type, const std::string& name = "") {
             // Result type is pointer to element type
-            auto ptr_type = type_system ? type_system->get_pointer(element_type) : element_type;
+            auto ptr_type = ir_types->get_pointer(element_type);
             auto result = current_func->create_value(ptr_type, name);
             auto inst = std::make_unique<ElementAddrInst>(result, array, index);
             result->def = inst.get();
@@ -237,20 +239,20 @@ namespace Fern::HLIR
             current_block->add_inst(std::move(inst));
             return result;
         }
-        
+
         void ret(Value* val = nullptr) {
             auto inst = std::make_unique<RetInst>(val);
             if (val) val->uses.push_back(inst.get());
             current_block->add_inst(std::move(inst));
         }
-        
+
         void br(BasicBlock* target) {
             auto inst = std::make_unique<BrInst>(target);
             current_block->add_inst(std::move(inst));
             current_block->successors.push_back(target);
             target->predecessors.push_back(current_block);
         }
-        
+
         void cond_br(Value* cond, BasicBlock* t, BasicBlock* f) {
             auto inst = std::make_unique<CondBrInst>(cond, t, f);
             cond->uses.push_back(inst.get());
@@ -260,6 +262,6 @@ namespace Fern::HLIR
             t->predecessors.push_back(current_block);
             f->predecessors.push_back(current_block);
         }
-        
+
     };
 }

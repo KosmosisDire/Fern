@@ -1,15 +1,18 @@
-// bound_to_hlir.cpp
-#include "bound_to_hlir.hpp"
+// bound_to_fnir.cpp
+#include "bound_to_fnir.hpp"
+#include "ir_type.hpp"
 #include <cassert>
 #include <iostream>
 #include <functional>
 
-namespace Fern::HLIR
+namespace Fern::FNIR
 {
+
+using IRTypePtr = FNIR::IRTypePtr;
 
 #pragma region Intrinsic Table
 
-using IntrinsicHandler = std::function<HLIR::Value*(BoundToHLIR*, const std::vector<HLIR::Value*>&)>;
+using IntrinsicHandler = std::function<FNIR::Value*(BoundToFNIR*, const std::vector<FNIR::Value*>&)>;
 
 struct IntrinsicInfo {
     size_t arity;
@@ -17,21 +20,21 @@ struct IntrinsicInfo {
 };
 
 static const std::unordered_map<std::string, IntrinsicInfo> intrinsic_table = {
-    {"alloca", {1, [](BoundToHLIR* self, const std::vector<HLIR::Value*>& args) {
+    {"alloca", {1, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
         return self->builder.stack_alloc_bytes(args[0]);
     }}},
-    {"malloc", {1, [](BoundToHLIR* self, const std::vector<HLIR::Value*>& args) {
+    {"malloc", {1, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
         return self->builder.heap_alloc_bytes(args[0]);
     }}},
-    {"free", {1, [](BoundToHLIR* self, const std::vector<HLIR::Value*>& args) {
+    {"free", {1, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
         self->builder.heap_free(args[0]);
         return nullptr;
     }}},
-    {"memcpy", {3, [](BoundToHLIR* self, const std::vector<HLIR::Value*>& args) {
+    {"memcpy", {3, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
         self->builder.memcpy(args[0], args[1], args[2]);
         return args[0];
     }}},
-    {"memset", {3, [](BoundToHLIR* self, const std::vector<HLIR::Value*>& args) {
+    {"memset", {3, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
         self->builder.memset(args[0], args[1], args[2]);
         return args[0];
     }}},
@@ -39,13 +42,89 @@ static const std::unordered_map<std::string, IntrinsicInfo> intrinsic_table = {
 
 #pragma endregion
 
+#pragma region Initialization Helpers
+
+static void collect_types(Symbol* symbol, std::vector<TypeSymbol*>& types) {
+    if (auto* type_sym = symbol->as<TypeSymbol>()) {
+        types.push_back(type_sym);
+    }
+    if (auto* container = symbol->as<ContainerSymbol>()) {
+        for (auto& [name, child] : container->members) {
+            collect_types(child.get(), types);
+        }
+    }
+}
+
+static void collect_functions(Symbol* symbol, std::vector<FunctionSymbol*>& functions) {
+    if (auto* func_sym = symbol->as<FunctionSymbol>()) {
+        functions.push_back(func_sym);
+    }
+    if (auto* container = symbol->as<ContainerSymbol>()) {
+        for (auto& [name, child] : container->members) {
+            collect_functions(child.get(), functions);
+        }
+    }
+}
+
+#pragma endregion
+
 #pragma region Core Infrastructure
 
-void BoundToHLIR::build(BoundCompilationUnit* unit) {
+void BoundToFNIR::init_module(NamespaceSymbol* global_ns) {
+    // Phase 1: Collect and define all types
+    std::vector<TypeSymbol*> types;
+    collect_types(global_ns, types);
+
+    for (auto* type_sym : types) {
+        module->ir_types.define_struct(type_sym);
+    }
+
+    // Phase 2: Fill in struct fields (after all types are defined)
+    for (auto* type_sym : types) {
+        auto* ir_struct = module->ir_types.find_struct(type_sym);
+        if (!ir_struct) continue;
+
+        size_t offset = 0;
+        size_t max_align = 1;
+
+        for (auto* member : type_sym->member_order) {
+            if (auto* var = member->as<VariableSymbol>()) {
+                if (!var->is_field()) continue;
+
+                IRTypePtr field_ir_type = convert(var->type);
+                size_t align = field_ir_type->get_alignment();
+                size_t size = field_ir_type->get_size();
+
+                // Align the offset
+                offset = (offset + align - 1) & ~(align - 1);
+
+                ir_struct->fields.push_back({var->name, field_ir_type, offset});
+                offset += size;
+                max_align = std::max(max_align, align);
+            }
+        }
+
+        // Final size with trailing padding
+        ir_struct->size = (offset + max_align - 1) & ~(max_align - 1);
+        ir_struct->alignment = max_align;
+    }
+
+    // Phase 3: Create function declarations
+    std::vector<FunctionSymbol*> functions;
+    collect_functions(global_ns, functions);
+
+    for (auto* func_sym : functions) {
+        auto* func = module->create_function(func_sym);
+        func->return_type = convert(func_sym->return_type);
+        func->is_static = func_sym->is_static();
+    }
+}
+
+void BoundToFNIR::generate(BoundCompilationUnit* unit) {
     visit(unit);
 }
 
-HLIR::Value* BoundToHLIR::emit_rvalue(BoundExpression* expr) {
+FNIR::Value* BoundToFNIR::emit_rvalue(BoundExpression* expr) {
     if (!expr) return nullptr;
     
     expr->accept(this);
@@ -66,15 +145,11 @@ HLIR::Value* BoundToHLIR::emit_rvalue(BoundExpression* expr) {
         return lr.result;
     }
     
-    if (type->is_reference_type()) {
-        auto ptr_type = type_system->get_pointer(type);
-        return builder.load(lr.result, ptr_type);
-    }
-    
-    return builder.load(lr.result, type);
+    // For reference types, convert() already produces pointer type
+    return builder.load(lr.result, convert(type));
 }
 
-HLIR::Value* BoundToHLIR::emit_lvalue(BoundExpression* expr) {
+FNIR::Value* BoundToFNIR::emit_lvalue(BoundExpression* expr) {
     if (!expr) return nullptr;
     
     expr->accept(this);
@@ -89,7 +164,7 @@ HLIR::Value* BoundToHLIR::emit_lvalue(BoundExpression* expr) {
         return lr.result;
     }
     
-    auto temp = builder.stack_alloc(expr->type);
+    auto temp = builder.stack_alloc(convert(expr->type));
     builder.store(lr.result, temp);
     return temp;
 }
@@ -98,27 +173,28 @@ HLIR::Value* BoundToHLIR::emit_lvalue(BoundExpression* expr) {
 
 #pragma region Helpers
 
-HLIR::Value* BoundToHLIR::get_this_param() {
+FNIR::Value* BoundToFNIR::get_this_param() {
     if (!current_function || current_function->is_static || current_function->params.empty()) {
         return nullptr;
     }
     return current_function->params[0];
 }
 
-void BoundToHLIR::emit_store(HLIR::Value* dest, HLIR::Value* src, TypePtr type) {
-    if (auto arr = type->as<ArrayType>(); arr && arr->size > 0) {
-        size_t byte_size = arr->element->get_size() * arr->size;
-        auto size_val = builder.const_int(static_cast<int64_t>(byte_size), type_system->get_i32());
+void BoundToFNIR::emit_store(FNIR::Value* dest, FNIR::Value* src, FNIR::IRTypePtr type) {
+    // For fixed-size arrays, use memcpy
+    if (type->is_array() && type->array_size > 0) {
+        size_t byte_size = type->get_size();
+        auto size_val = builder.const_int(static_cast<int64_t>(byte_size), module->ir_types.get_i32());
         builder.memcpy(dest, src, size_val);
     } else {
         builder.store(src, dest);
     }
 }
 
-std::optional<HLIR::Value*> BoundToHLIR::try_pointer_arithmetic(
+std::optional<FNIR::Value*> BoundToFNIR::try_pointer_arithmetic(
     BoundBinaryExpression* node, 
-    HLIR::Value* left, 
-    HLIR::Value* right) 
+    FNIR::Value* left, 
+    FNIR::Value* right) 
 {
     auto ltype = node->left->type;
     auto rtype = node->right->type;
@@ -130,16 +206,16 @@ std::optional<HLIR::Value*> BoundToHLIR::try_pointer_arithmetic(
     }
     
     if (ltype->is<PointerType>() && rtype->is<PrimitiveType>()) {
-        auto elem = ltype->as<PointerType>()->pointee;
-        HLIR::Value* index = right;
+        auto elem = convert(ltype->as<PointerType>()->pointee);
+        FNIR::Value* index = right;
         if (is_sub) {
             index = builder.unary(Opcode::Neg, right);
         }
         return builder.element_addr(left, index, elem);
     }
-    
+
     if (is_add && rtype->is<PointerType>() && ltype->is<PrimitiveType>()) {
-        auto elem = rtype->as<PointerType>()->pointee;
+        auto elem = convert(rtype->as<PointerType>()->pointee);
         return builder.element_addr(right, left, elem);
     }
     
@@ -150,9 +226,9 @@ std::optional<HLIR::Value*> BoundToHLIR::try_pointer_arithmetic(
     return std::nullopt;
 }
 
-std::optional<HLIR::Value*> BoundToHLIR::try_emit_intrinsic(
+std::optional<FNIR::Value*> BoundToFNIR::try_emit_intrinsic(
     FunctionSymbol* method, 
-    const std::vector<HLIR::Value*>& args, 
+    const std::vector<FNIR::Value*>& args, 
     const SourceRange& loc) 
 {
     if (!method->is_intrinsic) {
@@ -175,14 +251,14 @@ std::optional<HLIR::Value*> BoundToHLIR::try_emit_intrinsic(
     return info.handler(this, args);
 }
 
-void BoundToHLIR::branch_if_open(HLIR::BasicBlock* target) {
+void BoundToFNIR::branch_if_open(FNIR::BasicBlock* target) {
     if (current_block && !current_block->terminator()) {
         builder.set_block(current_block);
         builder.br(target);
     }
 }
 
-size_t BoundToHLIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
+size_t BoundToFNIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
     if (!type_sym || !field_sym) return 0;
 
     size_t index = 0;
@@ -197,66 +273,66 @@ size_t BoundToHLIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
     return 0;
 }
 
-HLIR::BasicBlock* BoundToHLIR::create_block(const std::string& name) {
+FNIR::BasicBlock* BoundToFNIR::create_block(const std::string& name) {
     return current_function->create_block(name);
 }
 
-HLIR::Opcode BoundToHLIR::get_binary_opcode(BinaryOperatorKind kind) {
+FNIR::Opcode BoundToFNIR::get_binary_opcode(BinaryOperatorKind kind) {
     switch (kind) {
-        case BinaryOperatorKind::Add: return HLIR::Opcode::Add;
-        case BinaryOperatorKind::Subtract: return HLIR::Opcode::Sub;
-        case BinaryOperatorKind::Multiply: return HLIR::Opcode::Mul;
-        case BinaryOperatorKind::Divide: return HLIR::Opcode::Div;
-        case BinaryOperatorKind::Modulo: return HLIR::Opcode::Rem;
-        case BinaryOperatorKind::Equals: return HLIR::Opcode::Eq;
-        case BinaryOperatorKind::NotEquals: return HLIR::Opcode::Ne;
-        case BinaryOperatorKind::LessThan: return HLIR::Opcode::Lt;
-        case BinaryOperatorKind::LessThanOrEqual: return HLIR::Opcode::Le;
-        case BinaryOperatorKind::GreaterThan: return HLIR::Opcode::Gt;
-        case BinaryOperatorKind::GreaterThanOrEqual: return HLIR::Opcode::Ge;
-        case BinaryOperatorKind::LogicalAnd: return HLIR::Opcode::And;
-        case BinaryOperatorKind::LogicalOr: return HLIR::Opcode::Or;
-        case BinaryOperatorKind::BitwiseAnd: return HLIR::Opcode::BitAnd;
-        case BinaryOperatorKind::BitwiseOr: return HLIR::Opcode::BitOr;
-        case BinaryOperatorKind::BitwiseXor: return HLIR::Opcode::BitXor;
-        case BinaryOperatorKind::LeftShift: return HLIR::Opcode::ShiftL;
-        case BinaryOperatorKind::RightShift: return HLIR::Opcode::ShiftR;
-        default: return HLIR::Opcode::Add;
+        case BinaryOperatorKind::Add: return FNIR::Opcode::Add;
+        case BinaryOperatorKind::Subtract: return FNIR::Opcode::Sub;
+        case BinaryOperatorKind::Multiply: return FNIR::Opcode::Mul;
+        case BinaryOperatorKind::Divide: return FNIR::Opcode::Div;
+        case BinaryOperatorKind::Modulo: return FNIR::Opcode::Rem;
+        case BinaryOperatorKind::Equals: return FNIR::Opcode::Eq;
+        case BinaryOperatorKind::NotEquals: return FNIR::Opcode::Ne;
+        case BinaryOperatorKind::LessThan: return FNIR::Opcode::Lt;
+        case BinaryOperatorKind::LessThanOrEqual: return FNIR::Opcode::Le;
+        case BinaryOperatorKind::GreaterThan: return FNIR::Opcode::Gt;
+        case BinaryOperatorKind::GreaterThanOrEqual: return FNIR::Opcode::Ge;
+        case BinaryOperatorKind::LogicalAnd: return FNIR::Opcode::And;
+        case BinaryOperatorKind::LogicalOr: return FNIR::Opcode::Or;
+        case BinaryOperatorKind::BitwiseAnd: return FNIR::Opcode::BitAnd;
+        case BinaryOperatorKind::BitwiseOr: return FNIR::Opcode::BitOr;
+        case BinaryOperatorKind::BitwiseXor: return FNIR::Opcode::BitXor;
+        case BinaryOperatorKind::LeftShift: return FNIR::Opcode::ShiftL;
+        case BinaryOperatorKind::RightShift: return FNIR::Opcode::ShiftR;
+        default: return FNIR::Opcode::Add;
     }
 }
 
-HLIR::Opcode BoundToHLIR::get_unary_opcode(UnaryOperatorKind kind) {
+FNIR::Opcode BoundToFNIR::get_unary_opcode(UnaryOperatorKind kind) {
     switch (kind) {
-        case UnaryOperatorKind::Minus: return HLIR::Opcode::Neg;
-        case UnaryOperatorKind::Not: return HLIR::Opcode::Not;
-        case UnaryOperatorKind::BitwiseNot: return HLIR::Opcode::BitNot;
-        default: return HLIR::Opcode::Neg;
+        case UnaryOperatorKind::Minus: return FNIR::Opcode::Neg;
+        case UnaryOperatorKind::Not: return FNIR::Opcode::Not;
+        case UnaryOperatorKind::BitwiseNot: return FNIR::Opcode::BitNot;
+        default: return FNIR::Opcode::Neg;
     }
 }
 
-HLIR::Opcode BoundToHLIR::get_compound_opcode(AssignmentOperatorKind kind) {
+FNIR::Opcode BoundToFNIR::get_compound_opcode(AssignmentOperatorKind kind) {
     switch (kind) {
-        case AssignmentOperatorKind::Add: return HLIR::Opcode::Add;
-        case AssignmentOperatorKind::Subtract: return HLIR::Opcode::Sub;
-        case AssignmentOperatorKind::Multiply: return HLIR::Opcode::Mul;
-        case AssignmentOperatorKind::Divide: return HLIR::Opcode::Div;
-        case AssignmentOperatorKind::Modulo: return HLIR::Opcode::Rem;
-        case AssignmentOperatorKind::And: return HLIR::Opcode::BitAnd;
-        case AssignmentOperatorKind::Or: return HLIR::Opcode::BitOr;
-        case AssignmentOperatorKind::Xor: return HLIR::Opcode::BitXor;
-        case AssignmentOperatorKind::LeftShift: return HLIR::Opcode::ShiftL;
-        case AssignmentOperatorKind::RightShift: return HLIR::Opcode::ShiftR;
-        default: return HLIR::Opcode::Add;
+        case AssignmentOperatorKind::Add: return FNIR::Opcode::Add;
+        case AssignmentOperatorKind::Subtract: return FNIR::Opcode::Sub;
+        case AssignmentOperatorKind::Multiply: return FNIR::Opcode::Mul;
+        case AssignmentOperatorKind::Divide: return FNIR::Opcode::Div;
+        case AssignmentOperatorKind::Modulo: return FNIR::Opcode::Rem;
+        case AssignmentOperatorKind::And: return FNIR::Opcode::BitAnd;
+        case AssignmentOperatorKind::Or: return FNIR::Opcode::BitOr;
+        case AssignmentOperatorKind::Xor: return FNIR::Opcode::BitXor;
+        case AssignmentOperatorKind::LeftShift: return FNIR::Opcode::ShiftL;
+        case AssignmentOperatorKind::RightShift: return FNIR::Opcode::ShiftR;
+        default: return FNIR::Opcode::Add;
     }
 }
 
-void BoundToHLIR::emit_string_init(HLIR::Value* string_addr, HLIR::Value* data_ptr, size_t length) {
-    auto char_ptr_type = type_system->get_pointer(type_system->get_primitive("char"));
+void BoundToFNIR::emit_string_init(FNIR::Value* string_addr, FNIR::Value* data_ptr, size_t length) {
+    auto char_ptr_type = module->ir_types.get_pointer(module->ir_types.get_i8());
     auto data_field = builder.field_addr(string_addr, 0, char_ptr_type, "data");
     builder.store(data_ptr, data_field);
 
-    auto len_val = builder.const_int(static_cast<int64_t>(length), type_system->get_i32());
-    auto len_field = builder.field_addr(string_addr, 1, type_system->get_i32(), "length");
+    auto len_val = builder.const_int(static_cast<int64_t>(length), module->ir_types.get_i32());
+    auto len_field = builder.field_addr(string_addr, 1, module->ir_types.get_i32(), "length");
     builder.store(len_val, len_field);
 }
 
@@ -264,30 +340,38 @@ void BoundToHLIR::emit_string_init(HLIR::Value* string_addr, HLIR::Value* data_p
 
 #pragma region Expression Visitors
 
-void BoundToHLIR::visit(BoundLiteralExpression* node) {
-    HLIR::Value* result = nullptr;
+void BoundToFNIR::visit(BoundLiteralExpression* node) {
+    FNIR::Value* result = nullptr;
+    auto ir_type = convert(node->type);
 
     if (std::holds_alternative<int64_t>(node->constantValue)) {
-        result = builder.const_int(std::get<int64_t>(node->constantValue), node->type);
+        result = builder.const_int(std::get<int64_t>(node->constantValue), ir_type);
     }
     else if (std::holds_alternative<uint64_t>(node->constantValue)) {
-        result = builder.const_int(static_cast<int64_t>(std::get<uint64_t>(node->constantValue)), node->type);
+        result = builder.const_int(static_cast<int64_t>(std::get<uint64_t>(node->constantValue)), ir_type);
     }
     else if (std::holds_alternative<bool>(node->constantValue)) {
-        result = builder.const_bool(std::get<bool>(node->constantValue), node->type);
+        result = builder.const_bool(std::get<bool>(node->constantValue), ir_type);
     }
     else if (std::holds_alternative<double>(node->constantValue)) {
-        result = builder.const_float(std::get<double>(node->constantValue), node->type);
+        result = builder.const_float(std::get<double>(node->constantValue), ir_type);
     }
     else if (std::holds_alternative<std::string>(node->constantValue))
     {
         const auto& str_val = std::get<std::string>(node->constantValue);
 
-        if (type_system->is_string_type(node->type))
+        // Check if this is a string type (named type with name "String")
+        bool is_string = false;
+        if (auto named = node->type->as<NamedType>()) {
+            is_string = named->symbol && named->symbol->name == "String";
+        }
+
+        if (is_string)
         {
-            auto string_addr = builder.smart_alloc(node->type);
-            auto data_ptr = builder.const_string(str_val, type_system->get_pointer(type_system->get_primitive("char")));
-            auto len_val = builder.const_int(static_cast<int64_t>(str_val.length()), type_system->get_i32());
+            auto string_addr = builder.smart_alloc(ir_type);
+            auto char_ptr_type = module->ir_types.get_pointer(module->ir_types.get_i8());
+            auto data_ptr = builder.const_string(str_val, char_ptr_type);
+            auto len_val = builder.const_int(static_cast<int64_t>(str_val.length()), module->ir_types.get_i32());
 
             // Call String.New constructor
             auto string_ctor = module->find_function_by_name("String.New");
@@ -300,16 +384,16 @@ void BoundToHLIR::visit(BoundLiteralExpression* node) {
             if (node->type->is_reference_type()) {
                 result = string_addr;
             } else {
-                result = builder.load(string_addr, node->type);
+                result = builder.load(string_addr, ir_type);
             }
 
         } else {
-            result = builder.const_string(str_val, node->type);
+            result = builder.const_string(str_val, ir_type);
         }
     }
     else if (std::holds_alternative<std::monostate>(node->constantValue)) {
         if (node->literalKind == LiteralKind::Null) {
-            result = builder.const_null(node->type);
+            result = builder.const_null(ir_type);
         } else {
             error("Literal expression has no constant value (type: " +
                   (node->type ? node->type->get_name() : "null") + ")", node->location);
@@ -324,7 +408,7 @@ void BoundToHLIR::visit(BoundLiteralExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToHLIR::visit(BoundNameExpression* node) {
+void BoundToFNIR::visit(BoundNameExpression* node) {
     if (!node->symbol) {
         lowered[node] = {nullptr, false};
         return;
@@ -340,7 +424,7 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
                 return;
             }
             size_t field_index = get_field_index(parent->as<TypeSymbol>(), node->symbol);
-            auto field_addr = builder.field_addr(this_ptr, field_index, node->type, node->symbol->name);
+            auto field_addr = builder.field_addr(this_ptr, field_index, convert(node->type), node->symbol->name);
             lowered[node] = {field_addr, true};
             return;
         }
@@ -354,7 +438,8 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
     }
 
     if (node->type->is<ArrayType>() && node->symbol->is<ParameterSymbol>()) {
-        auto ptr_type = type_system->get_pointer(node->type->as<ArrayType>()->element);
+        auto elem_type = convert(node->type->as<ArrayType>()->element);
+        auto ptr_type = module->ir_types.get_pointer(elem_type);
         auto loaded_ptr = builder.load(var_addr, ptr_type, node->symbol->name);
         lowered[node] = {loaded_ptr, false};
         return;
@@ -363,7 +448,7 @@ void BoundToHLIR::visit(BoundNameExpression* node) {
     lowered[node] = {var_addr, true};
 }
 
-void BoundToHLIR::visit(BoundBinaryExpression* node) {
+void BoundToFNIR::visit(BoundBinaryExpression* node) {
     // Handle short-circuit evaluation for logical operators
     if (node->operatorKind == BinaryOperatorKind::LogicalAnd ||
         node->operatorKind == BinaryOperatorKind::LogicalOr) {
@@ -375,7 +460,7 @@ void BoundToHLIR::visit(BoundBinaryExpression* node) {
         }
 
         // Allocate a temporary to hold the result
-        auto result_slot = builder.stack_alloc(node->type);
+        auto result_slot = builder.stack_alloc(convert(node->type));
 
         // Store left as the initial result (short-circuit value)
         builder.store(left, result_slot);
@@ -406,7 +491,7 @@ void BoundToHLIR::visit(BoundBinaryExpression* node) {
         builder.set_block(merge_block);
         current_block = merge_block;
 
-        auto result = builder.load(result_slot, node->type);
+        auto result = builder.load(result_slot, convert(node->type));
         lowered[node] = {result, false};
         return;
     }
@@ -437,7 +522,7 @@ void BoundToHLIR::visit(BoundBinaryExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToHLIR::visit(BoundUnaryExpression* node) {
+void BoundToFNIR::visit(BoundUnaryExpression* node) {
     auto operand = emit_rvalue(node->operand);
     if (!operand) {
         lowered[node] = {nullptr, false};
@@ -449,7 +534,7 @@ void BoundToHLIR::visit(BoundUnaryExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToHLIR::visit(BoundAssignmentExpression* node) {
+void BoundToFNIR::visit(BoundAssignmentExpression* node) {
     auto rhs_value = emit_rvalue(node->value);
     if (!rhs_value) {
         lowered[node] = {nullptr, false};
@@ -463,18 +548,19 @@ void BoundToHLIR::visit(BoundAssignmentExpression* node) {
         return;
     }
 
-    HLIR::Value* final_value = rhs_value;
+    FNIR::Value* final_value = rhs_value;
+    auto target_ir_type = convert(node->target->type);
     if (node->operatorKind != AssignmentOperatorKind::Assign) {
-        auto current_value = builder.load(target_addr, node->target->type);
+        auto current_value = builder.load(target_addr, target_ir_type);
         auto opcode = get_compound_opcode(node->operatorKind);
         final_value = builder.binary(opcode, current_value, rhs_value);
     }
 
-    emit_store(target_addr, final_value, node->target->type);
+    emit_store(target_addr, final_value, target_ir_type);
     lowered[node] = {final_value, false};
 }
 
-void BoundToHLIR::visit(BoundCallExpression* node) {
+void BoundToFNIR::visit(BoundCallExpression* node) {
     // Check method validity FIRST
     if (!node->method || !node->method->as<FunctionSymbol>()) {
         lowered[node] = {nullptr, false};
@@ -508,13 +594,15 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
             return;
         }
 
-        size_t size = type_to_measure->get_size();
-        auto result = builder.const_int(static_cast<int64_t>(size), type_system->get_i32());
+        // Convert to IR type and get its size
+        auto ir_type_to_measure = convert(type_to_measure);
+        size_t size = ir_type_to_measure->get_size();
+        auto result = builder.const_int(static_cast<int64_t>(size), module->ir_types.get_i32());
         lowered[node] = {result, false};
         return;
     }
 
-    std::vector<HLIR::Value*> args;
+    std::vector<FNIR::Value*> args;
 
     if (auto member_expr = node->callee->as<BoundMemberAccessExpression>()) {
         bool is_value_type = member_expr->object->type->as<NamedType>() &&
@@ -546,7 +634,7 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
         return;
     }
 
-    HLIR::Function* func = module->find_function(func_sym);
+    FNIR::Function* func = module->find_function(func_sym);
     if (!func) {
         lowered[node] = {nullptr, false};
         return;
@@ -556,7 +644,7 @@ void BoundToHLIR::visit(BoundCallExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
+void BoundToFNIR::visit(BoundMemberAccessExpression* node) {
     if (!node->member) {
         lowered[node] = {nullptr, false};
         return;
@@ -570,7 +658,7 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
     bool is_value_type = node->object->type->as<NamedType>() && 
                         node->object->type->is_value_type();
     
-    HLIR::Value* obj_addr;
+    FNIR::Value* obj_addr;
     if (is_value_type) {
         obj_addr = emit_lvalue(node->object);
     } else {
@@ -587,7 +675,7 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
         if (var->is_field())
         {
             size_t field_index = get_field_index(var->parent->as<TypeSymbol>(), var);
-            auto field_addr = builder.field_addr(obj_addr, field_index, var->type, var->name);
+            auto field_addr = builder.field_addr(obj_addr, field_index, convert(var->type), var->name);
             lowered[node] = {field_addr, true};
             return;
         }
@@ -602,7 +690,7 @@ void BoundToHLIR::visit(BoundMemberAccessExpression* node) {
     lowered[node] = {nullptr, false};
 }
 
-void BoundToHLIR::visit(BoundIndexExpression* node) {
+void BoundToFNIR::visit(BoundIndexExpression* node) {
     auto obj_val = emit_rvalue(node->object);
     auto index_val = emit_rvalue(node->index);
 
@@ -624,38 +712,36 @@ void BoundToHLIR::visit(BoundIndexExpression* node) {
         return;
     }
 
-    auto elem_addr = builder.element_addr(obj_val, index_val, element_type);
+    auto ir_element_type = convert(element_type);
+    auto elem_addr = builder.element_addr(obj_val, index_val, ir_element_type);
 
-    // TODO: Remove when arrays become a generic Fern type.
-    // Currently needed because nested arrays store pointers but
-    // the type system reports element type as T[], not ptr<T[]>.
-    if (element_type->is<ArrayType>()) {
-        auto loaded = builder.load(elem_addr, element_type);
-        lowered[node] = {loaded, false};
-    } else {
-        lowered[node] = {elem_addr, true};
-    }
+    // Always return the element address as an lvalue.
+    // For nested arrays stored inline, the address is a pointer to the inner array.
+    // The caller (emit_rvalue) will load if needed, or use the address directly for
+    // further indexing.
+    lowered[node] = {elem_addr, true};
 }
 
-void BoundToHLIR::visit(BoundNewExpression* node) {
+void BoundToFNIR::visit(BoundNewExpression* node) {
     if (!node->type) {
         lowered[node] = {nullptr, false};
         return;
     }
 
     bool is_value_type = node->type->as<NamedType>() && node->type->is_value_type();
+    auto ir_type = convert(node->type);
 
-    HLIR::Value* storage;
+    FNIR::Value* storage;
     if (is_value_type) {
-        storage = builder.stack_alloc(node->type);
+        storage = builder.stack_alloc(ir_type);
     } else {
-        storage = builder.heap_alloc(node->type);
+        storage = builder.heap_alloc(ir_type);
     }
     
     if (node->constructor) {
         auto ctor_func = module->find_function(node->constructor);
         if (ctor_func) {
-            std::vector<HLIR::Value*> args;
+            std::vector<FNIR::Value*> args;
             args.push_back(storage);
             
             for (auto arg : node->arguments) {
@@ -676,23 +762,23 @@ void BoundToHLIR::visit(BoundNewExpression* node) {
     }
 }
 
-void BoundToHLIR::visit(BoundArrayCreationExpression* node) {
-    auto alloc_result = builder.stack_alloc(node->type);
+void BoundToFNIR::visit(BoundArrayCreationExpression* node) {
+    auto alloc_result = builder.stack_alloc(convert(node->type));
 
     if (!node->initializers.empty()) {
-        TypePtr element_type = nullptr;
+        IRTypePtr ir_element_type = nullptr;
         if (auto array_type = node->type->as<ArrayType>()) {
-            element_type = array_type->element;
+            ir_element_type = convert(array_type->element);
         }
 
-        if (element_type) {
-            auto i32_type = type_system->get_primitive("i32");
-            
+        if (ir_element_type) {
+            auto i32_type = module->ir_types.get_i32();
+
             for (size_t i = 0; i < node->initializers.size(); i++) {
                 auto init_val = emit_rvalue(node->initializers[i]);
                 if (init_val) {
                     auto index_val = builder.const_int(static_cast<int64_t>(i), i32_type);
-                    auto elem_addr = builder.element_addr(alloc_result, index_val, element_type);
+                    auto elem_addr = builder.element_addr(alloc_result, index_val, ir_element_type);
                     builder.store(init_val, elem_addr);
                 }
             }
@@ -702,18 +788,18 @@ void BoundToHLIR::visit(BoundArrayCreationExpression* node) {
     lowered[node] = {alloc_result, true};
 }
 
-void BoundToHLIR::visit(BoundCastExpression* node) {
+void BoundToFNIR::visit(BoundCastExpression* node) {
     auto expr = emit_rvalue(node->expression);
     if (!expr) {
         lowered[node] = {nullptr, false};
         return;
     }
-    
-    auto result = builder.cast(expr, node->type);
+
+    auto result = builder.cast(expr, convert(node->type));
     lowered[node] = {result, false};
 }
 
-void BoundToHLIR::visit(BoundThisExpression* node) {
+void BoundToFNIR::visit(BoundThisExpression* node) {
     auto this_ptr = get_this_param();
     if (!this_ptr) {
         error("'this' used in static or non-member context", node->location);
@@ -725,12 +811,12 @@ void BoundToHLIR::visit(BoundThisExpression* node) {
     lowered[node] = {this_ptr, is_value_type};
 }
 
-void BoundToHLIR::visit(BoundParenthesizedExpression* node) {
+void BoundToFNIR::visit(BoundParenthesizedExpression* node) {
     node->expression->accept(this);
     lowered[node] = lowered[node->expression];
 }
 
-void BoundToHLIR::visit(BoundConversionExpression* node) {
+void BoundToFNIR::visit(BoundConversionExpression* node) {
     auto expr_val = emit_rvalue(node->expression);
     if (!expr_val) {
         lowered[node] = {nullptr, false};
@@ -738,13 +824,13 @@ void BoundToHLIR::visit(BoundConversionExpression* node) {
     }
 
     if (node->conversionKind != ConversionKind::Identity && node->type) {
-        lowered[node] = {builder.cast(expr_val, node->type), false};
+        lowered[node] = {builder.cast(expr_val, convert(node->type)), false};
     } else {
         lowered[node] = {expr_val, false};
     }
 }
 
-void BoundToHLIR::visit(BoundTypeExpression* node) {
+void BoundToFNIR::visit(BoundTypeExpression* node) {
     lowered[node] = {nullptr, false};
 }
 
@@ -752,23 +838,23 @@ void BoundToHLIR::visit(BoundTypeExpression* node) {
 
 #pragma region Statement Visitors
 
-void BoundToHLIR::visit(BoundBlockStatement* node) {
+void BoundToFNIR::visit(BoundBlockStatement* node) {
     for (auto stmt : node->statements) {
         stmt->accept(this);
     }
 }
 
-void BoundToHLIR::visit(BoundExpressionStatement* node) {
+void BoundToFNIR::visit(BoundExpressionStatement* node) {
     emit_rvalue(node->expression);
 }
 
-void BoundToHLIR::visit(BoundIfStatement* node) {
+void BoundToFNIR::visit(BoundIfStatement* node) {
     auto cond = emit_rvalue(node->condition);
     if (!cond) return;
 
     auto then_block = create_block("if.then");
     auto else_block = create_block("if.else");
-    HLIR::BasicBlock* merge_block = nullptr;
+    FNIR::BasicBlock* merge_block = nullptr;
 
     builder.cond_br(cond, then_block, else_block);
 
@@ -801,7 +887,7 @@ void BoundToHLIR::visit(BoundIfStatement* node) {
     }
 }
 
-void BoundToHLIR::visit(BoundWhileStatement* node) {
+void BoundToFNIR::visit(BoundWhileStatement* node) {
     auto header = create_block("while.header");
     auto body = create_block("while.body");
     auto exit = create_block("while.exit");
@@ -842,7 +928,7 @@ void BoundToHLIR::visit(BoundWhileStatement* node) {
     current_block = exit;
 }
 
-void BoundToHLIR::visit(BoundForStatement* node) {
+void BoundToFNIR::visit(BoundForStatement* node) {
     if (node->initializer) {
         node->initializer->accept(this);
     }
@@ -888,19 +974,19 @@ void BoundToHLIR::visit(BoundForStatement* node) {
     current_block = exit;
 }
 
-void BoundToHLIR::visit(BoundBreakStatement* node) {
+void BoundToFNIR::visit(BoundBreakStatement* node) {
     if (!loop_stack.empty()) {
         builder.br(loop_stack.top().break_target);
     }
 }
 
-void BoundToHLIR::visit(BoundContinueStatement* node) {
+void BoundToFNIR::visit(BoundContinueStatement* node) {
     if (!loop_stack.empty()) {
         builder.br(loop_stack.top().continue_target);
     }
 }
 
-void BoundToHLIR::visit(BoundReturnStatement* node) {
+void BoundToFNIR::visit(BoundReturnStatement* node) {
     if (node->value) {
         auto val = emit_rvalue(node->value);
         builder.ret(val);
@@ -909,14 +995,14 @@ void BoundToHLIR::visit(BoundReturnStatement* node) {
     }
 }
 
-void BoundToHLIR::visit(BoundUsingStatement* node) {
+void BoundToFNIR::visit(BoundUsingStatement* node) {
 }
 
 #pragma endregion
 
 #pragma region Declaration Visitors
 
-void BoundToHLIR::visit(BoundVariableDeclaration* node)
+void BoundToFNIR::visit(BoundVariableDeclaration* node)
 {
     auto var_sym = node->symbol->as<VariableSymbol>();
     if (!var_sym) return;
@@ -927,8 +1013,12 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node)
         return;
     }
 
+    auto var_ir_type = convert(var_sym->type);
+
     if (var_sym->type->is_reference_type()) {
-        auto ref_ptr = builder.stack_alloc_nested(var_sym->type, node->name);
+        // Reference types are stored as pointers - allocate space for a pointer
+        auto ptr_ir_type = module->ir_types.get_pointer(var_ir_type);
+        auto ref_ptr = builder.stack_alloc(ptr_ir_type, node->name);
         variable_addresses[node->symbol] = ref_ptr;
 
         if (node->initializer) {
@@ -937,12 +1027,11 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node)
                 builder.store(init_value, ref_ptr);
             }
         } else {
-            auto ptr_type = type_system->get_pointer(var_sym->type);
-            auto null_ptr = builder.const_null(ptr_type);
+            auto null_ptr = builder.const_null(var_ir_type);
             builder.store(null_ptr, ref_ptr);
         }
     } else {
-        auto var_addr = builder.stack_alloc(var_sym->type, node->name);
+        auto var_addr = builder.stack_alloc(var_ir_type, node->name);
         variable_addresses[node->symbol] = var_addr;
 
         if (node->initializer) {
@@ -954,7 +1043,7 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node)
                 if (is_new_value_type && new_expr->constructor) {
                     auto ctor_func = module->find_function(new_expr->constructor);
                     if (ctor_func) {
-                        std::vector<HLIR::Value*> args;
+                        std::vector<FNIR::Value*> args;
                         args.push_back(var_addr);
 
                         for (auto arg : new_expr->arguments) {
@@ -972,16 +1061,16 @@ void BoundToHLIR::visit(BoundVariableDeclaration* node)
 
             auto init_value = emit_rvalue(node->initializer);
             if (init_value) {
-                emit_store(var_addr, init_value, var_sym->type);
+                emit_store(var_addr, init_value, var_ir_type);
             }
         } else {
-            auto default_value = builder.const_null(var_sym->type);
+            auto default_value = builder.const_null(var_ir_type);
             builder.store(default_value, var_addr);
         }
-    } 
+    }
 }
 
-void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
+void BoundToFNIR::visit(BoundFunctionDeclaration* node) {
     auto func_sym = node->symbol->as<FunctionSymbol>();
     if (!func_sym) return;
 
@@ -998,18 +1087,18 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
 
     if (is_member_function && !func_sym->is_static()) {
         auto parent_type = func_sym->parent->as<TypeSymbol>();
-        auto this_ptr_type = type_system->get_pointer(parent_type->type);
+        // Get the struct type directly - don't use convert() which adds pointer for ref types
+        auto struct_ir_type = module->ir_types.get_struct(parent_type);
+        auto this_ptr_type = module->ir_types.get_pointer(struct_ir_type);
         auto this_param = func->create_value(this_ptr_type, "this");
         func->params.push_back(this_param);
     }
 
     for (size_t i = 0; i < node->parameters.size(); i++) {
         auto param_sym = node->parameters[i]->symbol->as<ParameterSymbol>();
-        auto param_type = param_sym->type;
-        if (param_type->is_reference_type()) {
-            param_type = type_system->get_pointer(param_type);
-        }
-        auto param = func->create_value(param_type, node->parameters[i]->name);
+        // convert() handles reference types -> pointer conversion automatically
+        auto param_ir_type = convert(param_sym->type);
+        auto param = func->create_value(param_ir_type, node->parameters[i]->name);
         func->params.push_back(param);
     }
 
@@ -1029,16 +1118,17 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
         size_t param_idx = is_member_function && !func_sym->is_static() ? i + 1 : i;
         auto param_value = func->params[param_idx];
 
-        TypePtr alloc_type = param_sym->type;
+        // Determine the IR type for the parameter storage
+        IRTypePtr alloc_ir_type;
         if (auto array_type = param_sym->type->as<ArrayType>()) {
-            alloc_type = type_system->get_pointer(array_type->element);
+            // Arrays decay to pointers
+            alloc_ir_type = module->ir_types.get_pointer(convert(array_type->element));
+        } else {
+            // convert() already handles ref type -> pointer conversion
+            alloc_ir_type = convert(param_sym->type);
         }
 
-        if (alloc_type->is_reference_type()) {
-            alloc_type = type_system->get_pointer(alloc_type);
-        }
-
-        auto param_addr = builder.stack_alloc(alloc_type, param_sym->name + ".addr");
+        auto param_addr = builder.stack_alloc(alloc_ir_type, param_sym->name + ".addr");
         builder.store(param_value, param_addr);
         variable_addresses[param_sym] = param_addr;
     }
@@ -1055,7 +1145,7 @@ void BoundToHLIR::visit(BoundFunctionDeclaration* node) {
     current_block = nullptr;
 }
 
-void BoundToHLIR::visit(BoundPropertyDeclaration* node) {
+void BoundToFNIR::visit(BoundPropertyDeclaration* node) {
     // auto prop_sym = node->symbol->as<PropertySymbol>();
     // if (!prop_sym) return;
     
@@ -1068,7 +1158,7 @@ void BoundToHLIR::visit(BoundPropertyDeclaration* node) {
     // }
 }
 
-void BoundToHLIR::generate_property_accessor(
+void BoundToFNIR::generate_property_accessor(
     BoundPropertyDeclaration* prop_decl, 
     BoundPropertyAccessor* accessor,
     bool is_getter) 
@@ -1119,7 +1209,7 @@ void BoundToHLIR::generate_property_accessor(
     // }
 }
 
-void BoundToHLIR::visit(BoundTypeDeclaration* node) {
+void BoundToFNIR::visit(BoundTypeDeclaration* node) {
     auto type_sym = node->symbol->as<TypeSymbol>();
     if (!type_sym) return;
     
@@ -1128,13 +1218,13 @@ void BoundToHLIR::visit(BoundTypeDeclaration* node) {
     }
 }
 
-void BoundToHLIR::visit(BoundNamespaceDeclaration* node) {
+void BoundToFNIR::visit(BoundNamespaceDeclaration* node) {
     // for (auto member : node->members) {
     //     member->accept(this);
     // }
 }
 
-void BoundToHLIR::visit(BoundCompilationUnit* node) {
+void BoundToFNIR::visit(BoundCompilationUnit* node) {
     for (auto stmt : node->statements) {
         stmt->accept(this);
     }

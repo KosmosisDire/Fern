@@ -30,6 +30,7 @@ namespace Fern
         void visit(TypeDeclSyntax* node) override;
         void visit(GenericNameSyntax* node) override;
         void visit(NamespaceDeclSyntax* node) override;
+        void visit(ArrayLiteralExprSyntax* node) override;
     };
 
 } // namespace Fern
