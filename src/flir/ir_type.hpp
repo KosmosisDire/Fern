@@ -14,7 +14,7 @@ namespace Fern {
     using TypePtr = std::shared_ptr<Type>;
 }
 
-namespace Fern::FNIR
+namespace Fern::FLIR
 {
 
 // Forward declarations
@@ -149,4 +149,4 @@ private:
     std::unordered_map<TypeSymbol*, IRTypePtr> struct_type_cache;
 };
 
-} // namespace Fern::FNIR
+} // namespace Fern::FLIR

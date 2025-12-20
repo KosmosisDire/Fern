@@ -8,21 +8,21 @@ namespace Fern
 {
     // === Type Management ===
 
-    void CodeGenModule::declare_types(FNIR::Module* fnir_module)
+    void CodeGenModule::declare_types(FLIR::Module* flir_module)
     {
         // Declare all struct types from IR type system
         // First pass: create opaque struct types
-        for (const auto& ir_struct_ptr : fnir_module->ir_types.get_all_structs())
+        for (const auto& ir_struct_ptr : flir_module->ir_types.get_all_structs())
         {
-            FNIR::IRStruct* ir_struct = ir_struct_ptr.get();
+            FLIR::IRStruct* ir_struct = ir_struct_ptr.get();
             auto* struct_type = llvm::StructType::create(context, ir_struct->name);
             struct_cache[ir_struct] = struct_type;
         }
 
         // Second pass: define struct bodies
-        for (const auto& ir_struct_ptr : fnir_module->ir_types.get_all_structs())
+        for (const auto& ir_struct_ptr : flir_module->ir_types.get_all_structs())
         {
-            FNIR::IRStruct* ir_struct = ir_struct_ptr.get();
+            FLIR::IRStruct* ir_struct = ir_struct_ptr.get();
             auto* struct_type = struct_cache[ir_struct];
 
             // Collect field types
@@ -41,7 +41,7 @@ namespace Fern
         }
     }
 
-    llvm::Type* CodeGenModule::get_or_create_type(FNIR::IRTypePtr type)
+    llvm::Type* CodeGenModule::get_or_create_type(FLIR::IRTypePtr type)
     {
         if (!type)
         {
@@ -59,15 +59,15 @@ namespace Fern
 
         switch (type->kind)
         {
-        case FNIR::IRTypeKind::Void:
+        case FLIR::IRTypeKind::Void:
             llvm_type = llvm::Type::getVoidTy(context);
             break;
 
-        case FNIR::IRTypeKind::Bool:
+        case FLIR::IRTypeKind::Bool:
             llvm_type = llvm::Type::getInt1Ty(context);
             break;
 
-        case FNIR::IRTypeKind::Int:
+        case FLIR::IRTypeKind::Int:
             switch (type->bit_width)
             {
             case 8:
@@ -88,7 +88,7 @@ namespace Fern
             }
             break;
 
-        case FNIR::IRTypeKind::Float:
+        case FLIR::IRTypeKind::Float:
             if (type->bit_width == 32)
             {
                 llvm_type = llvm::Type::getFloatTy(context);
@@ -103,12 +103,12 @@ namespace Fern
             }
             break;
 
-        case FNIR::IRTypeKind::Pointer:
+        case FLIR::IRTypeKind::Pointer:
             // LLVM 19+ uses opaque pointers
             llvm_type = llvm::PointerType::get(context, 0);
             break;
 
-        case FNIR::IRTypeKind::Array:
+        case FLIR::IRTypeKind::Array:
             if (type->array_size >= 0)
             {
                 // Fixed-size array
@@ -122,7 +122,7 @@ namespace Fern
             }
             break;
 
-        case FNIR::IRTypeKind::Struct:
+        case FLIR::IRTypeKind::Struct:
             if (type->struct_def)
             {
                 auto sit = struct_cache.find(type->struct_def);
@@ -150,7 +150,7 @@ namespace Fern
         return llvm_type;
     }
 
-    llvm::StructType* CodeGenModule::get_struct_type(FNIR::IRStruct* ir_struct)
+    llvm::StructType* CodeGenModule::get_struct_type(FLIR::IRStruct* ir_struct)
     {
         auto it = struct_cache.find(ir_struct);
         if (it != struct_cache.end())
@@ -160,34 +160,34 @@ namespace Fern
         return nullptr;
     }
 
-    bool CodeGenModule::has_type(FNIR::IRTypePtr type) const
+    bool CodeGenModule::has_type(FLIR::IRTypePtr type) const
     {
         return type_cache.find(type) != type_cache.end();
     }
 
     // === Function Management ===
 
-    void CodeGenModule::declare_functions(FNIR::Module* fnir_module)
+    void CodeGenModule::declare_functions(FLIR::Module* flir_module)
     {
-        for (const auto& fnir_func : fnir_module->functions)
+        for (const auto& flir_func : flir_module->functions)
         {
-            declare_function(fnir_func.get());
+            declare_function(flir_func.get());
         }
     }
 
-    llvm::Function* CodeGenModule::declare_function(FNIR::Function* fnir_func)
+    llvm::Function* CodeGenModule::declare_function(FLIR::Function* flir_func)
     {
         // Check if already declared
-        auto it = function_cache.find(fnir_func);
+        auto it = function_cache.find(flir_func);
         if (it != function_cache.end())
         {
             return it->second;
         }
 
         // Get function type
-        llvm::FunctionType* func_type = get_function_type(fnir_func);
+        llvm::FunctionType* func_type = get_function_type(flir_func);
 
-        std::string func_name = fnir_func->name();
+        std::string func_name = flir_func->name();
 
         // Create function
         llvm::Function* llvm_func = llvm::Function::Create(
@@ -200,22 +200,22 @@ namespace Fern
         size_t param_idx = 0;
         for (auto& arg : llvm_func->args())
         {
-            if (param_idx < fnir_func->params.size())
+            if (param_idx < flir_func->params.size())
             {
-                FNIR::Value* param_value = fnir_func->params[param_idx];
+                FLIR::Value* param_value = flir_func->params[param_idx];
                 arg.setName(param_value->debug_name);
             }
             param_idx++;
         }
 
         // Store mapping
-        function_cache[fnir_func] = llvm_func;
+        function_cache[flir_func] = llvm_func;
         return llvm_func;
     }
 
-    llvm::Function* CodeGenModule::get_function(FNIR::Function* fnir_func)
+    llvm::Function* CodeGenModule::get_function(FLIR::Function* flir_func)
     {
-        auto it = function_cache.find(fnir_func);
+        auto it = function_cache.find(flir_func);
         if (it != function_cache.end())
         {
             return it->second;
@@ -223,19 +223,19 @@ namespace Fern
         return nullptr;
     }
 
-    bool CodeGenModule::has_function(FNIR::Function* fnir_func) const
+    bool CodeGenModule::has_function(FLIR::Function* flir_func) const
     {
-        return function_cache.find(fnir_func) != function_cache.end();
+        return function_cache.find(flir_func) != function_cache.end();
     }
 
-    llvm::FunctionType* CodeGenModule::get_function_type(FNIR::Function* fnir_func)
+    llvm::FunctionType* CodeGenModule::get_function_type(FLIR::Function* flir_func)
     {
         // Return type
-        llvm::Type* ret_type = get_or_create_type(fnir_func->return_type);
+        llvm::Type* ret_type = get_or_create_type(flir_func->return_type);
 
-        // Parameter types - FNIR already includes 'this' parameter explicitly for member functions
+        // Parameter types - FLIR already includes 'this' parameter explicitly for member functions
         std::vector<llvm::Type*> param_types;
-        for (FNIR::Value* param : fnir_func->params)
+        for (FLIR::Value* param : flir_func->params)
         {
             llvm::Type* param_type = get_or_create_type(param->type);
             param_types.push_back(param_type);
@@ -246,7 +246,7 @@ namespace Fern
 
     // === Type Utilities ===
 
-    CodeGenModule::TypeProperties CodeGenModule::get_type_properties(FNIR::IRTypePtr type) const
+    CodeGenModule::TypeProperties CodeGenModule::get_type_properties(FLIR::IRTypePtr type) const
     {
         TypeProperties props = {};
         if (!type) return props;
@@ -259,7 +259,7 @@ namespace Fern
         return props;
     }
 
-    llvm::Type* CodeGenModule::get_pointee_type_or_self(FNIR::IRTypePtr type)
+    llvm::Type* CodeGenModule::get_pointee_type_or_self(FLIR::IRTypePtr type)
     {
         if (type && type->is_pointer() && type->pointee)
         {
@@ -268,17 +268,17 @@ namespace Fern
         return get_or_create_type(type);
     }
 
-    bool CodeGenModule::is_signed_int(FNIR::IRTypePtr type) const
+    bool CodeGenModule::is_signed_int(FLIR::IRTypePtr type) const
     {
         return type && type->is_int() && type->is_signed;
     }
 
-    bool CodeGenModule::is_unsigned_int(FNIR::IRTypePtr type) const
+    bool CodeGenModule::is_unsigned_int(FLIR::IRTypePtr type) const
     {
         return type && type->is_int() && !type->is_signed;
     }
 
-    bool CodeGenModule::is_float(FNIR::IRTypePtr type) const
+    bool CodeGenModule::is_float(FLIR::IRTypePtr type) const
     {
         return type && type->is_float();
     }

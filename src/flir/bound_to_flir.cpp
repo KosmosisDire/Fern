@@ -1,18 +1,18 @@
-// bound_to_fnir.cpp
-#include "bound_to_fnir.hpp"
+// bound_to_flir.cpp
+#include "bound_to_flir.hpp"
 #include "ir_type.hpp"
 #include <cassert>
 #include <iostream>
 #include <functional>
 
-namespace Fern::FNIR
+namespace Fern::FLIR
 {
 
-using IRTypePtr = FNIR::IRTypePtr;
+using IRTypePtr = FLIR::IRTypePtr;
 
 #pragma region Intrinsic Table
 
-using IntrinsicHandler = std::function<FNIR::Value*(BoundToFNIR*, const std::vector<FNIR::Value*>&)>;
+using IntrinsicHandler = std::function<FLIR::Value*(BoundToFLIR*, const std::vector<FLIR::Value*>&)>;
 
 struct IntrinsicInfo {
     size_t arity;
@@ -20,21 +20,21 @@ struct IntrinsicInfo {
 };
 
 static const std::unordered_map<std::string, IntrinsicInfo> intrinsic_table = {
-    {"alloca", {1, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
+    {"alloca", {1, [](BoundToFLIR* self, const std::vector<FLIR::Value*>& args) {
         return self->builder.stack_alloc_bytes(args[0]);
     }}},
-    {"malloc", {1, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
+    {"malloc", {1, [](BoundToFLIR* self, const std::vector<FLIR::Value*>& args) {
         return self->builder.heap_alloc_bytes(args[0]);
     }}},
-    {"free", {1, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
+    {"free", {1, [](BoundToFLIR* self, const std::vector<FLIR::Value*>& args) {
         self->builder.heap_free(args[0]);
         return nullptr;
     }}},
-    {"memcpy", {3, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
+    {"memcpy", {3, [](BoundToFLIR* self, const std::vector<FLIR::Value*>& args) {
         self->builder.memcpy(args[0], args[1], args[2]);
         return args[0];
     }}},
-    {"memset", {3, [](BoundToFNIR* self, const std::vector<FNIR::Value*>& args) {
+    {"memset", {3, [](BoundToFLIR* self, const std::vector<FLIR::Value*>& args) {
         self->builder.memset(args[0], args[1], args[2]);
         return args[0];
     }}},
@@ -70,7 +70,7 @@ static void collect_functions(Symbol* symbol, std::vector<FunctionSymbol*>& func
 
 #pragma region Core Infrastructure
 
-void BoundToFNIR::init_module(NamespaceSymbol* global_ns) {
+void BoundToFLIR::init_module(NamespaceSymbol* global_ns) {
     // Phase 1: Collect and define all types
     std::vector<TypeSymbol*> types;
     collect_types(global_ns, types);
@@ -120,11 +120,11 @@ void BoundToFNIR::init_module(NamespaceSymbol* global_ns) {
     }
 }
 
-void BoundToFNIR::generate(BoundCompilationUnit* unit) {
+void BoundToFLIR::generate(BoundCompilationUnit* unit) {
     visit(unit);
 }
 
-FNIR::Value* BoundToFNIR::emit_rvalue(BoundExpression* expr) {
+FLIR::Value* BoundToFLIR::emit_rvalue(BoundExpression* expr) {
     if (!expr) return nullptr;
     
     expr->accept(this);
@@ -149,7 +149,7 @@ FNIR::Value* BoundToFNIR::emit_rvalue(BoundExpression* expr) {
     return builder.load(lr.result, convert(type));
 }
 
-FNIR::Value* BoundToFNIR::emit_lvalue(BoundExpression* expr) {
+FLIR::Value* BoundToFLIR::emit_lvalue(BoundExpression* expr) {
     if (!expr) return nullptr;
     
     expr->accept(this);
@@ -173,14 +173,14 @@ FNIR::Value* BoundToFNIR::emit_lvalue(BoundExpression* expr) {
 
 #pragma region Helpers
 
-FNIR::Value* BoundToFNIR::get_this_param() {
+FLIR::Value* BoundToFLIR::get_this_param() {
     if (!current_function || current_function->is_static || current_function->params.empty()) {
         return nullptr;
     }
     return current_function->params[0];
 }
 
-void BoundToFNIR::emit_store(FNIR::Value* dest, FNIR::Value* src, FNIR::IRTypePtr type) {
+void BoundToFLIR::emit_store(FLIR::Value* dest, FLIR::Value* src, FLIR::IRTypePtr type) {
     // For fixed-size arrays, use memcpy
     if (type->is_array() && type->array_size > 0) {
         size_t byte_size = type->get_size();
@@ -191,10 +191,10 @@ void BoundToFNIR::emit_store(FNIR::Value* dest, FNIR::Value* src, FNIR::IRTypePt
     }
 }
 
-std::optional<FNIR::Value*> BoundToFNIR::try_pointer_arithmetic(
+std::optional<FLIR::Value*> BoundToFLIR::try_pointer_arithmetic(
     BoundBinaryExpression* node, 
-    FNIR::Value* left, 
-    FNIR::Value* right) 
+    FLIR::Value* left, 
+    FLIR::Value* right) 
 {
     auto ltype = node->left->type;
     auto rtype = node->right->type;
@@ -207,7 +207,7 @@ std::optional<FNIR::Value*> BoundToFNIR::try_pointer_arithmetic(
     
     if (ltype->is<PointerType>() && rtype->is<PrimitiveType>()) {
         auto elem = convert(ltype->as<PointerType>()->pointee);
-        FNIR::Value* index = right;
+        FLIR::Value* index = right;
         if (is_sub) {
             index = builder.unary(Opcode::Neg, right);
         }
@@ -226,9 +226,9 @@ std::optional<FNIR::Value*> BoundToFNIR::try_pointer_arithmetic(
     return std::nullopt;
 }
 
-std::optional<FNIR::Value*> BoundToFNIR::try_emit_intrinsic(
+std::optional<FLIR::Value*> BoundToFLIR::try_emit_intrinsic(
     FunctionSymbol* method, 
-    const std::vector<FNIR::Value*>& args, 
+    const std::vector<FLIR::Value*>& args, 
     const SourceRange& loc) 
 {
     if (!method->is_intrinsic) {
@@ -251,14 +251,14 @@ std::optional<FNIR::Value*> BoundToFNIR::try_emit_intrinsic(
     return info.handler(this, args);
 }
 
-void BoundToFNIR::branch_if_open(FNIR::BasicBlock* target) {
+void BoundToFLIR::branch_if_open(FLIR::BasicBlock* target) {
     if (current_block && !current_block->terminator()) {
         builder.set_block(current_block);
         builder.br(target);
     }
 }
 
-size_t BoundToFNIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
+size_t BoundToFLIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
     if (!type_sym || !field_sym) return 0;
 
     size_t index = 0;
@@ -273,60 +273,60 @@ size_t BoundToFNIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
     return 0;
 }
 
-FNIR::BasicBlock* BoundToFNIR::create_block(const std::string& name) {
+FLIR::BasicBlock* BoundToFLIR::create_block(const std::string& name) {
     return current_function->create_block(name);
 }
 
-FNIR::Opcode BoundToFNIR::get_binary_opcode(BinaryOperatorKind kind) {
+FLIR::Opcode BoundToFLIR::get_binary_opcode(BinaryOperatorKind kind) {
     switch (kind) {
-        case BinaryOperatorKind::Add: return FNIR::Opcode::Add;
-        case BinaryOperatorKind::Subtract: return FNIR::Opcode::Sub;
-        case BinaryOperatorKind::Multiply: return FNIR::Opcode::Mul;
-        case BinaryOperatorKind::Divide: return FNIR::Opcode::Div;
-        case BinaryOperatorKind::Modulo: return FNIR::Opcode::Rem;
-        case BinaryOperatorKind::Equals: return FNIR::Opcode::Eq;
-        case BinaryOperatorKind::NotEquals: return FNIR::Opcode::Ne;
-        case BinaryOperatorKind::LessThan: return FNIR::Opcode::Lt;
-        case BinaryOperatorKind::LessThanOrEqual: return FNIR::Opcode::Le;
-        case BinaryOperatorKind::GreaterThan: return FNIR::Opcode::Gt;
-        case BinaryOperatorKind::GreaterThanOrEqual: return FNIR::Opcode::Ge;
-        case BinaryOperatorKind::LogicalAnd: return FNIR::Opcode::And;
-        case BinaryOperatorKind::LogicalOr: return FNIR::Opcode::Or;
-        case BinaryOperatorKind::BitwiseAnd: return FNIR::Opcode::BitAnd;
-        case BinaryOperatorKind::BitwiseOr: return FNIR::Opcode::BitOr;
-        case BinaryOperatorKind::BitwiseXor: return FNIR::Opcode::BitXor;
-        case BinaryOperatorKind::LeftShift: return FNIR::Opcode::ShiftL;
-        case BinaryOperatorKind::RightShift: return FNIR::Opcode::ShiftR;
-        default: return FNIR::Opcode::Add;
+        case BinaryOperatorKind::Add: return FLIR::Opcode::Add;
+        case BinaryOperatorKind::Subtract: return FLIR::Opcode::Sub;
+        case BinaryOperatorKind::Multiply: return FLIR::Opcode::Mul;
+        case BinaryOperatorKind::Divide: return FLIR::Opcode::Div;
+        case BinaryOperatorKind::Modulo: return FLIR::Opcode::Rem;
+        case BinaryOperatorKind::Equals: return FLIR::Opcode::Eq;
+        case BinaryOperatorKind::NotEquals: return FLIR::Opcode::Ne;
+        case BinaryOperatorKind::LessThan: return FLIR::Opcode::Lt;
+        case BinaryOperatorKind::LessThanOrEqual: return FLIR::Opcode::Le;
+        case BinaryOperatorKind::GreaterThan: return FLIR::Opcode::Gt;
+        case BinaryOperatorKind::GreaterThanOrEqual: return FLIR::Opcode::Ge;
+        case BinaryOperatorKind::LogicalAnd: return FLIR::Opcode::And;
+        case BinaryOperatorKind::LogicalOr: return FLIR::Opcode::Or;
+        case BinaryOperatorKind::BitwiseAnd: return FLIR::Opcode::BitAnd;
+        case BinaryOperatorKind::BitwiseOr: return FLIR::Opcode::BitOr;
+        case BinaryOperatorKind::BitwiseXor: return FLIR::Opcode::BitXor;
+        case BinaryOperatorKind::LeftShift: return FLIR::Opcode::ShiftL;
+        case BinaryOperatorKind::RightShift: return FLIR::Opcode::ShiftR;
+        default: return FLIR::Opcode::Add;
     }
 }
 
-FNIR::Opcode BoundToFNIR::get_unary_opcode(UnaryOperatorKind kind) {
+FLIR::Opcode BoundToFLIR::get_unary_opcode(UnaryOperatorKind kind) {
     switch (kind) {
-        case UnaryOperatorKind::Minus: return FNIR::Opcode::Neg;
-        case UnaryOperatorKind::Not: return FNIR::Opcode::Not;
-        case UnaryOperatorKind::BitwiseNot: return FNIR::Opcode::BitNot;
-        default: return FNIR::Opcode::Neg;
+        case UnaryOperatorKind::Minus: return FLIR::Opcode::Neg;
+        case UnaryOperatorKind::Not: return FLIR::Opcode::Not;
+        case UnaryOperatorKind::BitwiseNot: return FLIR::Opcode::BitNot;
+        default: return FLIR::Opcode::Neg;
     }
 }
 
-FNIR::Opcode BoundToFNIR::get_compound_opcode(AssignmentOperatorKind kind) {
+FLIR::Opcode BoundToFLIR::get_compound_opcode(AssignmentOperatorKind kind) {
     switch (kind) {
-        case AssignmentOperatorKind::Add: return FNIR::Opcode::Add;
-        case AssignmentOperatorKind::Subtract: return FNIR::Opcode::Sub;
-        case AssignmentOperatorKind::Multiply: return FNIR::Opcode::Mul;
-        case AssignmentOperatorKind::Divide: return FNIR::Opcode::Div;
-        case AssignmentOperatorKind::Modulo: return FNIR::Opcode::Rem;
-        case AssignmentOperatorKind::And: return FNIR::Opcode::BitAnd;
-        case AssignmentOperatorKind::Or: return FNIR::Opcode::BitOr;
-        case AssignmentOperatorKind::Xor: return FNIR::Opcode::BitXor;
-        case AssignmentOperatorKind::LeftShift: return FNIR::Opcode::ShiftL;
-        case AssignmentOperatorKind::RightShift: return FNIR::Opcode::ShiftR;
-        default: return FNIR::Opcode::Add;
+        case AssignmentOperatorKind::Add: return FLIR::Opcode::Add;
+        case AssignmentOperatorKind::Subtract: return FLIR::Opcode::Sub;
+        case AssignmentOperatorKind::Multiply: return FLIR::Opcode::Mul;
+        case AssignmentOperatorKind::Divide: return FLIR::Opcode::Div;
+        case AssignmentOperatorKind::Modulo: return FLIR::Opcode::Rem;
+        case AssignmentOperatorKind::And: return FLIR::Opcode::BitAnd;
+        case AssignmentOperatorKind::Or: return FLIR::Opcode::BitOr;
+        case AssignmentOperatorKind::Xor: return FLIR::Opcode::BitXor;
+        case AssignmentOperatorKind::LeftShift: return FLIR::Opcode::ShiftL;
+        case AssignmentOperatorKind::RightShift: return FLIR::Opcode::ShiftR;
+        default: return FLIR::Opcode::Add;
     }
 }
 
-void BoundToFNIR::emit_string_init(FNIR::Value* string_addr, FNIR::Value* data_ptr, size_t length) {
+void BoundToFLIR::emit_string_init(FLIR::Value* string_addr, FLIR::Value* data_ptr, size_t length) {
     auto char_ptr_type = module->ir_types.get_pointer(module->ir_types.get_i8());
     auto data_field = builder.field_addr(string_addr, 0, char_ptr_type, "data");
     builder.store(data_ptr, data_field);
@@ -340,8 +340,8 @@ void BoundToFNIR::emit_string_init(FNIR::Value* string_addr, FNIR::Value* data_p
 
 #pragma region Expression Visitors
 
-void BoundToFNIR::visit(BoundLiteralExpression* node) {
-    FNIR::Value* result = nullptr;
+void BoundToFLIR::visit(BoundLiteralExpression* node) {
+    FLIR::Value* result = nullptr;
     auto ir_type = convert(node->type);
 
     if (std::holds_alternative<int64_t>(node->constantValue)) {
@@ -408,7 +408,7 @@ void BoundToFNIR::visit(BoundLiteralExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToFNIR::visit(BoundNameExpression* node) {
+void BoundToFLIR::visit(BoundNameExpression* node) {
     if (!node->symbol) {
         lowered[node] = {nullptr, false};
         return;
@@ -448,7 +448,7 @@ void BoundToFNIR::visit(BoundNameExpression* node) {
     lowered[node] = {var_addr, true};
 }
 
-void BoundToFNIR::visit(BoundBinaryExpression* node) {
+void BoundToFLIR::visit(BoundBinaryExpression* node) {
     // Handle short-circuit evaluation for logical operators
     if (node->operatorKind == BinaryOperatorKind::LogicalAnd ||
         node->operatorKind == BinaryOperatorKind::LogicalOr) {
@@ -522,7 +522,7 @@ void BoundToFNIR::visit(BoundBinaryExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToFNIR::visit(BoundUnaryExpression* node) {
+void BoundToFLIR::visit(BoundUnaryExpression* node) {
     auto operand = emit_rvalue(node->operand);
     if (!operand) {
         lowered[node] = {nullptr, false};
@@ -534,7 +534,7 @@ void BoundToFNIR::visit(BoundUnaryExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToFNIR::visit(BoundAssignmentExpression* node) {
+void BoundToFLIR::visit(BoundAssignmentExpression* node) {
     auto rhs_value = emit_rvalue(node->value);
     if (!rhs_value) {
         lowered[node] = {nullptr, false};
@@ -548,7 +548,7 @@ void BoundToFNIR::visit(BoundAssignmentExpression* node) {
         return;
     }
 
-    FNIR::Value* final_value = rhs_value;
+    FLIR::Value* final_value = rhs_value;
     auto target_ir_type = convert(node->target->type);
     if (node->operatorKind != AssignmentOperatorKind::Assign) {
         auto current_value = builder.load(target_addr, target_ir_type);
@@ -560,7 +560,7 @@ void BoundToFNIR::visit(BoundAssignmentExpression* node) {
     lowered[node] = {final_value, false};
 }
 
-void BoundToFNIR::visit(BoundCallExpression* node) {
+void BoundToFLIR::visit(BoundCallExpression* node) {
     // Check method validity FIRST
     if (!node->method || !node->method->as<FunctionSymbol>()) {
         lowered[node] = {nullptr, false};
@@ -602,7 +602,7 @@ void BoundToFNIR::visit(BoundCallExpression* node) {
         return;
     }
 
-    std::vector<FNIR::Value*> args;
+    std::vector<FLIR::Value*> args;
 
     if (auto member_expr = node->callee->as<BoundMemberAccessExpression>()) {
         bool is_value_type = member_expr->object->type->as<NamedType>() &&
@@ -634,7 +634,7 @@ void BoundToFNIR::visit(BoundCallExpression* node) {
         return;
     }
 
-    FNIR::Function* func = module->find_function(func_sym);
+    FLIR::Function* func = module->find_function(func_sym);
     if (!func) {
         lowered[node] = {nullptr, false};
         return;
@@ -644,7 +644,7 @@ void BoundToFNIR::visit(BoundCallExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToFNIR::visit(BoundMemberAccessExpression* node) {
+void BoundToFLIR::visit(BoundMemberAccessExpression* node) {
     if (!node->member) {
         lowered[node] = {nullptr, false};
         return;
@@ -658,7 +658,7 @@ void BoundToFNIR::visit(BoundMemberAccessExpression* node) {
     bool is_value_type = node->object->type->as<NamedType>() && 
                         node->object->type->is_value_type();
     
-    FNIR::Value* obj_addr;
+    FLIR::Value* obj_addr;
     if (is_value_type) {
         obj_addr = emit_lvalue(node->object);
     } else {
@@ -690,7 +690,7 @@ void BoundToFNIR::visit(BoundMemberAccessExpression* node) {
     lowered[node] = {nullptr, false};
 }
 
-void BoundToFNIR::visit(BoundIndexExpression* node) {
+void BoundToFLIR::visit(BoundIndexExpression* node) {
     auto obj_val = emit_rvalue(node->object);
     auto index_val = emit_rvalue(node->index);
 
@@ -722,7 +722,7 @@ void BoundToFNIR::visit(BoundIndexExpression* node) {
     lowered[node] = {elem_addr, true};
 }
 
-void BoundToFNIR::visit(BoundNewExpression* node) {
+void BoundToFLIR::visit(BoundNewExpression* node) {
     if (!node->type) {
         lowered[node] = {nullptr, false};
         return;
@@ -731,7 +731,7 @@ void BoundToFNIR::visit(BoundNewExpression* node) {
     bool is_value_type = node->type->as<NamedType>() && node->type->is_value_type();
     auto ir_type = convert(node->type);
 
-    FNIR::Value* storage;
+    FLIR::Value* storage;
     if (is_value_type) {
         storage = builder.stack_alloc(ir_type);
     } else {
@@ -741,7 +741,7 @@ void BoundToFNIR::visit(BoundNewExpression* node) {
     if (node->constructor) {
         auto ctor_func = module->find_function(node->constructor);
         if (ctor_func) {
-            std::vector<FNIR::Value*> args;
+            std::vector<FLIR::Value*> args;
             args.push_back(storage);
             
             for (auto arg : node->arguments) {
@@ -762,7 +762,7 @@ void BoundToFNIR::visit(BoundNewExpression* node) {
     }
 }
 
-void BoundToFNIR::visit(BoundArrayCreationExpression* node) {
+void BoundToFLIR::visit(BoundArrayCreationExpression* node) {
     auto alloc_result = builder.stack_alloc(convert(node->type));
 
     if (!node->initializers.empty()) {
@@ -788,7 +788,7 @@ void BoundToFNIR::visit(BoundArrayCreationExpression* node) {
     lowered[node] = {alloc_result, true};
 }
 
-void BoundToFNIR::visit(BoundCastExpression* node) {
+void BoundToFLIR::visit(BoundCastExpression* node) {
     auto expr = emit_rvalue(node->expression);
     if (!expr) {
         lowered[node] = {nullptr, false};
@@ -799,7 +799,7 @@ void BoundToFNIR::visit(BoundCastExpression* node) {
     lowered[node] = {result, false};
 }
 
-void BoundToFNIR::visit(BoundThisExpression* node) {
+void BoundToFLIR::visit(BoundThisExpression* node) {
     auto this_ptr = get_this_param();
     if (!this_ptr) {
         error("'this' used in static or non-member context", node->location);
@@ -811,12 +811,12 @@ void BoundToFNIR::visit(BoundThisExpression* node) {
     lowered[node] = {this_ptr, is_value_type};
 }
 
-void BoundToFNIR::visit(BoundParenthesizedExpression* node) {
+void BoundToFLIR::visit(BoundParenthesizedExpression* node) {
     node->expression->accept(this);
     lowered[node] = lowered[node->expression];
 }
 
-void BoundToFNIR::visit(BoundConversionExpression* node) {
+void BoundToFLIR::visit(BoundConversionExpression* node) {
     auto expr_val = emit_rvalue(node->expression);
     if (!expr_val) {
         lowered[node] = {nullptr, false};
@@ -830,7 +830,7 @@ void BoundToFNIR::visit(BoundConversionExpression* node) {
     }
 }
 
-void BoundToFNIR::visit(BoundTypeExpression* node) {
+void BoundToFLIR::visit(BoundTypeExpression* node) {
     lowered[node] = {nullptr, false};
 }
 
@@ -838,23 +838,23 @@ void BoundToFNIR::visit(BoundTypeExpression* node) {
 
 #pragma region Statement Visitors
 
-void BoundToFNIR::visit(BoundBlockStatement* node) {
+void BoundToFLIR::visit(BoundBlockStatement* node) {
     for (auto stmt : node->statements) {
         stmt->accept(this);
     }
 }
 
-void BoundToFNIR::visit(BoundExpressionStatement* node) {
+void BoundToFLIR::visit(BoundExpressionStatement* node) {
     emit_rvalue(node->expression);
 }
 
-void BoundToFNIR::visit(BoundIfStatement* node) {
+void BoundToFLIR::visit(BoundIfStatement* node) {
     auto cond = emit_rvalue(node->condition);
     if (!cond) return;
 
     auto then_block = create_block("if.then");
     auto else_block = create_block("if.else");
-    FNIR::BasicBlock* merge_block = nullptr;
+    FLIR::BasicBlock* merge_block = nullptr;
 
     builder.cond_br(cond, then_block, else_block);
 
@@ -887,7 +887,7 @@ void BoundToFNIR::visit(BoundIfStatement* node) {
     }
 }
 
-void BoundToFNIR::visit(BoundWhileStatement* node) {
+void BoundToFLIR::visit(BoundWhileStatement* node) {
     auto header = create_block("while.header");
     auto body = create_block("while.body");
     auto exit = create_block("while.exit");
@@ -928,7 +928,7 @@ void BoundToFNIR::visit(BoundWhileStatement* node) {
     current_block = exit;
 }
 
-void BoundToFNIR::visit(BoundForStatement* node) {
+void BoundToFLIR::visit(BoundForStatement* node) {
     if (node->initializer) {
         node->initializer->accept(this);
     }
@@ -974,19 +974,19 @@ void BoundToFNIR::visit(BoundForStatement* node) {
     current_block = exit;
 }
 
-void BoundToFNIR::visit(BoundBreakStatement* node) {
+void BoundToFLIR::visit(BoundBreakStatement* node) {
     if (!loop_stack.empty()) {
         builder.br(loop_stack.top().break_target);
     }
 }
 
-void BoundToFNIR::visit(BoundContinueStatement* node) {
+void BoundToFLIR::visit(BoundContinueStatement* node) {
     if (!loop_stack.empty()) {
         builder.br(loop_stack.top().continue_target);
     }
 }
 
-void BoundToFNIR::visit(BoundReturnStatement* node) {
+void BoundToFLIR::visit(BoundReturnStatement* node) {
     if (node->value) {
         auto val = emit_rvalue(node->value);
         builder.ret(val);
@@ -995,14 +995,14 @@ void BoundToFNIR::visit(BoundReturnStatement* node) {
     }
 }
 
-void BoundToFNIR::visit(BoundUsingStatement* node) {
+void BoundToFLIR::visit(BoundUsingStatement* node) {
 }
 
 #pragma endregion
 
 #pragma region Declaration Visitors
 
-void BoundToFNIR::visit(BoundVariableDeclaration* node)
+void BoundToFLIR::visit(BoundVariableDeclaration* node)
 {
     auto var_sym = node->symbol->as<VariableSymbol>();
     if (!var_sym) return;
@@ -1043,7 +1043,7 @@ void BoundToFNIR::visit(BoundVariableDeclaration* node)
                 if (is_new_value_type && new_expr->constructor) {
                     auto ctor_func = module->find_function(new_expr->constructor);
                     if (ctor_func) {
-                        std::vector<FNIR::Value*> args;
+                        std::vector<FLIR::Value*> args;
                         args.push_back(var_addr);
 
                         for (auto arg : new_expr->arguments) {
@@ -1070,7 +1070,7 @@ void BoundToFNIR::visit(BoundVariableDeclaration* node)
     }
 }
 
-void BoundToFNIR::visit(BoundFunctionDeclaration* node) {
+void BoundToFLIR::visit(BoundFunctionDeclaration* node) {
     auto func_sym = node->symbol->as<FunctionSymbol>();
     if (!func_sym) return;
 
@@ -1145,7 +1145,7 @@ void BoundToFNIR::visit(BoundFunctionDeclaration* node) {
     current_block = nullptr;
 }
 
-void BoundToFNIR::visit(BoundPropertyDeclaration* node) {
+void BoundToFLIR::visit(BoundPropertyDeclaration* node) {
     // auto prop_sym = node->symbol->as<PropertySymbol>();
     // if (!prop_sym) return;
     
@@ -1158,7 +1158,7 @@ void BoundToFNIR::visit(BoundPropertyDeclaration* node) {
     // }
 }
 
-void BoundToFNIR::generate_property_accessor(
+void BoundToFLIR::generate_property_accessor(
     BoundPropertyDeclaration* prop_decl, 
     BoundPropertyAccessor* accessor,
     bool is_getter) 
@@ -1209,7 +1209,7 @@ void BoundToFNIR::generate_property_accessor(
     // }
 }
 
-void BoundToFNIR::visit(BoundTypeDeclaration* node) {
+void BoundToFLIR::visit(BoundTypeDeclaration* node) {
     auto type_sym = node->symbol->as<TypeSymbol>();
     if (!type_sym) return;
     
@@ -1218,13 +1218,13 @@ void BoundToFNIR::visit(BoundTypeDeclaration* node) {
     }
 }
 
-void BoundToFNIR::visit(BoundNamespaceDeclaration* node) {
+void BoundToFLIR::visit(BoundNamespaceDeclaration* node) {
     // for (auto member : node->members) {
     //     member->accept(this);
     // }
 }
 
-void BoundToFNIR::visit(BoundCompilationUnit* node) {
+void BoundToFLIR::visit(BoundCompilationUnit* node) {
     for (auto stmt : node->statements) {
         stmt->accept(this);
     }

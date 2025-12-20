@@ -79,7 +79,7 @@ namespace Fern
         bool verbose = false;
         bool print_ast = false;
         bool print_symbols = false;
-        bool print_fnir = false;
+        bool print_flir = false;
 
         void add_builtin_functions(SymbolTable& global_symbols);
 
@@ -103,7 +103,7 @@ namespace Fern
         void set_verbose(bool v) { verbose = v; }
         void set_print_ast(bool p) { print_ast = p; }
         void set_print_symbols(bool p) { print_symbols = p; }
-        void set_print_fnir(bool p) { print_fnir = p; }
+        void set_print_flir(bool p) { print_flir = p; }
     };
 
 } // namespace Fern

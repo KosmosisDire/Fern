@@ -3,7 +3,7 @@
 #include "semantic/symbol.hpp"
 #include "semantic/type_system.hpp"
 
-namespace Fern::FNIR
+namespace Fern::FLIR
 {
 
 #pragma region IRType Implementation
@@ -289,4 +289,4 @@ IRTypePtr IRTypeSystem::convert(TypePtr semantic_type)
     return get_void();
 }
 
-} // namespace Fern::FNIR
+} // namespace Fern::FLIR

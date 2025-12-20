@@ -1,17 +1,17 @@
 #pragma once
 
-#include "fnir.hpp"
+#include "flir.hpp"
 
-namespace Fern::FNIR
+namespace Fern::FLIR
 {
-    class FNIRBuilder {
+    class FLIRBuilder {
         Function* current_func = nullptr;
         BasicBlock* current_block = nullptr;
         IRTypeSystem* ir_types = nullptr;
 
     public:
-        FNIRBuilder() = default;
-        FNIRBuilder(IRTypeSystem* ts) : ir_types(ts) {}
+        FLIRBuilder() = default;
+        FLIRBuilder(IRTypeSystem* ts) : ir_types(ts) {}
 
         void set_function(Function* f) { current_func = f; }
         void set_block(BasicBlock* b) { current_block = b; }

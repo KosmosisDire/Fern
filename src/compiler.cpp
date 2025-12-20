@@ -1,7 +1,7 @@
 #include "compiler.hpp"
 
 #include "common/logger.hpp"
-#include "codegen/fnir_codegen.hpp"
+#include "codegen/flir_codegen.hpp"
 #include "semantic/symbol_table.hpp"
 #include "parser/lexer.hpp"
 #include "parser/parser.hpp"
@@ -13,8 +13,8 @@
 #include "semantic/type_resolver.hpp"
 #include "semantic/symbol_table_builder.hpp"
 #include "semantic/syntax_validator.hpp"
-#include "fnir/fnir.hpp"
-#include "fnir/bound_to_fnir.hpp"
+#include "flir/flir.hpp"
+#include "flir/bound_to_flir.hpp"
 #include "binding/conversion_inserter.hpp"
 
 #include <llvm/Support/FileSystem.h>
@@ -166,7 +166,7 @@ namespace Fern
         std::vector<FileCompilationState> file_states(source_files.size());
 
         // Global diagnostics for errors not associated with a specific file
-        // (e.g., codegen errors that operate on merged FNIR)
+        // (e.g., codegen errors that operate on merged FLIR)
         std::vector<Diagnostic> global_diagnostics;
 
         // === Parse all files sequentially ===
@@ -438,15 +438,15 @@ namespace Fern
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
-        // === Convert bound tree to FNIR ===
-        LOG_HEADER("FNIR generation", LogCategory::COMPILER);
+        // === Convert bound tree to FLIR ===
+        LOG_HEADER("FLIR generation", LogCategory::COMPILER);
 
-        // Create FNIR module
-        auto fnir_module = std::make_unique<FNIR::Module>("FernProgram");
+        // Create FLIR module
+        auto flir_module = std::make_unique<FLIR::Module>("FernProgram");
         auto global_ns = global_symbols->get_global_namespace();
 
         // Initialize module with all types and function declarations (once)
-        FNIR::BoundToFNIR converter(fnir_module.get());
+        FLIR::BoundToFLIR converter(flir_module.get());
         converter.init_module(global_ns);
 
         // Generate function bodies for each compilation unit
@@ -455,39 +455,39 @@ namespace Fern
             if (!state.boundTree)
                 continue;
 
-            LOG_INFO("Generating FNIR for: " + state.file.filename, LogCategory::COMPILER);
+            LOG_INFO("Generating FLIR for: " + state.file.filename, LogCategory::COMPILER);
 
             converter.generate(state.boundTree);
 
-            // Collect FNIR generation diagnostics
+            // Collect FLIR generation diagnostics
             state.collect_diagnostics(converter);
         }
 
-        // Early return if FNIR generation failed
+        // Early return if FLIR generation failed
         if (has_any_errors(file_states))
         {
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
-        // Dump non-SSA FNIR if requested
-        if (print_fnir)
+        // Dump non-SSA FLIR if requested
+        if (print_flir)
         {
-            LOG_HEADER("FNIR Output (Non-SSA)", LogCategory::COMPILER);
-            LOG_INFO(fnir_module->dump() + "\n", LogCategory::COMPILER);
+            LOG_HEADER("FLIR Output (Non-SSA)", LogCategory::COMPILER);
+            LOG_INFO(flir_module->dump() + "\n", LogCategory::COMPILER);
         }
 
         // return nullptr;
 
-        // === LLVM Code Generation from FNIR ===
+        // === LLVM Code Generation from FLIR ===
         LOG_HEADER("LLVM code generation", LogCategory::COMPILER);
 
         auto llvm_context = std::make_unique<llvm::LLVMContext>();
-        FNIRCodeGen codegen(*llvm_context, "FernProgram", global_type_system.get());
+        FLIRCodeGen codegen(*llvm_context, "FernProgram", global_type_system.get());
 
         std::unique_ptr<llvm::Module> llvm_module;
         try
         {
-            llvm_module = codegen.lower(fnir_module.get());
+            llvm_module = codegen.lower(flir_module.get());
             LOG_INFO("LLVM IR generation successful", LogCategory::COMPILER);
         }
         catch (const std::exception &e)

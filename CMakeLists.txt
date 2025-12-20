@@ -102,16 +102,16 @@ set(SOURCE_FILES
     src/binding/bound_tree_builder.cpp
     src/binding/conversion_inserter.cpp
 
-    # FNIR
-    src/fnir/ir_type.cpp
-    src/fnir/bound_to_fnir.cpp
-    # src/fnir/mem2reg.cpp
+    # FLIR
+    src/flir/ir_type.cpp
+    src/flir/bound_to_flir.cpp
+    # src/flir/mem2reg.cpp
 
     # Code Generator
     src/codegen/llvm_ir_builder.cpp
     src/codegen/codegen_module.cpp
     src/codegen/codegen_function.cpp
-    src/codegen/fnir_codegen.cpp
+    src/codegen/flir_codegen.cpp
 
     # Runtime
     runtime/runtime.cpp

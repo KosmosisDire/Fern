@@ -14,7 +14,7 @@
 #include "semantic/symbol.hpp"
 #include "magic_enum.hpp"
 
-namespace Fern::FNIR
+namespace Fern::FLIR
 {
     struct Value;
     struct Instruction;
@@ -1101,4 +1101,4 @@ namespace Fern::FNIR
         
     };
 
-} // namespace Fern::FNIR
+} // namespace Fern::FLIR

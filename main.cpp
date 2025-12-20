@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
     #ifdef FERN_DEBUG
         compiler.set_print_ast(true);
         compiler.set_print_symbols(true);
-        compiler.set_print_fnir(true);
+        compiler.set_print_flir(true);
     #endif
 
     // Read all source files
