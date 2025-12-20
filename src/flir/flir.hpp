@@ -538,53 +538,6 @@ namespace Fern::FLIR
 
 #pragma region Type Definition
 
-    struct Field
-    {
-        public:
-        IRTypePtr type = nullptr;
-        uint32_t offset = 0;
-        uint32_t alignment = 1;
-
-        Field(VariableSymbol *symbol)
-            : symbol(symbol) {}
-
-        std::string qualified_name() const
-        {
-            return symbol ? symbol->get_qualified_name() : "<!null symbol!>";
-        }
-
-        std::string name() const
-        {
-            return symbol ? symbol->name : "<!null symbol!>";
-        }
-
-        private:
-        VariableSymbol *symbol;
-    };
-
-    struct TypeDefinition
-    {
-        std::vector<std::unique_ptr<Field>> fields;
-        std::vector<Function*> functions;
-        TypeDefinition *base_type = nullptr;
-
-        TypeDefinition(TypeSymbol *symbol)
-            : symbol(symbol)
-        {
-        }
-
-        bool is_empty() const { return fields.empty(); }
-
-        std::string name() const
-        {
-            return symbol ? symbol->get_qualified_name() : "<!null symbol!>";
-        }
-
-        TypeSymbol* get_symbol() const { return symbol; }
-
-    private:
-        TypeSymbol *symbol;
-    };
 
 #pragma region Module
 
@@ -593,10 +546,6 @@ namespace Fern::FLIR
         std::string name;
         std::vector<std::unique_ptr<Function>> functions;
         std::unordered_map<FunctionSymbol*, Function*> function_map;
-        std::vector<std::unique_ptr<TypeDefinition>> types;
-        std::unordered_map<TypeSymbol*, TypeDefinition*> type_map;
-
-        // The IR type system - owns all IR types for this module
         IRTypeSystem ir_types;
 
         Module(const std::string &name) : name(name) {}
@@ -642,23 +591,6 @@ namespace Fern::FLIR
             return ptr;
         }
 
-        // Create a type definition shell (fields will be filled in by lowering)
-        TypeDefinition* define_type(TypeSymbol *sym)
-        {
-            auto def = std::make_unique<TypeDefinition>(sym);
-            TypeDefinition *ptr = def.get();
-            types.push_back(std::move(def));
-            type_map[sym] = ptr;
-            return ptr;
-        }
-
-        // Find type definition by symbol
-        TypeDefinition* find_type(TypeSymbol* sym)
-        {
-            auto it = type_map.find(sym);
-            return it != type_map.end() ? it->second : nullptr;
-        }
-
         // Dump human-readable text representation
         std::string dump() const
         {
@@ -667,9 +599,9 @@ namespace Fern::FLIR
             ss << "===============================================\n\n";
 
             // Dump type definitions first
-            for (const auto &type_def : types)
+            for (const auto &struct_def : ir_types.get_all_structs())
             {
-                ss << dump_type_definition(type_def.get());
+                ss << dump_type_definition(struct_def.get());
                 ss << "\n";
             }
 
@@ -686,21 +618,16 @@ namespace Fern::FLIR
 
     private:
     
-        static std::string dump_type_definition(const TypeDefinition *type_def)
+        static std::string dump_type_definition(const IRStruct *type_def)
         {
             std::stringstream ss;
 
-            ss << "type " << type_def->name();
+            ss << "type " << type_def->name;
 
-            if (type_def->base_type)
+            if (type_def->fields.empty())
             {
-                ss << " extends " << type_def->base_type->name();
-            }
-
-            if (type_def->is_empty())
-            {
-                ss << " { }\n";
-                return ss.str();
+            ss << " { }\n";
+            return ss.str();
             }
 
             ss << " \n{\n";
@@ -708,17 +635,17 @@ namespace Fern::FLIR
             // dump fields
             for (const auto &field : type_def->fields)
             {
-                ss << "  ";
-                if (field->type)
-                {
-                    ss << field->type->get_name();
-                }
-                else
-                {
-                    ss << "?";
-                }
+            ss << "  ";
+            if (field.type)
+            {
+                ss << field.type->get_name();
+            }
+            else
+            {
+                ss << "?";
+            }
 
-                ss << " " << field->name() << "\n";
+            ss << " " << field.name << "\n";
             }
 
             ss << "}\n";

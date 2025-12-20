@@ -71,18 +71,11 @@ static void collect_functions(Symbol* symbol, std::vector<FunctionSymbol*>& func
 #pragma region Core Infrastructure
 
 void BoundToFLIR::init_module(NamespaceSymbol* global_ns) {
-    // Phase 1: Collect and define all types
     std::vector<TypeSymbol*> types;
     collect_types(global_ns, types);
 
     for (auto* type_sym : types) {
-        module->ir_types.define_struct(type_sym);
-    }
-
-    // Phase 2: Fill in struct fields (after all types are defined)
-    for (auto* type_sym : types) {
-        auto* ir_struct = module->ir_types.find_struct(type_sym);
-        if (!ir_struct) continue;
+        auto ir_struct = module->ir_types.define_struct(type_sym);
 
         size_t offset = 0;
         size_t max_align = 1;
@@ -109,7 +102,6 @@ void BoundToFLIR::init_module(NamespaceSymbol* global_ns) {
         ir_struct->alignment = max_align;
     }
 
-    // Phase 3: Create function declarations
     std::vector<FunctionSymbol*> functions;
     collect_functions(global_ns, functions);
 
