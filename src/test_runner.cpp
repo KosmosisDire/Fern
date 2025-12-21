@@ -7,231 +7,202 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <iomanip>
 
 namespace fs = std::filesystem;
 
 namespace Fern {
 
-static std::string read_file(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
+static std::string read_file(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) throw std::runtime_error("Could not open: " + path);
+    std::stringstream buf;
+    buf << file.rdbuf();
+    return buf.str();
 }
 
-static bool extract_expected_value(const std::string& source, float& out_value) {
-    // Look for "-- Expected: value" pattern
-    size_t pos = source.find("-- Expected:");
-    if (pos == std::string::npos) {
-        return false;
-    }
+static size_t count_lines(const std::string& s) {
+    return s.empty() ? 0 : 1 + std::count(s.begin(), s.end(), '\n');
+}
 
+static bool extract_expected(const std::string& source, float& out) {
+    auto pos = source.find("-- Expected:");
+    if (pos == std::string::npos) return false;
     try {
-        std::string value_str = source.substr(pos + 12); // Skip "-- Expected:"
-        // Find the first number (may have leading spaces)
-        size_t start = value_str.find_first_not_of(" \t");
-        if (start == std::string::npos) {
-            return false;
-        }
-
-        // Extract float value (including negative numbers and decimals)
-        size_t end = start;
-        if (value_str[end] == '-') {
-            end++;
-        }
-        while (end < value_str.length() &&
-               (std::isdigit(value_str[end]) || value_str[end] == '.')) {
-            end++;
-        }
-
-        out_value = std::stof(value_str.substr(start, end - start));
+        out = std::stof(source.substr(pos + 12));
         return true;
     } catch (...) {
         return false;
     }
 }
 
-static bool values_equal(float a, float b, float epsilon = 1e-5f) {
-    return std::abs(a - b) < epsilon;
+static std::vector<std::string> collect_files(const std::string& dir) {
+    std::vector<std::string> files;
+    for (const auto& e : fs::recursive_directory_iterator(dir)) {
+        if (e.is_regular_file() && e.path().extension() == ".fn")
+            files.push_back(e.path().string());
+    }
+    std::sort(files.begin(), files.end());
+    return files;
 }
 
-TestRunner::TestRunner() {
+static std::vector<SourceFile> load_stdlib() {
+    std::vector<SourceFile> files;
+    for (const auto& path : {"runtime/string.fn", "runtime/stringtools.fn", "runtime/file.fn"}) {
+        files.push_back({path, read_file(path)});
+    }
+    return files;
 }
 
 TestResult TestRunner::run_single_test(const std::string& test_file) {
-    fs::path path(test_file);
-    TestResult result(path.filename().string(), test_file);
+    TestResult r;
+    r.name = fs::path(test_file).filename().string();
+    r.path = test_file;
 
     try {
-        // Read the test file
         std::string source = read_file(test_file);
-
-        // Extract expected value from comments
-        if (!extract_expected_value(source, result.expected_value)) {
-            result.compile_failed = true;
-            result.error_message = "No expected value found (use '-- Expected: value')";
-            return result;
+        if (!extract_expected(source, r.expected)) {
+            r.error = "No '-- Expected:' comment";
+            return r;
         }
 
-        // Create a compiler instance for this test
         Compiler compiler;
         compiler.set_print_ast(false);
         compiler.set_print_symbols(false);
         compiler.set_print_flir(false);
 
-        // Compile the test file with stdlib
-        std::vector<SourceFile> source_files = {{test_file, source}};
+        std::vector<SourceFile> sources = {{test_file, source}};
+        for (auto& f : load_stdlib()) sources.push_back(f);
 
-        std::vector<std::string> stdlib_files = {
-            "runtime/string.fn",
-            "runtime/stringtools.fn",
-            "runtime/file.fn",
-        };
-
-        for (const auto& lib_file : stdlib_files) {
-            std::string lib_source = read_file(lib_file);
-            source_files.push_back({lib_file, lib_source});
-        }
-
-        auto compile_result = compiler.compile(source_files);
-
-        if (!compile_result || !compile_result->is_valid()) {
-            result.compile_failed = true;
-            if (compile_result) {
-                std::stringstream ss;
-                for (const auto& error : compile_result->get_diagnostics()) {
-                    ss << error.message << "; ";
-                }
-                result.error_message = ss.str();
-            } else {
-                result.error_message = "No compilation result returned";
+        auto result = compiler.compile(sources);
+        if (!result || !result->is_valid()) {
+            if (result) {
+                for (const auto& d : result->get_diagnostics())
+                    r.error += d.message + "; ";
             }
-            return result;
+            return r;
         }
 
-        // Execute the test
-        auto jit_result = compile_result->execute_jit<float>("Main");
-
-        if (jit_result.has_value()) {
-            result.actual_value = jit_result.value();
-            result.passed = values_equal(result.actual_value, result.expected_value);
+        auto jit = result->execute_jit<float>("Main");
+        if (jit) {
+            r.actual = *jit;
+            r.status = (std::abs(r.actual - r.expected) < 1e-5f)
+                ? TestStatus::Passed : TestStatus::Failed;
         } else {
-            result.crashed = true;
-            result.error_message = "JIT execution failed or Main not found";
-        }
-
-    } catch (const std::exception& e) {
-        result.crashed = true;
-        result.error_message = std::string("Exception: ") + e.what();
-    } catch (...) {
-        result.crashed = true;
-        result.error_message = "Unknown exception occurred";
-    }
-
-    return result;
-}
-
-void TestRunner::collect_test_files(const std::string& dir, std::vector<std::string>& test_files) {
-    try {
-        for (const auto& entry : fs::recursive_directory_iterator(dir)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".fn") {
-                test_files.push_back(entry.path().string());
-            }
+            r.status = TestStatus::Crashed;
+            r.error = "JIT failed";
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error scanning test directory: " << e.what() << std::endl;
+        r.status = TestStatus::Crashed;
+        r.error = e.what();
     }
+    return r;
 }
 
 std::vector<TestResult> TestRunner::run_all_tests(const std::string& test_dir) {
-    std::vector<TestResult> results;
-    std::vector<std::string> test_files;
-
-    // Collect all .fn files recursively
-    collect_test_files(test_dir, test_files);
-
-    // Sort test files by name for consistent ordering
-    std::sort(test_files.begin(), test_files.end());
-
-    if (test_files.empty()) {
-        std::cerr << "No test files found in " << test_dir << std::endl;
-        return results;
+    auto files = collect_files(test_dir);
+    if (files.empty()) {
+        std::cerr << "No test files in " << test_dir << std::endl;
+        return {};
     }
 
-    std::cout << "Running " << test_files.size() << " tests...\n" << std::endl;
+    std::cout << "Running " << files.size() << " tests...\n" << std::endl;
 
-    // Disable logging during test execution to only show test runner output
-    Logger& logger = Logger::get_instance();
-    logger.set_console_level(LogLevel::NONE);
+    Logger::get_instance().set_console_level(LogLevel::NONE);
 
-    // Run each test
-    int test_num = 0;
-    for (const auto& test_file : test_files) {
-        test_num++;
+    std::vector<TestResult> results;
+    for (size_t i = 0; i < files.size(); i++) {
+        auto rel = fs::relative(files[i], test_dir).string();
+        std::cout << "[" << i+1 << "/" << files.size() << "] " << rel << "... " << std::flush;
 
-        // Create relative path for display
-        fs::path rel_path = fs::relative(test_file, test_dir);
-        std::cout << "[" << test_num << "/" << test_files.size() << "] " << rel_path.string() << "... " << std::flush;
+        auto r = run_single_test(files[i]);
+        results.push_back(r);
 
-        TestResult result = run_single_test(test_file);
-        results.push_back(result);
-
-        // Print immediate result
-        if (result.passed) {
-            std::cout << "PASS" << std::endl;
-        } else if (result.crashed) {
-            std::cout << "CRASH: " << result.error_message << std::endl;
-        } else if (result.compile_failed) {
-            std::cout << "COMPILE FAILED: " << result.error_message << std::endl;
-        } else {
-            std::cout << "FAIL (expected " << result.expected_value
-                      << ", got " << result.actual_value << ")" << std::endl;
+        switch (r.status) {
+            case TestStatus::Passed: std::cout << "PASS\n"; break;
+            case TestStatus::Failed: std::cout << "FAIL (" << r.expected << " != " << r.actual << ")\n"; break;
+            case TestStatus::CompileFailed: std::cout << "COMPILE: " << r.error << "\n"; break;
+            case TestStatus::Crashed: std::cout << "CRASH: " << r.error << "\n"; break;
         }
     }
 
-    // Restore logging to normal level (INFO is default)
-    logger.set_console_level(LogLevel::INFO);
-
+    Logger::get_instance().set_console_level(LogLevel::INFO);
     return results;
 }
 
-void TestRunner::print_summary(const std::vector<TestResult>& results) {
-    int passed = 0;
-    int failed = 0;
-    int crashed = 0;
-    int compile_failed = 0;
-
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "TEST SUMMARY" << std::endl;
-    std::cout << "========================================" << std::endl;
-
-    for (const auto& result : results) {
-        if (result.passed) {
-            passed++;
-        } else if (result.crashed) {
-            crashed++;
-            std::cout << "CRASH: " << result.test_name << std::endl;
-            std::cout << "  " << result.error_message << std::endl;
-        } else if (result.compile_failed) {
-            compile_failed++;
-            std::cout << "COMPILE FAILED: " << result.test_name << std::endl;
-            if (!result.error_message.empty()) {
-                std::cout << "  " << result.error_message << std::endl;
-            }
-        } else {
-            failed++;
-            std::cout << "FAIL: " << result.test_name << std::endl;
-            std::cout << "  Expected: " << result.expected_value << ", Got: " << result.actual_value << std::endl;
-        }
+BenchmarkResult TestRunner::run_compile_benchmark(const std::string& test_dir, int iterations) {
+    auto files = collect_files(test_dir);
+    if (files.empty()) {
+        std::cerr << "No test files in " << test_dir << std::endl;
+        return {};
     }
 
-    std::cout << "\nTotal: " << results.size() << " | Passed: " << passed
-              << " | Failed: " << failed << " | Crashed: " << crashed
-              << " | Compile Failed: " << compile_failed << std::endl;
-    std::cout << "========================================" << std::endl;
+    // Pre-load all sources
+    auto stdlib = load_stdlib();
+    size_t stdlib_lines = 0;
+    for (auto& f : stdlib) stdlib_lines += count_lines(f.source);
+
+    std::vector<std::pair<std::string, std::string>> test_sources;
+    size_t test_lines = 0;
+    for (const auto& path : files) {
+        auto src = read_file(path);
+        test_lines += count_lines(src);
+        test_sources.push_back({path, src});
+    }
+
+    size_t total_lines = (stdlib_lines + test_lines) * iterations;
+    std::cout << "Benchmarking " << files.size() << " files x " << iterations << " iterations\n";
+
+    Logger::get_instance().set_console_level(LogLevel::NONE);
+
+    int ok = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < iterations; i++) {
+        std::cout << "\r" << (i+1) << "/" << iterations << std::flush;
+        for (const auto& [path, src] : test_sources) {
+            std::vector<SourceFile> sources = {{path, src}};
+            for (auto& f : stdlib) sources.push_back(f);
+
+            Compiler c;
+            c.set_print_ast(false);
+            c.set_print_symbols(false);
+            c.set_print_flir(false);
+            if (auto r = c.compile(sources); r && r->is_valid()) ok++;
+        }
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    double secs = std::chrono::duration<double>(end - start).count();
+
+    Logger::get_instance().set_console_level(LogLevel::INFO);
+    std::cout << "\r";
+
+    int total_compiles = iterations * (int)files.size();
+    return {total_lines, total_compiles, ok, secs};
+}
+
+void TestRunner::print_summary(const std::vector<TestResult>& results) {
+    int pass = 0, fail = 0, crash = 0, compile = 0;
+    for (const auto& r : results) {
+        switch (r.status) {
+            case TestStatus::Passed: pass++; break;
+            case TestStatus::Failed: fail++; break;
+            case TestStatus::Crashed: crash++; break;
+            case TestStatus::CompileFailed: compile++; break;
+        }
+    }
+    std::cout << "\nTotal: " << results.size() << " | Pass: " << pass
+              << " | Fail: " << fail << " | Crash: " << crash
+              << " | Compile: " << compile << std::endl;
+}
+
+void TestRunner::print_benchmark(const BenchmarkResult& r) {
+    double avg_ms = r.iterations > 0 ? (r.total_seconds * 1000.0) / r.iterations : 0;
+    double lps = r.total_seconds > 0 ? (double(r.total_lines) * r.successful) / r.total_seconds : 0;
+    std::cout << std::fixed
+              << r.successful << "/" << r.iterations << " succeeded | "
+              << std::setprecision(0) << avg_ms << "ms/compile | "
+              << lps << " lines/sec" << std::endl;
 }
 
 } // namespace Fern

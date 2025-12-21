@@ -178,7 +178,7 @@ CommandLineArgs parse_args(int argc, char* argv[]) {
         return args;
     }
 
-    #ifdef FERN_DEBUG
+    // #ifdef FERN_DEBUG
     // Check for test mode
     if (first_arg == "--test" || first_arg == "-t") {
         args.run_tests = true;
@@ -187,7 +187,7 @@ CommandLineArgs parse_args(int argc, char* argv[]) {
         }
         return args;
     }
-    #endif
+    // #endif
 
     // Parse command mode
     int arg_index = 1;
@@ -259,19 +259,20 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    #ifdef FERN_DEBUG
+    // #ifdef FERN_DEBUG
     // Handle test mode
     if (args.run_tests) {
         TestRunner runner;
         auto results = runner.run_all_tests(args.test_dir);
         runner.print_summary(results);
+        auto benchmark = runner.run_compile_benchmark(args.test_dir, 10); 
+        runner.print_benchmark(benchmark);
 
-        // Return 0 if all tests passed, 1 otherwise
         bool all_passed = std::all_of(results.begin(), results.end(),
-            [](const TestResult& r) { return r.passed; });
+            [](const TestResult& r) { return r.status == TestStatus::Passed; });
         return all_passed ? 0 : 1;
     }
-    #endif
+    // #endif
 
     Compiler compiler;
     #ifdef FERN_DEBUG
