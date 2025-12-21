@@ -18,8 +18,7 @@ private:
     // Track parameter indices within function scopes
     uint32_t currentParameterIndex = 0;
 
-    // === Core Helper Methods ===
-
+    #pragma region Core Helper Methods
     TypePtr get_type_from_expr(BaseExprSyntax* typeExpr);
 
 public:
@@ -29,7 +28,7 @@ public:
 
     void build(CompilationUnitSyntax* unit);
 
-    // === Visitor Implementations ===
+    #pragma region Visitor Implementations
     
     void visit(BaseSyntax* node) override;
     void visit(CompilationUnitSyntax* node) override;

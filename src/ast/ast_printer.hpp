@@ -62,15 +62,12 @@ namespace Fern
         }
 
     public:
-        // --- Override Visitor Methods ---
-
-        // --- Building Blocks & Errors ---
         void visit(BaseNameExprSyntax *node) override { leaf(node, "Identifier", " (" + node->get_name() + ")"); }
         void visit(MissingExprSyntax *node) override { leaf(node, "MissingExprSyntax", " (\"" + std::string(node->message) + "\")"); }
         void visit(MissingStmtSyntax *node) override { leaf(node, "MissingStmtSyntax", " (\"" + std::string(node->message) + "\")"); }
         void visit(TypedIdentifier *node) override;
 
-        // --- Expressions ---
+        // Expressions
         void visit(LiteralExprSyntax *node) override;
         void visit(UnaryExprSyntax *node) override;
         void visit(BinaryExprSyntax *node) override;
@@ -85,7 +82,7 @@ namespace Fern
         void visit(LambdaExprSyntax *node) override { enter(node, "LambdaExprSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(IfStmtSyntax *node) override { enter(node, "IfStmtSyntax"); DefaultVisitor::visit(node); leave(); }
 
-        // --- Statements ---
+        // Statements
         void visit(BlockSyntax *node) override { enter(node, "BlockSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(ExpressionStmtSyntax *node) override { enter(node, "ExpressionStmtSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(ReturnStmtSyntax *node) override { enter(node, "ReturnStmtSyntax"); DefaultVisitor::visit(node); leave(); }
@@ -137,7 +134,7 @@ namespace Fern
         }
         void visit(UsingDirectiveSyntax *node) override;
 
-        // --- Declarations ---
+        // Declarations
         void visit(VariableDeclSyntax *node) override;
         void visit(PropertyDeclSyntax *node) override;
         void visit(ParameterDeclSyntax *node) override;
@@ -148,16 +145,15 @@ namespace Fern
         void visit(TypeDeclSyntax *node) override;
         void visit(NamespaceDeclSyntax *node) override;
 
-        // --- Type Expressions ---
+        // Type Expressions
         void visit(ArrayTypeSyntax *node) override { enter(node, "ArrayTypeSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(PointerTypeSyntax *node) override { enter(node, "PointerTypeSyntax"); DefaultVisitor::visit(node); leave(); }
         void visit(TypeParameterDeclSyntax *node) override;
 
-        // --- Root ---
+        // Root
         void visit(CompilationUnitSyntax *node) override { enter(node, "CompilationUnitSyntax"); DefaultVisitor::visit(node); leave(); }
     };
 
-    // --- Implementation of methods with more logic ---
 
     inline void AstPrinter::visit(TypedIdentifier *node)
     {

@@ -6,7 +6,7 @@
 
 namespace Fern
 {
-    // === Type Management ===
+    #pragma region Type Management
 
     void CodeGenModule::declare_types(FLIR::Module* flir_module)
     {
@@ -165,7 +165,7 @@ namespace Fern
         return type_cache.find(type) != type_cache.end();
     }
 
-    // === Function Management ===
+    #pragma region Function Management
 
     void CodeGenModule::declare_functions(FLIR::Module* flir_module)
     {
@@ -244,7 +244,7 @@ namespace Fern
         return llvm::FunctionType::get(ret_type, param_types, false);
     }
 
-    // === Type Utilities ===
+    #pragma region Type Utilities
 
     CodeGenModule::TypeProperties CodeGenModule::get_type_properties(FLIR::IRTypePtr type) const
     {

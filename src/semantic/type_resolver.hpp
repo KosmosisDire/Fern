@@ -39,32 +39,31 @@ namespace Fern
         bool resolve(BoundCompilationUnit* unit);
         
     private:
-        // === Core Type Resolution ===
+        #pragma region Core Type Resolution
         TypePtr apply_substitution(TypePtr type);
         void unify(TypePtr t1, TypePtr t2, BoundNode* error_node, const std::string& context);
         void annotate_expression(BoundExpression* expr, TypePtr type, Symbol* symbol = nullptr);
-        
-        // === Symbol Resolution ===
+
+        #pragma region Symbol Resolution
         Symbol* resolve_qualified_name(const std::vector<std::string>& parts);
-        FunctionSymbol* resolve_overload(const std::vector<FunctionSymbol*>& overloads, 
+        FunctionSymbol* resolve_overload(const std::vector<FunctionSymbol*>& overloads,
                                         const std::vector<TypePtr>& argTypes);
-        
-        // === Type Utilities ===
+
+        #pragma region Type Utilities
         TypePtr resolve_type_expression(BoundExpression* typeExpr);
         TypePtr infer_return_type(BoundStatement* body);
         ValueCategory compute_value_category(BoundExpression* expr, Symbol* symbol = nullptr);
-        
-        // === Conversion Checking ===
+
+        #pragma region Conversion Checking
         ConversionKind check_conversion(TypePtr from, TypePtr to);
         bool check_implicit_conversion(TypePtr from, TypePtr to, BoundNode* node, const std::string& context);
         bool check_explicit_conversion(TypePtr from, TypePtr to, BoundNode* node, const std::string& context);
-        
-        // === Error Reporting ===
+
+        #pragma region Error Reporting
         void report_error(BoundNode* node, const std::string& message);
         void report_final_errors();
-        
-        // === Visitor Implementations ===
-        // Expressions
+
+        #pragma region Visitor Implementations
         void visit(BoundLiteralExpression* node) override;
         void visit(BoundNameExpression* node) override;
         void visit(BoundBinaryExpression* node) override;

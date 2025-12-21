@@ -5,7 +5,7 @@
 
 namespace Fern
 {
-    // === Constants ===
+    #pragma region Constants
 
     llvm::Value* LLVMIRBuilder::i1_constant(bool value)
     {
@@ -37,7 +37,7 @@ namespace Fern
         return llvm::ConstantFP::get(f64_type(), value);
     }
 
-    // === Types ===
+    #pragma region Types
 
     llvm::Type* LLVMIRBuilder::void_type()
     {
@@ -79,7 +79,7 @@ namespace Fern
         return llvm::PointerType::get(context, 0);
     }
 
-    // === Memory Operations ===
+    #pragma region Memory Operations
 
     llvm::Value* LLVMIRBuilder::create_alloca(llvm::Type* type, const std::string& name)
     {
@@ -209,7 +209,7 @@ namespace Fern
         builder.CreateStore(value, ptr);
     }
 
-    // === GEP Operations ===
+    #pragma region GEP Operations
 
     llvm::Value* LLVMIRBuilder::create_struct_gep(llvm::Type* struct_type, llvm::Value* ptr,
                                                    uint32_t index, const std::string& name)
@@ -237,7 +237,7 @@ namespace Fern
         return builder.CreateInBoundsGEP(type, ptr, std::vector<llvm::Value*>(indices), name);
     }
 
-    // === Arithmetic Operations ===
+    #pragma region Arithmetic Operations
 
     llvm::Value* LLVMIRBuilder::create_add(llvm::Value* left, llvm::Value* right, bool is_float,
                                           const std::string& name)
@@ -282,7 +282,7 @@ namespace Fern
             return builder.CreateURem(left, right, name);
     }
 
-    // === Comparison Operations ===
+    #pragma region Comparison Operations
 
     llvm::Value* LLVMIRBuilder::create_eq(llvm::Value* left, llvm::Value* right, bool is_float,
                                          const std::string& name)
@@ -342,7 +342,7 @@ namespace Fern
             return builder.CreateICmpUGE(left, right, name);
     }
 
-    // === Bitwise Operations ===
+    #pragma region Bitwise Operations
 
     llvm::Value* LLVMIRBuilder::create_and(llvm::Value* left, llvm::Value* right,
                                           const std::string& name)
@@ -375,7 +375,7 @@ namespace Fern
                          : builder.CreateLShr(left, right, name);
     }
 
-    // === Unary Operations ===
+    #pragma region Unary Operations
 
     llvm::Value* LLVMIRBuilder::create_neg(llvm::Value* operand, bool is_float,
                                           const std::string& name)
@@ -389,7 +389,7 @@ namespace Fern
         return builder.CreateNot(operand, name);
     }
 
-    // === Cast Operations ===
+    #pragma region Cast Operations
 
     llvm::Value* LLVMIRBuilder::create_int_cast(llvm::Value* value, llvm::Type* target_type,
                                                bool is_signed, const std::string& name)
@@ -435,7 +435,7 @@ namespace Fern
         return builder.CreateBitCast(value, target_type, name);
     }
 
-    // === Control Flow ===
+    #pragma region Control Flow
 
     void LLVMIRBuilder::create_ret(llvm::Value* value)
     {
@@ -456,7 +456,7 @@ namespace Fern
         builder.CreateCondBr(condition, true_block, false_block);
     }
 
-    // === Function Calls ===
+    #pragma region Function Calls
 
     llvm::Value* LLVMIRBuilder::create_call(llvm::Function* callee,
                                            std::vector<llvm::Value*> args,
@@ -488,7 +488,7 @@ namespace Fern
         return builder.CreateCall(callee, args, name);
     }
 
-    // === String Constants ===
+    #pragma region String Constants
 
     llvm::Value* LLVMIRBuilder::create_global_string(const std::string& str,
                                                      const std::string& name)
@@ -514,7 +514,7 @@ namespace Fern
             "str");
     }
 
-    // === Helper Queries ===
+    #pragma region Helper Queries
 
     size_t LLVMIRBuilder::get_type_size(llvm::Type* type)
     {

@@ -84,7 +84,7 @@ namespace Fern
             return result;
         }
 
-        // --- Base Node Types (unchanged) ---
+        #pragma region Base Node Types
         void visit(BaseSyntax *node) override { emit("[AbstractNode]"); }
         void visit(BaseExprSyntax *node) override { emit("[AbstractExpression]"); }
         void visit(BaseStmtSyntax *node) override
@@ -101,7 +101,7 @@ namespace Fern
             emit_newline();
         }
 
-        // --- Basic Building Blocks & Errors (unchanged) ---
+        #pragma region Building Blocks & Errors
         void visit(BaseNameExprSyntax *node) override { emit(node->get_name()); }
         void visit(TypedIdentifier *node) override
         {
@@ -126,7 +126,7 @@ namespace Fern
         }
         // ErrorTypeRef removed - no longer exists
 
-        // --- Expressions (unchanged) ---
+        #pragma region Expressions
         void visit(LiteralExprSyntax *node) override { emit(std::string(node->value)); }
         void visit(ArrayLiteralExprSyntax *node) override
         {
@@ -233,14 +233,13 @@ namespace Fern
             if (node->body)
                 node->body->accept(this);
         }
-        // --- CORRECTED VISITORS ---
+        #pragma region Control Flow
 
         void visit(BlockSyntax *node) override
         {
             emit("{");
             emit_newline();
 
-            // The guard's scope is explicitly limited to the loop.
             {
                 IndentGuard guard(indentLevel);
                 for (auto stmt : node->statements)
@@ -248,10 +247,10 @@ namespace Fern
                     if (stmt)
                         stmt->accept(this);
                 }
-            } // Guard is destroyed here, indent level is restored.
+            }
 
-            emit_indent(); // This now uses the correct, outer indent level.
-            emit("}");     // The caller adds the final newline if needed.
+            emit_indent();
+            emit("}");
         }
 
         void visit(IfStmtSyntax *node) override
@@ -279,7 +278,7 @@ namespace Fern
             }
         }
 
-        // --- Statements ---
+        #pragma region Statements
         void visit(ExpressionStmtSyntax *node) override
         {
             emit_indent();
@@ -370,7 +369,7 @@ namespace Fern
             emit_newline();
         }
 
-        // --- Declarations (with corrections) ---
+        #pragma region Declarations
         void visit(VariableDeclSyntax *node) override
         {
             emit_indent();
@@ -612,7 +611,7 @@ namespace Fern
             }
         }
 
-        // --- Type Expressions (now regular expressions) ---
+        #pragma region Type Expressions
 
         void visit(ArrayTypeSyntax *node) override
         {

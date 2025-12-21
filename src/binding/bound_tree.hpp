@@ -14,7 +14,6 @@
 
 namespace Fern
 {
-    // Forward declarations
     class BoundVisitor;
     struct BoundNode;
     struct BoundExpression;
@@ -93,14 +92,12 @@ namespace Fern
         virtual void visit(BoundCompilationUnit *node) = 0;
     };
 
-    // Value categories
     enum class ValueCategory
     {
         RValue,
         LValue
     };
 
-    // Constant value for compile-time constants
     using ConstantValue = std::variant<
         std::monostate, // not constant
         int64_t,
@@ -109,10 +106,10 @@ namespace Fern
         bool,
         std::string>;
 
-// Macro for accept implementation
 #define BOUND_ACCEPT_VISITOR \
     inline void accept(BoundVisitor *visitor) override { visitor->visit(this); }
-    // === Base Nodes ===
+
+    #pragma region Base Types
 
     struct BoundNode
     {
@@ -147,7 +144,6 @@ namespace Fern
     {
     };
 
-    // Base for all declarations (functions, types, variables, etc.)
     struct BoundDeclaration : BoundStatement
     {
         std::string name;
@@ -155,12 +151,11 @@ namespace Fern
         ModifierKindFlags modifiers = ModifierKindFlags::None;
     };
 
-    // === Expressions ===
+    #pragma region Expressions
 
     struct BoundLiteralExpression : BoundExpression
     {
         LiteralKind literalKind;
-        // constantValue is stored in base class
         BOUND_ACCEPT_VISITOR
     };
 
@@ -206,7 +201,7 @@ namespace Fern
     {
         BoundExpression *object = nullptr;
         std::string memberName;
-        Symbol *member = nullptr; // Could be field, property, method
+        Symbol *member = nullptr; // Could be field, property, or method
         BOUND_ACCEPT_VISITOR
     };
 
@@ -219,7 +214,7 @@ namespace Fern
 
     struct BoundNewExpression : BoundExpression
     {
-        BoundExpression *typeExpression = nullptr; // The type to instantiate
+        BoundExpression *typeExpression = nullptr;
         std::vector<BoundExpression *> arguments;
         FunctionSymbol *constructor = nullptr; // Resolved in semantic pass
         BOUND_ACCEPT_VISITOR
@@ -228,7 +223,7 @@ namespace Fern
     struct BoundArrayCreationExpression : BoundExpression
     {
         BoundExpression *elementTypeExpression = nullptr;
-        BoundExpression *size = nullptr; // Can be null for initializer syntax
+        BoundExpression *size = nullptr; // Null for initializer syntax
         std::vector<BoundExpression *> initializers;
         BOUND_ACCEPT_VISITOR
     };
@@ -251,16 +246,15 @@ namespace Fern
     {
         BoundExpression *expression = nullptr;
         ConversionKind conversionKind;
-        // type is stored in base class
         BOUND_ACCEPT_VISITOR
     };
 
-    // === Statements ===
+    #pragma region Statements
 
     struct BoundBlockStatement : BoundStatement
     {
         std::vector<BoundStatement *> statements;
-        Symbol *symbol = nullptr;  // The $block namespace symbol
+        Symbol *symbol = nullptr; // The $block namespace symbol
         BOUND_ACCEPT_VISITOR
     };
 
@@ -296,13 +290,11 @@ namespace Fern
 
     struct BoundBreakStatement : BoundStatement
     {
-        // Target loop will be resolved in semantic pass
         BOUND_ACCEPT_VISITOR
     };
 
     struct BoundContinueStatement : BoundStatement
     {
-        // Target loop will be resolved in semantic pass
         BOUND_ACCEPT_VISITOR
     };
 
@@ -319,11 +311,11 @@ namespace Fern
         BOUND_ACCEPT_VISITOR
     };
 
-    // === Declarations ===
+    #pragma region Declarations
 
     struct BoundVariableDeclaration : BoundDeclaration
     {
-        BoundExpression *typeExpression = nullptr; // Can be null for var
+        BoundExpression *typeExpression = nullptr; // Null for var declarations
         BoundExpression *initializer = nullptr;
         bool isParameter = false;
         bool isLocal = false;
@@ -333,26 +325,19 @@ namespace Fern
 
     struct BoundFunctionDeclaration : BoundDeclaration
     {
-        BoundExpression *returnTypeExpression = nullptr; // Can be null for constructors
+        BoundExpression *returnTypeExpression = nullptr; // Null for constructors
         std::vector<BoundVariableDeclaration *> parameters;
         BoundStatement *body = nullptr;
         bool isConstructor = false;
         BOUND_ACCEPT_VISITOR
     };
 
-    // Property accessor (getter or setter)
-    // TODO: Maybe we sould actually be creating function symbols out of properties to begin with?
     struct BoundPropertyAccessor
     {
         enum class Kind { Get, Set };
         Kind kind;
-        
-        // For arrow properties: just an expression
-        // For block properties: a statement (block)
-        BoundExpression *expression = nullptr;  // For arrow syntax: => expr
-        BoundStatement *body = nullptr;         // For block syntax: { ... }
-        
-        // Function symbol for the generated getter/setter function
+        BoundExpression *expression = nullptr; // Arrow syntax: => expr
+        BoundStatement *body = nullptr;        // Block syntax: { ... }
         FunctionSymbol *function_symbol = nullptr;
     };
 
@@ -361,7 +346,7 @@ namespace Fern
         BoundExpression *typeExpression = nullptr;
         BoundPropertyAccessor *getter = nullptr;
         BoundPropertyAccessor *setter = nullptr;
-        BoundExpression *initializer = nullptr;  // For auto-properties with initial value
+        BoundExpression *initializer = nullptr;
         BOUND_ACCEPT_VISITOR
     };
 
@@ -377,38 +362,29 @@ namespace Fern
         BOUND_ACCEPT_VISITOR
     };
 
-    // === Type Expression ===
-
     struct BoundTypeExpression : BoundExpression
     {
-        std::vector<std::string> parts;                   // ["List"], or ["System", "Collections", "Generic", "List"]
-        std::vector<BoundTypeExpression *> typeArguments; // For generics (future)
-        TypePtr resolvedTypeReference = nullptr;          // Resolved in semantic pass
-        BoundExpression* arraySize = nullptr;             // For array types like char[12]
+        std::vector<std::string> parts;
+        std::vector<BoundTypeExpression *> typeArguments;
+        TypePtr resolvedTypeReference = nullptr; // Resolved in semantic pass
+        BoundExpression* arraySize = nullptr;    // For array types like char[12]
         BOUND_ACCEPT_VISITOR
     };
-
-    // === Compilation Unit ===
 
     struct BoundCompilationUnit : BoundNode
     {
-        std::vector<BoundStatement *> statements; // Top-level statements/declarations
+        std::vector<BoundStatement *> statements;
         BOUND_ACCEPT_VISITOR
     };
+
+    #pragma region DefaultBoundVisitor
 
     class DefaultBoundVisitor : public BoundVisitor
     {
     public:
-        // Expressions
-        void visit(BoundLiteralExpression *node) override
-        {
-            // No children to visit
-        }
+        void visit(BoundLiteralExpression *node) override {}
 
-        void visit(BoundNameExpression *node) override
-        {
-            // No children to visit
-        }
+        void visit(BoundNameExpression *node) override {}
 
         void visit(BoundBinaryExpression *node) override
         {
@@ -489,10 +465,7 @@ namespace Fern
                 node->targetTypeExpression->accept(this);
         }
 
-        void visit(BoundThisExpression *node) override
-        {
-            // No children to visit
-        }
+        void visit(BoundThisExpression *node) override {}
 
         void visit(BoundConversionExpression *node) override
         {
@@ -509,7 +482,6 @@ namespace Fern
             }
         }
 
-        // Statements
         void visit(BoundBlockStatement *node) override
         {
             for (auto *stmt : node->statements)
@@ -558,15 +530,9 @@ namespace Fern
                 node->body->accept(this);
         }
 
-        void visit(BoundBreakStatement *node) override
-        {
-            // No children to visit
-        }
+        void visit(BoundBreakStatement *node) override {}
 
-        void visit(BoundContinueStatement *node) override
-        {
-            // No children to visit
-        }
+        void visit(BoundContinueStatement *node) override {}
 
         void visit(BoundReturnStatement *node) override
         {
@@ -574,12 +540,8 @@ namespace Fern
                 node->value->accept(this);
         }
 
-        void visit(BoundUsingStatement *node) override
-        {
-            // No children to visit
-        }
+        void visit(BoundUsingStatement *node) override {}
 
-        // Declarations
         void visit(BoundVariableDeclaration *node) override
         {
             if (node->typeExpression)
@@ -607,7 +569,7 @@ namespace Fern
                 node->typeExpression->accept(this);
             if (node->initializer)
                 node->initializer->accept(this);
-                
+
             if (node->getter)
             {
                 if (node->getter->expression)
@@ -642,7 +604,6 @@ namespace Fern
             }
         }
 
-        // Top-level
         void visit(BoundCompilationUnit *node) override
         {
             for (auto *stmt : node->statements)

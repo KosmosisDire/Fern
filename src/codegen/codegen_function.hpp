@@ -39,52 +39,18 @@ namespace Fern
             : CGM(cgm), ir_builder(builder),
               flir_function(flir_func), llvm_function(llvm_func) {}
 
-        // === Value Management ===
-
-        /**
-         * @brief Get LLVM value for FLIR value
-         * @throws std::runtime_error if value not found
-         */
+        #pragma region Value Management
         llvm::Value* get_value(FLIR::Value* flir_value);
-
-        /**
-         * @brief Map FLIR value to LLVM value
-         */
         void map_value(FLIR::Value* flir_value, llvm::Value* llvm_value);
-
-        /**
-         * @brief Check if value has been mapped
-         */
         bool has_value(FLIR::Value* flir_value) const;
 
-        // === Block Management ===
-
-        /**
-         * @brief Get LLVM basic block for FLIR block
-         * @throws std::runtime_error if block not found
-         */
+        #pragma region Block Management
         llvm::BasicBlock* get_block(FLIR::BasicBlock* flir_block);
-
-        /**
-         * @brief Map FLIR block to LLVM block
-         */
         void map_block(FLIR::BasicBlock* flir_block, llvm::BasicBlock* llvm_block);
-
-        /**
-         * @brief Check if block has been mapped
-         */
         bool has_block(FLIR::BasicBlock* flir_block) const;
-
-        /**
-         * @brief Create all basic blocks for function
-         */
         void create_all_blocks();
 
-        // === Parameter Mapping ===
-
-        /**
-         * @brief Map function parameters to LLVM arguments
-         */
+        #pragma region Parameter Mapping
         void map_parameters();
 
         // Accessors

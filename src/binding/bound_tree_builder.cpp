@@ -27,13 +27,14 @@ namespace Fern
         return unit;
     }
 
-#pragma region Statement/Declaration Binding
+#pragma region Stmnts and Decls
 
     BoundStatement *BoundTreeBuilder::bind_statement(BaseStmtSyntax *syntax)
     {
         if (!syntax)
             return nullptr;
 
+        // Declarations
         if (auto func_decl = syntax->as<FunctionDeclSyntax>())
             return bind_function_declaration(func_decl);
         if (auto ctor_decl = syntax->as<ConstructorDeclSyntax>())
@@ -49,6 +50,7 @@ namespace Fern
         if (auto using_decl = syntax->as<UsingDirectiveSyntax>())
             return bind_using_statement(using_decl);
 
+        // Statements
         if (auto block = syntax->as<BlockSyntax>())
             return bind_block(block);
         if (auto if_stmt = syntax->as<IfStmtSyntax>())
@@ -452,7 +454,7 @@ namespace Fern
 
 #pragma endregion
 
-#pragma region Expression Binding
+#pragma region Expressions
 
     BoundExpression *BoundTreeBuilder::bind_expression(BaseExprSyntax *syntax)
     {
@@ -783,7 +785,7 @@ namespace Fern
 
 #pragma endregion
 
-#pragma region Type Expression Binding
+#pragma region Type Binding
 
     BoundTypeExpression *BoundTreeBuilder::bind_type_expression(BaseExprSyntax *syntax)
     {

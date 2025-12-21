@@ -4,7 +4,7 @@
 namespace Fern
 {
 
-    // === Core Helper Methods ===
+    #pragma region Core Helper Methods
 
     TypePtr SymbolTableBuilder::get_type_from_expr(BaseExprSyntax *typeExpr)
     {
@@ -21,9 +21,8 @@ namespace Fern
         }
     }
 
-    // === Visitor Implementations ===
+    #pragma region Visitor Implementations
 
-    // Annotate all nodes with their containing scope
     void SymbolTableBuilder::visit(BaseSyntax *node)
     {
     }

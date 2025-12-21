@@ -39,51 +39,19 @@ namespace Fern
         CodeGenModule(llvm::LLVMContext& ctx, llvm::Module& mod)
             : context(ctx), module(mod) {}
 
-        // === Type Management ===
-
-        /**
-         * @brief Declare all struct types from FLIR module
-         */
+        #pragma region Type Management
         void declare_types(FLIR::Module* flir_module);
-
-        /**
-         * @brief Get or create LLVM type for IRType
-         */
         llvm::Type* get_or_create_type(FLIR::IRTypePtr type);
-
-        /**
-         * @brief Get struct type for IR struct
-         */
         llvm::StructType* get_struct_type(FLIR::IRStruct* ir_struct);
-
-        /**
-         * @brief Check if type has been declared
-         */
         bool has_type(FLIR::IRTypePtr type) const;
 
-        // === Function Management ===
-
-        /**
-         * @brief Declare all functions from FLIR module
-         */
+        #pragma region Function Management
         void declare_functions(FLIR::Module* flir_module);
-
-        /**
-         * @brief Declare a single function
-         */
         llvm::Function* declare_function(FLIR::Function* flir_func);
-
-        /**
-         * @brief Get declared LLVM function
-         */
         llvm::Function* get_function(FLIR::Function* flir_func);
-
-        /**
-         * @brief Check if function has been declared
-         */
         bool has_function(FLIR::Function* flir_func) const;
 
-        // === Type Utilities ===
+        #pragma region Type Utilities
 
         struct TypeProperties
         {

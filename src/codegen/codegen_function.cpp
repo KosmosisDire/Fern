@@ -6,7 +6,7 @@
 
 namespace Fern
 {
-    // === Value Management ===
+    #pragma region Value Management
 
     llvm::Value* CodeGenFunction::get_value(FLIR::Value* flir_value)
     {
@@ -28,7 +28,7 @@ namespace Fern
         return value_map.find(flir_value) != value_map.end();
     }
 
-    // === Block Management ===
+    #pragma region Block Management
 
     llvm::BasicBlock* CodeGenFunction::get_block(FLIR::BasicBlock* flir_block)
     {
@@ -67,7 +67,7 @@ namespace Fern
         }
     }
 
-    // === Parameter Mapping ===
+    #pragma region Parameter Mapping
 
     void CodeGenFunction::map_parameters()
     {
@@ -82,7 +82,7 @@ namespace Fern
         }
     }
 
-    // === Error Helpers ===
+    #pragma region Error Helpers
 
     std::string CodeGenFunction::format_value_error(FLIR::Value* value, const std::string& message)
     {

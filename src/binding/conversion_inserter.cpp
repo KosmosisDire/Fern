@@ -32,7 +32,7 @@ namespace Fern
             unit->accept(this);
     }
 
-    // === Expression Visitors ===
+    #pragma region Expression Visitors
 
     void ConversionInserter::visit(BoundBinaryExpression* node)
     {
@@ -159,7 +159,7 @@ namespace Fern
             node->expression->accept(this);
     }
 
-    // === Statement Visitors ===
+    #pragma region Statement Visitors
 
     void ConversionInserter::visit(BoundReturnStatement* node)
     {
@@ -219,7 +219,7 @@ namespace Fern
             node->body->accept(this);
     }
 
-    // === Declaration Visitors ===
+    #pragma region Declaration Visitors
 
     void ConversionInserter::visit(BoundVariableDeclaration* node)
     {

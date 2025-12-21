@@ -34,7 +34,7 @@ namespace Fern
         LLVMIRBuilder(llvm::LLVMContext& ctx, llvm::IRBuilder<>& bldr, llvm::Module* mod)
             : context(ctx), builder(bldr), module(mod) {}
 
-        // === Constants ===
+        #pragma region Constants
         llvm::Value* i1_constant(bool value);
         llvm::Value* i8_constant(int8_t value);
         llvm::Value* i32_constant(int32_t value);
@@ -42,7 +42,7 @@ namespace Fern
         llvm::Value* f32_constant(float value);
         llvm::Value* f64_constant(double value);
 
-        // === Types ===
+        #pragma region Types
         llvm::Type* void_type();
         llvm::Type* i1_type();
         llvm::Type* i8_type();
@@ -52,7 +52,7 @@ namespace Fern
         llvm::Type* f64_type();
         llvm::Type* ptr_type();
 
-        // === Memory Operations ===
+        #pragma region Memory Operations
         llvm::Value* create_alloca(llvm::Type* type, const std::string& name = "");
         llvm::Value* create_malloc(llvm::Type* type, const std::string& name = "");
         llvm::Value* create_malloc_bytes(llvm::Value* size, const std::string& name = "");
@@ -62,7 +62,7 @@ namespace Fern
         llvm::Value* create_load(llvm::Type* type, llvm::Value* ptr, const std::string& name = "");
         void create_store(llvm::Value* value, llvm::Value* ptr);
 
-        // === GEP Operations ===
+        #pragma region GEP Operations
         llvm::Value* create_struct_gep(llvm::Type* struct_type, llvm::Value* ptr,
                                        uint32_t index, const std::string& name = "");
 
@@ -77,7 +77,7 @@ namespace Fern
                                         std::initializer_list<llvm::Value*> indices,
                                         const std::string& name = "");
 
-        // === Arithmetic Operations ===
+        #pragma region Arithmetic Operations
         llvm::Value* create_add(llvm::Value* left, llvm::Value* right, bool is_float,
                                const std::string& name = "");
         llvm::Value* create_sub(llvm::Value* left, llvm::Value* right, bool is_float,
@@ -89,7 +89,7 @@ namespace Fern
         llvm::Value* create_rem(llvm::Value* left, llvm::Value* right,
                                bool is_float, bool is_signed, const std::string& name = "");
 
-        // === Comparison Operations ===
+        #pragma region Comparison Operations
         llvm::Value* create_eq(llvm::Value* left, llvm::Value* right, bool is_float,
                               const std::string& name = "");
         llvm::Value* create_ne(llvm::Value* left, llvm::Value* right, bool is_float,
@@ -103,7 +103,7 @@ namespace Fern
         llvm::Value* create_ge(llvm::Value* left, llvm::Value* right,
                               bool is_float, bool is_signed, const std::string& name = "");
 
-        // === Bitwise Operations ===
+        #pragma region Bitwise Operations
         llvm::Value* create_and(llvm::Value* left, llvm::Value* right,
                                const std::string& name = "");
         llvm::Value* create_or(llvm::Value* left, llvm::Value* right,
@@ -115,12 +115,12 @@ namespace Fern
         llvm::Value* create_shr(llvm::Value* left, llvm::Value* right, bool is_signed,
                                const std::string& name = "");
 
-        // === Unary Operations ===
+        #pragma region Unary Operations
         llvm::Value* create_neg(llvm::Value* operand, bool is_float,
                                const std::string& name = "");
         llvm::Value* create_not(llvm::Value* operand, const std::string& name = "");
 
-        // === Cast Operations ===
+        #pragma region Cast Operations
         llvm::Value* create_int_cast(llvm::Value* value, llvm::Type* target_type,
                                     bool is_signed, const std::string& name = "");
         llvm::Value* create_float_cast(llvm::Value* value, llvm::Type* target_type,
@@ -136,22 +136,22 @@ namespace Fern
         llvm::Value* create_bitcast(llvm::Value* value, llvm::Type* target_type,
                                    const std::string& name = "");
 
-        // === Control Flow ===
+        #pragma region Control Flow
         void create_ret(llvm::Value* value = nullptr);
         void create_br(llvm::BasicBlock* target);
         void create_cond_br(llvm::Value* condition, llvm::BasicBlock* true_block,
                            llvm::BasicBlock* false_block);
 
-        // === Function Calls ===
+        #pragma region Function Calls
         llvm::Value* create_call(llvm::Function* callee,
                                 std::vector<llvm::Value*> args,
                                 const std::string& name = "");
 
-        // === String Constants ===
+        #pragma region String Constants
         llvm::Value* create_global_string(const std::string& str,
                                          const std::string& name = ".str");
 
-        // === Helper Queries ===
+        #pragma region Helper Queries
         size_t get_type_size(llvm::Type* type);
 
         // Direct access to underlying builder when needed

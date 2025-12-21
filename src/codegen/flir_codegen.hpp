@@ -44,25 +44,25 @@ namespace Fern
         std::unique_ptr<llvm::Module> lower(FLIR::Module* flir_module);
 
     private:
-        // === Phase 1: Module Setup ===
+        #pragma region Phase 1: Module Setup
         void setup_module(CodeGenModule& CGM, FLIR::Module* flir_module);
 
-        // === Phase 2: Function Body Generation ===
+        #pragma region Phase 2: Function Body Generation
         void generate_function_bodies(CodeGenModule& CGM, FLIR::Module* flir_module);
         void generate_function_body(CodeGenModule& CGM, FLIR::Function* flir_func);
         void generate_basic_block(CodeGenFunction& CGF, FLIR::BasicBlock* flir_block);
 
-        // === Instruction Generation ===
+        #pragma region Instruction Generation
         void generate_instruction(CodeGenFunction& CGF, FLIR::Instruction* inst);
 
-        // === Constant Instructions ===
+        #pragma region Constant Instructions
         void gen_const_int(CodeGenFunction& CGF, FLIR::ConstIntInst* inst);
         void gen_const_float(CodeGenFunction& CGF, FLIR::ConstFloatInst* inst);
         void gen_const_bool(CodeGenFunction& CGF, FLIR::ConstBoolInst* inst);
         void gen_const_string(CodeGenFunction& CGF, FLIR::ConstStringInst* inst);
         void gen_const_null(CodeGenFunction& CGF, FLIR::ConstNullInst* inst);
 
-        // === Memory Instructions ===
+        #pragma region Memory Instructions
         void gen_stack_alloc(CodeGenFunction& CGF, FLIR::StackAllocInst* inst);
         void gen_stack_alloc_bytes(CodeGenFunction& CGF, FLIR::StackAllocBytesInst* inst);
         void gen_heap_alloc(CodeGenFunction& CGF, FLIR::HeapAllocInst* inst);
@@ -83,7 +83,7 @@ namespace Fern
         llvm::Value* gen_pointer_element_addr(CodeGenFunction& CGF,
                                               FLIR::ElementAddrInst* inst);
 
-        // === Arithmetic Instructions ===
+        #pragma region Arithmetic Instructions
         void gen_binary(CodeGenFunction& CGF, FLIR::BinaryInst* inst);
         void gen_unary(CodeGenFunction& CGF, FLIR::UnaryInst* inst);
 
@@ -98,18 +98,18 @@ namespace Fern
                                    llvm::Value* left, llvm::Value* right,
                                    bool is_signed);
 
-        // === Cast Instruction ===
+        #pragma region Cast Instruction
         void gen_cast(CodeGenFunction& CGF, FLIR::CastInst* inst);
 
-        // === Call Instruction ===
+        #pragma region Call Instruction
         void gen_call(CodeGenFunction& CGF, FLIR::CallInst* inst);
 
-        // === Control Flow Instructions ===
+        #pragma region Control Flow Instructions
         void gen_ret(CodeGenFunction& CGF, FLIR::RetInst* inst);
         void gen_br(CodeGenFunction& CGF, FLIR::BrInst* inst);
         void gen_cond_br(CodeGenFunction& CGF, FLIR::CondBrInst* inst);
 
-        // === Validation ===
+        #pragma region Validation
         void verify_module();
     };
 

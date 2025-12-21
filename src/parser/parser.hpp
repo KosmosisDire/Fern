@@ -39,14 +39,14 @@ private:
     };
     std::vector<Context> contextStack;
 
-    // ================== Error Handling ==================
+    #pragma region Error Handling
     void parse_error(const std::string& msg);
     void parse_warning(const std::string& msg);
     MissingExprSyntax* errorExpr(const std::string& msg);
     MissingStmtSyntax* errorStmt(const std::string& msg);
     void synchronize();
 
-    // ================== Context Management ==================
+    #pragma region Context Management
     bool inLoop() const;
     bool inFunction() const;
     bool inGetter() const;
@@ -71,7 +71,7 @@ private:
         }
     }
 
-    // ================== Utility Helpers ==================
+    #pragma region Utility Helpers
     bool check(TokenKind kind);
     bool checkAny(std::initializer_list<TokenKind> kinds);
     bool consume(TokenKind kind);
@@ -83,10 +83,10 @@ private:
     bool isOnSameLine(const Token& prev, const Token& curr) const;
     bool requireSemicolonIfSameLine();
 
-    // ================== Top Level Parsing ==================
+    #pragma region Top Level Parsing
     BaseStmtSyntax* parseTopLevelStatement();
 
-    // ================== Declarations ==================
+    #pragma region Declarations
     bool checkDeclarationStart();
     BaseDeclSyntax* parseDeclaration();
     ModifierKindFlags parseModifiers();
@@ -100,7 +100,7 @@ private:
     void parsePropertyAccessorSyntaxs(PropertyDeclSyntax* prop);
     NamespaceDeclSyntax* parseNamespaceDecl(const Token& startToken);
 
-    // ================== Statements ==================
+    #pragma region Statements
     BaseStmtSyntax* parseStatement();
     BlockSyntax* parseBlock();
     BaseStmtSyntax* parseIfStatement();
@@ -113,7 +113,7 @@ private:
     ExpressionStmtSyntax* parseExpressionStatement();
     UsingDirectiveSyntax* parseUsingDirective();
 
-    // ================== Expressions (Precedence Climbing) ==================
+    #pragma region Expressions
     BaseExprSyntax* parseExpression(int minPrecedence = 0);
     BaseExprSyntax* parseBinaryExpression(BaseExprSyntax* left, int minPrecedence);
     BaseExprSyntax* parsePrimaryExpression();

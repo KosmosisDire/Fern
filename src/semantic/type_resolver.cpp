@@ -3,7 +3,7 @@
 
 namespace Fern
 {
-    // === Main Resolution Entry Point ===
+    #pragma region Main Resolution Entry Point
 
     bool TypeResolver::resolve(BoundCompilationUnit *unit)
     {
@@ -38,7 +38,7 @@ namespace Fern
         return !has_errors();
     }
 
-    // === Core Type Resolution ===
+    #pragma region Core Type Resolution
 
     TypePtr TypeResolver::apply_substitution(TypePtr type)
     {
@@ -109,7 +109,7 @@ namespace Fern
         }
     }
 
-    // === Symbol Resolution ===
+    #pragma region Symbol Resolution
 
     Symbol *TypeResolver::resolve_qualified_name(const std::vector<std::string> &parts)
     {
@@ -215,7 +215,8 @@ namespace Fern
         return bestMatch;
     }
 
-    // === Type Utilities ===
+    #pragma region Type Utilities
+
     TypePtr TypeResolver::resolve_type_expression(BoundExpression *typeExpr)
     {
         if (!typeExpr)
@@ -392,7 +393,7 @@ namespace Fern
         return ValueCategory::RValue;
     }
 
-    // === Conversion Checking ===
+    #pragma region Conversion Checking
 
     ConversionKind TypeResolver::check_conversion(TypePtr from, TypePtr to)
     {
@@ -440,7 +441,7 @@ namespace Fern
         }
         else
         {
-            // Check for null-to-value-type error and give helpful message
+            // Special error message for null-to-value-type
             if (auto* fromPrim = canonicalFrom->as<PrimitiveType>()) {
                 if (fromPrim->kind == LiteralKind::Null) {
                     if (auto* toNamed = canonicalTo->as<NamedType>()) {
@@ -464,13 +465,11 @@ namespace Fern
         TypePtr canonicalFrom = apply_substitution(from);
         TypePtr canonicalTo = apply_substitution(to);
 
-        // Don't report errors if types are still being inferred
         if (canonicalFrom->is<UnresolvedType>() || canonicalTo->is<UnresolvedType>())
         {
-            return false; // Return false to indicate conversion not yet determined
+            return false;
         }
 
-        // Helper lambda to check if a type is an integer
         auto is_integer = [](TypePtr t) -> bool {
             if (auto* prim = t->as<PrimitiveType>()) {
                 switch (prim->kind) {
@@ -484,17 +483,14 @@ namespace Fern
             return false;
         };
 
-        // Allow explicit cast between pointers and integers
-        // pointer -> integer
         if (canonicalFrom->is<PointerType>() && is_integer(canonicalTo))
         {
-            return true; // Allow pointer-to-integer cast
+            return true;
         }
 
-        // integer -> pointer
         if (is_integer(canonicalFrom) && canonicalTo->is<PointerType>())
         {
-            return true; // Allow integer-to-pointer cast
+            return true;
         }
 
         ConversionKind kind = check_conversion(canonicalFrom, canonicalTo);
@@ -511,7 +507,7 @@ namespace Fern
         }
     }
 
-    // === Error Reporting ===
+    #pragma region Error Reporting
 
     void TypeResolver::report_error(BoundNode *node, const std::string &message)
     {
@@ -562,7 +558,7 @@ namespace Fern
         }
     }
 
-    // === Expression Visitors ===
+    #pragma region Expression Visitors
 
     void TypeResolver::visit(BoundLiteralExpression *node)
     {
@@ -1391,7 +1387,7 @@ namespace Fern
         node->type = typeSystem.get_type_type(node->resolvedTypeReference);
     }
 
-    // === Statement Visitors ===
+    #pragma region Statement Visitors
 
     void TypeResolver::visit(BoundBlockStatement *node)
     {
@@ -1541,7 +1537,7 @@ namespace Fern
         // TODO: Implement when adding using support
     }
 
-    // === Declaration Visitors ===
+    #pragma region Declaration Visitors
 
     void TypeResolver::visit(BoundVariableDeclaration *node)
     {
