@@ -183,7 +183,7 @@ namespace Fern
             auto lexer = Lexer(state.file.source);
             auto tokens = lexer.tokenize_all();
 
-            LOG_INFO(tokens.to_string(), LogCategory::PARSER);
+            LOG_INFO(tokens.dump(), LogCategory::PARSER);
 
             if (lexer.has_errors())
             {
@@ -355,9 +355,8 @@ namespace Fern
 
             if (print_ast)
             {
-                LOG_INFO("\nBound Tree for " + state.file.filename + ":\n", LogCategory::COMPILER);
                 BoundTreePrinter printer;
-                printer.visit(state.boundTree);
+                LOG_INFO("\nBound Tree for " + state.file.filename + ":\n" + printer.get_string(state.boundTree), LogCategory::COMPILER);
             }
 
             state.parse_complete = true;
@@ -393,9 +392,8 @@ namespace Fern
 
                 if (print_ast)
                 {
-                    LOG_INFO("\n Bound Tree for " + state.file.filename + ":\n", LogCategory::COMPILER);
                     BoundTreePrinter printer;
-                    printer.visit(state.boundTree);
+                    LOG_INFO("\nBound Tree for " + state.file.filename + ":\n" + printer.get_string(state.boundTree), LogCategory::COMPILER);
                 }
 
                 // Collect type resolver diagnostics for this file
