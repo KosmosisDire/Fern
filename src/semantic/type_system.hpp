@@ -62,8 +62,6 @@ namespace Fern
         TypePtr get_array(TypePtr element, int32_t size = -1);
         TypePtr get_function(TypePtr return_type, std::vector<TypePtr> params);
         TypePtr get_named(TypeSymbol* symbol);
-        TypePtr get_generic(TypeSymbol* generic, std::vector<TypePtr> args);
-        TypePtr get_type_parameter(const std::string& name, uint32_t index);
         TypePtr get_unresolved();
         TypePtr get_type_type(TypePtr inner);
         

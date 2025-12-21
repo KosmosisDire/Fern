@@ -103,10 +103,6 @@ namespace Fern
     #pragma region Namespace Symbol
     
     struct NamespaceSymbol : ContainerSymbol {
-        // Using directives in this namespace
-        std::vector<NamespaceSymbol*> using_namespaces;
-        std::vector<TypeSymbol*> using_types;
-
         NamespaceSymbol(const std::string& name);
     };
 
@@ -123,17 +119,7 @@ namespace Fern
     
     struct TypeSymbol : ContainerSymbol {
         TypePtr type;  // The semantic type this symbol represents
-        
-        // Inheritance
-        TypeSymbol* base_class = nullptr;
-        std::vector<TypeSymbol*> interfaces;
-        
-        // For generics
-        std::vector<Symbol*> type_parameters;  // Could be TypeParameterSymbol
-        
-        // Virtual method table
-        std::vector<FunctionSymbol*> vtable;
-        
+
         TypeSymbol(const std::string& name, TypePtr type);
     };
 
@@ -144,23 +130,16 @@ namespace Fern
         TypePtr return_type;
         std::vector<ParameterSymbol*> parameters;  // Points to child parameter symbols
 
-        // For generics
-        std::vector<Symbol*> type_parameters;
-
-        FunctionSymbol* overridden_method();
-        uint32_t vtable_index = UINT32_MAX;
-
         // Special kinds
         bool is_constructor = false;
-        bool is_operator = false;
         bool is_intrinsic = false;
-        
+
         FunctionSymbol(const std::string& name, TypePtr return_type);
-        
+
         // Get mangled name for code generation
         std::string get_mangled_name() const;
-        
-        // Check if signatures match (for overriding)
+
+        // Check if signatures match (for overloading)
         bool signature_matches(FunctionSymbol* other) const;
     };
 
@@ -181,10 +160,7 @@ namespace Fern
 
     struct ParameterSymbol : VariableSymbol {
         uint32_t index;
-        bool has_default = false;
-        bool is_ref = false;
-        bool is_out = false;
-        
+
         ParameterSymbol(const std::string& name, TypePtr type, uint32_t idx);
     };
 

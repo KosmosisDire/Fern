@@ -9,7 +9,6 @@
 
 namespace Fern
 {
-    class TypeSystem;
     struct Type;
     struct TypeSymbol;
     using TypePtr = std::shared_ptr<Type>;
@@ -37,17 +36,7 @@ namespace Fern
     struct NamedType {
         TypeSymbol* symbol;  // Points to the type's symbol
     };
-    
-    struct GenericType {
-        TypeSymbol* genericSymbol;
-        std::vector<TypePtr> typeArgs;
-    };
-    
-    struct TypeParameter {
-        std::string name;
-        uint32_t index;
-    };
-    
+
     struct UnresolvedType {
         uint32_t id;  // For type resolution
     };
@@ -65,31 +54,26 @@ namespace Fern
             ArrayType,
             FunctionType,
             NamedType,
-            GenericType,
-            TypeParameter,
             UnresolvedType,
             MetaType
         > kind;
-        
+
         // Helper methods
         template<typename T>
         bool is() const { return std::holds_alternative<T>(kind); }
-        
+
         template<typename T>
-        const T* as() const { 
+        const T* as() const {
             if (auto ptr = std::get_if<T>(&kind)) {
-            return ptr;
+                return ptr;
             }
             return nullptr;
         }
-        
+
         bool is_void() const;
         bool is_value_type() const;
         bool is_reference_type() const;
         std::string get_name() const;
-        int get_size() const;
-        int get_alignment() const;
-        TypePtr lower_references_to_ptrs(TypeSystem* type_system) const;
     };
 
 } // namespace Fern

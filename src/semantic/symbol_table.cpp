@@ -359,16 +359,6 @@ std::string SymbolTable::to_string() const {
             if (type_sym->type) {
                 ss << " : " << type_sym->type->get_name();
             }
-            if (type_sym->base_class) {
-                ss << " extends " << type_sym->base_class->name;
-            }
-            if (!type_sym->interfaces.empty()) {
-                ss << " implements ";
-                for (size_t i = 0; i < type_sym->interfaces.size(); ++i) {
-                    if (i > 0) ss << ", ";
-                    ss << type_sym->interfaces[i]->name;
-                }
-            }
         }
         else if (auto func_sym = sym->as<FunctionSymbol>()) {
             ss << "(";
@@ -381,7 +371,6 @@ std::string SymbolTable::to_string() const {
                     ss << "?";
                 }
                 ss << " " << param->name;
-                
             }
             ss << ")";
             if (func_sym->return_type) {
@@ -390,29 +379,17 @@ std::string SymbolTable::to_string() const {
             if (func_sym->is_constructor) {
                 ss << " [constructor]";
             }
-            if (func_sym->is_operator) {
-                ss << " [operator]";
-            }
-            if (func_sym->overridden_method()) {
-                ss << " [overrides " << func_sym->overridden_method()->name << "]";
-            }
         }
         else if (auto var_sym = sym->as<VariableSymbol>()) {
-            if (auto param = sym->as<ParameterSymbol>())
-            {
+            if (auto param = sym->as<ParameterSymbol>()) {
                 ss << "param";
-                if (param->is_ref) ss << " ref";
-                if (param->is_out) ss << " out";
                 ss << " ";
             }
             if (var_sym->type) {
                 ss << var_sym->type->get_name();
-            }
-            else
-            {
+            } else {
                 ss << "?";
             }
-
             ss << " " << sym->name;
         }
         else if (auto prop_sym = sym->as<PropertySymbol>()) {

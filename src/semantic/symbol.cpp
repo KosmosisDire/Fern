@@ -81,7 +81,7 @@ namespace Fern
     bool FunctionSymbol::signature_matches(FunctionSymbol* other) const {
         if (parameters.size() != other->parameters.size()) return false;
         if (return_type != other->return_type) return false;
-        
+
         for (size_t i = 0; i < parameters.size(); i++) {
             if (parameters[i]->type != other->parameters[i]->type) {
                 return false;
@@ -90,20 +90,6 @@ namespace Fern
         return true;
     }
 
-    FunctionSymbol* FunctionSymbol::overridden_method()
-    {
-        auto* type = parent->as<TypeSymbol>();
-        if (!type || !type->base_class) return nullptr;
-        
-        // If this is a new virtual method (not override)
-        if (vtable_index >= type->base_class->vtable.size()) {
-            return nullptr;
-        }
-        
-        // Look up what the base has at this index
-        return type->base_class->vtable[vtable_index];
-    }
-    
     // VariableSymbol implementation
     VariableSymbol::VariableSymbol(const std::string& name, TypePtr type) 
         : type(type) {

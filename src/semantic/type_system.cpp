@@ -153,18 +153,10 @@ TypePtr TypeSystem::get_named(TypeSymbol* symbol) {
     if (it != named_types.end()) {
         return it->second;
     }
-    
+
     auto type = find_or_create(NamedType{symbol});
     named_types[symbol] = type;
     return type;
-}
-
-TypePtr TypeSystem::get_generic(TypeSymbol* generic, std::vector<TypePtr> args) {
-    return find_or_create(GenericType{generic, std::move(args)});
-}
-
-TypePtr TypeSystem::get_type_parameter(const std::string& name, uint32_t index) {
-    return find_or_create(TypeParameter{name, index});
 }
 
 TypePtr TypeSystem::get_unresolved() {
