@@ -252,6 +252,12 @@ namespace Fern
 
         std::string name = inst->result->debug_name.empty() ? "stack_alloc" : inst->result->debug_name;
         llvm::Value* ptr = ir.create_alloca(alloc_type, name);
+
+        // Zero-initialize the allocated memory
+        llvm::Constant* zero = llvm::Constant::getNullValue(alloc_type);
+        ir.create_store(zero, ptr);
+
+
         CGF.map_value(inst->result, ptr);
     }
 

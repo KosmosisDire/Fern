@@ -110,16 +110,17 @@ namespace Fern
 
     llvm::Value* LLVMIRBuilder::create_malloc(llvm::Type* type, const std::string& name)
     {
+        llvm::Value* count = i64_constant(1);
         llvm::Value* size = i64_constant(module->getDataLayout().getTypeAllocSize(type));
 
-        // Declare/get malloc function
-        llvm::FunctionType* malloc_type = llvm::FunctionType::get(
+        // Use calloc for zero-initialized allocation
+        llvm::FunctionType* calloc_type = llvm::FunctionType::get(
             ptr_type(),
-            {i64_type()},
+            {i64_type(), i64_type()},
             false);
-        llvm::FunctionCallee malloc_func = module->getOrInsertFunction("malloc", malloc_type);
+        llvm::FunctionCallee calloc_func = module->getOrInsertFunction("calloc", calloc_type);
 
-        return builder.CreateCall(malloc_func, {size}, name);
+        return builder.CreateCall(calloc_func, {count, size}, name);
     }
 
     llvm::Value* LLVMIRBuilder::create_malloc_bytes(llvm::Value* size, const std::string& name)
@@ -129,14 +130,16 @@ namespace Fern
             size = builder.CreateZExtOrTrunc(size, i64_type(), "size_ext");
         }
 
-        // Declare/get malloc function
-        llvm::FunctionType* malloc_type = llvm::FunctionType::get(
-            ptr_type(),
-            {i64_type()},
-            false);
-        llvm::FunctionCallee malloc_func = module->getOrInsertFunction("malloc", malloc_type);
+        llvm::Value* count = i64_constant(1);
 
-        return builder.CreateCall(malloc_func, {size}, name);
+        // Use calloc for zero-initialized allocation
+        llvm::FunctionType* calloc_type = llvm::FunctionType::get(
+            ptr_type(),
+            {i64_type(), i64_type()},
+            false);
+        llvm::FunctionCallee calloc_func = module->getOrInsertFunction("calloc", calloc_type);
+
+        return builder.CreateCall(calloc_func, {count, size}, name);
     }
 
     void LLVMIRBuilder::create_free(llvm::Value* ptr)

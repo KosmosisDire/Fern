@@ -84,7 +84,7 @@ namespace Fern::FLIR
             return stack_alloc(ir_types->get_pointer(type), name);
         }
 
-        // Heap allocation of a typed value
+        // Heap allocation of a typed value (zero-initialized via calloc during codegen)
         Value* heap_alloc(IRTypePtr type, const std::string& name = "") {
             auto ptr_type = ir_types->get_pointer(type);
             auto result = current_func->create_value(ptr_type, name);

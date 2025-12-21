@@ -1,0 +1,76 @@
+
+-- Expected: 120.0
+
+type Test
+{
+    i32 value
+
+    new(i32 v)
+    {
+        value = v
+    }
+}
+
+ref type Array
+{
+    Test* items
+    i32 length
+    i32 capacity
+
+    new(i32 initialCapacity)
+    {
+        capacity = initialCapacity
+        length = 0
+        items = (Test*)malloc(capacity * 8)
+    }
+
+    fn Grow(i32 newCapacity)
+    {
+        if (newCapacity <= capacity)
+        {
+            return
+        }
+        var newItems = (Test*)malloc(newCapacity * 8)
+        for (i32 i = 0; i < length; i = i + 1)
+        {
+            newItems[i] = items[i]
+        }
+        free(items)
+        items = newItems
+        capacity = newCapacity
+    }
+
+    fn Get(i32 index) -> Test
+    {
+        if (index < 0 || index >= length)
+        {
+            return new Test(0)
+        }
+        return items[index]
+    }
+
+    fn Add(Test value)
+    {
+        if (length >= capacity)
+        {
+            Grow(capacity * 2)
+        }
+        items[length] = value
+        length = length + 1
+    }
+
+}
+
+fn Main
+{
+    var a = new Array(10)
+
+    for (i32 i = 0; i < 20; i = i + 1)
+    {
+        a.Add(new Test(i * 10))
+    }
+
+    var t = a.Get(12)
+
+    return (f32)t.value
+}

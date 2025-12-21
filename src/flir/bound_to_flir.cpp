@@ -721,13 +721,18 @@ void BoundToFLIR::visit(BoundNewExpression* node) {
     }
 
     bool is_value_type = node->type->as<NamedType>() && node->type->is_value_type();
-    auto ir_type = convert(node->type);
 
     FLIR::Value* storage;
     if (is_value_type) {
+        auto ir_type = convert(node->type);
         storage = builder.stack_alloc(ir_type);
     } else {
-        storage = builder.heap_alloc(ir_type);
+        // For ref types, convert() returns a pointer (Test*), but heap_alloc
+        // takes the type to allocate and returns a pointer to it.
+        // So we need the raw struct type, not the converted pointer type.
+        auto named = node->type->as<NamedType>();
+        auto struct_type = module->ir_types.get_struct(named->symbol);
+        storage = builder.heap_alloc(struct_type);
     }
     
     if (node->constructor) {
@@ -1009,8 +1014,7 @@ void BoundToFLIR::visit(BoundVariableDeclaration* node)
 
     if (var_sym->type->is_reference_type()) {
         // Reference types are stored as pointers - allocate space for a pointer
-        auto ptr_ir_type = module->ir_types.get_pointer(var_ir_type);
-        auto ref_ptr = builder.stack_alloc(ptr_ir_type, node->name);
+        auto ref_ptr = builder.stack_alloc(var_ir_type, node->name);
         variable_addresses[node->symbol] = ref_ptr;
 
         if (node->initializer) {

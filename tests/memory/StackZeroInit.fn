@@ -1,0 +1,33 @@
+-- Expected: 0.0
+
+type Data
+{
+    i32 a
+    i32 b
+    bool flag
+    f32 value
+
+    new()
+    {
+        -- Constructor intentionally leaves all fields uninitialized
+        -- They should be zero due to zeroinitializer
+    }
+}
+
+fn Main
+{
+    var d = new Data()
+
+    -- All fields should be zero-initialized
+    -- If any field is non-zero, we'll get a non-zero result
+    var result = d.a + d.b
+
+    if (d.flag)
+    {
+        result = result + 100
+    }
+
+    result = result + (i32)d.value
+
+    return (f32)result
+}
