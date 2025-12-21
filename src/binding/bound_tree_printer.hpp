@@ -113,7 +113,6 @@ namespace Fern
         {
             std::stringstream extra;
             extra << "op:" << to_string(node->operatorKind);
-            extra << " method:" << symbolToString(node->operatorMethod);
             printNode("Binary", buildExpressionProps(node, extra.str()));
             IndentGuard guard(this);
             
@@ -138,7 +137,6 @@ namespace Fern
         {
             std::stringstream extra;
             extra << "op:" << to_string(node->operatorKind);
-            extra << " method:" << symbolToString(node->operatorMethod);
             printNode("Unary", buildExpressionProps(node, extra.str()));
             IndentGuard guard(this);
             
@@ -224,9 +222,7 @@ namespace Fern
         
         void visit(BoundIndexExpression* node) override
         {
-            std::stringstream extra;
-            extra << "indexer:" << symbolToString(node->indexerProperty);
-            printNode("Index", buildExpressionProps(node, extra.str()));
+            printNode("Index", buildExpressionProps(node));
             IndentGuard guard(this);
             
             printIndent();
@@ -342,21 +338,7 @@ namespace Fern
             extra << "containingType:" << symbolToString(node->containingType);
             printNode("This", buildExpressionProps(node, extra.str()));
         }
-        
-        void visit(BoundParenthesizedExpression* node) override
-        {
-            printNode("Parenthesized", buildExpressionProps(node));
-            IndentGuard guard(this);
-            
-            printIndent();
-            std::cout << "expression:\n";
-            {
-                IndentGuard exprGuard(this);
-                if (node->expression) node->expression->accept(this);
-                else printNode("null");
-            }
-        }
-        
+
         void visit(BoundConversionExpression* node) override
         {
             std::stringstream extra;
@@ -681,14 +663,7 @@ namespace Fern
             extra << " members:" << node->members.size();
             printNode("TypeDecl", extra.str());
             IndentGuard guard(this);
-            
-            if (node->baseTypeExpression) {
-                printIndent();
-                std::cout << "base:\n";
-                IndentGuard baseGuard(this);
-                node->baseTypeExpression->accept(this);
-            }
-            
+
             if (!node->members.empty()) {
                 printIndent();
                 std::cout << "members:\n";

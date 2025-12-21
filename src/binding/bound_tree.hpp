@@ -33,7 +33,6 @@ namespace Fern
     struct BoundArrayCreationExpression;
     struct BoundCastExpression;
     struct BoundThisExpression;
-    struct BoundParenthesizedExpression;
     struct BoundConversionExpression;
     struct BoundTypeExpression;
     struct BoundBlockStatement;
@@ -50,8 +49,6 @@ namespace Fern
     struct BoundPropertyDeclaration;
     struct BoundTypeDeclaration;
     struct BoundNamespaceDeclaration;
-    struct BoundParameterDeclaration;
-    struct BoundUsingStatement;
 
     class BoundVisitor
     {
@@ -71,7 +68,6 @@ namespace Fern
         virtual void visit(BoundArrayCreationExpression *node) = 0;
         virtual void visit(BoundCastExpression *node) = 0;
         virtual void visit(BoundThisExpression *node) = 0;
-        virtual void visit(BoundParenthesizedExpression *node) = 0;
         virtual void visit(BoundConversionExpression *node) = 0;
         virtual void visit(BoundTypeExpression *node) = 0;
 
@@ -180,7 +176,6 @@ namespace Fern
         BoundExpression *left = nullptr;
         BoundExpression *right = nullptr;
         BinaryOperatorKind operatorKind;
-        FunctionSymbol *operatorMethod = nullptr; // For user-defined operators
         BOUND_ACCEPT_VISITOR
     };
 
@@ -188,7 +183,6 @@ namespace Fern
     {
         BoundExpression *operand = nullptr;
         UnaryOperatorKind operatorKind;
-        FunctionSymbol *operatorMethod = nullptr;
         BOUND_ACCEPT_VISITOR
     };
 
@@ -220,7 +214,6 @@ namespace Fern
     {
         BoundExpression *object = nullptr;
         BoundExpression *index = nullptr;
-        PropertySymbol *indexerProperty = nullptr; // For custom indexers
         BOUND_ACCEPT_VISITOR
     };
 
@@ -251,12 +244,6 @@ namespace Fern
     struct BoundThisExpression : BoundExpression
     {
         TypeSymbol *containingType = nullptr; // Resolved in semantic pass
-        BOUND_ACCEPT_VISITOR
-    };
-
-    struct BoundParenthesizedExpression : BoundExpression
-    {
-        BoundExpression *expression = nullptr;
         BOUND_ACCEPT_VISITOR
     };
 
@@ -380,8 +367,7 @@ namespace Fern
 
     struct BoundTypeDeclaration : BoundDeclaration
     {
-        std::vector<BoundStatement *> members;         // Can be any declaration or statement
-        BoundExpression *baseTypeExpression = nullptr; // For inheritance
+        std::vector<BoundStatement *> members;
         BOUND_ACCEPT_VISITOR
     };
 
@@ -506,12 +492,6 @@ namespace Fern
         void visit(BoundThisExpression *node) override
         {
             // No children to visit
-        }
-
-        void visit(BoundParenthesizedExpression *node) override
-        {
-            if (node->expression)
-                node->expression->accept(this);
         }
 
         void visit(BoundConversionExpression *node) override
@@ -646,8 +626,6 @@ namespace Fern
 
         void visit(BoundTypeDeclaration *node) override
         {
-            if (node->baseTypeExpression)
-                node->baseTypeExpression->accept(this);
             for (auto *member : node->members)
             {
                 if (member)

@@ -11,7 +11,6 @@ namespace Fern
         auto unit = arena_.make<BoundCompilationUnit>();
         unit->location = syntax->location;
 
-        // Start from global namespace
         ScopeGuard scope(symbol_table_, symbol_table_.get_global_namespace());
 
         for (auto stmt : syntax->topLevelStatements)
@@ -35,7 +34,6 @@ namespace Fern
         if (!syntax)
             return nullptr;
 
-        // Declarations
         if (auto func_decl = syntax->as<FunctionDeclSyntax>())
             return bind_function_declaration(func_decl);
         if (auto ctor_decl = syntax->as<ConstructorDeclSyntax>())
@@ -51,7 +49,6 @@ namespace Fern
         if (auto using_decl = syntax->as<UsingDirectiveSyntax>())
             return bind_using_statement(using_decl);
 
-        // Statements
         if (auto block = syntax->as<BlockSyntax>())
             return bind_block(block);
         if (auto if_stmt = syntax->as<IfStmtSyntax>())
@@ -76,11 +73,8 @@ namespace Fern
     {
         auto bound = arena_.make<BoundBlockStatement>();
         bound->location = syntax->location;
-
-        // Look up the block symbol that was created during symbol table building
         bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
 
-        // Push into block scope so variable lookups work correctly
         ScopeGuard scope(symbol_table_, bound->symbol);
 
         for (auto stmt : syntax->statements)
@@ -110,10 +104,8 @@ namespace Fern
             bound->typeExpression = bind_type_expression(syntax->variable->type);
         }
 
-        // Resolve the symbol
         bound->symbol = symbol_table_.resolve_local(bound->name);
 
-        // Create scope for initialization
         ScopeGuard scope(symbol_table_, bound->symbol);
 
         if (syntax->initializer)
@@ -121,7 +113,6 @@ namespace Fern
             bound->initializer = bind_expression(syntax->initializer);
         }
 
-        // Determine variable kind based on context
         bound->isField = has_flag(bound->modifiers, ModifierKindFlags::Static) ||
                          has_flag(bound->modifiers, ModifierKindFlags::Private) ||
                          has_flag(bound->modifiers, ModifierKindFlags::Public);
@@ -141,10 +132,8 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        // Resolve the symbol
         bound->symbol = resolve_symbol({bound->name});
 
-        // Enter function scope
         ScopeGuard scope(symbol_table_, bound->symbol);
 
         if (syntax->returnType)
@@ -152,7 +141,6 @@ namespace Fern
             bound->returnTypeExpression = bind_type_expression(syntax->returnType);
         }
 
-        // Bind parameters
         for (auto param : syntax->parameters)
         {
             if (auto param_syntax = param->as<ParameterDeclSyntax>())
@@ -162,8 +150,6 @@ namespace Fern
                 bound_param->name = param_syntax->param->name ? param_syntax->param->name->get_name() : "";
                 bound_param->typeExpression = param_syntax->param->type ? bind_type_expression(param_syntax->param->type) : nullptr;
                 bound_param->isParameter = true;
-
-                // Resolve parameter symbol
                 bound_param->symbol = symbol_table_.resolve_local(bound_param->name);
 
                 bound->parameters.push_back(bound_param);
@@ -184,24 +170,17 @@ namespace Fern
         bound->location = syntax->location;
         bound->modifiers = syntax->modifiers;
 
-        // Constructors use the containing type's name
         auto containing_type = get_containing_type();
         if (containing_type)
         {
             bound->name = containing_type->name;
-
-            // Match constructor using AST node mapping
-            // During symbol table building, we mapped each constructor AST node to its symbol
             bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
         }
 
-        // Enter function scope
         ScopeGuard scope(symbol_table_, bound->symbol);
 
-        // Constructors implicitly return void
         bound->returnTypeExpression = nullptr;
 
-        // Bind parameters
         for (auto param : syntax->parameters)
         {
             if (auto param_syntax = param->as<ParameterDeclSyntax>())
@@ -211,8 +190,6 @@ namespace Fern
                 bound_param->name = param_syntax->param->name ? param_syntax->param->name->get_name() : "";
                 bound_param->typeExpression = param_syntax->param->type ? bind_type_expression(param_syntax->param->type) : nullptr;
                 bound_param->isParameter = true;
-
-                // Resolve parameter symbol
                 bound_param->symbol = symbol_table_.resolve_local(bound_param->name);
 
                 bound->parameters.push_back(bound_param);
@@ -238,19 +215,10 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        // Resolve the symbol
         bound->symbol = resolve_symbol({bound->name});
 
-        // Enter type scope
         ScopeGuard scope(symbol_table_, bound->symbol);
 
-        // TODO: Handle base types and interfaces
-        // if (syntax->baseTypes && !syntax->baseTypes->empty())
-        // {
-        //     bound->baseTypeExpression = bind_type_expression(syntax->baseTypes->at(0));
-        // }
-
-        // Bind members
         for (auto member : syntax->members)
         {
             if (auto bound_member = bind_statement(member))
@@ -272,10 +240,8 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        // Resolve the symbol
         bound->symbol = resolve_symbol({bound->name});
 
-        // Enter namespace scope
         ScopeGuard scope(symbol_table_, bound->symbol);
 
         if (syntax->body.has_value())
@@ -310,82 +276,66 @@ namespace Fern
             }
         }
 
-        // Bind initializer if present
         if (syntax->variable && syntax->variable->initializer)
         {
             bound->initializer = bind_expression(syntax->variable->initializer);
         }
 
-        // Resolve the symbol
         bound->symbol = resolve_symbol({bound->name});
 
-        // Bind getter if present
         if (syntax->getter)
         {
             auto accessor = arena_.make<BoundPropertyAccessor>();
             accessor->kind = BoundPropertyAccessor::Kind::Get;
-            
-            // Find the getter function symbol as a child of the property
+
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
                 auto getter_members = prop_sym->get_member("get");
                 if (!getter_members.empty()) {
                     if (auto func_sym = getter_members[0]->as<FunctionSymbol>()) {
                         accessor->function_symbol = func_sym;
 
-                        // Enter getter function scope for binding body
                         ScopeGuard scope(symbol_table_, func_sym);
 
-                        // Handle the variant body
                         if (auto expr_ptr = std::get_if<BaseExprSyntax *>(&syntax->getter->body))
                         {
-                            // Arrow property: => expr
                             accessor->expression = bind_expression(*expr_ptr);
                         }
                         else if (auto block_ptr = std::get_if<BlockSyntax *>(&syntax->getter->body))
                         {
-                            // Block property: { ... }
                             accessor->body = bind_statement(*block_ptr);
                         }
-                        // std::monostate case is auto-implemented, leave both null
                     }
                 }
             }
-            
+
             bound->getter = accessor;
         }
 
-        // Bind setter if present
         if (syntax->setter)
         {
             auto accessor = arena_.make<BoundPropertyAccessor>();
             accessor->kind = BoundPropertyAccessor::Kind::Set;
-            
-            // Find the setter function symbol as a child of the property
+
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
                 auto setter_members = prop_sym->get_member("set");
                 if (!setter_members.empty()) {
                     if (auto func_sym = setter_members[0]->as<FunctionSymbol>()) {
                         accessor->function_symbol = func_sym;
 
-                        // Enter setter function scope for binding body
                         ScopeGuard scope(symbol_table_, func_sym);
 
-                        // Handle the variant body
                         if (auto expr_ptr = std::get_if<BaseExprSyntax *>(&syntax->setter->body))
                         {
-                            // Arrow setter (rare): => expr
                             accessor->expression = bind_expression(*expr_ptr);
                         }
                         else if (auto block_ptr = std::get_if<BlockSyntax *>(&syntax->setter->body))
                         {
-                            // Block setter: { ... }
                             accessor->body = bind_statement(*block_ptr);
                         }
-                        // std::monostate case is auto-implemented, leave both null
                     }
                 }
             }
-            
+
             bound->setter = accessor;
         }
 
@@ -396,7 +346,6 @@ namespace Fern
     {
         auto bound = arena_.make<BoundIfStatement>();
         bound->location = syntax->location;
-
         bound->condition = bind_expression(syntax->condition);
         bound->thenStatement = bind_statement(syntax->thenBranch);
 
@@ -412,10 +361,8 @@ namespace Fern
     {
         auto bound = arena_.make<BoundWhileStatement>();
         bound->location = syntax->location;
-
         bound->condition = bind_expression(syntax->condition);
         bound->body = bind_statement(syntax->body);
-
         return bound;
     }
 
@@ -424,7 +371,6 @@ namespace Fern
         auto bound = arena_.make<BoundForStatement>();
         bound->location = syntax->location;
 
-        // Find and enter the for loop scope
         auto for_scope = symbol_table_.get_symbol_for_ast(syntax);
         ScopeGuard scope(symbol_table_, for_scope);
 
@@ -496,7 +442,6 @@ namespace Fern
             bound->namespaceParts = syntax->target->get_parts();
         }
 
-        // Resolve the namespace
         if (auto symbol = resolve_symbol(bound->namespaceParts))
         {
             bound->targetNamespace = symbol->as<NamespaceSymbol>();
@@ -539,7 +484,7 @@ namespace Fern
         if (auto array = syntax->as<ArrayLiteralExprSyntax>())
             return bind_array_creation(array);
         if (auto paren = syntax->as<ParenthesizedExprSyntax>())
-            return bind_parenthesized_expression(paren);
+            return bind_expression(paren->expression);
 
         return nullptr;
     }
@@ -550,7 +495,6 @@ namespace Fern
         bound->location = syntax->location;
         bound->literalKind = syntax->kind;
 
-        // Store the constant value
         switch (syntax->kind)
         {
         case LiteralKind::I32:
@@ -563,9 +507,6 @@ namespace Fern
             bound->constantValue = (syntax->value == "true");
             break;
         case LiteralKind::Char:
-            // The lexer stores the actual character value (after processing escape sequences)
-            // For '\0', it stores the null character (length 1)
-            // For 'a', it stores 'a' (length 1)
             if (syntax->value.length() >= 1)
             {
                 bound->constantValue = static_cast<int64_t>(static_cast<unsigned char>(syntax->value[0]));
@@ -591,12 +532,9 @@ namespace Fern
 
     BoundExpression *BoundTreeBuilder::bind_name(BaseNameExprSyntax *syntax)
     {
-        // Special handling for QualifiedNameSyntax where left is not a name
-        // (e.g., array[index].field, function().property, etc.)
+        // Handle non-name left side of qualified name (e.g., array[index].field)
         if (auto qualified = syntax->as<QualifiedNameSyntax>())
         {
-            // If left is not a name expression (e.g., it's an indexer),
-            // bind it as a member access on the bound left expression
             if (!qualified->left->as<BaseNameExprSyntax>())
             {
                 auto object = bind_expression(qualified->left);
@@ -604,81 +542,65 @@ namespace Fern
                 member_access->location = syntax->location;
                 member_access->object = object;
                 member_access->memberName = qualified->right->get_name();
-                // member symbol will be resolved by type resolver
                 return member_access;
             }
         }
 
         auto parts = syntax->get_parts();
 
-        // For qualified names, check if the first part is a variable
-        // If so, convert to member access chain
+        // Convert qualified variable access to member access chain
         if (parts.size() > 1)
         {
-            // Try to resolve just the first part
             std::vector<std::string> first_part = {parts[0]};
             auto first_symbol = resolve_symbol(first_part);
-            
-            // If first part is a variable or parameter, build member access chain
+
             if (first_symbol && (first_symbol->is<VariableSymbol>() || first_symbol->is<ParameterSymbol>()))
             {
-                // Create name expression for the variable
                 auto object = arena_.make<BoundNameExpression>();
                 object->location = syntax->location;
                 object->parts = first_part;
                 object->symbol = first_symbol;
-                
+
                 BoundExpression* current = object;
-                
-                // Chain member accesses for remaining parts
+
                 for (size_t i = 1; i < parts.size(); ++i)
                 {
                     auto member_access = arena_.make<BoundMemberAccessExpression>();
                     member_access->location = syntax->location;
                     member_access->object = current;
                     member_access->memberName = parts[i];
-                    // member symbol will be resolved by type resolver
-                    
                     current = member_access;
                 }
-                
+
                 return current;
             }
         }
-        
-        // Try to resolve the full path (for namespace-qualified names, types, etc.)
+
         auto symbol = resolve_symbol(parts);
 
-        // Check if this is an unqualified member access that needs implicit 'this'
-        if (symbol && parts.size() == 1) // Simple unqualified name
+        // Add implicit 'this' for unqualified member access
+        if (symbol && parts.size() == 1)
         {
-            // Check if this is a class member
             Symbol *member_of = nullptr;
             bool is_static = false;
-            
-            // TODO: fill in is_static
+
             if (VariableSymbol *variable = symbol->as<VariableSymbol>(); variable && variable->is_field())
             {
                 member_of = variable->parent;
-                // is_static = field->is_static;
             }
             else if (auto prop = symbol->as<PropertySymbol>())
             {
                 member_of = prop->parent;
-                // is_static = prop->is_static;
             }
             else if (auto func = symbol->as<FunctionSymbol>())
             {
                 member_of = func->parent;
-                // is_static = func->is_static;
             }
 
-            // If it's a non-static member of a type
             if (member_of && member_of->is<TypeSymbol>() && !is_static)
             {
                 auto containing_type = get_containing_type();
 
-                // Check if we're inside the same type (or derived type)
                 if (containing_type)
                 {
                     TypeSymbol *current = containing_type;
@@ -691,19 +613,15 @@ namespace Fern
                             is_accessible = true;
                             break;
                         }
-                        // TODO: Check base types when inheritance is implemented
-                        // current = current->base_type;
                         break;
                     }
 
                     if (is_accessible)
                     {
-                        // Create implicit 'this' expression
                         auto this_expr = arena_.make<BoundThisExpression>();
                         this_expr->location = syntax->location;
                         this_expr->containingType = containing_type;
 
-                        // Create member access expression
                         auto member_access = arena_.make<BoundMemberAccessExpression>();
                         member_access->location = syntax->location;
                         member_access->object = this_expr;
@@ -716,7 +634,6 @@ namespace Fern
             }
         }
 
-        // Regular name expression (for non-members, static members, or qualified names)
         auto bound = arena_.make<BoundNameExpression>();
         bound->location = syntax->location;
         bound->parts = parts;
@@ -732,17 +649,6 @@ namespace Fern
         bound->left = bind_expression(syntax->left);
         bound->right = bind_expression(syntax->right);
         bound->operatorKind = syntax->op;
-
-        // TODO: Resolve operator method for user-defined operators
-        // if (bound->left && bound->left->type)
-        // {
-        //     bound->operatorMethod = resolve_operator_method(
-        //         bound->left->type,
-        //         bound->operatorKind,
-        //         bound->right ? bound->right->type : nullptr
-        //     );
-        // }
-
         return bound;
     }
 
@@ -752,16 +658,6 @@ namespace Fern
         bound->location = syntax->location;
         bound->operand = bind_expression(syntax->operand);
         bound->operatorKind = syntax->op;
-
-        // TODO: Resolve operator method for user-defined operators
-        // if (bound->operand && bound->operand->type)
-        // {
-        //     bound->operatorMethod = resolve_unary_operator_method(
-        //         bound->operand->type,
-        //         bound->operatorKind
-        //     );
-        // }
-
         return bound;
     }
 
@@ -789,7 +685,6 @@ namespace Fern
             }
         }
 
-        // Resolve the method
         if (auto name_expr = bound->callee->as<BoundNameExpression>())
         {
             std::string func_name = name_expr->parts.empty() ? "" : name_expr->parts.back();
@@ -817,7 +712,6 @@ namespace Fern
             bound->memberName = syntax->member->get_name();
         }
 
-        // Resolve the member
         if (bound->object && bound->object->type)
         {
             bound->member = resolve_member(bound->object->type, bound->memberName);
@@ -832,16 +726,6 @@ namespace Fern
         bound->location = syntax->location;
         bound->object = bind_expression(syntax->object);
         bound->index = bind_expression(syntax->index);
-
-        // Resolve indexer property
-        if (bound->object && bound->object->type)
-        {
-            if (auto prop = resolve_member(bound->object->type, "Item"))
-            {
-                bound->indexerProperty = prop->as<PropertySymbol>();
-            }
-        }
-
         return bound;
     }
 
@@ -868,7 +752,6 @@ namespace Fern
             }
         }
 
-        // Constructor will be resolved during type resolution when argument types are known
         bound->constructor = nullptr;
 
         return bound;
@@ -878,10 +761,7 @@ namespace Fern
     {
         auto bound = arena_.make<BoundThisExpression>();
         bound->location = syntax->location;
-
-        // Resolve containing type
         bound->containingType = get_containing_type();
-
         return bound;
     }
 
@@ -901,14 +781,6 @@ namespace Fern
         return bound;
     }
 
-    BoundParenthesizedExpression *BoundTreeBuilder::bind_parenthesized_expression(ParenthesizedExprSyntax *syntax)
-    {
-        auto bound = arena_.make<BoundParenthesizedExpression>();
-        bound->location = syntax->location;
-        bound->expression = bind_expression(syntax->expression);
-        return bound;
-    }
-
 #pragma endregion
 
 #pragma region Type Expression Binding
@@ -925,7 +797,6 @@ namespace Fern
         {
             bound->parts = name->get_parts();
 
-            // Resolve the type reference
             if (auto symbol = resolve_symbol(bound->parts))
             {
                 if (auto type_symbol = symbol->as<TypeSymbol>())
@@ -936,13 +807,11 @@ namespace Fern
         }
         else if (auto array_type = syntax->as<ArrayTypeSyntax>())
         {
-            // For array types, bind the element type
             if (auto element_type = bind_type_expression(array_type->baseType))
             {
-                bound->parts.push_back("[]"); // Marker for array
+                bound->parts.push_back("[]");
                 bound->typeArguments.push_back(element_type);
 
-                // Bind the array size if present (e.g., char[12])
                 if (array_type->size)
                 {
                     bound->arraySize = bind_expression(array_type->size);
@@ -951,10 +820,9 @@ namespace Fern
         }
         else if (auto ptr_type = syntax->as<PointerTypeSyntax>())
         {
-            // For pointer types
             if (auto pointee = bind_type_expression(ptr_type->baseType))
             {
-                bound->parts.push_back("*"); // Marker for pointer
+                bound->parts.push_back("*");
                 bound->typeArguments.push_back(pointee);
             }
         }

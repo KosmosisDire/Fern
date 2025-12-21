@@ -1371,21 +1371,6 @@ namespace Fern
         annotate_expression(node, currentType->type);
     }
 
-    void TypeResolver::visit(BoundParenthesizedExpression *node)
-    {
-        if (node->expression)
-            node->expression->accept(this);
-
-        TypePtr innerType = node->expression ? node->expression->type : nullptr;
-        annotate_expression(node, innerType);
-
-        // Inherit value category
-        if (node->expression)
-        {
-            node->valueCategory = node->expression->valueCategory;
-        }
-    }
-
     void TypeResolver::visit(BoundConversionExpression *node)
     {
         if (node->expression)
@@ -1740,13 +1725,6 @@ namespace Fern
 
             // Set type as current scope
             symbolTable.push_scope(currentType);
-
-            // Resolve base type
-            if (node->baseTypeExpression)
-            {
-                node->baseTypeExpression->accept(this);
-                // TODO: Set base class
-            }
 
             // Visit members
             for (auto member : node->members)

@@ -153,12 +153,6 @@ namespace Fern
             node->expression->accept(this);
     }
 
-    void ConversionInserter::visit(BoundParenthesizedExpression* node)
-    {
-        if (node->expression)
-            node->expression->accept(this);
-    }
-
     void ConversionInserter::visit(BoundConversionExpression* node)
     {
         if (node->expression)

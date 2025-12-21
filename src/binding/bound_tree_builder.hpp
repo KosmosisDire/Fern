@@ -145,8 +145,7 @@ namespace Fern
         BoundNewExpression* bind_new_expression(NewExprSyntax* syntax);
         BoundThisExpression* bind_this_expression(ThisExprSyntax* syntax);
         BoundArrayCreationExpression* bind_array_creation(ArrayLiteralExprSyntax* syntax);
-        BoundParenthesizedExpression* bind_parenthesized_expression(ParenthesizedExprSyntax* syntax);
-        
+
         #pragma region Types
 
         BoundTypeExpression* bind_type_expression(BaseExprSyntax* syntax);

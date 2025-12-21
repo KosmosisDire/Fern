@@ -53,7 +53,6 @@ public:
     void visit(BoundArrayCreationExpression* node) override;
     void visit(BoundCastExpression* node) override;
     void visit(BoundThisExpression* node) override;
-    void visit(BoundParenthesizedExpression* node) override;
     void visit(BoundConversionExpression* node) override;
     void visit(BoundTypeExpression* node) override;
 

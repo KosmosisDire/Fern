@@ -808,11 +808,6 @@ void BoundToFLIR::visit(BoundThisExpression* node) {
     lowered[node] = {this_ptr, is_value_type};
 }
 
-void BoundToFLIR::visit(BoundParenthesizedExpression* node) {
-    node->expression->accept(this);
-    lowered[node] = lowered[node->expression];
-}
-
 void BoundToFLIR::visit(BoundConversionExpression* node) {
     auto expr_val = emit_rvalue(node->expression);
     if (!expr_val) {
