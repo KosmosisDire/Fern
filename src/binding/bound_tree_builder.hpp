@@ -40,13 +40,12 @@ namespace Fern
         Symbol* resolve_member(TypePtr type, const std::string& member_name)
         {
             if (!type) return nullptr;
-            
+
             if (auto symbol = symbol_table_.resolve(type->get_name()))
             {
                 if (auto type_symbol = symbol->as<TypeSymbol>())
                 {
-                    auto members = type_symbol->get_member(member_name);
-                    return members.empty() ? nullptr : members[0];
+                    return type_symbol->get_member(member_name);
                 }
             }
             return nullptr;

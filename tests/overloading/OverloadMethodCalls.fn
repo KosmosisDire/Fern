@@ -1,0 +1,88 @@
+-- Expected: 1000.0
+-- Test calling overloaded functions with method call results
+
+type Box
+{
+    f32 value
+
+    new(f32 v) { value = v }
+
+    fn GetValue() -> f32 { return value }
+    fn GetInt() -> i32 { return 10 }
+    fn IsPositive() -> bool { return value > 0.0 }
+}
+
+fn Process(f32 x) -> f32
+{
+    return x * 2.0
+}
+
+fn Process(i32 x) -> f32
+{
+    return x * 3.0
+}
+
+fn Process(bool x) -> f32
+{
+    if x { return 100.0 }
+    return 0.0
+}
+
+fn Combine(Box a, Box b) -> f32
+{
+    return a.GetValue() + b.GetValue()
+}
+
+fn Combine(Box a, f32 b) -> f32
+{
+    return a.GetValue() * b
+}
+
+fn Combine(f32 a, Box b) -> f32
+{
+    return a * b.GetValue()
+}
+
+fn Transform(Box b) -> f32
+{
+    -- Calls different overloads based on method return types
+    var p1 = Process(b.GetValue())    -- f32 path: value * 2
+    var p2 = Process(b.GetInt())      -- i32 path: 10 * 3 = 30
+    var p3 = Process(b.IsPositive())  -- bool path: 100 or 0
+    return p1 + p2 + p3
+}
+
+fn ChainedProcess(Box b) -> f32
+{
+    -- Chain method results through overloaded functions
+    return Process(b.GetValue()) + Process(b.GetInt())
+}
+
+fn Main
+{
+    var box1 = new Box(25.0)
+    var box2 = new Box(10.0)
+    var box3 = new Box(0.0 - 5.0)  -- Negative
+
+    -- Process with method results
+    var p1 = Process(box1.GetValue())    -- 25 * 2 = 50
+    var p2 = Process(box1.GetInt())      -- 10 * 3 = 30
+    var p3 = Process(box1.IsPositive())  -- true -> 100
+
+    -- Combine overloads
+    var c1 = Combine(box1, box2)         -- 25 + 10 = 35
+    var c2 = Combine(box1, 5.0)          -- 25 * 5 = 125
+    var c3 = Combine(3.0, box2)          -- 3 * 10 = 30
+
+    -- Transform uses multiple overloads internally
+    var t1 = Transform(box1)             -- 50 + 30 + 100 = 180
+    var t2 = Transform(box3)             -- -10 + 30 + 0 = 20
+
+    -- ChainedProcess
+    var cp1 = ChainedProcess(box1)       -- 50 + 30 = 80
+
+    -- p1=50, p2=30, p3=100, c1=35, c2=125, c3=30, t1=180, t2=20, cp1=80
+    -- Total: 50+30+100+35+125+30+180+20+80 = 650
+    -- Expected: 650 + 350 = 1000
+    return p1 + p2 + p3 + c1 + c2 + c3 + t1 + t2 + cp1 + 350.0
+}

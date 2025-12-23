@@ -60,6 +60,12 @@ namespace Fern
         synchronize();
     }
 
+    void Parser::parse_error_no_sync(const std::string &msg)
+    {
+        error(msg, tokens.current().location);
+        // Don't synchronize - let the caller decide how to recover
+    }
+
     void Parser::parse_warning(const std::string &msg)
     {
         warn(msg, tokens.current().location);
@@ -1967,14 +1973,25 @@ namespace Fern
         // No semicolon found - check if next token is on same line
         if (!tokens.at_end())
         {
+            // Allow } as a natural statement delimiter - closing a block doesn't
+            // require a preceding semicolon. This enables single-line function bodies:
+            //   fn foo() -> i32 { return 42 }
+            // Note: This is specifically for block-closing braces, not object initializers
+            // (which will be handled differently when implemented).
+            if (check(TokenKind::RightBrace))
+            {
+                return true;
+            }
+
             Token prev = tokens.previous();
             Token curr = tokens.current();
 
             // If the next token is on the same line as the end of the previous statement,
-            // we require a semicolon
+            // we require a semicolon. Use no-sync error to avoid corrupting parse state -
+            // we want to continue parsing the current block normally.
             if (isOnSameLine(prev, curr))
             {
-                parse_error("Expected ';' between statements on the same line");
+                parse_error_no_sync("Expected ';' between statements on the same line");
                 return false;
             }
         }

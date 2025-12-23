@@ -11,3 +11,4 @@ out
 *.vsix
 CHECKLIST.md
 spec/
+.vs

@@ -1,0 +1,23 @@
+-- Expected: 239.0
+
+type Empty
+{
+    new(){}
+    
+    fn IsEmpty() -> bool
+    {
+        return true
+    }
+}
+
+
+fn Main
+{
+    var e = new Empty()
+    if (e.IsEmpty())
+    {
+        return 239.0
+    }
+
+    return -1.0
+}

@@ -1,0 +1,105 @@
+-- Expected: 246.0
+-- Test function overloading with user-defined types
+
+type Point
+{
+    f32 x
+    f32 y
+
+    new(f32 xVal, f32 yVal)
+    {
+        x = xVal
+        y = yVal
+    }
+}
+
+type Vector3
+{
+    f32 x, y, z
+
+    new(f32 xVal, f32 yVal, f32 zVal)
+    {
+        x = xVal
+        y = yVal
+        z = zVal
+    }
+}
+
+type Circle
+{
+    Point center
+    f32 radius
+
+    new(Point c, f32 r)
+    {
+        center = c
+        radius = r
+    }
+}
+
+-- Overloaded functions accepting different types
+fn GetMagnitude(Point p) -> f32
+{
+    return p.x * p.x + p.y * p.y
+}
+
+fn GetMagnitude(Vector3 v) -> f32
+{
+    return v.x * v.x + v.y * v.y + v.z * v.z
+}
+
+fn GetMagnitude(Circle c) -> f32
+{
+    return c.radius * c.radius * 3.14
+}
+
+fn GetMagnitude(f32 scalar) -> f32
+{
+    return scalar
+}
+
+-- Multiple user types in parameters
+fn Distance(Point a, Point b) -> f32
+{
+    var dx = b.x - a.x
+    var dy = b.y - a.y
+    return dx * dx + dy * dy
+}
+
+fn Distance(Vector3 a, Vector3 b) -> f32
+{
+    var dx = b.x - a.x
+    var dy = b.y - a.y
+    var dz = b.z - a.z
+    return dx * dx + dy * dy + dz * dz
+}
+
+fn Distance(Point p, Circle c) -> f32
+{
+    var dx = p.x - c.center.x
+    var dy = p.y - c.center.y
+    return dx * dx + dy * dy - c.radius
+}
+
+fn Main
+{
+    var p = new Point(3.0, 4.0)
+    var v = new Vector3(1.0, 2.0, 2.0)
+    var c = new Circle(new Point(0.0, 0.0), 5.0)
+
+    var m1 = GetMagnitude(p)      -- 9 + 16 = 25
+    var m2 = GetMagnitude(v)      -- 1 + 4 + 4 = 9
+    var m3 = GetMagnitude(c)      -- 25 * 3.14 = 78.5
+    var m4 = GetMagnitude(42.0)   -- 42
+
+    var p2 = new Point(6.0, 8.0)
+    var d1 = Distance(p, p2)      -- 9 + 16 = 25
+
+    var v2 = new Vector3(4.0, 6.0, 6.0)
+    var d2 = Distance(v, v2)      -- 9 + 16 + 16 = 41
+
+    var d3 = Distance(p, c)       -- 9 + 16 - 5 = 20
+
+    -- Expected: 25 + 9 + 78.5 + 42 + 25 + 41 + 20 + 5.5 = 246
+    return m1 + m2 + m3 + m4 + d1 + d2 + d3 + 5.5
+}

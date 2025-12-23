@@ -256,6 +256,7 @@ namespace Fern
         Namespace,
         Type,
         Function,
+        FunctionGroup,
         Variable,
         Property,
         EnumCase,
@@ -331,7 +332,7 @@ namespace Fern
         return (flags & flag) == flag;
     }
 
-    constexpr inline AccessModifierKind get_access_modifier(ModifierKindFlags flags)
+    inline AccessModifierKind get_access_modifier(ModifierKindFlags flags)
     {
         if (has_flag(flags, ModifierKindFlags::Public))
             return AccessModifierKind::Public;
@@ -618,6 +619,8 @@ namespace Fern
         case SymbolKind::Type:
             return "type";
         case SymbolKind::Function:
+            return "fn";
+        case SymbolKind::FunctionGroup:
             return "fn";
         case SymbolKind::Variable:
             return "var";

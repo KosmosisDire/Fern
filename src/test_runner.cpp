@@ -198,9 +198,11 @@ void TestRunner::print_summary(const std::vector<TestResult>& results) {
 
 void TestRunner::print_benchmark(const BenchmarkResult& r) {
     double avg_ms = r.iterations > 0 ? (r.total_seconds * 1000.0) / r.iterations : 0;
-    double lps = r.total_seconds > 0 ? (double(r.total_lines) * r.successful) / r.total_seconds : 0;
+    double lps = r.total_seconds > 0 ? (double(r.total_lines) / r.total_seconds) : 0;
     std::cout << std::fixed
               << r.successful << "/" << r.iterations << " succeeded | "
+              << r.total_lines << " lines | "
+              << std::setprecision(3) << r.total_seconds << "s total | "
               << std::setprecision(0) << avg_ms << "ms/compile | "
               << lps << " lines/sec" << std::endl;
 }

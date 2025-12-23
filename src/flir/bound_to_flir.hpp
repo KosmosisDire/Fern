@@ -34,7 +34,8 @@ public:
         , builder(&mod->ir_types) {}
 
     // Initialize module with types and function declarations (call once)
-    void init_module(NamespaceSymbol* global_ns);
+    // sorted_types should be in dependency order (from TypeTopology)
+    void init_module(NamespaceSymbol* global_ns, const std::vector<TypeSymbol*>& sorted_types);
 
     // Generate function bodies for a compilation unit (call per file)
     void generate(BoundCompilationUnit* unit);

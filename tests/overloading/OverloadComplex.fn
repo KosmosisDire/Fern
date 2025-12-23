@@ -1,0 +1,138 @@
+-- Expected: 2024.0
+-- Comprehensive stress test combining many overloading scenarios
+
+type Point
+{
+    f32 x, y
+    new(f32 a, f32 b)
+    {
+        x = a
+        y = b
+    }
+}
+
+type Vec3
+{
+    f32 x, y, z
+    new(f32 a, f32 b, f32 c)
+    {
+        x = a
+        y = b
+        z = c
+    }
+}
+
+-- Global functions overloaded on type
+fn Dot(Point a, Point b) -> f32 { return a.x * b.x + a.y * b.y }
+fn Dot(Vec3 a, Vec3 b) -> f32 { return a.x * b.x + a.y * b.y + a.z * b.z }
+fn Dot(f32 a, f32 b) -> f32 { return a * b }
+fn Dot(i32 a, i32 b) -> i32 { return a * b }
+
+-- Overloaded on param count
+fn Scale(Point p) -> Point { return new Point(p.x * 2.0, p.y * 2.0) }
+fn Scale(Point p, f32 s) -> Point { return new Point(p.x * s, p.y * s) }
+fn Scale(Point p, f32 sx, f32 sy) -> Point { return new Point(p.x * sx, p.y * sy) }
+
+fn Scale(Vec3 v) -> Vec3 { return new Vec3(v.x * 2.0, v.y * 2.0, v.z * 2.0) }
+fn Scale(Vec3 v, f32 s) -> Vec3 { return new Vec3(v.x * s, v.y * s, v.z * s) }
+
+-- Conversion functions
+fn ToPoint(Vec3 v) -> Point { return new Point(v.x, v.y) }
+fn ToPoint(f32 x, f32 y) -> Point { return new Point(x, y) }
+fn ToPoint(f32 v) -> Point { return new Point(v, v) }
+
+fn ToVec3(Point p) -> Vec3 { return new Vec3(p.x, p.y, 0.0) }
+fn ToVec3(Point p, f32 z) -> Vec3 { return new Vec3(p.x, p.y, z) }
+fn ToVec3(f32 v) -> Vec3 { return new Vec3(v, v, v) }
+
+-- Magnitude with different types
+fn Mag(Point p) -> f32 { return Dot(p, p) }
+fn Mag(Vec3 v) -> f32 { return Dot(v, v) }
+fn Mag(f32 x) -> f32 { return x * x }
+
+-- Nested overload resolution
+fn Process(Point p) -> f32 { return Mag(Scale(p, 2.0)) }
+fn Process(Vec3 v) -> f32 { return Mag(Scale(v, 2.0)) }
+fn Process(f32 x) -> f32 { return Mag(x * 2.0) }
+fn Process(i32 x) -> f32 { return Mag(x + 0.0) * 2.0 }
+
+-- Chain that tests resolution at each step
+fn Chain(i32 n) -> f32
+{
+    if n <= 0 { return 0.0 }
+    var p = new Point(1.0, 1.0)
+    return Dot(p, p) + Chain(n - 1)  -- 2 per iteration
+}
+
+fn Chain(f32 n) -> f32
+{
+    if n <= 0.0 { return 0.0 }
+    var v = new Vec3(1.0, 1.0, 1.0)
+    return Dot(v, v) + Chain(n - 1.0)  -- 3 per iteration
+}
+
+fn Main
+{
+    var p1 = new Point(3.0, 4.0)
+    var p2 = new Point(1.0, 2.0)
+    var v1 = new Vec3(1.0, 2.0, 3.0)
+    var v2 = new Vec3(4.0, 5.0, 6.0)
+
+    -- Dot product tests
+    var d1 = Dot(p1, p2)           -- 3*1 + 4*2 = 11
+    var d2 = Dot(v1, v2)           -- 1*4 + 2*5 + 3*6 = 32
+    var d3 = Dot(5.0, 4.0)         -- 20
+    var d4 = Dot(3, 7)             -- 21
+
+    -- Scale tests
+    var sp1 = Scale(p1)            -- (6, 8)
+    var sp2 = Scale(p1, 3.0)       -- (9, 12)
+    var sp3 = Scale(p1, 2.0, 3.0)  -- (6, 12)
+
+    var sv1 = Scale(v1)            -- (2, 4, 6)
+    var sv2 = Scale(v1, 2.0)       -- (2, 4, 6)
+
+    -- Conversion tests
+    var conv1 = ToPoint(v1)        -- (1, 2)
+    var conv2 = ToVec3(p1)         -- (3, 4, 0)
+    var conv3 = ToVec3(p1, 5.0)    -- (3, 4, 5)
+
+    -- Magnitude
+    var m1 = Mag(p1)               -- 9 + 16 = 25
+    var m2 = Mag(v1)               -- 1 + 4 + 9 = 14
+    var m3 = Mag(5.0)              -- 25
+
+    -- Process (nested overloads)
+    var pr1 = Process(p1)          -- Mag(Scale(p1, 2)) = Mag((6,8)) = 36+64 = 100
+    var pr2 = Process(v1)          -- Mag(Scale(v1, 2)) = Mag((2,4,6)) = 4+16+36 = 56
+    var pr3 = Process(5.0)         -- Mag(10) = 100
+    var pr4 = Process(3)           -- Mag(3.0) * 2 = 9 * 2 = 18
+
+    -- Chain (recursive with overloading)
+    var ch1 = Chain(5)             -- 5 * 2 = 10
+    var ch2 = Chain(5.0)           -- 5 * 3 = 15
+
+    -- Computed values from scaled points
+    var scaled_dot1 = Dot(sp1, sp2)  -- 6*9 + 8*12 = 54 + 96 = 150
+    var scaled_dot2 = Dot(sv1, sv2)  -- 2*2 + 4*4 + 6*6 = 4+16+36 = 56
+
+    -- Mag of conversions
+    var cm1 = Mag(conv1)           -- 1 + 4 = 5
+    var cm2 = Mag(conv2)           -- 9 + 16 + 0 = 25
+    var cm3 = Mag(conv3)           -- 9 + 16 + 25 = 50
+
+    -- d1=11, d2=32, d3=20, d4=21 => 84
+    -- m1=25, m2=14, m3=25 => 64
+    -- pr1=100, pr2=56, pr3=100, pr4=18 => 274
+    -- ch1=10, ch2=15 => 25
+    -- scaled_dot1=150, scaled_dot2=56 => 206
+    -- cm1=5, cm2=25, cm3=50 => 80
+    -- Grand total: 84 + 64 + 274 + 25 + 206 + 80 = 733
+
+    var base = d1 + d2 + d3 + d4 + m1 + m2 + m3
+    var processed = pr1 + pr2 + pr3 + pr4 + ch1 + ch2
+    var extras = scaled_dot1 + scaled_dot2 + cm1 + cm2 + cm3
+
+    -- 733 + 1291 = 2024
+    return base + processed + extras + 1291.0
+}

@@ -3,7 +3,6 @@ extern fn fclose(ptr stream) -> i32
 extern fn fputs(char* str, ptr stream) -> i32
 extern fn fgets(char* str, i32 num, ptr stream) -> char*
 extern fn strlen(char* str) -> i32
-extern fn free(ptr addr) -> void
 
 fn StringFromCStr(char* cstr) -> string
 {

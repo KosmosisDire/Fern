@@ -3,10 +3,10 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <map>
 #include <unordered_map>
 #include <variant>
 #include "common/source_location.hpp"
+#include "common/ordermap/ordered_map.h"
 #include "type.hpp"
 #include "common/token.hpp"
 
@@ -17,6 +17,7 @@ namespace Fern
     struct NamespaceSymbol;
     struct TypeSymbol;
     struct FunctionSymbol;
+    struct FunctionGroupSymbol;
     struct VariableSymbol;
     struct ParameterSymbol;
     struct PropertySymbol;
@@ -83,20 +84,22 @@ namespace Fern
     #pragma region Container Symbol
     
     struct ContainerSymbol : Symbol {
-        // Children organized by name (multimap for overloads)
-        // Using std::multimap instead of unordered_multimap to preserve insertion order
-        std::multimap<std::string, std::unique_ptr<Symbol>> members;
+        // Children organized by name, preserving insertion order
+        tsl::ordered_map<std::string, std::unique_ptr<Symbol>> members;
 
-        // Ordered list for deterministic iteration
-        std::vector<Symbol*> member_order;
-        
-        // Add a member
+        // Add a member (for non-function symbols)
         Symbol* add_member(std::unique_ptr<Symbol> symbol);
-        
-        // Lookup member by name (non-recursive)
-        std::vector<Symbol*> get_member(const std::string& name);
-        
-        // Get all function overloads
+
+        // Add a function (creates or reuses FunctionGroupSymbol)
+        FunctionSymbol* add_function(std::unique_ptr<FunctionSymbol> func);
+
+        // Get the function group for a name (nullptr if not found or not a function)
+        FunctionGroupSymbol* get_function_group(const std::string& name);
+
+        // Lookup member by name (non-recursive) - returns single symbol or nullptr
+        Symbol* get_member(const std::string& name);
+
+        // Get all function overloads (convenience method)
         std::vector<FunctionSymbol*> get_functions(const std::string& name);
     };
 
@@ -119,7 +122,14 @@ namespace Fern
     
     struct TypeSymbol : ContainerSymbol {
         TypePtr type;  // The semantic type this symbol represents
-
+        bool has_fields() const {
+            for (const auto& [name, member_ptr] : members) {
+                if (member_ptr->is<VariableSymbol>()) {
+                    return true;
+                }
+            }
+            return false;
+        }
         TypeSymbol(const std::string& name, TypePtr type);
     };
 
@@ -136,11 +146,25 @@ namespace Fern
 
         FunctionSymbol(const std::string& name, TypePtr return_type);
 
-        // Get mangled name for code generation
-        std::string get_mangled_name() const;
-
         // Check if signatures match (for overloading)
         bool signature_matches(FunctionSymbol* other) const;
+        std::string get_signature() const;
+    };
+
+    #pragma region Function Group Symbol
+
+    // Groups all overloads of a function with the same name
+    struct FunctionGroupSymbol : Symbol {
+        std::vector<std::unique_ptr<FunctionSymbol>> overloads;
+
+        FunctionGroupSymbol(const std::string& name);
+
+        FunctionSymbol* add_overload(std::unique_ptr<FunctionSymbol> func);
+        std::vector<FunctionSymbol*> get_overloads() const;
+        FunctionSymbol* resolve(const std::vector<TypePtr>& arg_types) const;
+        FunctionSymbol* get_single() const {
+            return overloads.size() == 1 ? overloads[0].get() : nullptr;
+        }
     };
 
     #pragma region Variable Symbols

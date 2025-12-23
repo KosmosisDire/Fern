@@ -1,5 +1,5 @@
 #include "type_system.hpp"
-
+#include <iostream>
 namespace Fern
 {
 

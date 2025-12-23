@@ -97,6 +97,7 @@ set(SOURCE_FILES
     src/semantic/symbol_table_builder.cpp
     src/semantic/type_resolver.cpp
     src/semantic/syntax_validator.cpp
+    src/semantic/type_topology.cpp
     
     # Binding
     src/binding/bound_tree_builder.cpp
@@ -113,8 +114,6 @@ set(SOURCE_FILES
     src/codegen/codegen_function.cpp
     src/codegen/flir_codegen.cpp
 
-    # Runtime
-    runtime/runtime.cpp
     
     # Common Utilities
     src/common/logger.cpp
@@ -127,7 +126,8 @@ set(SOURCE_FILES
 )
 
 set(RUNTIME_FILES
-
+    lib/clay_wrapper.cpp
+    runtime/runtime.cpp
 )
 
 

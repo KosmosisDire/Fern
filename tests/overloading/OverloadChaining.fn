@@ -1,0 +1,59 @@
+-- Expected: 777.0
+-- Test chained calls with overloaded functions
+
+fn Process(i32 x) -> i32
+{
+    return x + 100
+}
+
+fn Process(f32 x) -> f32
+{
+    return x + 200.0
+}
+
+fn Wrap(i32 x) -> f32
+{
+    -- Calls Process(i32), converts result to f32
+    return Process(x) + 0.0
+}
+
+fn Wrap(f32 x) -> f32
+{
+    -- Calls Process(f32)
+    return Process(x)
+}
+
+fn Chain(i32 a, i32 b) -> f32
+{
+    return Wrap(a) + Wrap(b)
+}
+
+fn Chain(f32 a, f32 b) -> f32
+{
+    return Wrap(a) + Wrap(b) + 50.0
+}
+
+fn Chain(i32 a, f32 b) -> f32
+{
+    return Wrap(a) + Wrap(b) + 25.0
+}
+
+fn Main
+{
+    -- Process(5) = 105, then Wrap adds 0.0 = 105.0
+    var w1 = Wrap(5)       -- 105
+    -- Process(5.0) = 205.0
+    var w2 = Wrap(5.0)     -- 205
+
+    -- Chain(1, 2) = Wrap(1) + Wrap(2) = 101 + 102 = 203
+    var c1 = Chain(1, 2)   -- 203
+
+    -- Chain(1.0, 2.0) = Wrap(1.0) + Wrap(2.0) + 50 = 201 + 202 + 50 = 453
+    var c2 = Chain(1.0, 2.0)  -- 453
+
+    -- Chain(1, 2.0) = Wrap(1) + Wrap(2.0) + 25 = 101 + 202 + 25 = 328
+    var c3 = Chain(1, 2.0)    -- 328
+
+    -- Expected: 105 + 205 - 203 + 453 + 328 - 111 = 777
+    return w1 + w2 - c1 + c2 + c3 - 111.0
+}

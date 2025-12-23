@@ -44,20 +44,15 @@ static const std::unordered_map<std::string, IntrinsicInfo> intrinsic_table = {
 
 #pragma region Initialization Helpers
 
-static void collect_types(Symbol* symbol, std::vector<TypeSymbol*>& types) {
-    if (auto* type_sym = symbol->as<TypeSymbol>()) {
-        types.push_back(type_sym);
-    }
-    if (auto* container = symbol->as<ContainerSymbol>()) {
-        for (auto& [name, child] : container->members) {
-            collect_types(child.get(), types);
-        }
-    }
-}
-
 static void collect_functions(Symbol* symbol, std::vector<FunctionSymbol*>& functions) {
     if (auto* func_sym = symbol->as<FunctionSymbol>()) {
         functions.push_back(func_sym);
+    }
+    else if (auto* func_group = symbol->as<FunctionGroupSymbol>()) {
+        // Collect all overloads from the function group
+        for (auto* overload : func_group->get_overloads()) {
+            functions.push_back(overload);
+        }
     }
     if (auto* container = symbol->as<ContainerSymbol>()) {
         for (auto& [name, child] : container->members) {
@@ -70,50 +65,83 @@ static void collect_functions(Symbol* symbol, std::vector<FunctionSymbol*>& func
 
 #pragma region Core Infrastructure
 
-void BoundToFLIR::init_module(NamespaceSymbol* global_ns) {
-    std::vector<TypeSymbol*> types;
-    collect_types(global_ns, types);
-
-    for (auto* type_sym : types) {
-        auto ir_struct = module->ir_types.define_struct(type_sym);
-
-        size_t offset = 0;
-        size_t max_align = 1;
-
-        for (auto* member : type_sym->member_order) {
-            if (auto* var = member->as<VariableSymbol>()) {
-                if (!var->is_field()) continue;
-
-                IRTypePtr field_ir_type = convert(var->type);
-                size_t align = field_ir_type->get_alignment();
-                size_t size = field_ir_type->get_size();
-
-                // Align the offset
-                offset = (offset + align - 1) & ~(align - 1);
-
-                ir_struct->fields.push_back({var->name, field_ir_type, offset});
-                offset += size;
-                max_align = std::max(max_align, align);
-            }
+void BoundToFLIR::init_module(NamespaceSymbol* global_ns, const std::vector<TypeSymbol*>& sorted_types)
+{
+    try
+    {
+        // Pass 1: Define all struct shells (so they exist for forward references)
+        for (auto* type_sym : sorted_types)
+        {
+            module->ir_types.define_struct(type_sym);
         }
 
-        // Final size with trailing padding
-        ir_struct->size = (offset + max_align - 1) & ~(max_align - 1);
-        ir_struct->alignment = max_align;
+        // Pass 2: Calculate field layouts
+        // Types are already sorted by TypeTopology so dependencies come first
+        for (auto* type_sym : sorted_types)
+        {
+            auto* ir_struct = module->ir_types.find_struct(type_sym);
+
+            size_t offset = 0;
+            size_t max_align = 1;
+
+            for (auto& [name, member_ptr] : type_sym->members) {
+                if (auto* var = member_ptr->as<VariableSymbol>()) {
+                    if (!var->is_field()) continue;
+
+                    IRTypePtr field_ir_type = convert(var->type);
+                    size_t align = field_ir_type->get_alignment();
+                    size_t size = field_ir_type->get_size();
+
+                    // Align the offset
+                    offset = (offset + align - 1) & ~(align - 1);
+
+                    ir_struct->fields.push_back({var->name, field_ir_type, offset});
+                    offset += size;
+                    max_align = std::max(max_align, align);
+                }
+            }
+
+            if (offset == 0) {
+                // Empty struct - give it size 1
+                ir_struct->fields.push_back({"_padding", module->ir_types.get_u8(), offset});
+                offset = 1;
+                max_align = 1;
+            }
+
+            // Final size with trailing padding
+            ir_struct->size = (offset + max_align - 1) & ~(max_align - 1);
+            ir_struct->alignment = max_align;
+        }
+
+        std::vector<FunctionSymbol*> functions;
+        collect_functions(global_ns, functions);
+
+        for (auto* func_sym : functions) {
+            auto* func = module->create_function(func_sym);
+            func->return_type = convert(func_sym->return_type);
+            func->is_static = func_sym->is_static();
+        }
     }
-
-    std::vector<FunctionSymbol*> functions;
-    collect_functions(global_ns, functions);
-
-    for (auto* func_sym : functions) {
-        auto* func = module->create_function(func_sym);
-        func->return_type = convert(func_sym->return_type);
-        func->is_static = func_sym->is_static();
+    catch (const std::exception& ex)
+    {
+        error(std::string("Error initializing FLIR module: ") + ex.what(), SourceRange());
+        // dump module so far
+        std::cout << module->dump() << std::endl;
     }
 }
 
-void BoundToFLIR::generate(BoundCompilationUnit* unit) {
-    visit(unit);
+void BoundToFLIR::generate(BoundCompilationUnit* unit)
+{
+    try
+    {
+        visit(unit);
+    }
+    catch (const std::exception& ex)
+    {
+        error(std::string("Error generating FLIR from bound tree: ") + ex.what(), SourceRange());
+        // dump module so far
+        std::cout << module->dump() << std::endl;
+    }
 }
 
 FLIR::Value* BoundToFLIR::emit_rvalue(BoundExpression* expr) {
@@ -254,9 +282,9 @@ size_t BoundToFLIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
     if (!type_sym || !field_sym) return 0;
 
     size_t index = 0;
-    for (auto* member : type_sym->member_order) {
-        if (member->is<VariableSymbol>()) {
-            if (member == field_sym) {
+    for (auto& [name, member_ptr] : type_sym->members) {
+        if (member_ptr->is<VariableSymbol>()) {
+            if (member_ptr.get() == field_sym) {
                 return index;
             }
             index++;
@@ -366,7 +394,7 @@ void BoundToFLIR::visit(BoundLiteralExpression* node) {
             auto len_val = builder.const_int(static_cast<int64_t>(str_val.length()), module->ir_types.get_i32());
 
             // Call String.New constructor
-            auto string_ctor = module->find_function_by_name("String.New");
+            auto string_ctor = module->find_function_by_name("String.New_char*_i32");
             if (string_ctor) {
                 builder.call(string_ctor, {string_addr, data_ptr, len_val});
             } else {
@@ -642,7 +670,8 @@ void BoundToFLIR::visit(BoundMemberAccessExpression* node) {
         return;
     }
 
-    if (node->member->as<FunctionSymbol>()) {
+    if (node->member->as<FunctionSymbol>() || node->member->as<FunctionGroupSymbol>()) {
+        // Function references aren't lowered as member access
         lowered[node] = {nullptr, false};
         return;
     }
@@ -1007,7 +1036,8 @@ void BoundToFLIR::visit(BoundVariableDeclaration* node)
 
     auto var_ir_type = convert(var_sym->type);
 
-    if (var_sym->type->is_reference_type()) {
+    if (var_sym->type->is_reference_type())
+    {
         // Reference types are stored as pointers - allocate space for a pointer
         auto ref_ptr = builder.stack_alloc(var_ir_type, node->name);
         variable_addresses[node->symbol] = ref_ptr;

@@ -1,0 +1,87 @@
+-- Expected: 999.0
+-- Test overloading with many parameters to stress resolution
+
+fn Sum(f32 a) -> f32
+{
+    return a
+}
+
+fn Sum(f32 a, f32 b) -> f32
+{
+    return a + b
+}
+
+fn Sum(f32 a, f32 b, f32 c) -> f32
+{
+    return a + b + c
+}
+
+fn Sum(f32 a, f32 b, f32 c, f32 d) -> f32
+{
+    return a + b + c + d
+}
+
+fn Sum(f32 a, f32 b, f32 c, f32 d, f32 e) -> f32
+{
+    return a + b + c + d + e
+}
+
+fn Sum(f32 a, f32 b, f32 c, f32 d, f32 e, f32 f) -> f32
+{
+    return a + b + c + d + e + f
+}
+
+-- Different type combinations
+fn Mix(i32 a, i32 b, i32 c) -> f32
+{
+    return 100.0
+}
+
+fn Mix(f32 a, f32 b, f32 c) -> f32
+{
+    return 200.0
+}
+
+fn Mix(i32 a, f32 b, i32 c) -> f32
+{
+    return 300.0
+}
+
+fn Mix(f32 a, i32 b, f32 c) -> f32
+{
+    return 400.0
+}
+
+fn Mix(i32 a, i32 b, f32 c) -> f32
+{
+    return 500.0
+}
+
+fn Mix(f32 a, f32 b, i32 c) -> f32
+{
+    return 600.0
+}
+
+fn Main
+{
+    -- Sum tests
+    var s1 = Sum(1.0)                           -- 1
+    var s2 = Sum(1.0, 2.0)                      -- 3
+    var s3 = Sum(1.0, 2.0, 3.0)                -- 6
+    var s4 = Sum(1.0, 2.0, 3.0, 4.0)           -- 10
+    var s5 = Sum(1.0, 2.0, 3.0, 4.0, 5.0)      -- 15
+    var s6 = Sum(1.0, 2.0, 3.0, 4.0, 5.0, 6.0) -- 21
+
+    -- Mix tests - each pattern should resolve correctly
+    var m1 = Mix(1, 2, 3)           -- 100 (i32, i32, i32)
+    var m2 = Mix(1.0, 2.0, 3.0)     -- 200 (f32, f32, f32)
+    var m3 = Mix(1, 2.0, 3)         -- 300 (i32, f32, i32)
+    var m4 = Mix(1.0, 2, 3.0)       -- 400 (f32, i32, f32)
+    var m5 = Mix(1, 2, 3.0)         -- 500 (i32, i32, f32)
+    var m6 = Mix(1.0, 2.0, 3)       -- 600 (f32, f32, i32)
+
+    -- s1+s2+s3+s4+s5+s6 = 1+3+6+10+15+21 = 56
+    -- m1+m2+m3+m4+m5+m6 = 100+200+300+400+500+600 = 2100
+    -- Total: 56 + 2100 - 1157 = 999
+    return s1 + s2 + s3 + s4 + s5 + s6 + m1 + m2 + m3 + m4 + m5 + m6 - 1157.0
+}

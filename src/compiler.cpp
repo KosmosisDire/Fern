@@ -13,6 +13,7 @@
 #include "semantic/type_resolver.hpp"
 #include "semantic/symbol_table_builder.hpp"
 #include "semantic/syntax_validator.hpp"
+#include "semantic/type_topology.hpp"
 #include "flir/flir.hpp"
 #include "flir/bound_to_flir.hpp"
 #include "binding/conversion_inserter.hpp"
@@ -304,6 +305,7 @@ namespace Fern
             // Report conflicts as errors (TODO: convert conflicts to proper Diagnostics)
             for (const auto &conflict : conflicts)
             {
+                std::cout << "Symbol merge conflict: " << conflict << std::endl;
                 state.diagnostics.push_back(Diagnostic(
                     Diagnostic::Severity::Error,
                     "Symbol merge conflict: " + conflict,
@@ -436,16 +438,35 @@ namespace Fern
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
 
+        // === Build type topology (detect cycles, compute dependency order) ===
+        LOG_HEADER("Type topology", LogCategory::COMPILER);
+
+        auto global_ns = global_symbols->get_global_namespace();
+        TypeTopology type_topology;
+        type_topology.build(global_ns);
+
+        // Dump type dependency graph
+        LOG_INFO("\n" + type_topology.dump_dot(), LogCategory::COMPILER);
+
+        // Collect topology diagnostics (cycle errors)
+        global_diagnostics.insert(global_diagnostics.end(),
+            type_topology.get_diagnostics().begin(),
+            type_topology.get_diagnostics().end());
+
+        if (type_topology.has_cycles())
+        {
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics));
+        }
+
         // === Convert bound tree to FLIR ===
         LOG_HEADER("FLIR generation", LogCategory::COMPILER);
 
         // Create FLIR module
         auto flir_module = std::make_unique<FLIR::Module>("FernProgram");
-        auto global_ns = global_symbols->get_global_namespace();
 
         // Initialize module with all types and function declarations (once)
         FLIR::BoundToFLIR converter(flir_module.get());
-        converter.init_module(global_ns);
+        converter.init_module(global_ns, type_topology.get_sorted_types());
 
         // Generate function bodies for each compilation unit
         for (auto &state : file_states)

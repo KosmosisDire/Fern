@@ -95,6 +95,7 @@ namespace Fern
         }
 
         type_symbol->modifiers = node->modifiers;
+        type_symbol->location = node->location;
 
         // Enter type scope
         symbolTable.push_scope(type_symbol);
@@ -124,6 +125,9 @@ namespace Fern
             error("Failed to define function '" + name + "'", node->location);
             return;
         }
+
+        // Map AST node to symbol for binding phase
+        symbolTable.map_ast_to_symbol(node, func_symbol);
 
         // Apply modifiers
         func_symbol->modifiers = node->modifiers;
@@ -293,7 +297,10 @@ namespace Fern
         if (!symbol)
         {
             error("Failed to define variable '" + name + "'", node->location);
+            return;
         }
+
+        symbol->location = node->location;
 
         // Visit children
         if (node->variable)

@@ -526,9 +526,23 @@ namespace Fern::FLIR
             return ptr;
         }
 
+        std::string get_mangled_name() const
+        {
+            std::string mangled = symbol->get_qualified_name();
+
+            // use symbol instead of params so lowered types are still differentiated
+            for (auto param : symbol->parameters) {
+                mangled += "_";
+                if (param->type) {
+                    mangled += param->type->get_name();
+                }
+            }
+            return mangled;
+        }
+
         std::string name() const
         {
-            return symbol ? (is_external ? symbol->name : symbol->get_qualified_name()) : "<!null symbol!>";
+            return symbol ? (is_external ? symbol->name : get_mangled_name()) : "<!null symbol!>";
         }
 
     private:
@@ -622,7 +636,7 @@ namespace Fern::FLIR
         {
             std::stringstream ss;
 
-            ss << "type " << type_def->name;
+            ss << "type " << type_def->name << "   ::   " << type_def->size << " bytes, align " << type_def->alignment;
 
             if (type_def->fields.empty())
             {
@@ -645,7 +659,7 @@ namespace Fern::FLIR
                 ss << "?";
             }
 
-            ss << " " << field.name << "\n";
+            ss << " " << field.name << "   ::   " << field.type->get_size() << " bytes, align " << field.type->get_alignment() << ", offset " << field.offset << "\n";
             }
 
             ss << "}\n";

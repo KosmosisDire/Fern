@@ -1,0 +1,96 @@
+-- Expected: 165.0
+-- Test method overloading within types
+
+type Calculator
+{
+    f32 base
+
+    new(f32 b)
+    {
+        base = b
+    }
+
+    -- Method overloading by parameter count
+    fn Compute() -> f32
+    {
+        return base
+    }
+
+    fn Compute(f32 x) -> f32
+    {
+        return base + x
+    }
+
+    fn Compute(f32 x, f32 y) -> f32
+    {
+        return base + x + y
+    }
+
+    -- Method overloading by parameter types
+    fn Transform(i32 scale) -> f32
+    {
+        return base * 2.0
+    }
+
+    fn Transform(f32 scale) -> f32
+    {
+        return base * scale
+    }
+
+    fn Transform(bool negate) -> f32
+    {
+        if negate
+        {
+            return 0.0 - base
+        }
+        return base
+    }
+}
+
+type MathOps
+{
+    new() {}
+
+    -- Static-like methods with overloading
+    fn Add(i32 a, i32 b) -> f32
+    {
+        return 1.0
+    }
+
+    fn Add(f32 a, f32 b) -> f32
+    {
+        return a + b
+    }
+
+    fn Mul(f32 a, f32 b) -> f32
+    {
+        return a * b
+    }
+
+    fn Mul(f32 a, f32 b, f32 c) -> f32
+    {
+        return a * b * c
+    }
+}
+
+fn Main
+{
+    var calc = new Calculator(10.0)
+
+    var c1 = calc.Compute()           -- 10
+    var c2 = calc.Compute(5.0)        -- 15
+    var c3 = calc.Compute(3.0, 7.0)   -- 20
+
+    var t1 = calc.Transform(2)        -- 20 (i32 path: base * 2)
+    var t2 = calc.Transform(3.0)      -- 30 (f32 path: base * scale)
+    var t3 = calc.Transform(true)     -- -10 (bool path: negated)
+
+    var ops = new MathOps()
+    var a1 = ops.Add(1, 2)            -- 1.0 (i32 path)
+    var a2 = ops.Add(2.0, 3.0)        -- 5.0 (f32 path)
+    var m1 = ops.Mul(2.0, 3.0)        -- 6.0 (2 params)
+    var m2 = ops.Mul(2.0, 3.0, 4.0)   -- 24.0 (3 params)
+
+    -- Expected: 10 + 15 + 20 + 20 + 30 - 10 + 1 + 5 + 6 + 24 + 44 = 165
+    return c1 + c2 + c3 + t1 + t2 + t3 + a1 + a2 + m1 + m2 + 44.0
+}

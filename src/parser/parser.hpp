@@ -41,6 +41,7 @@ private:
 
     #pragma region Error Handling
     void parse_error(const std::string& msg);
+    void parse_error_no_sync(const std::string& msg);  // Report error without synchronizing
     void parse_warning(const std::string& msg);
     MissingExprSyntax* errorExpr(const std::string& msg);
     MissingStmtSyntax* errorStmt(const std::string& msg);

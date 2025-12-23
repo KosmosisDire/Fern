@@ -1,0 +1,73 @@
+-- Expected: 888.0
+-- Test overload resolution with complex expressions as arguments
+
+fn Calc(i32 x) -> f32
+{
+    return 10.0
+}
+
+fn Calc(f32 x) -> f32
+{
+    return 20.0
+}
+
+fn Calc(bool x) -> f32
+{
+    return 30.0
+}
+
+fn Combine(i32 a, i32 b) -> i32
+{
+    return a + b
+}
+
+fn Combine(f32 a, f32 b) -> f32
+{
+    return a + b
+}
+
+fn Selector(i32 x) -> i32
+{
+    return x
+}
+
+fn Selector(f32 x) -> f32
+{
+    return x
+}
+
+fn Main
+{
+    -- Test with arithmetic expressions
+    var a = 5
+    var b = 3
+    var c1 = Calc(a + b)           -- i32 expression -> 10
+    var c2 = Calc(a + b + 0.0)     -- f32 expression -> 20
+
+    -- Test with comparison expressions (results in bool)
+    var c3 = Calc(a > b)           -- bool -> 30
+    var c4 = Calc(a == b)          -- bool -> 30
+
+    -- Test with logical expressions
+    var c5 = Calc(a > 0 && b > 0)  -- bool -> 30
+
+    -- Test with nested function calls returning different types
+    var c6 = Calc(Combine(1, 2))       -- i32 -> 10
+    var c7 = Calc(Combine(1.0, 2.0))   -- f32 -> 20
+
+    -- Test with expression results passed through selector
+    var c8 = Calc(Selector(a * b))     -- i32 -> 10
+    var c9 = Calc(Selector(a * 1.0))   -- f32 -> 20
+
+    -- Test with mixed expressions
+    var x = 10.0
+    var y = 5.0
+    var c10 = Combine(Selector(1), Selector(2))       -- i32 + i32 = i32
+    var c11 = Combine(Selector(1.0), Selector(2.0))   -- f32 + f32 = f32
+
+    -- c1=10, c2=20, c3=30, c4=30, c5=30, c6=10, c7=20, c8=10, c9=20
+    -- c10=3, c11=3.0
+    -- Total: 10+20+30+30+30+10+20+10+20+3+3 = 186
+    -- Expected: 186 + 702 = 888
+    return c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9 + c10 + c11 + 702.0
+}

@@ -1,0 +1,54 @@
+-- Expected: 321.0
+-- Test function overloading by parameter types
+
+fn Convert(i32 x) -> f32
+{
+    return 100.0
+}
+
+fn Convert(f32 x) -> f32
+{
+    return 200.0
+}
+
+fn Convert(bool x) -> f32
+{
+    return 300.0
+}
+
+fn Add(i32 a, i32 b) -> f32
+{
+    return 1.0
+}
+
+fn Add(f32 a, f32 b) -> f32
+{
+    return 2.0
+}
+
+fn Add(i32 a, f32 b) -> f32
+{
+    return 3.0
+}
+
+fn Add(f32 a, i32 b) -> f32
+{
+    return 4.0
+}
+
+fn Main
+{
+    var c1 = Convert(42)       -- 100 (i32)
+    var c2 = Convert(3.14)     -- 200 (f32)
+    var c3 = Convert(true)     -- 300 (bool)
+
+    var a1 = Add(1, 2)         -- 1 (i32, i32)
+    var a2 = Add(1.0, 2.0)     -- 2 (f32, f32)
+    var a3 = Add(1, 2.0)       -- 3 (i32, f32)
+    var a4 = Add(1.0, 2)       -- 4 (f32, i32)
+
+    -- Expected: 100 + 200 + 300 - 279 = 321
+    -- (where 279 = 1000 - (1+2+3+4)*100 + 279 => let's simplify)
+    -- c1 + c2 - c3 + a1 + a2 + a3 + a4 + 11 = 100 + 200 - 300 + 1 + 2 + 3 + 4 + 311 = 321
+    return c1 + c2 - c3 + a1 + a2 + a3 + a4 + 311.0
+}

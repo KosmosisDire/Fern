@@ -1,0 +1,33 @@
+-- Expected: 111.0
+-- Test function overloading by parameter count
+
+fn Process() -> f32
+{
+    return 1.0
+}
+
+fn Process(f32 a) -> f32
+{
+    return a + 10.0
+}
+
+fn Process(f32 a, f32 b) -> f32
+{
+    return a + b + 100.0
+}
+
+fn Process(f32 a, f32 b, f32 c) -> f32
+{
+    return a + b + c + 1000.0
+}
+
+fn Main
+{
+    var r0 = Process()           -- 1
+    var r1 = Process(5.0)        -- 15
+    var r2 = Process(2.0, 3.0)   -- 105
+    var r3 = Process(1.0, 2.0, 3.0) -- 1006
+
+    -- Expected: 1 + 15 - 105 + 200 = 111
+    return r0 + r1 - r2 + 200.0
+}

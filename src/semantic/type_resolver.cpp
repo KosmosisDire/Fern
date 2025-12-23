@@ -133,11 +133,11 @@ namespace Fern
             if (!container)
                 return nullptr;
 
-            auto members = container->get_member(parts[i]);
-            if (members.empty())
+            auto member = container->get_member(parts[i]);
+            if (!member)
                 return nullptr;
 
-            current = members[0]; // TODO: Handle ambiguity
+            current = member;
         }
 
         return current;
@@ -614,22 +614,11 @@ namespace Fern
         {
             annotate_expression(node, typed->type, node->symbol);
         }
-        else if (auto function = node->symbol->as<FunctionSymbol>())
+        else if (node->symbol->is<FunctionSymbol>() || node->symbol->is<FunctionGroupSymbol>())
         {
-            // Create a proper function type for this function reference
-            std::vector<TypePtr> paramTypes;
-            for (auto param : function->parameters)
-            {
-                if (param && param->type)
-                {
-                    paramTypes.push_back(apply_substitution(param->type));
-                }
-            }
-            TypePtr funcType = typeSystem.get_function(
-                apply_substitution(function->return_type), 
-                paramTypes
-            );
-            annotate_expression(node, funcType, node->symbol);
+            // Functions are resolved in BoundCallExpression where we have argument types
+            // for proper overload resolution. Symbol is already set, skip type annotation
+            // to avoid adding to pendingConstraints (which would cause false errors).
         }
         else
         {
@@ -955,6 +944,30 @@ namespace Fern
 
                 annotate_expression(node, apply_substitution(func->return_type));
             }
+            else if (auto func_group = nameExpr->symbol->as<FunctionGroupSymbol>())
+            {
+                // Resolve the right overload based on argument types
+                auto overloads = func_group->get_overloads();
+                node->method = resolve_overload(overloads, argTypes);
+
+                if (!node->method)
+                {
+                    std::stringstream ss;
+                    ss << "No matching overload for '" << nameExpr->parts.back() << "' with argument types (";
+                    for (size_t i = 0; i < argTypes.size(); ++i)
+                    {
+                        if (i > 0)
+                            ss << ", ";
+                        ss << (argTypes[i] ? argTypes[i]->get_name() : "?");
+                    }
+                    ss << ")";
+                    report_error(node, ss.str());
+                    annotate_expression(node, typeSystem.get_unresolved());
+                    return;
+                }
+
+                annotate_expression(node, apply_substitution(node->method->return_type));
+            }
             else
             {
                 // Check if it's a container with function overloads
@@ -996,7 +1009,7 @@ namespace Fern
                 if (auto method = memberExpr->member->as<FunctionSymbol>())
                 {
                     node->method = method;
-                    
+
                     // Check parameter count
                     if (method->parameters.size() != argTypes.size())
                     {
@@ -1014,15 +1027,39 @@ namespace Fern
                                                       "argument " + std::to_string(i + 1));
                         }
                     }
-                    
+
                     annotate_expression(node, apply_substitution(method->return_type));
+                }
+                else if (auto func_group = memberExpr->member->as<FunctionGroupSymbol>())
+                {
+                    // Handle overloaded methods via FunctionGroupSymbol
+                    auto overloads = func_group->get_overloads();
+                    node->method = resolve_overload(overloads, argTypes);
+
+                    if (!node->method)
+                    {
+                        std::stringstream ss;
+                        ss << "No matching overload for '" << memberExpr->memberName << "' with argument types (";
+                        for (size_t i = 0; i < argTypes.size(); ++i)
+                        {
+                            if (i > 0)
+                                ss << ", ";
+                            ss << (argTypes[i] ? argTypes[i]->get_name() : "?");
+                        }
+                        ss << ")";
+                        report_error(node, ss.str());
+                        annotate_expression(node, typeSystem.get_unresolved());
+                        return;
+                    }
+
+                    annotate_expression(node, apply_substitution(node->method->return_type));
                 }
                 else if (auto container = memberExpr->member->as<ContainerSymbol>())
                 {
                     // Handle overloaded methods
                     auto overloads = container->get_functions(memberExpr->memberName);
                     node->method = resolve_overload(overloads, argTypes);
-                    
+
                     if (!node->method)
                     {
                         std::stringstream ss;
@@ -1038,7 +1075,7 @@ namespace Fern
                         annotate_expression(node, typeSystem.get_unresolved());
                         return;
                     }
-                    
+
                     annotate_expression(node, apply_substitution(node->method->return_type));
                 }
                 else
@@ -1088,8 +1125,8 @@ namespace Fern
         }
 
         // Look up member
-        auto members = typeSymbol->get_member(node->memberName);
-        if (members.empty())
+        auto member = typeSymbol->get_member(node->memberName);
+        if (!member)
         {
             report_error(node, "Member '" + node->memberName + "' not found in type '" +
                                    typeSymbol->name + "'");
@@ -1097,29 +1134,18 @@ namespace Fern
             return;
         }
 
-        node->member = members[0]; // TODO: Handle ambiguity
+        node->member = member;
 
         // Check actual symbol types to get the type
         if (auto varSym = node->member->as<VariableSymbol>())
         {
             annotate_expression(node, varSym->type, node->member);
         }
-        else if (auto funcSym = node->member->as<FunctionSymbol>())
+        else if (node->member->is<FunctionSymbol>() || node->member->is<FunctionGroupSymbol>())
         {
-            // Create a proper function type for method reference
-            std::vector<TypePtr> paramTypes;
-            for (auto param : funcSym->parameters)
-            {
-                if (param && param->type)
-                {
-                    paramTypes.push_back(apply_substitution(param->type));
-                }
-            }
-            TypePtr funcType = typeSystem.get_function(
-                apply_substitution(funcSym->return_type),
-                paramTypes
-            );
-            annotate_expression(node, funcType, node->member);
+            // Methods are resolved in BoundCallExpression where we have argument types
+            // for proper overload resolution. Member is already set, skip type annotation
+            // to avoid adding to pendingConstraints (which would cause false errors).
         }
         else
         {

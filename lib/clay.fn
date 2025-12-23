@@ -1,0 +1,765 @@
+-- ============================================================================
+-- Clay UI Library for Fern
+-- A wrapper around the Clay C layout library
+-- ============================================================================
+
+-- ============================================================================
+-- External C Functions (from clay_wrapper.cpp)
+-- ============================================================================
+
+-- Initialization
+extern fn Fern_Clay_Init(f32 width, f32 height) -> bool
+extern fn Fern_Clay_Shutdown()
+extern fn Fern_Clay_GetLastError() -> char*
+
+-- Frame Lifecycle
+extern fn Fern_Clay_SetLayoutDimensions(f32 width, f32 height)
+extern fn Fern_Clay_SetPointerState(f32 x, f32 y, bool isDown)
+extern fn Fern_Clay_UpdateScrollContainers(bool enableDrag, f32 scrollX, f32 scrollY, f32 deltaTime)
+extern fn Fern_Clay_BeginLayout()
+extern fn Fern_Clay_EndLayout() -> i32
+
+-- Render Commands
+extern fn Fern_Clay_GetRenderCommandCount() -> i32
+extern fn Fern_Clay_GetRenderCommandType(i32 index) -> i32
+extern fn Fern_Clay_GetRenderCommandBounds(i32 index, f32* x, f32* y, f32* width, f32* height)
+extern fn Fern_Clay_GetRectangleData(i32 index, f32* r, f32* g, f32* b, f32* a, f32* cornerTL, f32* cornerTR, f32* cornerBL, f32* cornerBR)
+extern fn Fern_Clay_GetTextData(i32 index, i32* length, f32* r, f32* g, f32* b, f32* a, u16* fontId, u16* fontSize) -> char*
+extern fn Fern_Clay_GetBorderData(i32 index, f32* r, f32* g, f32* b, f32* a, u16* left, u16* right, u16* top, u16* bottom)
+
+-- Element Declaration
+extern fn Fern_Clay_OpenElement()
+extern fn Fern_Clay_CloseElement()
+extern fn Fern_Clay_SetElementId(char* id)
+extern fn Fern_Clay_ConfigureElement(char* id, f32 sizingWidthMin, f32 sizingWidthMax, i32 sizingWidthType, f32 sizingHeightMin, f32 sizingHeightMax, i32 sizingHeightType, u16 paddingLeft, u16 paddingRight, u16 paddingTop, u16 paddingBottom, u16 childGap, i32 layoutDirection, i32 alignX, i32 alignY, f32 bgR, f32 bgG, f32 bgB, f32 bgA, f32 cornerTL, f32 cornerTR, f32 cornerBL, f32 cornerBR)
+extern fn Fern_Clay_ConfigureRect(char* id, f32 r, f32 g, f32 b, f32 a)
+
+-- Text
+extern fn Fern_Clay_Text(char* text, u16 fontId, u16 fontSize, f32 r, f32 g, f32 b, f32 a)
+extern fn Fern_Clay_TextAdvanced(char* text, u16 fontId, u16 fontSize, f32 r, f32 g, f32 b, f32 a, u16 letterSpacing, u16 lineHeight, i32 wrapMode)
+
+-- Interaction
+extern fn Fern_Clay_Hovered() -> bool
+extern fn Fern_Clay_PointerOver(char* id) -> bool
+extern fn Fern_Clay_GetScrollOffset(f32* x, f32* y)
+
+-- Floating
+extern fn Fern_Clay_ConfigureFloating(char* id, f32 offsetX, f32 offsetY, i32 attachTo, i32 attachElement, i32 attachParent, i16 zIndex)
+
+-- Clipping
+extern fn Fern_Clay_ConfigureClip(char* id, bool horizontal, bool vertical, f32 offsetX, f32 offsetY)
+
+-- Border
+extern fn Fern_Clay_ConfigureBorder(char* id, f32 r, f32 g, f32 b, f32 a, u16 left, u16 right, u16 top, u16 bottom, u16 between)
+
+-- Debug
+extern fn Fern_Clay_SetDebugMode(bool enabled)
+extern fn Fern_Clay_IsDebugMode() -> bool
+
+-- Constants (as functions since Fern doesn't have enums)
+extern fn Fern_Clay_RenderType_None() -> i32
+extern fn Fern_Clay_RenderType_Rectangle() -> i32
+extern fn Fern_Clay_RenderType_Border() -> i32
+extern fn Fern_Clay_RenderType_Text() -> i32
+extern fn Fern_Clay_RenderType_Image() -> i32
+extern fn Fern_Clay_RenderType_ScissorStart() -> i32
+extern fn Fern_Clay_RenderType_ScissorEnd() -> i32
+extern fn Fern_Clay_RenderType_Custom() -> i32
+
+extern fn Fern_Clay_SizingType_Fit() -> i32
+extern fn Fern_Clay_SizingType_Grow() -> i32
+extern fn Fern_Clay_SizingType_Percent() -> i32
+extern fn Fern_Clay_SizingType_Fixed() -> i32
+
+-- ============================================================================
+-- Fern Types
+-- ============================================================================
+
+-- RGBA Color (0-255 range)
+type Color
+{
+    f32 r
+    f32 g
+    f32 b
+    f32 a
+
+    new(f32 red, f32 green, f32 blue, f32 alpha)
+    {
+        r = red
+        g = green
+        b = blue
+        a = alpha
+    
+}
+}
+
+-- 2D Rectangle
+type Rect
+{
+    f32 x
+    f32 y
+    f32 width
+    f32 height
+
+    new(f32 px, f32 py, f32 w, f32 h)
+    {
+        x = px
+        y = py
+        width = w
+        height = h
+    
+}
+}
+
+-- Corner radius for rounded rectangles
+type Corners
+{
+    f32 topLeft
+    f32 topRight
+    f32 bottomLeft
+    f32 bottomRight
+
+    new(f32 tl, f32 tr, f32 bl, f32 br)
+    {
+        topLeft = tl
+        topRight = tr
+        bottomLeft = bl
+        bottomRight = br
+    
+}
+}
+
+-- Padding for elements
+type Padding
+{
+    u16 left
+    u16 right
+    u16 top
+    u16 bottom
+
+    new(u16 l, u16 r, u16 t, u16 b)
+    {
+        left = l
+        right = r
+        top = t
+        bottom = b
+    
+}
+}
+
+-- Sizing configuration
+type Sizing
+{
+    f32 minWidth
+    f32 maxWidth
+    i32 widthType
+    f32 minHeight
+    f32 maxHeight
+    i32 heightType
+
+    new()
+    {
+        minWidth = 0.0
+        maxWidth = 0.0
+        widthType = 0  -- FIT
+        minHeight = 0.0
+        maxHeight = 0.0
+        heightType = 0  -- FIT
+    
+}
+}
+
+-- Element layout configuration
+type Layout
+{
+    Sizing sizing
+    Padding padding
+    u16 childGap
+    i32 direction  -- 0 = LEFT_TO_RIGHT, 1 = TOP_TO_BOTTOM
+    i32 alignX     -- 0 = LEFT, 1 = CENTER, 2 = RIGHT
+    i32 alignY     -- 0 = TOP, 1 = CENTER, 2 = BOTTOM
+
+    new()
+    {
+        sizing = new Sizing()
+        padding = new Padding(0, 0, 0, 0)
+        childGap = 0
+        direction = 0
+        alignX = 0
+        alignY = 0
+    
+}
+}
+
+-- ============================================================================
+-- Constants
+-- ============================================================================
+
+-- Layout Direction
+fn LayoutDirection_LeftToRight() -> i32 {
+return 0 
+}
+fn LayoutDirection_TopToBottom() -> i32 {
+return 1 
+}
+
+-- Alignment X
+fn AlignX_Left() -> i32 {
+return 0 
+}
+fn AlignX_Center() -> i32 {
+return 1 
+}
+fn AlignX_Right() -> i32 {
+return 2 
+}
+
+-- Alignment Y
+fn AlignY_Top() -> i32 {
+return 0 
+}
+fn AlignY_Center() -> i32 {
+return 1 
+}
+fn AlignY_Bottom() -> i32 {
+return 2 
+}
+
+-- Sizing Type
+fn SizingType_Fit() -> i32 {
+return Fern_Clay_SizingType_Fit() 
+}
+fn SizingType_Grow() -> i32 {
+return Fern_Clay_SizingType_Grow() 
+}
+fn SizingType_Percent() -> i32 {
+return Fern_Clay_SizingType_Percent() 
+}
+fn SizingType_Fixed() -> i32 {
+return Fern_Clay_SizingType_Fixed() 
+}
+
+-- Render Command Types
+fn RenderType_None() -> i32 {
+return Fern_Clay_RenderType_None() 
+}
+fn RenderType_Rectangle() -> i32 {
+return Fern_Clay_RenderType_Rectangle() 
+}
+fn RenderType_Border() -> i32 {
+return Fern_Clay_RenderType_Border() 
+}
+fn RenderType_Text() -> i32 {
+return Fern_Clay_RenderType_Text() 
+}
+fn RenderType_Image() -> i32 {
+return Fern_Clay_RenderType_Image() 
+}
+fn RenderType_ScissorStart() -> i32 {
+return Fern_Clay_RenderType_ScissorStart() 
+}
+fn RenderType_ScissorEnd() -> i32 {
+return Fern_Clay_RenderType_ScissorEnd() 
+}
+fn RenderType_Custom() -> i32 {
+return Fern_Clay_RenderType_Custom() 
+}
+
+-- Text Wrap Modes
+fn TextWrap_Words() -> i32 {
+return 0 
+}
+fn TextWrap_Newlines() -> i32 {
+return 1 
+}
+fn TextWrap_None() -> i32 {
+return 2 
+}
+
+-- Floating Attach To
+fn AttachTo_None() -> i32 {
+return 0 
+}
+fn AttachTo_Parent() -> i32 {
+return 1 
+}
+fn AttachTo_ElementId() -> i32 {
+return 2 
+}
+fn AttachTo_Root() -> i32 {
+return 3 
+}
+
+-- Floating Attach Points
+fn AttachPoint_LeftTop() -> i32 {
+return 0 
+}
+fn AttachPoint_LeftCenter() -> i32 {
+return 1 
+}
+fn AttachPoint_LeftBottom() -> i32 {
+return 2 
+}
+fn AttachPoint_CenterTop() -> i32 {
+return 3 
+}
+fn AttachPoint_CenterCenter() -> i32 {
+return 4 
+}
+fn AttachPoint_CenterBottom() -> i32 {
+return 5 
+}
+fn AttachPoint_RightTop() -> i32 {
+return 6 
+}
+fn AttachPoint_RightCenter() -> i32 {
+return 7 
+}
+fn AttachPoint_RightBottom() -> i32 {
+return 8 
+}
+
+-- ============================================================================
+-- Helper Functions for Sizing
+-- ============================================================================
+
+fn SizingFit() -> Sizing
+{
+    var s = new Sizing()
+    s.widthType = SizingType_Fit()
+    s.heightType = SizingType_Fit()
+    return s
+}
+
+fn SizingFitMinMax(f32 minW, f32 maxW, f32 minH, f32 maxH) -> Sizing
+{
+    var s = new Sizing()
+    s.minWidth = minW
+    s.maxWidth = maxW
+    s.widthType = SizingType_Fit()
+    s.minHeight = minH
+    s.maxHeight = maxH
+    s.heightType = SizingType_Fit()
+    return s
+}
+
+fn SizingGrow() -> Sizing
+{
+    var s = new Sizing()
+    s.widthType = SizingType_Grow()
+    s.heightType = SizingType_Grow()
+    return s
+}
+
+fn SizingGrowWidth() -> Sizing
+{
+    var s = new Sizing()
+    s.widthType = SizingType_Grow()
+    s.heightType = SizingType_Fit()
+    return s
+}
+
+fn SizingGrowHeight() -> Sizing
+{
+    var s = new Sizing()
+    s.widthType = SizingType_Fit()
+    s.heightType = SizingType_Grow()
+    return s
+}
+
+fn SizingFixed(f32 width, f32 height) -> Sizing
+{
+    var s = new Sizing()
+    s.minWidth = width
+    s.maxWidth = width
+    s.widthType = SizingType_Fixed()
+    s.minHeight = height
+    s.maxHeight = height
+    s.heightType = SizingType_Fixed()
+    return s
+}
+
+fn SizingFixedWidth(f32 width) -> Sizing
+{
+    var s = new Sizing()
+    s.minWidth = width
+    s.maxWidth = width
+    s.widthType = SizingType_Fixed()
+    s.heightType = SizingType_Fit()
+    return s
+}
+
+fn SizingFixedHeight(f32 height) -> Sizing
+{
+    var s = new Sizing()
+    s.widthType = SizingType_Fit()
+    s.minHeight = height
+    s.maxHeight = height
+    s.heightType = SizingType_Fixed()
+    return s
+}
+
+-- ============================================================================
+-- Helper Functions for Padding
+-- ============================================================================
+
+fn PaddingAll(u16 value) -> Padding
+{
+    return new Padding(value, value, value, value)
+}
+
+fn PaddingXY(u16 x, u16 y) -> Padding
+{
+    return new Padding(x, x, y, y)
+}
+
+-- ============================================================================
+-- Helper Functions for Corners
+-- ============================================================================
+
+fn CornersAll(f32 radius) -> Corners
+{
+    return new Corners(radius, radius, radius, radius)
+}
+
+fn CornersTop(f32 radius) -> Corners
+{
+    return new Corners(radius, radius, 0.0, 0.0)
+}
+
+fn CornersBottom(f32 radius) -> Corners
+{
+    return new Corners(0.0, 0.0, radius, radius)
+}
+
+-- ============================================================================
+-- Common Colors
+-- ============================================================================
+
+fn ColorWhite() -> Color {
+return new Color(255.0, 255.0, 255.0, 255.0) 
+}
+fn ColorBlack() -> Color {
+return new Color(0.0, 0.0, 0.0, 255.0) 
+}
+fn ColorRed() -> Color {
+return new Color(255.0, 0.0, 0.0, 255.0) 
+}
+fn ColorGreen() -> Color {
+return new Color(0.0, 255.0, 0.0, 255.0) 
+}
+fn ColorBlue() -> Color {
+return new Color(0.0, 0.0, 255.0, 255.0) 
+}
+fn ColorYellow() -> Color {
+return new Color(255.0, 255.0, 0.0, 255.0) 
+}
+fn ColorCyan() -> Color {
+return new Color(0.0, 255.0, 255.0, 255.0) 
+}
+fn ColorMagenta() -> Color {
+return new Color(255.0, 0.0, 255.0, 255.0) 
+}
+fn ColorGray() -> Color {
+return new Color(128.0, 128.0, 128.0, 255.0) 
+}
+fn ColorTransparent() -> Color {
+return new Color(0.0, 0.0, 0.0, 0.0) 
+}
+
+fn ColorRGB(f32 r, f32 g, f32 b) -> Color
+{
+    return new Color(r, g, b, 255.0)
+}
+
+fn ColorRGBA(f32 r, f32 g, f32 b, f32 a) -> Color
+{
+    return new Color(r, g, b, a)
+}
+
+-- ============================================================================
+-- Clay UI API - Clean Fern Interface
+-- ============================================================================
+
+-- Initialize Clay UI system
+fn ClayInit(f32 width, f32 height) -> bool
+{
+    return Fern_Clay_Init(width, height)
+}
+
+-- Shutdown Clay UI system
+fn ClayShutdown()
+{
+    Fern_Clay_Shutdown()
+}
+
+-- Set layout dimensions (call when window resizes)
+fn ClaySetDimensions(f32 width, f32 height)
+{
+    Fern_Clay_SetLayoutDimensions(width, height)
+}
+
+-- Set pointer/mouse state
+fn ClaySetPointer(f32 x, f32 y, bool isDown)
+{
+    Fern_Clay_SetPointerState(x, y, isDown)
+}
+
+-- Update scroll containers (call each frame)
+fn ClayUpdateScroll(bool enableDrag, f32 scrollX, f32 scrollY, f32 deltaTime)
+{
+    Fern_Clay_UpdateScrollContainers(enableDrag, scrollX, scrollY, deltaTime)
+}
+
+-- Begin a new layout frame
+fn ClayBegin()
+{
+    Fern_Clay_BeginLayout()
+}
+
+-- End layout and get render command count
+fn ClayEnd() -> i32
+{
+    return Fern_Clay_EndLayout()
+}
+
+-- Get number of render commands
+fn ClayGetRenderCount() -> i32
+{
+    return Fern_Clay_GetRenderCommandCount()
+}
+
+-- Get render command type
+fn ClayGetRenderType(i32 index) -> i32
+{
+    return Fern_Clay_GetRenderCommandType(index)
+}
+
+-- Get render command bounding box
+fn ClayGetRenderBounds(i32 index) -> Rect
+{
+    var x = 0.0
+    var y = 0.0
+    var w = 0.0
+    var h = 0.0
+    Fern_Clay_GetRenderCommandBounds(index, &x, &y, &w, &h)
+    return new Rect(x, y, w, h)
+}
+
+-- ============================================================================
+-- Element Creation
+-- ============================================================================
+
+-- Open a new element (must call CloseElement after adding children)
+fn OpenElement()
+{
+    Fern_Clay_OpenElement()
+}
+
+-- Close the current element
+fn CloseElement()
+{
+    Fern_Clay_CloseElement()
+}
+
+-- Configure an element with full layout options
+fn ConfigureElement(char* id, Layout layout, Color bg, Corners corners)
+{
+    Fern_Clay_ConfigureElement(
+        id,
+        layout.sizing.minWidth, layout.sizing.maxWidth, layout.sizing.widthType,
+        layout.sizing.minHeight, layout.sizing.maxHeight, layout.sizing.heightType,
+        layout.padding.left, layout.padding.right, layout.padding.top, layout.padding.bottom,
+        layout.childGap,
+        layout.direction,
+        layout.alignX, layout.alignY,
+        bg.r, bg.g, bg.b, bg.a,
+        corners.topLeft, corners.topRight, corners.bottomLeft, corners.bottomRight
+    )
+}
+
+-- Simple colored rectangle element
+fn ConfigureRect(char* id, Color color)
+{
+    Fern_Clay_ConfigureRect(id, color.r, color.g, color.b, color.a)
+}
+
+-- Configure element with just an ID
+fn ConfigureId(char* id)
+{
+    Fern_Clay_SetElementId(id)
+}
+
+-- ============================================================================
+-- Text Elements
+-- ============================================================================
+
+-- Add text element with basic styling
+fn Text(char* text, u16 fontId, u16 fontSize, Color color)
+{
+    Fern_Clay_Text(text, fontId, fontSize, color.r, color.g, color.b, color.a)
+}
+
+-- Add text element with advanced styling
+fn TextAdvanced(char* text, u16 fontId, u16 fontSize, Color color, u16 letterSpacing, u16 lineHeight, i32 wrapMode)
+{
+    Fern_Clay_TextAdvanced(text, fontId, fontSize, color.r, color.g, color.b, color.a, letterSpacing, lineHeight, wrapMode)
+}
+
+-- ============================================================================
+-- Interaction
+-- ============================================================================
+
+-- Check if current element is hovered
+fn IsHovered() -> bool
+{
+    return Fern_Clay_Hovered()
+}
+
+-- Check if element with ID is hovered
+fn IsPointerOver(char* id) -> bool
+{
+    return Fern_Clay_PointerOver(id)
+}
+
+-- ============================================================================
+-- Floating Elements (Tooltips, Modals, etc.)
+-- ============================================================================
+
+fn ConfigureFloating(char* id, f32 offsetX, f32 offsetY, i32 attachTo, i16 zIndex)
+{
+    Fern_Clay_ConfigureFloating(id, offsetX, offsetY, attachTo, AttachPoint_LeftTop(), AttachPoint_LeftTop(), zIndex)
+}
+
+fn ConfigureFloatingAdvanced(char* id, f32 offsetX, f32 offsetY, i32 attachTo, i32 attachElement, i32 attachParent, i16 zIndex)
+{
+    Fern_Clay_ConfigureFloating(id, offsetX, offsetY, attachTo, attachElement, attachParent, zIndex)
+}
+
+-- ============================================================================
+-- Scrolling / Clipping
+-- ============================================================================
+
+fn ConfigureScroll(char* id, bool horizontal, bool vertical)
+{
+    var scrollX = 0.0
+    var scrollY = 0.0
+    Fern_Clay_GetScrollOffset(&scrollX, &scrollY)
+    Fern_Clay_ConfigureClip(id, horizontal, vertical, scrollX, scrollY)
+}
+
+fn ConfigureClip(char* id, bool horizontal, bool vertical, f32 offsetX, f32 offsetY)
+{
+    Fern_Clay_ConfigureClip(id, horizontal, vertical, offsetX, offsetY)
+}
+
+-- ============================================================================
+-- Borders
+-- ============================================================================
+
+fn ConfigureBorder(char* id, Color color, u16 width)
+{
+    Fern_Clay_ConfigureBorder(id, color.r, color.g, color.b, color.a, width, width, width, width, 0)
+}
+
+fn ConfigureBorderSides(char* id, Color color, u16 left, u16 right, u16 top, u16 bottom)
+{
+    Fern_Clay_ConfigureBorder(id, color.r, color.g, color.b, color.a, left, right, top, bottom, 0)
+}
+
+-- ============================================================================
+-- Debug Mode
+-- ============================================================================
+
+fn ClaySetDebug(bool enabled)
+{
+    Fern_Clay_SetDebugMode(enabled)
+}
+
+fn ClayIsDebug() -> bool
+{
+    return Fern_Clay_IsDebugMode()
+}
+
+-- ============================================================================
+-- Convenience Functions for Common UI Patterns
+-- ============================================================================
+
+-- Create a simple container with background and padding
+fn Container(char* id, Color bg, u16 padding)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.padding = PaddingAll(padding)
+    ConfigureElement(id, layout, bg, CornersAll(0.0))
+}
+
+-- Create a row (horizontal layout)
+fn Row(char* id, u16 gap)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.sizing = SizingGrowWidth()
+    layout.direction = LayoutDirection_LeftToRight()
+    layout.childGap = gap
+    ConfigureElement(id, layout, ColorTransparent(), CornersAll(0.0))
+}
+
+-- Create a column (vertical layout)
+fn Column(char* id, u16 gap)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.sizing = SizingGrowHeight()
+    layout.direction = LayoutDirection_TopToBottom()
+    layout.childGap = gap
+    ConfigureElement(id, layout, ColorTransparent(), CornersAll(0.0))
+}
+
+-- Create a centered container
+fn Center(char* id)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.sizing = SizingGrow()
+    layout.alignX = AlignX_Center()
+    layout.alignY = AlignY_Center()
+    ConfigureElement(id, layout, ColorTransparent(), CornersAll(0.0))
+}
+
+-- Create a button-like element
+fn Button(char* id, Color bg, u16 padding, f32 cornerRadius)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.padding = PaddingAll(padding)
+    ConfigureElement(id, layout, bg, CornersAll(cornerRadius))
+}
+
+-- Create a card element with rounded corners
+fn Card(char* id, Color bg, u16 padding, f32 cornerRadius)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.padding = PaddingAll(padding)
+    layout.direction = LayoutDirection_TopToBottom()
+    ConfigureElement(id, layout, bg, CornersAll(cornerRadius))
+}
+
+-- Create a spacer that grows to fill available space
+fn Spacer(char* id)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.sizing = SizingGrow()
+    ConfigureElement(id, layout, ColorTransparent(), CornersAll(0.0))
+}
+
+-- Create a fixed-size box
+fn Box(char* id, f32 width, f32 height, Color bg)
+{
+    OpenElement()
+    var layout = new Layout()
+    layout.sizing = SizingFixed(width, height)
+    ConfigureElement(id, layout, bg, CornersAll(0.0))
+}

@@ -61,6 +61,9 @@ private:
     std::unique_ptr<NamespaceSymbol> global_namespace;
     Symbol* current_scope = nullptr;
 
+    // Counter for generating unique anonymous block names
+    uint32_t next_block_id = 0;
+
     // Mapping from AST nodes to their corresponding symbols
     std::unordered_map<BaseSyntax*, Symbol*> ast_to_symbol_map;
 

@@ -1,0 +1,58 @@
+type MoveableWindow
+{
+    Panel frame
+    {
+        Panel topBar
+        {
+            Label title{ text = "Window" }
+            Button exit{ icon = Icon{ "close.png" } }
+        }
+        
+        Panel content{ }
+    }
+    
+    new(string title, params Panel[] children)
+    {
+        frame.topBar.title.text = title
+        frame.content.Add(children)
+    }
+}
+
+var dialog = MoveableWindow
+{
+    "Confirm"
+    
+    Label{ text = "Are you sure?" }
+    
+    Panel
+    {
+        layout = Layout.Horizontal
+        Button{ text = "Yes" }
+        Button{ text = "No" }
+    }
+}
+
+--- Turns into ---
+
+type MoveableWindow_frame_topBar
+{
+    Label title
+    Button exit
+}
+
+type MoveableWindow_frame
+{
+    MoveableWindow_frame_topBar topBar
+    Panel content
+}
+
+type MoveableWindow
+{
+    MoveableWindow_frame frame
+}
+
+fn MoveableWindow_frame_topBar.New(%this: MoveableWindow_frame_topBar*)
+{
+    %title = fieldaddr %this, 0
+    
+}

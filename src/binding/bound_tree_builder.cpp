@@ -134,7 +134,8 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        bound->symbol = resolve_symbol({bound->name});
+        // Use get_symbol_for_ast to get the actual FunctionSymbol, not the FunctionGroupSymbol
+        bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
 
         ScopeGuard scope(symbol_table_, bound->symbol);
 
@@ -291,9 +292,9 @@ namespace Fern
             accessor->kind = BoundPropertyAccessor::Kind::Get;
 
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
-                auto getter_members = prop_sym->get_member("get");
-                if (!getter_members.empty()) {
-                    if (auto func_sym = getter_members[0]->as<FunctionSymbol>()) {
+                auto getter_funcs = prop_sym->get_functions("get");
+                if (!getter_funcs.empty()) {
+                    if (auto func_sym = getter_funcs[0]) {
                         accessor->function_symbol = func_sym;
 
                         ScopeGuard scope(symbol_table_, func_sym);
@@ -319,9 +320,9 @@ namespace Fern
             accessor->kind = BoundPropertyAccessor::Kind::Set;
 
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
-                auto setter_members = prop_sym->get_member("set");
-                if (!setter_members.empty()) {
-                    if (auto func_sym = setter_members[0]->as<FunctionSymbol>()) {
+                auto setter_funcs = prop_sym->get_functions("set");
+                if (!setter_funcs.empty()) {
+                    if (auto func_sym = setter_funcs[0]) {
                         accessor->function_symbol = func_sym;
 
                         ScopeGuard scope(symbol_table_, func_sym);
@@ -597,6 +598,10 @@ namespace Fern
             else if (auto func = symbol->as<FunctionSymbol>())
             {
                 member_of = func->parent;
+            }
+            else if (auto func_group = symbol->as<FunctionGroupSymbol>())
+            {
+                member_of = func_group->parent;
             }
 
             if (member_of && member_of->is<TypeSymbol>() && !is_static)
