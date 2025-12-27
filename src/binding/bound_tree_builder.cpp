@@ -106,7 +106,7 @@ namespace Fern
             bound->typeExpression = bind_type_expression(syntax->variable->type);
         }
 
-        bound->symbol = symbol_table_.resolve_local(bound->name);
+        bound->symbol = symbol_table_.resolve_single_local(bound->name);
 
         ScopeGuard scope(symbol_table_, bound->symbol);
 
@@ -134,7 +134,6 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        // Use get_symbol_for_ast to get the actual FunctionSymbol, not the FunctionGroupSymbol
         bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
 
         ScopeGuard scope(symbol_table_, bound->symbol);
@@ -153,7 +152,7 @@ namespace Fern
                 bound_param->name = param_syntax->param->name ? param_syntax->param->name->get_name() : "";
                 bound_param->typeExpression = param_syntax->param->type ? bind_type_expression(param_syntax->param->type) : nullptr;
                 bound_param->isParameter = true;
-                bound_param->symbol = symbol_table_.resolve_local(bound_param->name);
+                bound_param->symbol = symbol_table_.resolve_single_local(bound_param->name);
 
                 bound->parameters.push_back(bound_param);
             }
@@ -193,7 +192,7 @@ namespace Fern
                 bound_param->name = param_syntax->param->name ? param_syntax->param->name->get_name() : "";
                 bound_param->typeExpression = param_syntax->param->type ? bind_type_expression(param_syntax->param->type) : nullptr;
                 bound_param->isParameter = true;
-                bound_param->symbol = symbol_table_.resolve_local(bound_param->name);
+                bound_param->symbol = symbol_table_.resolve_single_local(bound_param->name);
 
                 bound->parameters.push_back(bound_param);
             }
@@ -218,7 +217,7 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        bound->symbol = resolve_symbol({bound->name});
+        bound->symbol = symbol_table_.resolve_single<TypeSymbol>(bound->name);
 
         ScopeGuard scope(symbol_table_, bound->symbol);
 
@@ -243,7 +242,7 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        bound->symbol = resolve_symbol({bound->name});
+        bound->symbol = symbol_table_.resolve_single<NamespaceSymbol>(bound->name);
 
         ScopeGuard scope(symbol_table_, bound->symbol);
 
@@ -284,7 +283,7 @@ namespace Fern
             bound->initializer = bind_expression(syntax->variable->initializer);
         }
 
-        bound->symbol = resolve_symbol({bound->name});
+        bound->symbol = symbol_table_.resolve_single(bound->name);
 
         if (syntax->getter)
         {
@@ -292,7 +291,7 @@ namespace Fern
             accessor->kind = BoundPropertyAccessor::Kind::Get;
 
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
-                auto getter_funcs = prop_sym->get_functions("get");
+                auto getter_funcs = prop_sym->get_members<FunctionSymbol>("get");
                 if (!getter_funcs.empty()) {
                     if (auto func_sym = getter_funcs[0]) {
                         accessor->function_symbol = func_sym;
@@ -320,7 +319,7 @@ namespace Fern
             accessor->kind = BoundPropertyAccessor::Kind::Set;
 
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
-                auto setter_funcs = prop_sym->get_functions("set");
+                auto setter_funcs = prop_sym->get_members<FunctionSymbol>("set");
                 if (!setter_funcs.empty()) {
                     if (auto func_sym = setter_funcs[0]) {
                         accessor->function_symbol = func_sym;
@@ -445,7 +444,7 @@ namespace Fern
             bound->namespaceParts = syntax->target->get_parts();
         }
 
-        if (auto symbol = resolve_symbol(bound->namespaceParts))
+        if (auto symbol = symbol_table_.resolve_single(bound->namespaceParts))
         {
             bound->targetNamespace = symbol->as<NamespaceSymbol>();
         }
@@ -555,7 +554,7 @@ namespace Fern
         if (parts.size() > 1)
         {
             std::vector<std::string> first_part = {parts[0]};
-            auto first_symbol = resolve_symbol(first_part);
+            auto first_symbol = symbol_table_.resolve_single(first_part);
 
             if (first_symbol && (first_symbol->is<VariableSymbol>() || first_symbol->is<ParameterSymbol>()))
             {
@@ -579,7 +578,7 @@ namespace Fern
             }
         }
 
-        auto symbol = resolve_symbol(parts);
+        auto symbol = symbol_table_.resolve_single(parts);
 
         // Add implicit 'this' for unqualified member access
         if (symbol && parts.size() == 1)
@@ -598,10 +597,6 @@ namespace Fern
             else if (auto func = symbol->as<FunctionSymbol>())
             {
                 member_of = func->parent;
-            }
-            else if (auto func_group = symbol->as<FunctionGroupSymbol>())
-            {
-                member_of = func_group->parent;
             }
 
             if (member_of && member_of->is<TypeSymbol>() && !is_static)
@@ -692,18 +687,9 @@ namespace Fern
             }
         }
 
-        if (auto name_expr = bound->callee->as<BoundNameExpression>())
-        {
-            std::string func_name = name_expr->parts.empty() ? "" : name_expr->parts.back();
-            bound->method = resolve_function(func_name, bound);
-        }
-        else if (auto member_expr = bound->callee->as<BoundMemberAccessExpression>())
-        {
-            if (member_expr->member && member_expr->member->is<FunctionSymbol>())
-            {
-                bound->method = member_expr->member->as<FunctionSymbol>();
-            }
-        }
+        // Don't resolve method here - defer to type resolver for proper overload resolution
+        // The type resolver has access to resolved argument types needed for overload selection
+        bound->method = nullptr;
 
         return bound;
     }
@@ -721,7 +707,11 @@ namespace Fern
 
         if (bound->object && bound->object->type)
         {
-            bound->member = resolve_member(bound->object->type, bound->memberName);
+            auto type = symbol_table_.resolve_single(bound->object->type->get_name());
+            if (type && type->is<TypeSymbol>())
+            {
+                bound->member = type->as<TypeSymbol>()->get_member(bound->memberName);
+            }
         }
 
         return bound;
@@ -804,7 +794,7 @@ namespace Fern
         {
             bound->parts = name->get_parts();
 
-            if (auto symbol = resolve_symbol(bound->parts))
+            if (auto symbol = symbol_table_.resolve_single(bound->parts))
             {
                 if (auto type_symbol = symbol->as<TypeSymbol>())
                 {

@@ -33,11 +33,42 @@ public:
     ParameterSymbol* define_parameter(const std::string& name, TypePtr type, uint32_t index);
     
     // Symbol resolution
-    Symbol* resolve(const std::string& name);
-    Symbol* resolve(const std::vector<std::string>& parts);
-    Symbol* resolve_local(const std::string& name);
-    Symbol* resolve_local(const std::vector<std::string>& parts);
-    FunctionSymbol* resolve_function(const std::string& name, const std::vector<TypePtr>& arg_types);
+    FunctionSymbol* resolve_function(const std::string& name, std::vector<TypePtr> arg_types);
+    Symbol* resolve_single(const std::string& name);
+    Symbol* resolve_single(const std::vector<std::string>& parts);
+    std::vector<Symbol*> resolve(const std::string& name);
+    std::vector<Symbol*> resolve(const std::vector<std::string>& parts);
+
+    // Type-filtered symbol resolution
+    template<typename T>
+    T* resolve_single(const std::string& name)
+    {
+        auto symbols = resolve(name);
+        for (auto* sym : symbols)
+        {
+            if (auto* typed = sym->as<T>())
+                return typed;
+        }
+        return nullptr;
+    }
+
+    template<typename T>
+    T* resolve_single(const std::vector<std::string>& parts)
+    {
+        auto symbols = resolve(parts);
+        for (auto* sym : symbols)
+        {
+            if (auto* typed = sym->as<T>())
+                return typed;
+        }
+        return nullptr;
+    }
+
+    FunctionSymbol* resolve_function_local(const std::string& name, std::vector<TypePtr> arg_types);
+    Symbol* resolve_single_local(const std::string& name);
+    Symbol* resolve_single_local(const std::vector<std::string>& parts);
+    std::vector<Symbol*> resolve_local(const std::string& name);
+    std::vector<Symbol*> resolve_local(const std::vector<std::string>& parts);
     
     // Access to global namespace
     NamespaceSymbol* get_global_namespace();
@@ -51,11 +82,11 @@ public:
     Symbol* get_symbol_for_ast(BaseSyntax* ast_node);
 
     // Merge another symbol table into this one
-    std::vector<std::string> merge(SymbolTable& other);
+    void merge(SymbolTable& other);
 
     // Debugging
     std::string to_string() const;
-    
+
 private:
     TypeSystem& types;
     std::unique_ptr<NamespaceSymbol> global_namespace;
@@ -68,11 +99,10 @@ private:
     std::unordered_map<BaseSyntax*, Symbol*> ast_to_symbol_map;
 
     // Recursively merge source namespace into target namespace
-    void merge_namespace(NamespaceSymbol* target, NamespaceSymbol* source,
-                        std::vector<std::string>& conflicts);
+    void merge_namespace(NamespaceSymbol* target, NamespaceSymbol* source);
 
     // Update parent pointers recursively after moving a symbol
-    void update_parent_pointers(Symbol* symbol, Symbol* new_parent);
+    void update_parent_pointers(Symbol* symbol, ContainerSymbol* new_parent);
 };
 
 } // namespace Fern

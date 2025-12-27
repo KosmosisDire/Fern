@@ -48,15 +48,9 @@ static void collect_functions(Symbol* symbol, std::vector<FunctionSymbol*>& func
     if (auto* func_sym = symbol->as<FunctionSymbol>()) {
         functions.push_back(func_sym);
     }
-    else if (auto* func_group = symbol->as<FunctionGroupSymbol>()) {
-        // Collect all overloads from the function group
-        for (auto* overload : func_group->get_overloads()) {
-            functions.push_back(overload);
-        }
-    }
     if (auto* container = symbol->as<ContainerSymbol>()) {
-        for (auto& [name, child] : container->members) {
-            collect_functions(child.get(), functions);
+        for (auto [name, child] : *container) {
+            collect_functions(child, functions);
         }
     }
 }
@@ -84,7 +78,7 @@ void BoundToFLIR::init_module(NamespaceSymbol* global_ns, const std::vector<Type
             size_t offset = 0;
             size_t max_align = 1;
 
-            for (auto& [name, member_ptr] : type_sym->members) {
+            for (auto [name, member_ptr] : *type_sym) {
                 if (auto* var = member_ptr->as<VariableSymbol>()) {
                     if (!var->is_field()) continue;
 
@@ -282,9 +276,9 @@ size_t BoundToFLIR::get_field_index(TypeSymbol* type_sym, Symbol* field_sym) {
     if (!type_sym || !field_sym) return 0;
 
     size_t index = 0;
-    for (auto& [name, member_ptr] : type_sym->members) {
+    for (auto [name, member_ptr] : *type_sym) {
         if (member_ptr->is<VariableSymbol>()) {
-            if (member_ptr.get() == field_sym) {
+            if (member_ptr == field_sym) {
                 return index;
             }
             index++;
@@ -670,7 +664,7 @@ void BoundToFLIR::visit(BoundMemberAccessExpression* node) {
         return;
     }
 
-    if (node->member->as<FunctionSymbol>() || node->member->as<FunctionGroupSymbol>()) {
+    if (node->member->as<FunctionSymbol>()) {
         // Function references aren't lowered as member access
         lowered[node] = {nullptr, false};
         return;

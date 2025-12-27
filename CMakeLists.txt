@@ -98,6 +98,8 @@ set(SOURCE_FILES
     src/semantic/type_resolver.cpp
     src/semantic/syntax_validator.cpp
     src/semantic/type_topology.cpp
+    src/semantic/symbol_table_validator.cpp
+    src/semantic/semantic_validator.cpp
     
     # Binding
     src/binding/bound_tree_builder.cpp
@@ -106,7 +108,6 @@ set(SOURCE_FILES
     # FLIR
     src/flir/ir_type.cpp
     src/flir/bound_to_flir.cpp
-    # src/flir/mem2reg.cpp
 
     # Code Generator
     src/codegen/llvm_ir_builder.cpp

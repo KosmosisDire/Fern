@@ -45,7 +45,6 @@ namespace Fern
         void annotate_expression(BoundExpression* expr, TypePtr type, Symbol* symbol = nullptr);
 
         #pragma region Symbol Resolution
-        Symbol* resolve_qualified_name(const std::vector<std::string>& parts);
         FunctionSymbol* resolve_overload(const std::vector<FunctionSymbol*>& overloads,
                                         const std::vector<TypePtr>& argTypes);
 

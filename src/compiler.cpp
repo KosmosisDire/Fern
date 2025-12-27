@@ -14,6 +14,8 @@
 #include "semantic/symbol_table_builder.hpp"
 #include "semantic/syntax_validator.hpp"
 #include "semantic/type_topology.hpp"
+#include "semantic/symbol_table_validator.hpp"
+#include "semantic/semantic_validator.hpp"
 #include "flir/flir.hpp"
 #include "flir/bound_to_flir.hpp"
 #include "binding/conversion_inserter.hpp"
@@ -159,6 +161,8 @@ namespace Fern
 
     std::unique_ptr<CompiledModule> Compiler::compile(const std::vector<SourceFile> &source_files)
     {
+        try 
+        {
         if (source_files.empty())
         {
             return std::make_unique<CompiledModule>();
@@ -298,43 +302,36 @@ namespace Fern
                 continue;
 
             LOG_INFO("Merging symbols from: " + state.file.filename, LogCategory::COMPILER);
-
-            // Merge the local table into global
-            auto conflicts = global_symbols->merge(*state.symbolTable);
-
-            // Report conflicts as errors (TODO: convert conflicts to proper Diagnostics)
-            for (const auto &conflict : conflicts)
-            {
-                std::cout << "Symbol merge conflict: " << conflict << std::endl;
-                state.diagnostics.push_back(Diagnostic(
-                    Diagnostic::Severity::Error,
-                    "Symbol merge conflict: " + conflict,
-                    SourceRange(),
-                    "SymbolMerge"
-                ));
-            }
-        }
-
-
-        // Early return if merge conflicts - can't continue with conflicting symbols
-        if (has_any_errors(file_states))
-        {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            global_symbols->merge(*state.symbolTable);
         }
 
         // Define built-in functions (intrinsics) in global symbol table
         define_intrinsics(global_symbols.get(), global_type_system.get());
         
         // get the String symbol and initialize string type in global type system
-        auto string_symbol = global_symbols->resolve("String")->as<TypeSymbol>();
-        global_type_system->init_string_type(string_symbol);
+        auto string_symbol = global_symbols->resolve_single("String");
+        if (string_symbol)
+        {
+            global_type_system->init_string_type(string_symbol->as<TypeSymbol>());
+        }
 
         // print global symbol table
         LOG_INFO("\nGlobal Symbol Table after Merging:\n", LogCategory::COMPILER);
         LOG_INFO(global_symbols->to_string(), LogCategory::COMPILER);
 
+        SymbolTableValidator symbol_validator;
+        symbol_validator.validate_untyped(*global_symbols);
+        if (symbol_validator.has_errors())
+        {
+            auto diags = gather_all_diagnostics(file_states);
+            for (const auto& d : symbol_validator.get_diagnostics())
+            {
+                diags.push_back(d);
+            }
+            return std::make_unique<CompiledModule>(diags);
+        }
+
         // === Binding ===
-        // SymbolResolutionVisitor resolver_visitor(*global_symbols);
         for (auto &state : file_states)
         {
             if (!state.symbols_complete)
@@ -369,6 +366,7 @@ namespace Fern
         {
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
+
 
         // === Type resolution with global symbol table ===
         LOG_HEADER("Type resolution", LogCategory::COMPILER);
@@ -437,6 +435,19 @@ namespace Fern
         {
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
         }
+
+        symbol_validator.validate_typed(*global_symbols);
+
+        if (symbol_validator.has_errors())
+        {
+            auto diags = gather_all_diagnostics(file_states);
+            for (const auto& d : symbol_validator.get_diagnostics())
+            {
+                diags.push_back(d);
+            }
+            return std::make_unique<CompiledModule>(diags);
+        }
+
 
         // === Build type topology (detect cycles, compute dependency order) ===
         LOG_HEADER("Type topology", LogCategory::COMPILER);
@@ -561,6 +572,19 @@ namespace Fern
             std::move(llvm_module),
             "FernProgram",
             gather_all_diagnostics(file_states, global_diagnostics));
+
+        }
+        catch (const std::exception &e)
+        {
+            std::vector<Diagnostic> diags;
+            diags.push_back(Diagnostic(
+                Diagnostic::Severity::Fatal,
+                "Unhandled compiler exception: " + std::string(e.what()),
+                SourceRange(),
+                "Compiler"
+            ));
+            return std::make_unique<CompiledModule>(diags);
+        }
     }
 
 } // namespace Fern

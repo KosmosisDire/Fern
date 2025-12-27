@@ -131,6 +131,7 @@ namespace Fern
 
         // Apply modifiers
         func_symbol->modifiers = node->modifiers;
+        func_symbol->location = node->location;
         if (func_symbol->is_extern())
         {
             // Validate: extern functions must not have a body
@@ -156,7 +157,7 @@ namespace Fern
                 if (param_decl->param && param_decl->param->name)
                 {
                     std::string param_name = param_decl->param->name->get_name();
-                    if (auto param_sym = symbolTable.resolve(param_name))
+                    for (auto param_sym : symbolTable.resolve(param_name))
                     {
                         if (auto p = param_sym->as<ParameterSymbol>())
                         {
@@ -228,18 +229,12 @@ namespace Fern
                 if (param_decl->param && param_decl->param->name)
                 {
                     std::string param_name = param_decl->param->name->get_name();
-                    if (auto param_sym = symbolTable.resolve(param_name))
+                    for (auto param_sym : symbolTable.resolve(param_name))
                     {
                         if (auto p = param_sym->as<ParameterSymbol>())
                         {
                             params.push_back(p);
                         }
-                        else
-                        {
-                        }
-                    }
-                    else
-                    {
                     }
                 }
             }
@@ -337,6 +332,7 @@ namespace Fern
         // Create getter function symbol if present
         if (node->getter) {
             auto getter_symbol = symbolTable.define_function("get", type);
+            getter_symbol->location = node->getter->location;
             if (!getter_symbol) {
                 error("Failed to define getter function for property '" + name + "'", node->location);
             }
@@ -346,6 +342,7 @@ namespace Fern
         if (node->setter) {
             auto void_type = typeSystem.get_void();
             auto setter_symbol = symbolTable.define_function("set", void_type);
+            setter_symbol->location = node->setter->location;
             if (!setter_symbol) {
                 error("Failed to define setter function for property '" + name + "'", node->location);
             }

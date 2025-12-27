@@ -7,6 +7,7 @@ namespace Fern
     // Source range with absolute positioning
     struct SourceLocation
     {
+        int file_id; // Index of the source file
         int offset; // Byte offset in source file
         int line;   // 1-based line number
         int column; // 1-based column number

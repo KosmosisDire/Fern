@@ -19,36 +19,7 @@ namespace Fern
         // Simple symbol lookup
         Symbol* resolve_symbol(const std::vector<std::string>& parts)
         {
-            return symbol_table_.resolve(parts);
-        }
-        
-        // Function overload resolution
-        FunctionSymbol* resolve_function(const std::string& name, BoundCallExpression* call)
-        {
-            std::vector<TypePtr> arg_types;
-            for (auto* arg : call->arguments)
-            {
-                if (arg && arg->type)
-                {
-                    arg_types.push_back(arg->type);
-                }
-            }
-            return symbol_table_.resolve_function(name, arg_types);
-        }
-        
-        // Member resolution on a type
-        Symbol* resolve_member(TypePtr type, const std::string& member_name)
-        {
-            if (!type) return nullptr;
-
-            if (auto symbol = symbol_table_.resolve(type->get_name()))
-            {
-                if (auto type_symbol = symbol->as<TypeSymbol>())
-                {
-                    return type_symbol->get_member(member_name);
-                }
-            }
-            return nullptr;
+            return symbol_table_.resolve(parts)[0];
         }
 
         // Get current containing type for 'this' expressions

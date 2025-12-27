@@ -32,8 +32,8 @@ void TypeTopology::collect_types(Symbol* symbol)
         all_types.push_back(type_sym);
     }
     if (auto* container = symbol->as<ContainerSymbol>()) {
-        for (auto& [name, child] : container->members) {
-            collect_types(child.get());
+        for (auto [name, child] : *container) {
+            collect_types(child);
         }
     }
 }
@@ -67,7 +67,7 @@ void TypeTopology::build_dependencies()
     for (auto* type_sym : all_types) {
         auto& deps = dependencies[type_sym];
 
-        for (auto& [name, member_ptr] : type_sym->members) {
+        for (auto [name, member_ptr] : *type_sym) {
             if (auto* var = member_ptr->as<VariableSymbol>()) {
                 if (!var->is_field()) continue;
 
@@ -114,7 +114,7 @@ void TypeTopology::topological_sort()
 
         bool all_deps_ok = true;
         // Visit ALL dependencies (don't short-circuit) to find all cycle-causing fields
-        for (auto& [name, member_ptr] : type_sym->members) {
+        for (auto [name, member_ptr] : *type_sym) {
             if (auto* var = member_ptr->as<VariableSymbol>()) {
                 if (!var->is_field()) continue;
 

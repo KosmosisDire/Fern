@@ -73,4 +73,48 @@ namespace Fern
         }, kind);
     }
 
+    bool Type::equals(TypePtr a, TypePtr b)
+    {
+        if (a == b) return true;
+        if (!a || !b) return false;
+        if (a->kind.index() != b->kind.index()) return false;
+
+        if (auto* pa = a->as<PrimitiveType>())
+        {
+            return pa->kind == b->as<PrimitiveType>()->kind;
+        }
+
+        if (auto* pa = a->as<PointerType>())
+        {
+            return equals(pa->pointee, b->as<PointerType>()->pointee);
+        }
+
+        if (auto* pa = a->as<ArrayType>())
+        {
+            auto* pb = b->as<ArrayType>();
+            return pa->size == pb->size && equals(pa->element, pb->element);
+        }
+
+        if (auto* pa = a->as<FunctionType>())
+        {
+            auto* pb = b->as<FunctionType>();
+            if (!equals(pa->returnType, pb->returnType)) return false;
+            if (pa->paramTypes.size() != pb->paramTypes.size()) return false;
+            for (size_t i = 0; i < pa->paramTypes.size(); i++)
+            {
+                if (!equals(pa->paramTypes[i], pb->paramTypes[i])) return false;
+            }
+            return true;
+        }
+
+        if (auto* pa = a->as<NamedType>())
+        {
+            auto* pb = b->as<NamedType>();
+            if (!pa->symbol || !pb->symbol) return false;
+            return pa->symbol->get_qualified_name() == pb->symbol->get_qualified_name();
+        }
+
+        return false;
+    }
+
 } // namespace Fern

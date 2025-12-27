@@ -74,6 +74,9 @@ namespace Fern
         bool is_value_type() const;
         bool is_reference_type() const;
         std::string get_name() const;
+
+        // Structural equality (works across different TypeSystem instances)
+        static bool equals(TypePtr a, TypePtr b);
     };
 
 } // namespace Fern

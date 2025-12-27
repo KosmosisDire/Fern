@@ -17,11 +17,11 @@ namespace Fern
     struct NamespaceSymbol;
     struct TypeSymbol;
     struct FunctionSymbol;
-    struct FunctionGroupSymbol;
     struct VariableSymbol;
     struct ParameterSymbol;
     struct PropertySymbol;
     struct EnumCaseSymbol;
+    struct ContainerSymbol;
     
     using SymbolPtr = Symbol*;
     
@@ -35,7 +35,7 @@ namespace Fern
         ModifierKindFlags modifiers = ModifierKindFlags::None;
         
         // Tree structure
-        Symbol* parent = nullptr;
+        ContainerSymbol* parent = nullptr;
         
         // Modifier helper functions
         bool is_static() const { return has_flag(modifiers, ModifierKindFlags::Static); }
@@ -70,12 +70,12 @@ namespace Fern
         // Find enclosing symbol of type
         template<typename T>
         T* get_enclosing() {
-            Symbol* current = parent;
+            Symbol* current = (Symbol*)parent;
             while (current) {
                 if (auto result = current->as<T>()) {
                     return result;
                 }
-                current = current->parent;
+                current = (Symbol*)current->parent;
             }
             return nullptr;
         }
@@ -85,22 +85,58 @@ namespace Fern
     
     struct ContainerSymbol : Symbol {
         // Children organized by name, preserving insertion order
-        tsl::ordered_map<std::string, std::unique_ptr<Symbol>> members;
+        tsl::ordered_map<std::string, std::vector<std::unique_ptr<Symbol>>> members;
 
         // Add a member (for non-function symbols)
         Symbol* add_member(std::unique_ptr<Symbol> symbol);
-
-        // Add a function (creates or reuses FunctionGroupSymbol)
-        FunctionSymbol* add_function(std::unique_ptr<FunctionSymbol> func);
-
-        // Get the function group for a name (nullptr if not found or not a function)
-        FunctionGroupSymbol* get_function_group(const std::string& name);
-
-        // Lookup member by name (non-recursive) - returns single symbol or nullptr
         Symbol* get_member(const std::string& name);
+        std::vector<Symbol*> get_members(const std::string& name);
+        // get members of type template
+        template<typename T>
+        std::vector<T*> get_members(const std::string& name) {
+            std::vector<T*> result;
+            auto iter = members.find(name);
+            if (iter != members.end()) {
+                for (const auto& sym_ptr : iter->second) {
+                    if (auto casted = sym_ptr->as<T>()) {
+                        result.push_back(casted);
+                    }
+                }
+            }
+            return result;
+        }
 
-        // Get all function overloads (convenience method)
-        std::vector<FunctionSymbol*> get_functions(const std::string& name);
+        // Flat iterator over all members, yielding (name, Symbol*) pairs
+        class MemberIterator {
+            using OuterIt = decltype(members)::iterator;
+            using InnerIt = std::vector<std::unique_ptr<Symbol>>::const_iterator;
+
+            OuterIt outer, outer_end;
+            InnerIt inner;
+
+            void skip_empty() {
+                while (outer != outer_end && inner == outer->second.end()) {
+                    if (++outer != outer_end) inner = outer->second.begin();
+                }
+            }
+
+        public:
+            using value_type = std::pair<const std::string&, Symbol*>;
+
+            MemberIterator(OuterIt o, OuterIt end) : outer(o), outer_end(end) {
+                if (outer != outer_end) { inner = outer->second.begin(); skip_empty(); }
+            }
+
+            value_type operator*() const { return {outer->first, inner->get()}; }
+
+            MemberIterator& operator++() { ++inner; skip_empty(); return *this; }
+            bool operator!=(const MemberIterator& o) const {
+                return outer != o.outer || (outer != outer_end && inner != o.inner);
+            }
+        };
+
+        MemberIterator begin() { return {members.begin(), members.end()}; }
+        MemberIterator end() { return {members.end(), members.end()}; }
     };
 
     #pragma region Namespace Symbol
@@ -122,8 +158,8 @@ namespace Fern
     
     struct TypeSymbol : ContainerSymbol {
         TypePtr type;  // The semantic type this symbol represents
-        bool has_fields() const {
-            for (const auto& [name, member_ptr] : members) {
+        bool has_fields() {
+            for (auto [name, member_ptr] : *this) {
                 if (member_ptr->is<VariableSymbol>()) {
                     return true;
                 }
@@ -149,22 +185,6 @@ namespace Fern
         // Check if signatures match (for overloading)
         bool signature_matches(FunctionSymbol* other) const;
         std::string get_signature() const;
-    };
-
-    #pragma region Function Group Symbol
-
-    // Groups all overloads of a function with the same name
-    struct FunctionGroupSymbol : Symbol {
-        std::vector<std::unique_ptr<FunctionSymbol>> overloads;
-
-        FunctionGroupSymbol(const std::string& name);
-
-        FunctionSymbol* add_overload(std::unique_ptr<FunctionSymbol> func);
-        std::vector<FunctionSymbol*> get_overloads() const;
-        FunctionSymbol* resolve(const std::vector<TypePtr>& arg_types) const;
-        FunctionSymbol* get_single() const {
-            return overloads.size() == 1 ? overloads[0].get() : nullptr;
-        }
     };
 
     #pragma region Variable Symbols

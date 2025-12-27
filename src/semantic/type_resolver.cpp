@@ -111,38 +111,6 @@ namespace Fern
 
     #pragma region Symbol Resolution
 
-    Symbol *TypeResolver::resolve_qualified_name(const std::vector<std::string> &parts)
-    {
-        if (parts.empty())
-            return nullptr;
-
-        // TODO: Add this method to SymbolTable
-        // For now, we'll handle single names and report an error for qualified names
-        if (parts.size() == 1)
-        {
-            return symbolTable.resolve(parts[0]);
-        }
-
-        // For qualified names, we need to navigate the symbol hierarchy
-        // This should be added to SymbolTable as resolve_qualified()
-        Symbol *current = symbolTable.get_global_namespace();
-
-        for (size_t i = 0; i < parts.size(); ++i)
-        {
-            auto container = current->as<ContainerSymbol>();
-            if (!container)
-                return nullptr;
-
-            auto member = container->get_member(parts[i]);
-            if (!member)
-                return nullptr;
-
-            current = member;
-        }
-
-        return current;
-    }
-
     FunctionSymbol *TypeResolver::resolve_overload(const std::vector<FunctionSymbol *> &overloads,
                                                         const std::vector<TypePtr> &argTypes)
     {
@@ -266,16 +234,10 @@ namespace Fern
                 return typeSystem.get_unresolved();
             }
 
-            // Look up the type symbol
-            Symbol *symbol = resolve_qualified_name(boundType->parts);
-
-
-            if (symbol)
+            // Look up the type symbol specifically (filters for TypeSymbol)
+            if (auto typeSymbol = symbolTable.resolve_single<TypeSymbol>(boundType->parts))
             {
-                if (auto typeSymbol = symbol->as<TypeSymbol>())
-                {
-                    return typeSymbol->type;
-                }
+                return typeSymbol->type;
             }
 
             // Check for primitive types
@@ -599,7 +561,7 @@ namespace Fern
         // Resolve symbol if not already resolved
         if (!node->symbol)
         {
-            node->symbol = resolve_qualified_name(node->parts);
+            node->symbol = symbolTable.resolve_single(node->parts);
             if (!node->symbol)
             {
                 report_error(node, "Undefined symbol: " +
@@ -614,7 +576,7 @@ namespace Fern
         {
             annotate_expression(node, typed->type, node->symbol);
         }
-        else if (node->symbol->is<FunctionSymbol>() || node->symbol->is<FunctionGroupSymbol>())
+        else if (node->symbol->is<FunctionSymbol>())
         {
             // Functions are resolved in BoundCallExpression where we have argument types
             // for proper overload resolution. Symbol is already set, skip type annotation
@@ -920,45 +882,45 @@ namespace Fern
         // Handle direct function calls
         if (auto nameExpr = node->callee->as<BoundNameExpression>())
         {
+            std::string funcName = nameExpr->parts.empty() ? "" : nameExpr->parts.back();
+
+            // Find the container to look up overloads
+            ContainerSymbol* container = nullptr;
             if (auto func = nameExpr->symbol->as<FunctionSymbol>())
             {
-                node->method = func;
-
-                // Check parameter count
-                if (func->parameters.size() != argTypes.size())
-                {
-                    report_error(node, "Argument count mismatch: expected " +
-                                           std::to_string(func->parameters.size()) + ", got " +
-                                           std::to_string(argTypes.size()));
-                }
-                else
-                {
-                    // Check argument types
-                    for (size_t i = 0; i < argTypes.size(); ++i)
-                    {
-                        TypePtr paramType = apply_substitution(func->parameters[i]->type);
-                        check_implicit_conversion(argTypes[i], paramType, node,
-                                                  "argument " + std::to_string(i + 1));
-                    }
-                }
-
-                annotate_expression(node, apply_substitution(func->return_type));
+                // The symbol points to a function - get its parent container for overload lookup
+                container = func->parent ? func->parent->as<ContainerSymbol>() : nullptr;
             }
-            else if (auto func_group = nameExpr->symbol->as<FunctionGroupSymbol>())
+            else if (auto cont = nameExpr->symbol->as<ContainerSymbol>())
             {
-                // Resolve the right overload based on argument types
-                auto overloads = func_group->get_overloads();
+                // The symbol is already a container
+                container = cont;
+            }
+
+            if (container)
+            {
+                // Get all overloads with this name
+                auto overloads = container->get_members<FunctionSymbol>(funcName);
+
+                if (overloads.empty())
+                {
+                    report_error(node, "No function named '" + funcName + "' found");
+                    annotate_expression(node, typeSystem.get_unresolved());
+                    return;
+                }
+
+                // Resolve the best overload based on argument types
                 node->method = resolve_overload(overloads, argTypes);
 
                 if (!node->method)
                 {
                     std::stringstream ss;
-                    ss << "No matching overload for '" << nameExpr->parts.back() << "' with argument types (";
+                    ss << "No matching overload for '" << funcName << "' with argument types (";
                     for (size_t i = 0; i < argTypes.size(); ++i)
                     {
                         if (i > 0)
                             ss << ", ";
-                        ss << (argTypes[i] ? argTypes[i]->get_name() : "?");
+                        ss << argTypes[i]->get_name();
                     }
                     ss << ")";
                     report_error(node, ss.str());
@@ -966,123 +928,96 @@ namespace Fern
                     return;
                 }
 
+                // Validate argument types against selected overload
+                if (node->method->parameters.size() == argTypes.size())
+                {
+                    for (size_t i = 0; i < argTypes.size(); ++i)
+                    {
+                        TypePtr paramType = apply_substitution(node->method->parameters[i]->type);
+                        check_implicit_conversion(argTypes[i], paramType, node,
+                                                  "argument " + std::to_string(i + 1));
+                    }
+                }
+
                 annotate_expression(node, apply_substitution(node->method->return_type));
             }
             else
             {
-                // Check if it's a container with function overloads
-                if (auto container = nameExpr->symbol->as<ContainerSymbol>())
-                {
-                    auto overloads = container->get_functions(nameExpr->parts.back());
-                    node->method = resolve_overload(overloads, argTypes);
-
-                    if (!node->method)
-                    {
-                        std::stringstream ss;
-                        ss << "No matching overload for '" << nameExpr->parts.back() << "' with argument types (";
-                        for (size_t i = 0; i < argTypes.size(); ++i)
-                        {
-                            if (i > 0)
-                                ss << ", ";
-                            ss << argTypes[i]->get_name();
-                        }
-                        ss << ")";
-                        report_error(node, ss.str());
-                        annotate_expression(node, typeSystem.get_unresolved());
-                        return;
-                    }
-
-                    annotate_expression(node, apply_substitution(node->method->return_type));
-                }
-                else
-                {
-                    report_error(node, "Expression is not callable");
-                    annotate_expression(node, typeSystem.get_unresolved());
-                }
+                report_error(node, "Expression is not callable");
+                annotate_expression(node, typeSystem.get_unresolved());
             }
         }
         else if (auto memberExpr = node->callee->as<BoundMemberAccessExpression>())
         {
             // Handle method calls (object.method(...))
+            // Find the container (type) to look up overloads
+            ContainerSymbol* container = nullptr;
+            std::string methodName = memberExpr->memberName;
+
             if (memberExpr->member)
             {
                 if (auto method = memberExpr->member->as<FunctionSymbol>())
                 {
-                    node->method = method;
-
-                    // Check parameter count
-                    if (method->parameters.size() != argTypes.size())
-                    {
-                        report_error(node, "Argument count mismatch: expected " +
-                                           std::to_string(method->parameters.size()) + ", got " +
-                                           std::to_string(argTypes.size()));
-                    }
-                    else
-                    {
-                        // Check argument types
-                        for (size_t i = 0; i < argTypes.size(); ++i)
-                        {
-                            TypePtr paramType = apply_substitution(method->parameters[i]->type);
-                            check_implicit_conversion(argTypes[i], paramType, node,
-                                                      "argument " + std::to_string(i + 1));
-                        }
-                    }
-
-                    annotate_expression(node, apply_substitution(method->return_type));
+                    // The member points to a function - get its parent (the type) for overload lookup
+                    container = method->parent ? method->parent->as<ContainerSymbol>() : nullptr;
                 }
-                else if (auto func_group = memberExpr->member->as<FunctionGroupSymbol>())
+                else if (auto cont = memberExpr->member->as<ContainerSymbol>())
                 {
-                    // Handle overloaded methods via FunctionGroupSymbol
-                    auto overloads = func_group->get_overloads();
-                    node->method = resolve_overload(overloads, argTypes);
-
-                    if (!node->method)
-                    {
-                        std::stringstream ss;
-                        ss << "No matching overload for '" << memberExpr->memberName << "' with argument types (";
-                        for (size_t i = 0; i < argTypes.size(); ++i)
-                        {
-                            if (i > 0)
-                                ss << ", ";
-                            ss << (argTypes[i] ? argTypes[i]->get_name() : "?");
-                        }
-                        ss << ")";
-                        report_error(node, ss.str());
-                        annotate_expression(node, typeSystem.get_unresolved());
-                        return;
-                    }
-
-                    annotate_expression(node, apply_substitution(node->method->return_type));
+                    container = cont;
                 }
-                else if (auto container = memberExpr->member->as<ContainerSymbol>())
+            }
+
+            // If we couldn't get container from member, try from object type
+            if (!container && memberExpr->object && memberExpr->object->type)
+            {
+                TypePtr objType = apply_substitution(memberExpr->object->type);
+                if (auto namedType = objType->as<NamedType>())
                 {
-                    // Handle overloaded methods
-                    auto overloads = container->get_functions(memberExpr->memberName);
-                    node->method = resolve_overload(overloads, argTypes);
-
-                    if (!node->method)
-                    {
-                        std::stringstream ss;
-                        ss << "No matching overload for '" << memberExpr->memberName << "' with argument types (";
-                        for (size_t i = 0; i < argTypes.size(); ++i)
-                        {
-                            if (i > 0)
-                                ss << ", ";
-                            ss << argTypes[i]->get_name();
-                        }
-                        ss << ")";
-                        report_error(node, ss.str());
-                        annotate_expression(node, typeSystem.get_unresolved());
-                        return;
-                    }
-
-                    annotate_expression(node, apply_substitution(node->method->return_type));
+                    container = namedType->symbol;
                 }
-                else
+            }
+
+            if (container)
+            {
+                auto overloads = container->get_members<FunctionSymbol>(methodName);
+
+                if (overloads.empty())
                 {
-                    report_error(node, "Member '" + memberExpr->memberName + "' is not callable");
+                    report_error(node, "No method named '" + methodName + "' found");
                     annotate_expression(node, typeSystem.get_unresolved());
+                    return;
                 }
+
+                node->method = resolve_overload(overloads, argTypes);
+
+                if (!node->method)
+                {
+                    std::stringstream ss;
+                    ss << "No matching overload for '" << methodName << "' with argument types (";
+                    for (size_t i = 0; i < argTypes.size(); ++i)
+                    {
+                        if (i > 0)
+                            ss << ", ";
+                        ss << argTypes[i]->get_name();
+                    }
+                    ss << ")";
+                    report_error(node, ss.str());
+                    annotate_expression(node, typeSystem.get_unresolved());
+                    return;
+                }
+
+                // Validate argument types against selected overload
+                if (node->method->parameters.size() == argTypes.size())
+                {
+                    for (size_t i = 0; i < argTypes.size(); ++i)
+                    {
+                        TypePtr paramType = apply_substitution(node->method->parameters[i]->type);
+                        check_implicit_conversion(argTypes[i], paramType, node,
+                                                  "argument " + std::to_string(i + 1));
+                    }
+                }
+
+                annotate_expression(node, apply_substitution(node->method->return_type));
             }
             else
             {
@@ -1141,7 +1076,7 @@ namespace Fern
         {
             annotate_expression(node, varSym->type, node->member);
         }
-        else if (node->member->is<FunctionSymbol>() || node->member->is<FunctionGroupSymbol>())
+        else if (node->member->is<FunctionSymbol>())
         {
             // Methods are resolved in BoundCallExpression where we have argument types
             // for proper overload resolution. Member is already set, skip type annotation
@@ -1222,7 +1157,7 @@ namespace Fern
                 if (auto type_symbol = named_type->symbol)
                 {
                     // Get all constructors (they're named "New")
-                    auto constructors = type_symbol->get_functions("New");
+                    auto constructors = type_symbol->get_members<FunctionSymbol>("New");
 
                     // Filter to only constructors
                     std::vector<FunctionSymbol*> ctors;
