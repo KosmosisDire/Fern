@@ -12,3 +12,4 @@ out
 CHECKLIST.md
 spec/
 .vs
+node_modules/

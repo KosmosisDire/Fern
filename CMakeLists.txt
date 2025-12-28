@@ -5,12 +5,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Define FERN_DEBUG macro for debug builds
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(FERN_DEBUG)
 endif()
 
-# Try to find LLVM, but make it optional for basic functionality
+# ─────────────────────────────────────────────────────────────────────────────
+# LLVM Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
 find_package(LLVM CONFIG)
 
 if(LLVM_FOUND)
@@ -27,28 +29,19 @@ include_directories(include)
 
 if(LLVM_AVAILABLE)
     set(LLVM_LINK_COMPONENTS
-        # Core components
         Core
         Support
         IRReader
-        
-        # Target and code generation
         Target
         TargetParser
         CodeGen
         MC
-        
-        # Common targets only
-        X86          # Intel/AMD processors
-        
-        # ORC JIT components
+        X86
         OrcJIT
         ExecutionEngine
         RuntimeDyld
         JITLink
         OrcTargetProcess
-        
-        # Optimization passes
         Passes
         TransformUtils
         Analysis
@@ -58,17 +51,12 @@ if(LLVM_AVAILABLE)
         Vectorize
     )
 
-    # Check if we should use monolithic LLVM library
     if(UNIX AND NOT APPLE)
-        # On Linux, check if component libraries exist
         find_library(LLVM_CORE_LIB LLVMCore PATHS ${LLVM_LIBRARY_DIR} NO_DEFAULT_PATH)
         if(NOT LLVM_CORE_LIB)
-            # Use monolithic library
             message(STATUS "Using monolithic LLVM library")
             set(LLVM_LIBS LLVM)
         else()
-            # Use component libraries
-            
             llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_LINK_COMPONENTS})
             message(STATUS "Using LLVM component libraries: ${LLVM_LIBS}")
         endif()
@@ -83,8 +71,12 @@ if(LLVM_AVAILABLE)
     endif()
 endif()
 
-set(SOURCE_FILES
-    # Parser Implementation
+# ─────────────────────────────────────────────────────────────────────────────
+# FernLib - Core Compiler Library
+# ─────────────────────────────────────────────────────────────────────────────
+
+set(FERN_LIB_SOURCES
+    # Parser
     src/parser/lexer.cpp
     src/parser/token_stream.cpp
     src/parser/parser.cpp
@@ -100,7 +92,7 @@ set(SOURCE_FILES
     src/semantic/type_topology.cpp
     src/semantic/symbol_table_validator.cpp
     src/semantic/semantic_validator.cpp
-    
+
     # Binding
     src/binding/bound_tree_builder.cpp
     src/binding/conversion_inserter.cpp
@@ -115,28 +107,64 @@ set(SOURCE_FILES
     src/codegen/codegen_function.cpp
     src/codegen/flir_codegen.cpp
 
-    
-    # Common Utilities
+    # Common
     src/common/logger.cpp
     src/common/error.cpp
+    src/common/file_utils.cpp
 
+    # Core
     src/compiler.cpp
     src/jit.cpp
     src/compiled_module.cpp
-    src/test_runner.cpp
 )
 
-set(RUNTIME_FILES
+add_library(FernLib STATIC ${FERN_LIB_SOURCES})
+target_include_directories(FernLib PUBLIC src include)
+
+if(LLVM_AVAILABLE)
+    target_link_libraries(FernLib PUBLIC ${LLVM_LIBS})
+endif()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fern CLI Executable
+# ─────────────────────────────────────────────────────────────────────────────
+
+set(RUNTIME_SOURCES
     lib/clay_wrapper.cpp
     runtime/runtime.cpp
 )
 
+add_executable(Fern
+    cli/main.cpp
+    src/test_runner.cpp
+    ${RUNTIME_SOURCES}
+)
 
-# Main executable
-add_executable(Fern ${SOURCE_FILES} ${RUNTIME_FILES} main.cpp)
+target_link_libraries(Fern PRIVATE FernLib)
+target_include_directories(Fern PRIVATE src lib)
 
-if(LLVM_AVAILABLE)
-    target_link_libraries(Fern PRIVATE ${LLVM_LIBS})
+# ─────────────────────────────────────────────────────────────────────────────
+# Fern LSP Server
+# ─────────────────────────────────────────────────────────────────────────────
+
+option(FERN_BUILD_LSP "Build the Fern LSP server" ON)
+
+if(FERN_BUILD_LSP)
+    include(FetchContent)
+
+    FetchContent_Declare(
+        lsp-framework
+        GIT_REPOSITORY https://github.com/leon-bckl/lsp-framework.git
+        GIT_TAG        1.3.0
+    )
+
+    set(LSP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(lsp-framework)
+
+    add_executable(FernLSP
+        lsp/main.cpp
+    )
+
+    target_link_libraries(FernLSP PRIVATE FernLib lsp)
+    target_include_directories(FernLSP PRIVATE src)
 endif()
-
-target_include_directories(Fern PRIVATE "src" "lib")
