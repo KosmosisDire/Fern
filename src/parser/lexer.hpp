@@ -22,7 +22,7 @@ namespace Fern
     {
     public:
         // Constructor
-        Lexer(std::string_view source);
+        Lexer(std::string_view source, int file_id = -1);
 
         // Destructor
         ~Lexer() = default;
@@ -57,6 +57,7 @@ namespace Fern
 
         // Source text and position tracking
         std::string_view source_;
+        int file_id_;
         size_t current_offset_;
         SourceLocation current_location_;
 

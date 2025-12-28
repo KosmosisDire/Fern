@@ -27,7 +27,7 @@ namespace Fern
         auto unit = arena.make<CompilationUnitSyntax>();
         if (tokens.at_end())
         {
-            unit->location = {{0, 1, 1}, 0};
+            unit->location = {{-1, 0, 1, 1}, 0};
             unit->topLevelStatements = arena.emptyList<BaseStmtSyntax *>();
             return unit;
         }

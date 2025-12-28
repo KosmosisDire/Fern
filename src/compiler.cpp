@@ -1,6 +1,7 @@
 #include "compiler.hpp"
 
 #include "common/logger.hpp"
+#include "common/source_database.hpp"
 #include "codegen/flir_codegen.hpp"
 #include "semantic/symbol_table.hpp"
 #include "parser/lexer.hpp"
@@ -161,11 +162,18 @@ namespace Fern
 
     std::unique_ptr<CompiledModule> Compiler::compile(const std::vector<SourceFile> &source_files)
     {
-        try 
+        try
         {
         if (source_files.empty())
         {
             return std::make_unique<CompiledModule>();
+        }
+
+        // Build source database for file_id -> path lookups
+        auto source_db = std::make_shared<SimpleSourceDatabase>();
+        for (const auto &sf : source_files)
+        {
+            source_db->add_file(sf.filename, sf.source);
         }
 
         std::vector<FileCompilationState> file_states(source_files.size());
@@ -184,8 +192,8 @@ namespace Fern
 
             LOG_INFO("Parsing: " + state.file.filename, LogCategory::COMPILER);
 
-            // Lex and parse
-            auto lexer = Lexer(state.file.source);
+            // Lex and parse (file_id is the index in source_files)
+            auto lexer = Lexer(state.file.source, static_cast<int>(i));
             auto tokens = lexer.tokenize_all();
 
             LOG_INFO(tokens.dump(), LogCategory::PARSER);
@@ -224,7 +232,7 @@ namespace Fern
         // Early return if parsing failed - can't continue without ASTs
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
         // === Syntax validation (AST structural validation) ===
@@ -246,7 +254,7 @@ namespace Fern
 
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
         // // === Build local symbol tables sequentially ===
@@ -285,7 +293,7 @@ namespace Fern
         // Early return if symbol building failed - can't continue without symbols
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
         // === Merge symbol tables ===
@@ -328,7 +336,7 @@ namespace Fern
             {
                 diags.push_back(d);
             }
-            return std::make_unique<CompiledModule>(diags);
+            return std::make_unique<CompiledModule>(diags, source_db);
         }
 
         // === Binding ===
@@ -364,7 +372,7 @@ namespace Fern
         // Early return if binding failed - can't continue without bound trees
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
 
@@ -412,7 +420,7 @@ namespace Fern
         // Early return if type resolution failed - can't continue with unresolved types
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
         // === Insert implicit conversions ===
@@ -433,7 +441,7 @@ namespace Fern
         // Early return if conversion insertion failed
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
         symbol_validator.validate_typed(*global_symbols);
@@ -445,7 +453,7 @@ namespace Fern
             {
                 diags.push_back(d);
             }
-            return std::make_unique<CompiledModule>(diags);
+            return std::make_unique<CompiledModule>(diags, source_db);
         }
 
 
@@ -466,7 +474,7 @@ namespace Fern
 
         if (type_topology.has_cycles())
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics), source_db);
         }
 
         // === Convert bound tree to FLIR ===
@@ -496,7 +504,7 @@ namespace Fern
         // Early return if FLIR generation failed
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
         // Dump non-SSA FLIR if requested
@@ -537,7 +545,7 @@ namespace Fern
         // Early return if code generation failed
         if (has_any_errors(file_states, global_diagnostics))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics));
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics), source_db);
         }
 
         // === Run optimization passes ===
@@ -571,7 +579,8 @@ namespace Fern
             std::move(llvm_context),
             std::move(llvm_module),
             "FernProgram",
-            gather_all_diagnostics(file_states, global_diagnostics));
+            gather_all_diagnostics(file_states, global_diagnostics),
+            source_db);
 
         }
         catch (const std::exception &e)

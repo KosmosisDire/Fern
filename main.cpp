@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
         {
             for (const auto& error : errors)
             {
-                std::cerr << "  " << error.to_string() << std::endl;
+                std::cerr << "  " << result->format_diagnostic(error) << std::endl;
             }
         }
         return 1;

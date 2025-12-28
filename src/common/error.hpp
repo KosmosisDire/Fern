@@ -27,29 +27,36 @@ namespace Fern
             : severity(sev), message(msg), location(loc), system_name(sys_name) {}
 
 
-        std::string to_string() const
+        std::string severity_string() const
         {
-            std::string sev_str;
             switch (severity)
             {
             case Severity::Debug:
-                sev_str = "Debug";
-                break;
+                return "Debug";
             case Severity::Info:
-                sev_str = "Info";
-                break;
+                return "Info";
             case Severity::Warning:
-                sev_str = "Warning";
-                break;
+                return "Warning";
             case Severity::Error:
-                sev_str = "Error";
-                break;
+                return "Error";
             case Severity::Fatal:
-                sev_str = "Fatal";
-                break;
+                return "Fatal";
+            default:
+                return "Unknown";
             }
+        }
 
-            return "[" + system_name + "] " + sev_str + "(" + location.start.to_string() + ")" + ": " + message;
+        std::string to_string() const
+        {
+            return "[" + system_name + "] " + severity_string() +
+                   "(" + location.start.to_string() + "): " + message;
+        }
+
+        std::string to_string(std::string_view filename) const
+        {
+            return std::string(filename) + ":" + std::to_string(location.start.line) +
+                   ":" + std::to_string(location.start.column) + ": " +
+                   severity_string() + ": " + message;
         }
     };
 
@@ -71,7 +78,7 @@ namespace Fern
         const bool has_errors() const;
         const size_t error_count() const;
     private:
-        std::vector<Diagnostic> diagnostics_;
-        std::string system_name_;
+        std::vector<Diagnostic> diagnostics;
+        std::string system_name;
     };
 }

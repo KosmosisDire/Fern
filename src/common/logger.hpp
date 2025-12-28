@@ -86,8 +86,8 @@ namespace Fern
     class Logger
     {
     private:
-        static std::unique_ptr<Logger> instance_;
-        static std::mutex instance_mutex_;
+        static std::unique_ptr<Logger> instance;
+        static std::mutex instance_mutex;
 
         std::ofstream log_file_;
         std::mutex log_mutex_;

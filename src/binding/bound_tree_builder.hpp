@@ -11,21 +11,21 @@ namespace Fern
     class BoundTreeBuilder : public DiagnosticSystem
     {
     private:
-        BindingArena& arena_;
-        SymbolTable& symbol_table_;
+        BindingArena& arena;
+        SymbolTable& symbol_table;
         
         #pragma region Symbol Resolution Helpers
         
         // Simple symbol lookup
         Symbol* resolve_symbol(const std::vector<std::string>& parts)
         {
-            return symbol_table_.resolve(parts)[0];
+            return symbol_table.resolve(parts)[0];
         }
 
         // Get current containing type for 'this' expressions
         TypeSymbol* get_containing_type()
         {
-            auto current = symbol_table_.get_current_scope();
+            auto current = symbol_table.get_current_scope();
             // First check if current scope itself is a type
             if (current && current->is<TypeSymbol>())
             {
@@ -53,22 +53,22 @@ namespace Fern
         
         class ScopeGuard
         {
-            SymbolTable& table_;
-            bool pushed_;
+            SymbolTable& table;
+            bool pushed;
         public:
             ScopeGuard(SymbolTable& table, Symbol* symbol) 
-                : table_(table), pushed_(symbol != nullptr)
+                : table(table), pushed(symbol != nullptr)
             {
-                if (pushed_)
+                if (pushed)
                 {
-                    table_.push_scope(symbol);
+                    table.push_scope(symbol);
                 }
             }
             ~ScopeGuard()
             {
-                if (pushed_)
+                if (pushed)
                 {
-                    table_.pop_scope();
+                    table.pop_scope();
                 }
             }
         };

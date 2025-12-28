@@ -12,18 +12,19 @@ namespace Fern
         int line;   // 1-based line number
         int column; // 1-based column number
 
-        SourceLocation() : offset(0), line(1), column(1) {}
-        SourceLocation(int off, int ln, int col)
-            : offset(off), line(ln), column(col) {}
+        SourceLocation() : file_id(-1), offset(0), line(1), column(1) {}
+        SourceLocation(int file, int off, int ln, int col)
+            : file_id(file), offset(off), line(ln), column(col) {}
 
         SourceLocation operator+(int delta) const
         {
-            return SourceLocation(offset + delta, line, column + delta);
+            return SourceLocation(file_id, offset + delta, line, column + delta);
         }
 
         bool operator==(const SourceLocation &other) const
         {
-            return offset == other.offset && line == other.line && column == other.column;
+            return file_id == other.file_id && offset == other.offset &&
+                   line == other.line && column == other.column;
         }
 
         std::string to_string() const
@@ -46,7 +47,8 @@ namespace Fern
 
         bool contains(SourceLocation loc) const
         {
-            return loc.offset >= start.offset && loc.offset < start.offset + width;
+            return loc.file_id == start.file_id &&
+                   loc.offset >= start.offset && loc.offset < start.offset + width;
         }
 
         int end_offset() const
@@ -56,7 +58,7 @@ namespace Fern
 
         SourceLocation end() const
         {
-            return SourceLocation(start.offset + width, start.line, start.column + width);
+            return SourceLocation(start.file_id, start.offset + width, start.line, start.column + width);
         }
     };
 } // namespace Fern

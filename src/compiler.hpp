@@ -64,10 +64,9 @@ namespace Fern
         {
             if (diagnostics.empty())
                 return;
-            std::cerr << "\n=== Diagnostics for " << file.filename << " ===\n";
             for (const auto& diag : diagnostics)
             {
-                std::cerr << diag.to_string() << "\n";
+                std::cerr << diag.to_string(file.filename) << "\n";
             }
         }
     };

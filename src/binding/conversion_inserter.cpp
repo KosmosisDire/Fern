@@ -17,7 +17,7 @@ namespace Fern
             return expr;
 
         // Create conversion node
-        auto* conv = arena_.make<BoundConversionExpression>();
+        auto* conv = arena.make<BoundConversionExpression>();
         conv->expression = expr;
         conv->conversionKind = kind;
         conv->type = targetType;

@@ -12,13 +12,13 @@ namespace Fern
     class ConversionInserter : public BoundVisitor, public DiagnosticSystem
     {
     private:
-        BindingArena& arena_;
+        BindingArena& arena;
 
         BoundExpression* wrap_if_needed(BoundExpression* expr, TypePtr targetType);
 
     public:
         explicit ConversionInserter(BindingArena& arena)
-            : DiagnosticSystem("ConversionInserter"), arena_(arena) {}
+            : DiagnosticSystem("ConversionInserter"), arena(arena) {}
 
         void transform(BoundCompilationUnit* unit);
 

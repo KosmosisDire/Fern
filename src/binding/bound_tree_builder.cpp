@@ -4,14 +4,14 @@
 namespace Fern
 {
     BoundTreeBuilder::BoundTreeBuilder(BindingArena& arena, SymbolTable &symbol_table)
-        : DiagnosticSystem("Binder"), arena_(arena), symbol_table_(symbol_table) {}
+        : DiagnosticSystem("Binder"), arena(arena), symbol_table(symbol_table) {}
 
     BoundCompilationUnit *BoundTreeBuilder::bind(CompilationUnitSyntax *syntax)
     {
-        auto unit = arena_.make<BoundCompilationUnit>();
+        auto unit = arena.make<BoundCompilationUnit>();
         unit->location = syntax->location;
 
-        ScopeGuard scope(symbol_table_, symbol_table_.get_global_namespace());
+        ScopeGuard scope(symbol_table, symbol_table.get_global_namespace());
 
         for (auto stmt : syntax->topLevelStatements)
         {
@@ -73,11 +73,11 @@ namespace Fern
 
     BoundBlockStatement *BoundTreeBuilder::bind_block(BlockSyntax *syntax)
     {
-        auto bound = arena_.make<BoundBlockStatement>();
+        auto bound = arena.make<BoundBlockStatement>();
         bound->location = syntax->location;
-        bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
+        bound->symbol = symbol_table.get_symbol_for_ast(syntax);
 
-        ScopeGuard scope(symbol_table_, bound->symbol);
+        ScopeGuard scope(symbol_table, bound->symbol);
 
         for (auto stmt : syntax->statements)
         {
@@ -92,7 +92,7 @@ namespace Fern
 
     BoundVariableDeclaration *BoundTreeBuilder::bind_variable_declaration(VariableDeclSyntax *syntax)
     {
-        auto bound = arena_.make<BoundVariableDeclaration>();
+        auto bound = arena.make<BoundVariableDeclaration>();
         bound->location = syntax->location;
         bound->modifiers = syntax->modifiers;
 
@@ -106,9 +106,9 @@ namespace Fern
             bound->typeExpression = bind_type_expression(syntax->variable->type);
         }
 
-        bound->symbol = symbol_table_.resolve_single_local(bound->name);
+        bound->symbol = symbol_table.resolve_single_local(bound->name);
 
-        ScopeGuard scope(symbol_table_, bound->symbol);
+        ScopeGuard scope(symbol_table, bound->symbol);
 
         if (syntax->initializer)
         {
@@ -125,7 +125,7 @@ namespace Fern
 
     BoundFunctionDeclaration *BoundTreeBuilder::bind_function_declaration(FunctionDeclSyntax *syntax)
     {
-        auto bound = arena_.make<BoundFunctionDeclaration>();
+        auto bound = arena.make<BoundFunctionDeclaration>();
         bound->location = syntax->location;
         bound->modifiers = syntax->modifiers;
 
@@ -134,9 +134,9 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
+        bound->symbol = symbol_table.get_symbol_for_ast(syntax);
 
-        ScopeGuard scope(symbol_table_, bound->symbol);
+        ScopeGuard scope(symbol_table, bound->symbol);
 
         if (syntax->returnType)
         {
@@ -147,12 +147,12 @@ namespace Fern
         {
             if (auto param_syntax = param->as<ParameterDeclSyntax>())
             {
-                auto bound_param = arena_.make<BoundVariableDeclaration>();
+                auto bound_param = arena.make<BoundVariableDeclaration>();
                 bound_param->location = param_syntax->location;
                 bound_param->name = param_syntax->param->name ? param_syntax->param->name->get_name() : "";
                 bound_param->typeExpression = param_syntax->param->type ? bind_type_expression(param_syntax->param->type) : nullptr;
                 bound_param->isParameter = true;
-                bound_param->symbol = symbol_table_.resolve_single_local(bound_param->name);
+                bound_param->symbol = symbol_table.resolve_single_local(bound_param->name);
 
                 bound->parameters.push_back(bound_param);
             }
@@ -168,7 +168,7 @@ namespace Fern
 
     BoundFunctionDeclaration *BoundTreeBuilder::bind_constructor_declaration(ConstructorDeclSyntax *syntax)
     {
-        auto bound = arena_.make<BoundFunctionDeclaration>();
+        auto bound = arena.make<BoundFunctionDeclaration>();
         bound->location = syntax->location;
         bound->modifiers = syntax->modifiers;
 
@@ -176,10 +176,10 @@ namespace Fern
         if (containing_type)
         {
             bound->name = containing_type->name;
-            bound->symbol = symbol_table_.get_symbol_for_ast(syntax);
+            bound->symbol = symbol_table.get_symbol_for_ast(syntax);
         }
 
-        ScopeGuard scope(symbol_table_, bound->symbol);
+        ScopeGuard scope(symbol_table, bound->symbol);
 
         bound->returnTypeExpression = nullptr;
 
@@ -187,12 +187,12 @@ namespace Fern
         {
             if (auto param_syntax = param->as<ParameterDeclSyntax>())
             {
-                auto bound_param = arena_.make<BoundVariableDeclaration>();
+                auto bound_param = arena.make<BoundVariableDeclaration>();
                 bound_param->location = param_syntax->location;
                 bound_param->name = param_syntax->param->name ? param_syntax->param->name->get_name() : "";
                 bound_param->typeExpression = param_syntax->param->type ? bind_type_expression(param_syntax->param->type) : nullptr;
                 bound_param->isParameter = true;
-                bound_param->symbol = symbol_table_.resolve_single_local(bound_param->name);
+                bound_param->symbol = symbol_table.resolve_single_local(bound_param->name);
 
                 bound->parameters.push_back(bound_param);
             }
@@ -208,7 +208,7 @@ namespace Fern
 
     BoundTypeDeclaration *BoundTreeBuilder::bind_type_declaration(TypeDeclSyntax *syntax)
     {
-        auto bound = arena_.make<BoundTypeDeclaration>();
+        auto bound = arena.make<BoundTypeDeclaration>();
         bound->location = syntax->location;
         bound->modifiers = syntax->modifiers;
 
@@ -217,9 +217,9 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        bound->symbol = symbol_table_.resolve_single<TypeSymbol>(bound->name);
+        bound->symbol = symbol_table.resolve_single<TypeSymbol>(bound->name);
 
-        ScopeGuard scope(symbol_table_, bound->symbol);
+        ScopeGuard scope(symbol_table, bound->symbol);
 
         for (auto member : syntax->members)
         {
@@ -234,7 +234,7 @@ namespace Fern
 
     BoundNamespaceDeclaration *BoundTreeBuilder::bind_namespace_declaration(NamespaceDeclSyntax *syntax)
     {
-        auto bound = arena_.make<BoundNamespaceDeclaration>();
+        auto bound = arena.make<BoundNamespaceDeclaration>();
         bound->location = syntax->location;
 
         if (syntax->name)
@@ -242,9 +242,9 @@ namespace Fern
             bound->name = syntax->name->get_name();
         }
 
-        bound->symbol = symbol_table_.resolve_single<NamespaceSymbol>(bound->name);
+        bound->symbol = symbol_table.resolve_single<NamespaceSymbol>(bound->name);
 
-        ScopeGuard scope(symbol_table_, bound->symbol);
+        ScopeGuard scope(symbol_table, bound->symbol);
 
         if (syntax->body.has_value())
         {
@@ -262,7 +262,7 @@ namespace Fern
 
     BoundPropertyDeclaration *BoundTreeBuilder::bind_property_declaration(PropertyDeclSyntax *syntax)
     {
-        auto bound = arena_.make<BoundPropertyDeclaration>();
+        auto bound = arena.make<BoundPropertyDeclaration>();
         bound->location = syntax->location;
         bound->modifiers = syntax->modifiers;
 
@@ -283,11 +283,11 @@ namespace Fern
             bound->initializer = bind_expression(syntax->variable->initializer);
         }
 
-        bound->symbol = symbol_table_.resolve_single(bound->name);
+        bound->symbol = symbol_table.resolve_single(bound->name);
 
         if (syntax->getter)
         {
-            auto accessor = arena_.make<BoundPropertyAccessor>();
+            auto accessor = arena.make<BoundPropertyAccessor>();
             accessor->kind = BoundPropertyAccessor::Kind::Get;
 
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
@@ -296,7 +296,7 @@ namespace Fern
                     if (auto func_sym = getter_funcs[0]) {
                         accessor->function_symbol = func_sym;
 
-                        ScopeGuard scope(symbol_table_, func_sym);
+                        ScopeGuard scope(symbol_table, func_sym);
 
                         if (auto expr_ptr = std::get_if<BaseExprSyntax *>(&syntax->getter->body))
                         {
@@ -315,7 +315,7 @@ namespace Fern
 
         if (syntax->setter)
         {
-            auto accessor = arena_.make<BoundPropertyAccessor>();
+            auto accessor = arena.make<BoundPropertyAccessor>();
             accessor->kind = BoundPropertyAccessor::Kind::Set;
 
             if (auto prop_sym = bound->symbol->as<PropertySymbol>()) {
@@ -324,7 +324,7 @@ namespace Fern
                     if (auto func_sym = setter_funcs[0]) {
                         accessor->function_symbol = func_sym;
 
-                        ScopeGuard scope(symbol_table_, func_sym);
+                        ScopeGuard scope(symbol_table, func_sym);
 
                         if (auto expr_ptr = std::get_if<BaseExprSyntax *>(&syntax->setter->body))
                         {
@@ -346,7 +346,7 @@ namespace Fern
 
     BoundIfStatement *BoundTreeBuilder::bind_if_statement(IfStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundIfStatement>();
+        auto bound = arena.make<BoundIfStatement>();
         bound->location = syntax->location;
         bound->condition = bind_expression(syntax->condition);
         bound->thenStatement = bind_statement(syntax->thenBranch);
@@ -361,7 +361,7 @@ namespace Fern
 
     BoundWhileStatement *BoundTreeBuilder::bind_while_statement(WhileStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundWhileStatement>();
+        auto bound = arena.make<BoundWhileStatement>();
         bound->location = syntax->location;
         bound->condition = bind_expression(syntax->condition);
         bound->body = bind_statement(syntax->body);
@@ -370,11 +370,11 @@ namespace Fern
 
     BoundForStatement *BoundTreeBuilder::bind_for_statement(ForStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundForStatement>();
+        auto bound = arena.make<BoundForStatement>();
         bound->location = syntax->location;
 
-        auto for_scope = symbol_table_.get_symbol_for_ast(syntax);
-        ScopeGuard scope(symbol_table_, for_scope);
+        auto for_scope = symbol_table.get_symbol_for_ast(syntax);
+        ScopeGuard scope(symbol_table, for_scope);
 
         if (syntax->initializer)
         {
@@ -401,7 +401,7 @@ namespace Fern
 
     BoundReturnStatement *BoundTreeBuilder::bind_return_statement(ReturnStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundReturnStatement>();
+        auto bound = arena.make<BoundReturnStatement>();
         bound->location = syntax->location;
 
         if (syntax->value)
@@ -414,21 +414,21 @@ namespace Fern
 
     BoundBreakStatement *BoundTreeBuilder::bind_break_statement(BreakStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundBreakStatement>();
+        auto bound = arena.make<BoundBreakStatement>();
         bound->location = syntax->location;
         return bound;
     }
 
     BoundContinueStatement *BoundTreeBuilder::bind_continue_statement(ContinueStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundContinueStatement>();
+        auto bound = arena.make<BoundContinueStatement>();
         bound->location = syntax->location;
         return bound;
     }
 
     BoundExpressionStatement *BoundTreeBuilder::bind_expression_statement(ExpressionStmtSyntax *syntax)
     {
-        auto bound = arena_.make<BoundExpressionStatement>();
+        auto bound = arena.make<BoundExpressionStatement>();
         bound->location = syntax->location;
         bound->expression = bind_expression(syntax->expression);
         return bound;
@@ -436,7 +436,7 @@ namespace Fern
 
     BoundUsingStatement *BoundTreeBuilder::bind_using_statement(UsingDirectiveSyntax *syntax)
     {
-        auto bound = arena_.make<BoundUsingStatement>();
+        auto bound = arena.make<BoundUsingStatement>();
         bound->location = syntax->location;
 
         if (syntax->target)
@@ -444,7 +444,7 @@ namespace Fern
             bound->namespaceParts = syntax->target->get_parts();
         }
 
-        if (auto symbol = symbol_table_.resolve_single(bound->namespaceParts))
+        if (auto symbol = symbol_table.resolve_single(bound->namespaceParts))
         {
             bound->targetNamespace = symbol->as<NamespaceSymbol>();
         }
@@ -493,7 +493,7 @@ namespace Fern
 
     BoundLiteralExpression *BoundTreeBuilder::bind_literal(LiteralExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundLiteralExpression>();
+        auto bound = arena.make<BoundLiteralExpression>();
         bound->location = syntax->location;
         bound->literalKind = syntax->kind;
 
@@ -540,7 +540,7 @@ namespace Fern
             if (!qualified->left->as<BaseNameExprSyntax>())
             {
                 auto object = bind_expression(qualified->left);
-                auto member_access = arena_.make<BoundMemberAccessExpression>();
+                auto member_access = arena.make<BoundMemberAccessExpression>();
                 member_access->location = syntax->location;
                 member_access->object = object;
                 member_access->memberName = qualified->right->get_name();
@@ -554,11 +554,11 @@ namespace Fern
         if (parts.size() > 1)
         {
             std::vector<std::string> first_part = {parts[0]};
-            auto first_symbol = symbol_table_.resolve_single(first_part);
+            auto first_symbol = symbol_table.resolve_single(first_part);
 
             if (first_symbol && (first_symbol->is<VariableSymbol>() || first_symbol->is<ParameterSymbol>()))
             {
-                auto object = arena_.make<BoundNameExpression>();
+                auto object = arena.make<BoundNameExpression>();
                 object->location = syntax->location;
                 object->parts = first_part;
                 object->symbol = first_symbol;
@@ -567,7 +567,7 @@ namespace Fern
 
                 for (size_t i = 1; i < parts.size(); ++i)
                 {
-                    auto member_access = arena_.make<BoundMemberAccessExpression>();
+                    auto member_access = arena.make<BoundMemberAccessExpression>();
                     member_access->location = syntax->location;
                     member_access->object = current;
                     member_access->memberName = parts[i];
@@ -578,7 +578,7 @@ namespace Fern
             }
         }
 
-        auto symbol = symbol_table_.resolve_single(parts);
+        auto symbol = symbol_table.resolve_single(parts);
 
         // Add implicit 'this' for unqualified member access
         if (symbol && parts.size() == 1)
@@ -620,11 +620,11 @@ namespace Fern
 
                     if (is_accessible)
                     {
-                        auto this_expr = arena_.make<BoundThisExpression>();
+                        auto this_expr = arena.make<BoundThisExpression>();
                         this_expr->location = syntax->location;
                         this_expr->containingType = containing_type;
 
-                        auto member_access = arena_.make<BoundMemberAccessExpression>();
+                        auto member_access = arena.make<BoundMemberAccessExpression>();
                         member_access->location = syntax->location;
                         member_access->object = this_expr;
                         member_access->memberName = parts[0];
@@ -636,7 +636,7 @@ namespace Fern
             }
         }
 
-        auto bound = arena_.make<BoundNameExpression>();
+        auto bound = arena.make<BoundNameExpression>();
         bound->location = syntax->location;
         bound->parts = parts;
         bound->symbol = symbol;
@@ -646,7 +646,7 @@ namespace Fern
 
     BoundBinaryExpression *BoundTreeBuilder::bind_binary_expression(BinaryExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundBinaryExpression>();
+        auto bound = arena.make<BoundBinaryExpression>();
         bound->location = syntax->location;
         bound->left = bind_expression(syntax->left);
         bound->right = bind_expression(syntax->right);
@@ -656,7 +656,7 @@ namespace Fern
 
     BoundUnaryExpression *BoundTreeBuilder::bind_unary_expression(UnaryExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundUnaryExpression>();
+        auto bound = arena.make<BoundUnaryExpression>();
         bound->location = syntax->location;
         bound->operand = bind_expression(syntax->operand);
         bound->operatorKind = syntax->op;
@@ -665,7 +665,7 @@ namespace Fern
 
     BoundAssignmentExpression *BoundTreeBuilder::bind_assignment_expression(AssignmentExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundAssignmentExpression>();
+        auto bound = arena.make<BoundAssignmentExpression>();
         bound->location = syntax->location;
         bound->target = bind_expression(syntax->target);
         bound->value = bind_expression(syntax->value);
@@ -675,7 +675,7 @@ namespace Fern
 
     BoundCallExpression *BoundTreeBuilder::bind_call_expression(CallExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundCallExpression>();
+        auto bound = arena.make<BoundCallExpression>();
         bound->location = syntax->location;
         bound->callee = bind_expression(syntax->callee);
 
@@ -696,7 +696,7 @@ namespace Fern
 
     BoundMemberAccessExpression *BoundTreeBuilder::bind_member_access(MemberAccessExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundMemberAccessExpression>();
+        auto bound = arena.make<BoundMemberAccessExpression>();
         bound->location = syntax->location;
         bound->object = bind_expression(syntax->object);
 
@@ -707,7 +707,7 @@ namespace Fern
 
         if (bound->object && bound->object->type)
         {
-            auto type = symbol_table_.resolve_single(bound->object->type->get_name());
+            auto type = symbol_table.resolve_single(bound->object->type->get_name());
             if (type && type->is<TypeSymbol>())
             {
                 bound->member = type->as<TypeSymbol>()->get_member(bound->memberName);
@@ -719,7 +719,7 @@ namespace Fern
 
     BoundIndexExpression *BoundTreeBuilder::bind_index_expression(IndexerExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundIndexExpression>();
+        auto bound = arena.make<BoundIndexExpression>();
         bound->location = syntax->location;
         bound->object = bind_expression(syntax->object);
         bound->index = bind_expression(syntax->index);
@@ -728,7 +728,7 @@ namespace Fern
 
     BoundCastExpression *BoundTreeBuilder::bind_cast_expression(CastExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundCastExpression>();
+        auto bound = arena.make<BoundCastExpression>();
         bound->location = syntax->location;
         bound->expression = bind_expression(syntax->expression);
         bound->targetTypeExpression = bind_type_expression(syntax->targetType);
@@ -737,7 +737,7 @@ namespace Fern
 
     BoundNewExpression *BoundTreeBuilder::bind_new_expression(NewExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundNewExpression>();
+        auto bound = arena.make<BoundNewExpression>();
         bound->location = syntax->location;
         bound->typeExpression = bind_type_expression(syntax->type);
 
@@ -756,7 +756,7 @@ namespace Fern
 
     BoundThisExpression *BoundTreeBuilder::bind_this_expression(ThisExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundThisExpression>();
+        auto bound = arena.make<BoundThisExpression>();
         bound->location = syntax->location;
         bound->containingType = get_containing_type();
         return bound;
@@ -764,7 +764,7 @@ namespace Fern
 
     BoundArrayCreationExpression *BoundTreeBuilder::bind_array_creation(ArrayLiteralExprSyntax *syntax)
     {
-        auto bound = arena_.make<BoundArrayCreationExpression>();
+        auto bound = arena.make<BoundArrayCreationExpression>();
         bound->location = syntax->location;
 
         for (auto elem : syntax->elements)
@@ -787,14 +787,14 @@ namespace Fern
         if (!syntax)
             return nullptr;
 
-        auto bound = arena_.make<BoundTypeExpression>();
+        auto bound = arena.make<BoundTypeExpression>();
         bound->location = syntax->location;
 
         if (auto name = syntax->as<BaseNameExprSyntax>())
         {
             bound->parts = name->get_parts();
 
-            if (auto symbol = symbol_table_.resolve_single(bound->parts))
+            if (auto symbol = symbol_table.resolve_single(bound->parts))
             {
                 if (auto type_symbol = symbol->as<TypeSymbol>())
                 {

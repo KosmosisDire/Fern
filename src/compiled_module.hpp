@@ -13,6 +13,7 @@
 #include "jit.hpp"
 #include "common/logger.hpp"
 #include "common/error.hpp"
+#include "common/source_database.hpp"
 
 namespace Fern
 {
@@ -25,21 +26,27 @@ namespace Fern
         std::unique_ptr<llvm::LLVMContext> context;
         std::unique_ptr<llvm::Module> module;
         std::string module_name;
+        std::shared_ptr<SourceDatabase> source_db;
 
     public:
         CompiledModule() : context(nullptr), module(nullptr), DiagnosticSystem("CompiledModule") {}
 
-        CompiledModule(const std::vector<Diagnostic> &diagnostics)
-            : context(nullptr), module(nullptr), DiagnosticSystem("CompiledModule", diagnostics)  {}
+        CompiledModule(const std::vector<Diagnostic> &diagnostics,
+                       std::shared_ptr<SourceDatabase> source_db = nullptr)
+            : context(nullptr), module(nullptr),
+              DiagnosticSystem("CompiledModule", diagnostics),
+              source_db(std::move(source_db)) {}
 
         CompiledModule(std::unique_ptr<llvm::LLVMContext> ctx,
                        std::unique_ptr<llvm::Module> mod,
                        const std::string &name,
-                       const std::vector<Diagnostic> &diagnostics = {})
+                       const std::vector<Diagnostic> &diagnostics = {},
+                       std::shared_ptr<SourceDatabase> source_db = nullptr)
             : context(std::move(ctx)),
               module(std::move(mod)),
               module_name(name),
-              DiagnosticSystem("CompiledModule", diagnostics) {}
+              DiagnosticSystem("CompiledModule", diagnostics),
+              source_db(std::move(source_db)) {}
 
         // Move-only type
         CompiledModule(CompiledModule &&) = default;
@@ -49,6 +56,18 @@ namespace Fern
 
         // Check if compilation succeeded
         bool is_valid() const { return module != nullptr && !has_errors(); }
+
+        // Format a diagnostic with filename context from the source database
+        std::string format_diagnostic(const Diagnostic &diag) const
+        {
+            if (source_db)
+            {
+                auto filename = source_db->get_path(diag.location.start.file_id);
+                if (!filename.empty())
+                    return diag.to_string(filename);
+            }
+            return diag.to_string();
+        }
 
         // Output options
         bool write_ir(const std::string &filename) const;

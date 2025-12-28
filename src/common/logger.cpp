@@ -3,15 +3,15 @@
 
 namespace Fern {
 
-std::unique_ptr<Logger> Logger::instance_ = nullptr;
-std::mutex Logger::instance_mutex_;
+std::unique_ptr<Logger> Logger::instance = nullptr;
+std::mutex Logger::instance_mutex;
 
 Logger& Logger::get_instance() {
-    std::lock_guard<std::mutex> lock(instance_mutex_);
-    if (!instance_) {
-        instance_ = std::unique_ptr<Logger>(new Logger());
+    std::lock_guard<std::mutex> lock(instance_mutex);
+    if (!instance) {
+        instance = std::unique_ptr<Logger>(new Logger());
     }
-    return *instance_;
+    return *instance;
 }
 
 bool Logger::initialize(const std::string& log_file_path) {

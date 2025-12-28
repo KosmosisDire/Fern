@@ -9,8 +9,9 @@
 namespace Fern
 {
 
-    Lexer::Lexer(std::string_view source): 
-        DiagnosticSystem("Lexer"), source_(source), current_offset_(0), current_location_(0, 1, 1), cache_start_offset_(0)  
+    Lexer::Lexer(std::string_view source, int file_id):
+        DiagnosticSystem("Lexer"), source_(source), file_id_(file_id),
+        current_offset_(0), current_location_(file_id, 0, 1, 1), cache_start_offset_(0)
     {
         context_stack_.push_back(LexicalContext::Normal);
     }
@@ -65,7 +66,7 @@ namespace Fern
             if (scan_pos >= source_.size())
             {
                 // Return EOF if we're past the end
-                return Token(TokenKind::EndOfFile, SourceRange(SourceLocation(scan_pos, 1, 1), 0), source_);
+                return Token(TokenKind::EndOfFile, SourceRange(SourceLocation(file_id_, scan_pos, 1, 1), 0), source_);
             }
 
             // Temporarily set position to scan position
@@ -74,7 +75,7 @@ namespace Fern
 
             current_offset_ = scan_pos;
             // For simplicity, use the offset to calculate location (not fully accurate for line/column)
-            current_location_ = SourceLocation(current_offset_, 1, current_offset_ + 1);
+            current_location_ = SourceLocation(file_id_, current_offset_, 1, current_offset_ + 1);
 
             Token token = scan_token();
             token_cache_.push_back(token);
@@ -108,7 +109,7 @@ namespace Fern
     void Lexer::reset()
     {
         current_offset_ = 0;
-        current_location_ = SourceLocation(0, 1, 1);
+        current_location_ = SourceLocation(file_id_, 0, 1, 1);
         context_stack_.clear();
         context_stack_.push_back(LexicalContext::Normal);
         token_cache_.clear();
