@@ -32,10 +32,16 @@ namespace Fern
             }
         }
 
-        // Check: extern functions cannot have a body
-        if (has_flag(node->modifiers, ModifierKindFlags::Extern) && node->body != nullptr)
+        bool isExtern = has_flag(node->modifiers, ModifierKindFlags::Extern);
+
+        if (isExtern && node->body != nullptr)
         {
             error("External function cannot have a body", node->location);
+        }
+        else if (!isExtern && node->body == nullptr)
+        {
+            std::string name = node->name ? node->name->get_name() : "<unnamed>";
+            error("Function '" + name + "' must have a body", node->location);
         }
 
         // Visit parameters (will check for 'var' usage)
@@ -62,14 +68,26 @@ namespace Fern
         if (!node->param)
             return;
 
-        // Check for 'var' type - not allowed for parameters
-        if (node->param->type == nullptr)
+        bool hasName = node->param->name != nullptr;
+        bool hasType = node->param->type != nullptr;
+
+        if (!hasName && !hasType)
         {
-            std::string name = node->param->name ? node->param->name->get_name() : "<unknown>";
-            error("Parameter '" + name + "' must have an explicit type ('var' is not allowed for function parameters)", node->location);
+            error("Parameter declaration is incomplete", node->location);
+        }
+        else if (!hasName)
+        {
+            std::string typeName = node->param->type->as<BaseNameExprSyntax>()
+                ? node->param->type->as<BaseNameExprSyntax>()->get_name()
+                : "<type>";
+            error("Parameter of type '" + typeName + "' is missing a name", node->location);
+        }
+        else if (!hasType)
+        {
+            std::string name = node->param->name->get_name();
+            error("Parameter '" + name + "' must have an explicit type", node->location);
         }
 
-        // Let DefaultVisitor handle children
         DefaultVisitor::visit(node);
     }
 
@@ -102,6 +120,12 @@ namespace Fern
 
     void SyntaxValidator::visit(ConstructorDeclSyntax* node)
     {
+        // Constructors must have a body
+        if (node->body == nullptr)
+        {
+            error("Constructor must have a body", node->location);
+        }
+
         // Check for duplicate parameter names
         std::unordered_set<std::string> paramNames;
         for (auto param : node->parameters)

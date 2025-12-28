@@ -163,6 +163,7 @@ void SymbolTableValidator::validate_container_typed(ContainerSymbol* container)
         }
     }
 
+    // Recursively validate nested containers
     for (auto& [name, symbol_vec] : container->members)
     {
         for (auto& sym_ptr : symbol_vec)

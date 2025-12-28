@@ -444,6 +444,24 @@ namespace Fern
             return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
         }
 
+        // === Semantic validation (bound tree) ===
+        LOG_HEADER("Semantic validation", LogCategory::COMPILER);
+
+        for (auto& state : file_states)
+        {
+            if (!state.boundTree)
+                continue;
+
+            SemanticValidator semantic_validator;
+            semantic_validator.validate(state.boundTree);
+            state.collect_diagnostics(semantic_validator);
+        }
+
+        if (has_any_errors(file_states))
+        {
+            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+        }
+
         symbol_validator.validate_typed(*global_symbols);
 
         if (symbol_validator.has_errors())

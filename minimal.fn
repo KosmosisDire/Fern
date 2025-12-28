@@ -1,13 +1,24 @@
+ref type Player
+{
+    i32 id
+    f32 health
+    f32 stamina
 
+    fn Heal(f32 amount)
+    {
+        health += amount
+    }
+
+    fn Attack(Player target, f32 damage)
+    {
+        target.health -= damage
+    }
+
+}
 
 fn Test(f32 x, i32 y)
 {
     return x + (f32)y * 2.0
-}
-
-fn Test(i32 x, f32 y)
-{
-    return (f32)x + y
 }
 
 fn Test(i32 x, f32 y)

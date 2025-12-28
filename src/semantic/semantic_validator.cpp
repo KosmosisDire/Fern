@@ -7,32 +7,37 @@ void SemanticValidator::validate(BoundCompilationUnit* unit)
 {
     if (!unit) return;
 
-    for (auto* decl : unit->statements)
+    for (auto* stmt : unit->statements)
     {
-        validate_statement(decl);
+        if (stmt)
+            stmt->accept(this);
     }
 }
 
-void SemanticValidator::validate_declaration(BoundDeclaration* decl)
+void SemanticValidator::visit(BoundTypeExpression* node)
 {
-    if (!decl) return;
+    if (!node) return;
 
-    // Placeholder for future semantic checks on declarations
-    // Examples: check return paths, unreachable code, etc.
-}
+    if (node->resolvedTypeReference && node->resolvedTypeReference->is<UnresolvedType>())
+    {
+        std::string typeName;
+        for (size_t i = 0; i < node->parts.size(); ++i)
+        {
+            if (i > 0) typeName += ".";
+            typeName += node->parts[i];
+        }
 
-void SemanticValidator::validate_statement(BoundStatement* stmt)
-{
-    if (!stmt) return;
+        if (!typeName.empty())
+        {
+            error("'" + typeName + "' is not a known type", node->location);
+        }
+        else
+        {
+            error("Unknown type", node->location);
+        }
+    }
 
-    // Placeholder for future semantic checks on statements
-}
-
-void SemanticValidator::validate_expression(BoundExpression* expr)
-{
-    if (!expr) return;
-
-    // Placeholder for future semantic checks on expressions
+    DefaultBoundVisitor::visit(node);
 }
 
 } // namespace Fern
