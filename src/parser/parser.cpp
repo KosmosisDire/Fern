@@ -1241,6 +1241,9 @@ namespace Fern
             if (precedence < minPrecedence || precedence == 0)
                 break;
 
+            if (op.is_unary_operator() && left->location.end().line != op.location.start.line)
+                break;
+
             if (op.is_assignment_operator())
             {
                 tokens.advance();

@@ -537,12 +537,32 @@ void BoundToFLIR::visit(BoundBinaryExpression* node) {
 }
 
 void BoundToFLIR::visit(BoundUnaryExpression* node) {
+    if (node->operatorKind == UnaryOperatorKind::AddressOf) {
+        auto addr = emit_lvalue(node->operand);
+        if (!addr) {
+            lowered[node] = {nullptr, false};
+            return;
+        }
+        lowered[node] = {addr, false};
+        return;
+    }
+
+    if (node->operatorKind == UnaryOperatorKind::Dereference) {
+        auto ptr = emit_rvalue(node->operand);
+        if (!ptr) {
+            lowered[node] = {nullptr, false};
+            return;
+        }
+        lowered[node] = {ptr, true};
+        return;
+    }
+
     auto operand = emit_rvalue(node->operand);
     if (!operand) {
         lowered[node] = {nullptr, false};
         return;
     }
-    
+
     auto opcode = get_unary_opcode(node->operatorKind);
     auto result = builder.unary(opcode, operand);
     lowered[node] = {result, false};
