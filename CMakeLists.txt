@@ -105,6 +105,9 @@ set(FERN_LIB_SOURCES
     # FLIR
     src/flir/ir_type.cpp
     src/flir/bound_to_flir.cpp
+    src/flir/abi/abi_rules.cpp
+    src/flir/abi/abi_lowering_pass.cpp
+    src/flir/abi/windows_x64.cpp
 
     # Code Generator
     src/codegen/llvm_ir_builder.cpp
@@ -135,7 +138,7 @@ endif()
 # ─────────────────────────────────────────────────────────────────────────────
 
 set(RUNTIME_SOURCES
-    lib/clay_wrapper.cpp
+    lib/clay/clay_wrapper.cpp
     runtime/runtime.cpp
 )
 

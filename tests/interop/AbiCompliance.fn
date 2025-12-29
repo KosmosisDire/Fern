@@ -1,0 +1,198 @@
+-- Expected: 42.0
+
+extern fn fn_a_abi_test1()
+extern fn fn_a_abi_test2(int a, float b, f64 c, char d)
+extern fn fn_a_abi_test3(int* arr, int size)
+extern fn fn_a_abi_test4() -> LargeStructI
+extern fn fn_a_abi_test5(float x, float y, float z, float w) -> MidStructF
+extern fn fn_a_abi_test6(int a, float b, f64 c, char d) -> MixedStruct
+extern fn fn_a_abi_test7(SmallStructI s1, SmallStructF s2, TinyStructI s3, TinyStructF s4) -> NestedStruct
+extern fn fn_a_abi_test8(TinyStructI s1, TinyStructF s2) -> NestedStruct2
+extern fn fn_a_abi_test9(TinyStructI s1)
+extern fn fn_a_abi_test10(MidStructI s1)
+
+type LargeStructI
+{
+    i32[16] data
+}
+
+type LargeStructF
+{
+    f32[16] data
+}
+
+type MidStructI
+{
+    i32 x
+    i32 y
+    i32 z
+    i32 w
+
+    new(i32 x, i32 y, i32 z, i32 w)
+    {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+    }
+}
+
+type MidStructF
+{
+    f32 x
+    f32 y
+    f32 z
+    f32 w
+
+    new(f32 x, f32 y, f32 z, f32 w)
+    {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+    }
+}
+
+type SmallStructI
+{
+    i32 x
+    i32 y
+
+    new(i32 x, i32 y)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type SmallStructF
+{
+    f32 x
+    f32 y
+
+    new(f32 x, f32 y)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type TinyStructI
+{
+    i32 x
+
+    new(i32 x)
+    {
+        this.x = x
+    }
+}
+
+type TinyStructF
+{
+    f32 x
+
+    new(f32 x)
+    {
+        this.x = x
+    }
+}
+
+type MixedStruct
+{
+    i32 a
+    f32 b
+    f64 c
+    char d
+
+    new(i32 a, f32 b, f64 c, char d)
+    {
+        this.a = a
+        this.b = b
+        this.c = c
+        this.d = d
+    }
+}
+
+type NestedStruct
+{
+    SmallStructI s1
+    SmallStructF s2
+    TinyStructI s3
+    TinyStructF s4
+
+    new(SmallStructI s1, SmallStructF s2, TinyStructI s3, TinyStructF s4)
+    {
+        this.s1 = s1
+        this.s2 = s2
+        this.s3 = s3
+        this.s4 = s4
+    }
+}
+
+type NestedStruct2
+{
+    TinyStructI s1
+    TinyStructF s2
+
+    new(TinyStructI s1, TinyStructF s2)
+    {
+        this.s1 = s1
+        this.s2 = s2
+    }
+}
+
+fn Main
+{
+    fn_a_abi_test1()
+    fn_a_abi_test2(42, 3.14, 2.71828, 'A')
+    i32[5] arr = [1, 2, 3, 4, 5]
+    fn_a_abi_test3(&arr[0], 5)
+    LargeStructI lsi = fn_a_abi_test4()
+
+    -- lsi should have numbers 0 to 15
+    for (i32 i = 0; i < 16; i += 1)
+    {
+        if (lsi.data[i] != i)
+        {
+            return -1.0
+        }
+    }
+
+    MidStructF msf = fn_a_abi_test5(1.0, 2.0, 3.0, 4.0)
+
+    if (msf.x != 1.0 || msf.y != 2.0 || msf.z != 3.0 || msf.w != 4.0)
+    {
+        return -2.0
+    }
+
+    MixedStruct ms = fn_a_abi_test6(10, 20.0, 30.0, 'B')
+    
+    if (ms.a != 10 || ms.b != 20.0 || ms.c != 30.0f64 || ms.d != 'B')
+    {
+        return -3.0
+    }
+
+    SmallStructI ssi = new SmallStructI(5, 10)
+    SmallStructF ssf = new SmallStructF(1.5, 2.5)
+    TinyStructI tsi = new TinyStructI(100)
+    TinyStructF tsf = new TinyStructF(200.5)
+    NestedStruct ns = fn_a_abi_test7(ssi, ssf, tsi, tsf)
+    
+    if (ns.s1.x != 5 || ns.s1.y != 10 || ns.s2.x != 1.5 || ns.s2.y != 2.5 || ns.s3.x != 100 || ns.s4.x != 200.5)
+    {
+        return -4.0
+    }
+
+    NestedStruct2 ns2 = fn_a_abi_test8(tsi, tsf)
+    
+    if (ns2.s1.x != 100 || ns2.s2.x != 200.5)
+    {
+        return -5.0
+    }
+
+    fn_a_abi_test9(tsi)
+    fn_a_abi_test10(new MidStructI(7, 8, 9, 10))
+
+    return 42.0
+}
+ 

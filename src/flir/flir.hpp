@@ -862,7 +862,12 @@ namespace Fern::FLIR
             case Opcode::Call:
             {
                 auto *call = static_cast<const CallInst *>(inst);
-                ss << "call @" << call->callee->name() << "(";
+                ss << "call ";
+                if (call->callee->is_external)
+                {
+                    ss << "external ";
+                }
+                ss << call->callee->name() << "(";
                 for (size_t i = 0; i < call->args.size(); ++i)
                 {
                     if (i > 0)

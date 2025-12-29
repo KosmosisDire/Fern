@@ -18,6 +18,7 @@
 #include "semantic/symbol_table_validator.hpp"
 #include "semantic/semantic_validator.hpp"
 #include "flir/flir.hpp"
+#include "flir/abi/abi.hpp"
 #include "flir/bound_to_flir.hpp"
 #include "binding/conversion_inserter.hpp"
 
@@ -532,7 +533,21 @@ namespace Fern
             LOG_INFO(flir_module->dump() + "\n", LogCategory::COMPILER);
         }
 
-        // return nullptr;
+        // convert ABI to target ABI
+        auto rules = FLIR::ABI::create_rules_for_target(
+            FLIR::ABI::get_host_target(),
+            &flir_module->ir_types
+        );
+
+        FLIR::ABI::LoweringPass pass(std::move(rules));
+        pass.run(*flir_module);
+
+        // dump flir again after abi lowering
+        if (print_flir)
+        {
+            LOG_HEADER("FLIR Output (Post-ABI Lowering)", LogCategory::COMPILER);
+            LOG_INFO(flir_module->dump() + "\n", LogCategory::COMPILER);
+        }
 
         // === LLVM Code Generation from FLIR ===
         LOG_HEADER("LLVM code generation", LogCategory::COMPILER);
