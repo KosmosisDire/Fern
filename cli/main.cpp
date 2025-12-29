@@ -32,6 +32,7 @@ enum class CompileMode {
 struct CommandLineArgs {
     CompileMode mode = CompileMode::Run;
     std::vector<std::string> source_files;
+    std::vector<std::string> dynamic_libs;
     std::string output_file;
     bool show_help = false;
     bool run_tests = false;
@@ -46,6 +47,7 @@ void show_help(const std::string& program_name) {
     std::cout << "\nOptions:\n";
     std::cout << "  --help, -h              Show this help message\n";
     std::cout << "  -o, --output <file>     Specify output file (build mode only)\n";
+    std::cout << "  -l, --lib <path>        Load dynamic library for JIT execution (run mode only)\n";
     #ifdef FERN_DEBUG
     std::cout << "  --test, -t [dir]        Run tests in the specified directory (default: tests)\n";
     #endif
@@ -57,6 +59,7 @@ void show_help(const std::string& program_name) {
     std::cout << "  " << program_name << " run runtime/std.fn main.fn\n";
     std::cout << "  " << program_name << " run *.fn                  # Run all .fn files in current dir\n";
     std::cout << "  " << program_name << " run runtime/*.fn          # Run all .fn files in runtime/\n";
+    std::cout << "  " << program_name << " run main.fn -l mylib.dll  # Load dynamic library\n";
     std::cout << "  " << program_name << " build main.fn\n";
     std::cout << "  " << program_name << " build main.fn -o program.o\n";
     std::cout << "  " << program_name << " build lib.fn utils.fn --output mylib.o\n";
@@ -118,6 +121,15 @@ CommandLineArgs parse_args(int argc, char* argv[]) {
                 i++;
             } else {
                 std::cerr << "Error: " << arg << " requires a file path\n";
+                args.show_help = true;
+                return args;
+            }
+        } else if (arg == "-l" || arg == "--lib") {
+            if (i + 1 < argc) {
+                args.dynamic_libs.push_back(argv[i + 1]);
+                i++;
+            } else {
+                std::cerr << "Error: " << arg << " requires a library path\n";
                 args.show_help = true;
                 return args;
             }
@@ -242,7 +254,7 @@ int main(int argc, char* argv[])
             result->dump_ir();
         #endif
 
-        auto ret = result->execute_jit<float>("Main").value_or(-1.0f);
+        auto ret = result->execute_jit<float>("Main", args.dynamic_libs).value_or(-1.0f);
         std::cout << "\n";
         std::cout << "______________________________\n\n";
         std::cout << "Program returned: " << ret << std::endl;
