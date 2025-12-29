@@ -1342,6 +1342,13 @@ namespace Fern
 
     void TypeResolver::visit(BoundTypeExpression *node)
     {
+        // Visit type arguments first so nested types (pointers, arrays) get resolved
+        for (auto* typeArg : node->typeArguments)
+        {
+            if (typeArg)
+                typeArg->accept(this);
+        }
+
         // Type expressions resolve to themselves
         node->resolvedTypeReference = resolve_type_expression(node);
         // The type of a type expression is Type<T>, not T itself

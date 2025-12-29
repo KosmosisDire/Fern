@@ -1,35 +1,17 @@
-ref type Player
+type Player
 {
-    i32 id
-    f32 health
-    f32 stamina
-
-    fn Heal(f32 amount)
-    {
-        health += amount
-    }
-
-    fn Attack(Player target, f32 damage)
-    {
-        target.health -= damage
-    }
-
+    i32 health
 }
 
-fn Test(f32 x, i32 y)
+type TestStruct
 {
-    return x + (f32)y * 2.0
-}
-
-fn Test(i32 x, f32 y)
-{
-    return (f32)x + y
+    Player* player
+    f32 multiplier
 }
 
 fn Main
 {
-    var t1 = Test(3.5, 4)
-    var t2 = Test(4, 3.5)
-    return t1 + t2
+    var p = new TestStruct()
+    return 0.0
 }
 
