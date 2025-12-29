@@ -1,1 +1,1 @@
-apt update && apt install -y zlib1g-dev libcurl4-openssl-dev libedit-dev libzstd-dev llvm-19
+apt update && apt install -y zlib1g-dev libcurl4-openssl-dev libedit-dev libzstd-dev llvm-20 llvm-20-dev

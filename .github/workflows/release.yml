@@ -32,17 +32,25 @@ jobs:
       run: |
         cmake --build build --config Release
 
-    - name: Package Linux binary
+    - name: Package Linux binaries
       run: |
         mkdir -p artifacts/linux
-        cp build/Fern artifacts/linux/fern-linux-x64
-        chmod +x artifacts/linux/fern-linux-x64
+        cp build/ferncli artifacts/linux/ferncli-linux-x64
+        cp build/fernlsp artifacts/linux/fernlsp-linux-x64
+        chmod +x artifacts/linux/ferncli-linux-x64
+        chmod +x artifacts/linux/fernlsp-linux-x64
 
-    - name: Upload Linux artifact
+    - name: Upload Linux CLI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: fern-linux-x64
-        path: artifacts/linux/fern-linux-x64
+        name: ferncli-linux-x64
+        path: artifacts/linux/ferncli-linux-x64
+
+    - name: Upload Linux LSP artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: fernlsp-linux-x64
+        path: artifacts/linux/fernlsp-linux-x64
 
   build-windows:
     runs-on: windows-latest
@@ -82,16 +90,23 @@ jobs:
       run: |
         cmake --build build/Release --config Release
 
-    - name: Package Windows binary
+    - name: Package Windows binaries
       run: |
         mkdir artifacts\windows
-        copy build\Release\Fern.exe artifacts\windows\fern-windows-x64.exe
+        copy build\Release\ferncli.exe artifacts\windows\ferncli-windows-x64.exe
+        copy build\Release\fernlsp.exe artifacts\windows\fernlsp-windows-x64.exe
 
-    - name: Upload Windows artifact
+    - name: Upload Windows CLI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: fern-windows-x64
-        path: artifacts/windows/fern-windows-x64.exe
+        name: ferncli-windows-x64
+        path: artifacts/windows/ferncli-windows-x64.exe
+
+    - name: Upload Windows LSP artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: fernlsp-windows-x64
+        path: artifacts/windows/fernlsp-windows-x64.exe
 
   create-release:
     needs: [build-linux, build-windows]
@@ -101,24 +116,38 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Download Linux artifact
+    - name: Download Linux CLI artifact
       uses: actions/download-artifact@v4
       with:
-        name: fern-linux-x64
+        name: ferncli-linux-x64
         path: ./
 
-    - name: Download Windows artifact
+    - name: Download Linux LSP artifact
       uses: actions/download-artifact@v4
       with:
-        name: fern-windows-x64
+        name: fernlsp-linux-x64
+        path: ./
+
+    - name: Download Windows CLI artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ferncli-windows-x64
+        path: ./
+
+    - name: Download Windows LSP artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: fernlsp-windows-x64
         path: ./
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          fern-linux-x64
-          fern-windows-x64.exe
+          ferncli-linux-x64
+          fernlsp-linux-x64
+          ferncli-windows-x64.exe
+          fernlsp-windows-x64.exe
         draft: false
         prerelease: false
         generate_release_notes: true

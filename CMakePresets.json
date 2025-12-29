@@ -7,9 +7,9 @@
     },
     "configurePresets": [
         {
-            "name": "windows-vcpkg-ninja-debug",
-            "displayName": "Windows (vcpkg) - Ninja - Debug",
-            "description": "Debug build using Ninja generator with vcpkg toolchain.",
+            "name": "windows-debug",
+            "displayName": "Windows - Debug",
+            "description": "Debug build (LLVM auto-downloaded).",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/Debug",
             "condition": {
@@ -19,17 +19,13 @@
             },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE",
-                "CMAKE_TOOLCHAIN_FILE": {
-                    "type": "FILEPATH",
-                    "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-                }
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
             }
         },
         {
-            "name": "windows-vcpkg-ninja-release",
-            "displayName": "Windows (vcpkg) - Ninja - Release",
-            "description": "Release build using Ninja generator with vcpkg toolchain.",
+            "name": "windows-release",
+            "displayName": "Windows - Release",
+            "description": "Release build (LLVM auto-downloaded).",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/Release",
             "condition": {
@@ -39,11 +35,7 @@
             },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE",
-                "CMAKE_TOOLCHAIN_FILE": {
-                    "type": "FILEPATH",
-                    "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-                }
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
             }
         },
         {
@@ -99,39 +91,19 @@
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
             }
-        },
-        {
-            "name": "windows-vcpkg-vs-debug",
-            "displayName": "Windows (vcpkg) - Visual Studio - Debug",
-            "generator": "Visual Studio 17 2022",
-            "binaryDir": "${sourceDir}/build/vs-debug",
-            "environment": {
-                "VCPKG_ROOT": "C:/tools/vcpkg"
-            },
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_TOOLCHAIN_FILE": {
-                    "type": "FILEPATH",
-                    "value": "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake"
-                },
-                "CMAKE_PREFIX_PATH": {
-                    "type": "PATH",
-                    "value": "C:/tools/vcpkg/installed/x64-windows"
-                }
-            }
         }
     ],
     "buildPresets": [
         {
             "name": "debug-build",
             "displayName": "Build (Debug)",
-            "configurePreset": "windows-vcpkg-ninja-debug",
+            "configurePreset": "windows-debug",
             "description": "Build the Debug configuration."
         },
         {
             "name": "release-build",
             "displayName": "Build (Release)",
-            "configurePreset": "windows-vcpkg-ninja-release",
+            "configurePreset": "windows-release",
             "description": "Build the Release configuration."
         },
         {
@@ -151,7 +123,7 @@
         {
             "name": "debug-test",
             "displayName": "Test (Debug)",
-            "configurePreset": "windows-vcpkg-ninja-debug",
+            "configurePreset": "windows-debug",
             "output": {
                 "outputOnFailure": true
             },
@@ -162,7 +134,7 @@
         {
             "name": "release-test",
             "displayName": "Test (Release)",
-            "configurePreset": "windows-vcpkg-ninja-release",
+            "configurePreset": "windows-release",
             "output": {
                 "outputOnFailure": true
             },

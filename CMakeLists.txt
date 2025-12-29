@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 project(Fern C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -13,6 +13,8 @@ endif()
 # LLVM Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
+include(cmake/FetchLLVM.cmake)
+
 find_package(LLVM CONFIG)
 
 if(LLVM_FOUND)
@@ -20,6 +22,9 @@ if(LLVM_FOUND)
     message(STATUS "LLVM Include Dirs: ${LLVM_INCLUDE_DIRS}")
     include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
     set(LLVM_AVAILABLE TRUE)
+    if(WIN32)
+        add_link_options("LINKER:/ignore:4099")
+    endif()
 else()
     message(STATUS "LLVM not found - building without JIT functionality")
     set(LLVM_AVAILABLE FALSE)
@@ -134,14 +139,14 @@ set(RUNTIME_SOURCES
     runtime/runtime.cpp
 )
 
-add_executable(Fern
+add_executable(ferncli
     cli/main.cpp
     src/test_runner.cpp
     ${RUNTIME_SOURCES}
 )
 
-target_link_libraries(Fern PRIVATE FernLib)
-target_include_directories(Fern PRIVATE src lib)
+target_link_libraries(ferncli PRIVATE FernLib)
+target_include_directories(ferncli PRIVATE src lib)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fern LSP Server
@@ -161,10 +166,10 @@ if(FERN_BUILD_LSP)
     set(LSP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(lsp-framework)
 
-    add_executable(FernLSP
+    add_executable(fernlsp
         lsp/main.cpp
     )
 
-    target_link_libraries(FernLSP PRIVATE FernLib lsp)
-    target_include_directories(FernLSP PRIVATE src)
+    target_link_libraries(fernlsp PRIVATE FernLib lsp)
+    target_include_directories(fernlsp PRIVATE src)
 endif()
