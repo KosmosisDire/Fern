@@ -74,6 +74,15 @@ namespace Fern
             return magic_enum::enum_contains<LiteralKind>(static_cast<int>(kind));
         }
 
+        // Check if this is an integer literal token
+        bool is_integer_literal() const
+        {
+            return kind == TokenKind::LiteralI8 || kind == TokenKind::LiteralU8 ||
+                   kind == TokenKind::LiteralI16 || kind == TokenKind::LiteralU16 ||
+                   kind == TokenKind::LiteralI32 || kind == TokenKind::LiteralU32 ||
+                   kind == TokenKind::LiteralI64 || kind == TokenKind::LiteralU64;
+        }
+
         // Check if this is an operator token
         bool is_operator() const
         {
@@ -374,8 +383,17 @@ namespace Fern
             switch (kind)
             {
             // Literals
+            case TokenKind::LiteralI8:
+            case TokenKind::LiteralU8:
+            case TokenKind::LiteralI16:
+            case TokenKind::LiteralU16:
             case TokenKind::LiteralI32:
+            case TokenKind::LiteralU32:
+            case TokenKind::LiteralI64:
+            case TokenKind::LiteralU64:
+            case TokenKind::LiteralF16:
             case TokenKind::LiteralF32:
+            case TokenKind::LiteralF64:
             case TokenKind::LiteralString:
             case TokenKind::LiteralChar:
             case TokenKind::LiteralBool:

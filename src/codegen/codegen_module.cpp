@@ -89,7 +89,11 @@ namespace Fern
             break;
 
         case FLIR::IRTypeKind::Float:
-            if (type->bit_width == 32)
+            if (type->bit_width == 16)
+            {
+                llvm_type = llvm::Type::getHalfTy(context);
+            }
+            else if (type->bit_width == 32)
             {
                 llvm_type = llvm::Type::getFloatTy(context);
             }
@@ -99,7 +103,7 @@ namespace Fern
             }
             else
             {
-                throw std::runtime_error("Unsupported float bit width");
+                throw std::runtime_error("Unsupported float bit width: " + std::to_string(type->bit_width));
             }
             break;
 

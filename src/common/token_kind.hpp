@@ -16,8 +16,17 @@ namespace Fern
         Invalid,
 
         // Literals
+        LiteralI8,
+        LiteralU8,
+        LiteralI16,
+        LiteralU16,
         LiteralI32,
+        LiteralU32,
+        LiteralI64,
+        LiteralU64,
+        LiteralF16,
         LiteralF32,
+        LiteralF64,
         LiteralString,
         LiteralChar,
         LiteralBool,
@@ -266,8 +275,17 @@ namespace Fern
     enum class LiteralKind
     {
         Invalid = (int)TokenKind::Invalid,
+        I8 = (int)TokenKind::LiteralI8,
+        U8 = (int)TokenKind::LiteralU8,
+        I16 = (int)TokenKind::LiteralI16,
+        U16 = (int)TokenKind::LiteralU16,
         I32 = (int)TokenKind::LiteralI32,
+        U32 = (int)TokenKind::LiteralU32,
+        I64 = (int)TokenKind::LiteralI64,
+        U64 = (int)TokenKind::LiteralU64,
+        F16 = (int)TokenKind::LiteralF16,
         F32 = (int)TokenKind::LiteralF32,
+        F64 = (int)TokenKind::LiteralF64,
         String = (int)TokenKind::LiteralString,
         Char = (int)TokenKind::LiteralChar,
         Bool = (int)TokenKind::LiteralBool,
@@ -357,10 +375,28 @@ namespace Fern
             return "invalid";
 
         // Literals
+        case TokenKind::LiteralI8:
+            return "i8";
+        case TokenKind::LiteralU8:
+            return "u8";
+        case TokenKind::LiteralI16:
+            return "i16";
+        case TokenKind::LiteralU16:
+            return "u16";
         case TokenKind::LiteralI32:
             return "i32";
+        case TokenKind::LiteralU32:
+            return "u32";
+        case TokenKind::LiteralI64:
+            return "i64";
+        case TokenKind::LiteralU64:
+            return "u64";
+        case TokenKind::LiteralF16:
+            return "f16";
         case TokenKind::LiteralF32:
             return "f32";
+        case TokenKind::LiteralF64:
+            return "f64";
         case TokenKind::LiteralString:
             return "string";
         case TokenKind::LiteralChar:

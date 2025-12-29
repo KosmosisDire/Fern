@@ -31,8 +31,17 @@ namespace Fern
                     case LiteralKind::Void: return "void";
                     case LiteralKind::Bool: return "bool";
                     case LiteralKind::Char: return "char";
+                    case LiteralKind::I8: return "i8";
+                    case LiteralKind::U8: return "u8";
+                    case LiteralKind::I16: return "i16";
+                    case LiteralKind::U16: return "u16";
                     case LiteralKind::I32: return "i32";
+                    case LiteralKind::U32: return "u32";
+                    case LiteralKind::I64: return "i64";
+                    case LiteralKind::U64: return "u64";
+                    case LiteralKind::F16: return "f16";
                     case LiteralKind::F32: return "f32";
+                    case LiteralKind::F64: return "f64";
                     case LiteralKind::String: return "string";
                     case LiteralKind::Null: return "null";
                     default: break;

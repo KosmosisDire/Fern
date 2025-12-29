@@ -636,7 +636,10 @@ namespace Fern
             // Check if the index is a literal (array size)
             if (auto literal = indexer->index->as<LiteralExprSyntax>())
             {
-                if (literal->kind == LiteralKind::I32)
+                if (literal->kind == LiteralKind::I8 || literal->kind == LiteralKind::U8 ||
+                    literal->kind == LiteralKind::I16 || literal->kind == LiteralKind::U16 ||
+                    literal->kind == LiteralKind::I32 || literal->kind == LiteralKind::U32 ||
+                    literal->kind == LiteralKind::I64 || literal->kind == LiteralKind::U64)
                 {
                     auto arrayType = arena.make<ArrayTypeSyntax>();
                     arrayType->baseType = indexer->object;
@@ -1527,7 +1530,7 @@ namespace Fern
                 {
                     isArrayType = true; // Empty brackets: Type[]
                 }
-                else if (check(TokenKind::LiteralI32))
+                else if (tokens.current().is_integer_literal())
                 {
                     tokens.advance(); // consume literal
                     if (check(TokenKind::RightBracket))
@@ -1550,7 +1553,7 @@ namespace Fern
                 auto arrayType = arena.make<ArrayTypeSyntax>();
                 arrayType->baseType = baseType;
 
-                if (check(TokenKind::LiteralI32))
+                if (tokens.current().is_integer_literal())
                 {
                     arrayType->size = parseLiteral();
                 }

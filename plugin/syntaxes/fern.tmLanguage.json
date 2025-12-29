@@ -74,12 +74,32 @@
     "numbers": {
       "patterns": [
         {
+          "name": "meta.number.float.suffix.fern",
+          "match": "\\b(\\d+\\.\\d+(?:[eE][+-]?\\d+)?)(f(?:16|32|64))\\b",
+          "captures": {
+            "1": { "name": "constant.numeric.float.fern" },
+            "2": { "name": "storage.type.primitive.fern" }
+          },
+          "comment": "Float literal with type suffix (e.g., 3.14f32, 1.0f64)"
+        },
+        {
           "name": "constant.numeric.float.fern",
-          "match": "\\b\\d+\\.\\d+[lL]?\\b"
+          "match": "\\b\\d+\\.\\d+(?:[eE][+-]?\\d+)?\\b",
+          "comment": "Float literal without suffix"
+        },
+        {
+          "name": "meta.number.integer.suffix.fern",
+          "match": "\\b(\\d+)([iuf](?:8|16|32|64))\\b",
+          "captures": {
+            "1": { "name": "constant.numeric.integer.fern" },
+            "2": { "name": "storage.type.primitive.fern" }
+          },
+          "comment": "Integer literal with type suffix (e.g., 42i8, 100u32)"
         },
         {
           "name": "constant.numeric.integer.fern",
-          "match": "\\b\\d+[uU]?[lL]?\\b"
+          "match": "\\b\\d+\\b",
+          "comment": "Integer literal without suffix"
         }
       ]
     },
@@ -115,7 +135,7 @@
         },
         {
           "name": "storage.type.primitive.fern",
-          "match": "\\b(i32|i64|u32|u64|f32|f64|bool|string|int|float|double|uint|long|ulong|char|ptr|void)\\b"
+          "match": "\\b(i8|u8|i16|u16|i32|u32|i64|u64|f16|f32|f64|bool|string|int|float|char|ptr|void)\\b"
         },
         {
           "name": "keyword.operator.arrow.fern",

@@ -12,3 +12,6 @@ out
 CHECKLIST.md
 .vs
 node_modules/
+*.dll
+*.lib
+*.exe

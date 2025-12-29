@@ -53,8 +53,17 @@ namespace Fern
         TypePtr get_void();
         TypePtr get_ptr();
         TypePtr get_bool();
+        TypePtr get_i8();
+        TypePtr get_u8();
+        TypePtr get_i16();
+        TypePtr get_u16();
         TypePtr get_i32();
+        TypePtr get_u32();
+        TypePtr get_i64();
+        TypePtr get_u64();
+        TypePtr get_f16();
         TypePtr get_f32();
+        TypePtr get_f64();
         TypePtr get_null();
         
         TypePtr get_primitive(const std::string& name);

@@ -435,8 +435,15 @@ namespace Fern
         auto is_integer = [](TypePtr t) -> bool {
             if (auto* prim = t->as<PrimitiveType>()) {
                 switch (prim->kind) {
-                    case LiteralKind::I32:
                     case LiteralKind::Char:
+                    case LiteralKind::I8:
+                    case LiteralKind::U8:
+                    case LiteralKind::I16:
+                    case LiteralKind::U16:
+                    case LiteralKind::I32:
+                    case LiteralKind::U32:
+                    case LiteralKind::I64:
+                    case LiteralKind::U64:
                         return true;
                     default:
                         return false;
@@ -528,11 +535,38 @@ namespace Fern
         TypePtr type = nullptr;
         switch (node->literalKind)
         {
+        case LiteralKind::I8:
+            type = typeSystem.get_i8();
+            break;
+        case LiteralKind::U8:
+            type = typeSystem.get_u8();
+            break;
+        case LiteralKind::I16:
+            type = typeSystem.get_i16();
+            break;
+        case LiteralKind::U16:
+            type = typeSystem.get_u16();
+            break;
         case LiteralKind::I32:
             type = typeSystem.get_i32();
             break;
+        case LiteralKind::U32:
+            type = typeSystem.get_u32();
+            break;
+        case LiteralKind::I64:
+            type = typeSystem.get_i64();
+            break;
+        case LiteralKind::U64:
+            type = typeSystem.get_u64();
+            break;
+        case LiteralKind::F16:
+            type = typeSystem.get_f16();
+            break;
         case LiteralKind::F32:
             type = typeSystem.get_f32();
+            break;
+        case LiteralKind::F64:
+            type = typeSystem.get_f64();
             break;
         case LiteralKind::Bool:
             type = typeSystem.get_bool();
@@ -541,11 +575,9 @@ namespace Fern
             type = typeSystem.get_primitive("char");
             break;
         case LiteralKind::String:
-            // String literals are char* (pointer to null-terminated char array)
             type = typeSystem.get_primitive("string");
             break;
         case LiteralKind::Null:
-            // Null literal has its own type, convertible to any pointer/reference type
             type = typeSystem.get_null();
             break;
         default:
@@ -663,8 +695,15 @@ namespace Fern
                 auto is_integer = [](TypePtr t) -> bool {
                     if (auto* prim = t->as<PrimitiveType>()) {
                         switch (prim->kind) {
-                            case LiteralKind::I32:
                             case LiteralKind::Char:
+                            case LiteralKind::I8:
+                            case LiteralKind::U8:
+                            case LiteralKind::I16:
+                            case LiteralKind::U16:
+                            case LiteralKind::I32:
+                            case LiteralKind::U32:
+                            case LiteralKind::I64:
+                            case LiteralKind::U64:
                                 return true;
                             default:
                                 return false;

@@ -111,6 +111,7 @@ public:
     IRTypePtr get_u16() { return &u16_type; }
     IRTypePtr get_u32() { return &u32_type; }
     IRTypePtr get_u64() { return &u64_type; }
+    IRTypePtr get_f16() { return &f16_type; }
     IRTypePtr get_f32() { return &f32_type; }
     IRTypePtr get_f64() { return &f64_type; }
 
@@ -136,7 +137,7 @@ private:
     IRType bool_type;
     IRType i8_type, i16_type, i32_type, i64_type;
     IRType u8_type, u16_type, u32_type, u64_type;
-    IRType f32_type, f64_type;
+    IRType f16_type, f32_type, f64_type;
 
     // Compound type storage (dynamically allocated)
     std::vector<std::unique_ptr<IRType>> pointer_types;

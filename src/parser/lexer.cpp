@@ -439,9 +439,12 @@ namespace Fern
             }
         }
 
+        bool is_float = false;
+
         // Check for floating point
         if (!at_end() && current_char() == '.' && is_digit(peek_char()))
         {
+            is_float = true;
             advance_char(); // Skip '.'
             while (!at_end() && is_digit(current_char()))
             {
@@ -461,11 +464,53 @@ namespace Fern
                     advance_char();
                 }
             }
-
-            return Token(TokenKind::LiteralF32, SourceRange(start_location, current_offset_ - start), source_);
         }
 
-        return Token(TokenKind::LiteralI32, SourceRange(start_location, current_offset_ - start), source_);
+        // Save where numeric part ends (before suffix)
+        size_t numeric_end = current_offset_;
+
+        // Check for type suffix (i8, u8, i16, u16, i32, u32, i64, u64, f16, f32, f64)
+        TokenKind literal_kind = is_float ? TokenKind::LiteralF32 : TokenKind::LiteralI32;
+
+        if (!at_end() && (current_char() == 'i' || current_char() == 'u' || current_char() == 'f'))
+        {
+            char suffix_start = current_char();
+            advance_char();
+
+            // Parse the bit width
+            std::string bit_width_str;
+            while (!at_end() && is_digit(current_char()))
+            {
+                bit_width_str += current_char();
+                advance_char();
+            }
+
+            if (!bit_width_str.empty())
+            {
+                if (suffix_start == 'i')
+                {
+                    if (bit_width_str == "8") literal_kind = TokenKind::LiteralI8;
+                    else if (bit_width_str == "16") literal_kind = TokenKind::LiteralI16;
+                    else if (bit_width_str == "32") literal_kind = TokenKind::LiteralI32;
+                    else if (bit_width_str == "64") literal_kind = TokenKind::LiteralI64;
+                }
+                else if (suffix_start == 'u')
+                {
+                    if (bit_width_str == "8") literal_kind = TokenKind::LiteralU8;
+                    else if (bit_width_str == "16") literal_kind = TokenKind::LiteralU16;
+                    else if (bit_width_str == "32") literal_kind = TokenKind::LiteralU32;
+                    else if (bit_width_str == "64") literal_kind = TokenKind::LiteralU64;
+                }
+                else if (suffix_start == 'f')
+                {
+                    if (bit_width_str == "16") literal_kind = TokenKind::LiteralF16;
+                    else if (bit_width_str == "32") literal_kind = TokenKind::LiteralF32;
+                    else if (bit_width_str == "64") literal_kind = TokenKind::LiteralF64;
+                }
+            }
+        }
+
+        return Token(literal_kind, SourceRange(start_location, numeric_end - start), source_);
     }
 
     Token Lexer::scan_string_literal()

@@ -125,6 +125,9 @@ void IRTypeSystem::init_primitives()
     u64_type.bit_width = 64;
     u64_type.is_signed = false;
 
+    f16_type.kind = IRTypeKind::Float;
+    f16_type.bit_width = 16;
+
     f32_type.kind = IRTypeKind::Float;
     f32_type.bit_width = 32;
 
@@ -234,14 +237,30 @@ IRTypePtr IRTypeSystem::convert(TypePtr semantic_type)
         case LiteralKind::Bool:
             return get_bool();
         case LiteralKind::Char:
-            return get_i8(); // char is i8
+            return get_i8();
+        case LiteralKind::I8:
+            return get_i8();
+        case LiteralKind::U8:
+            return get_u8();
+        case LiteralKind::I16:
+            return get_i16();
+        case LiteralKind::U16:
+            return get_u16();
         case LiteralKind::I32:
             return get_i32();
+        case LiteralKind::U32:
+            return get_u32();
+        case LiteralKind::I64:
+            return get_i64();
+        case LiteralKind::U64:
+            return get_u64();
+        case LiteralKind::F16:
+            return get_f16();
         case LiteralKind::F32:
             return get_f32();
+        case LiteralKind::F64:
+            return get_f64();
         case LiteralKind::String:
-            // String is a struct type, but for now treat as pointer
-            // TODO: Handle string type properly when we have it defined
             return get_pointer(get_i8());
         case LiteralKind::Null:
             return get_pointer(get_void());

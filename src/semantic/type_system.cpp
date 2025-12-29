@@ -60,8 +60,17 @@ void TypeSystem::init_primitives() {
     add_primitive(LiteralKind::Void);
     add_primitive(LiteralKind::Bool);
     add_primitive(LiteralKind::Char);
+    add_primitive(LiteralKind::I8);
+    add_primitive(LiteralKind::U8);
+    add_primitive(LiteralKind::I16);
+    add_primitive(LiteralKind::U16);
     add_primitive(LiteralKind::I32);
+    add_primitive(LiteralKind::U32);
+    add_primitive(LiteralKind::I64);
+    add_primitive(LiteralKind::U64);
+    add_primitive(LiteralKind::F16);
     add_primitive(LiteralKind::F32);
+    add_primitive(LiteralKind::F64);
     add_primitive(LiteralKind::Null);
 
     // add string as an empty named type
@@ -94,16 +103,52 @@ TypePtr TypeSystem::get_void() {
     return primitives[LiteralKind::Void]; 
 }
 
-TypePtr TypeSystem::get_bool() { 
-    return primitives[LiteralKind::Bool]; 
+TypePtr TypeSystem::get_bool() {
+    return primitives[LiteralKind::Bool];
+}
+
+TypePtr TypeSystem::get_i8() {
+    return primitives[LiteralKind::I8];
+}
+
+TypePtr TypeSystem::get_u8() {
+    return primitives[LiteralKind::U8];
+}
+
+TypePtr TypeSystem::get_i16() {
+    return primitives[LiteralKind::I16];
+}
+
+TypePtr TypeSystem::get_u16() {
+    return primitives[LiteralKind::U16];
 }
 
 TypePtr TypeSystem::get_i32() {
     return primitives[LiteralKind::I32];
 }
 
+TypePtr TypeSystem::get_u32() {
+    return primitives[LiteralKind::U32];
+}
+
+TypePtr TypeSystem::get_i64() {
+    return primitives[LiteralKind::I64];
+}
+
+TypePtr TypeSystem::get_u64() {
+    return primitives[LiteralKind::U64];
+}
+
+TypePtr TypeSystem::get_f16() {
+    return primitives[LiteralKind::F16];
+}
+
 TypePtr TypeSystem::get_f32() {
     return primitives[LiteralKind::F32];
+}
+
+TypePtr TypeSystem::get_f64() {
+    return primitives[LiteralKind::F64];
 }
 
 TypePtr TypeSystem::get_null() {
@@ -122,10 +167,20 @@ TypePtr TypeSystem::get_primitive(const std::string& name) {
         {"void", LiteralKind::Void},
         {"bool", LiteralKind::Bool},
         {"char", LiteralKind::Char},
+        {"i8", LiteralKind::I8},
+        {"u8", LiteralKind::U8},
+        {"i16", LiteralKind::I16},
+        {"u16", LiteralKind::U16},
         {"i32", LiteralKind::I32},
         {"int", LiteralKind::I32},
+        {"u32", LiteralKind::U32},
+        {"i64", LiteralKind::I64},
+        {"u64", LiteralKind::U64},
+        {"f16", LiteralKind::F16},
         {"f32", LiteralKind::F32},
         {"float", LiteralKind::F32},
+        {"f64", LiteralKind::F64},
+        {"double", LiteralKind::F64},
         {"string", LiteralKind::String}
     };
 

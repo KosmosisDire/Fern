@@ -55,21 +55,40 @@ namespace Fern
         static constexpr int VOID_IDX = 0;
         static constexpr int BOOL_IDX = 1;
         static constexpr int CHAR_IDX = 2;
-        static constexpr int I32_IDX = 3;
-        static constexpr int F32_IDX = 4;
-        static constexpr int STRING_IDX = 5;
-        
+        static constexpr int I8_IDX = 3;
+        static constexpr int U8_IDX = 4;
+        static constexpr int I16_IDX = 5;
+        static constexpr int U16_IDX = 6;
+        static constexpr int I32_IDX = 7;
+        static constexpr int U32_IDX = 8;
+        static constexpr int I64_IDX = 9;
+        static constexpr int U64_IDX = 10;
+        static constexpr int F16_IDX = 11;
+        static constexpr int F32_IDX = 12;
+        static constexpr int F64_IDX = 13;
+        static constexpr int STRING_IDX = 14;
+
         // Conversion matrix using normalized indices
         // Rows = source type, Columns = target type
-        static constexpr ConversionKind conversionMatrix[6][6] = {
+        // IMP = Implicit (widening, safe), EXP = Explicit (narrowing, lossy), IDN = Identity, NOC = No conversion
+        static constexpr ConversionKind conversionMatrix[15][15] = {
             // Converting FROM (row) TO (column):
-            //          void  bool  char  i32   f32   string
-            /*  void */  {IDN, NOC,  NOC,  NOC,  NOC,  NOC},
-            /*  bool */  {NOC, IDN,  EXP,  EXP,  EXP,  NOC},
-            /*  char */  {NOC, EXP,  IDN,  IMP,  IMP,  NOC},
-            /*  i32 */   {NOC, EXP,  EXP,  IDN,  IMP,  NOC},
-            /*  f32 */   {NOC, EXP,  EXP,  EXP,  IDN,  NOC},
-            /*string */  {NOC, NOC,  NOC,  NOC,  NOC,  IDN},
+            //          void  bool  char  i8    u8    i16   u16   i32   u32   i64   u64   f16   f32   f64   string
+            /*  void */  {IDN,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC},
+            /*  bool */  {NOC,  IDN,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  NOC},
+            /*  char */  {NOC,  EXP,  IDN,  IMP,  EXP,  IMP,  EXP,  IMP,  EXP,  IMP,  EXP,  IMP,  IMP,  IMP,  NOC},
+            /*   i8 */   {NOC,  EXP,  EXP,  IDN,  EXP,  IMP,  EXP,  IMP,  EXP,  IMP,  EXP,  IMP,  IMP,  IMP,  NOC},
+            /*   u8 */   {NOC,  EXP,  EXP,  EXP,  IDN,  EXP,  IMP,  EXP,  IMP,  EXP,  IMP,  IMP,  IMP,  IMP,  NOC},
+            /*  i16 */   {NOC,  EXP,  EXP,  EXP,  EXP,  IDN,  EXP,  IMP,  EXP,  IMP,  EXP,  IMP,  IMP,  IMP,  NOC},
+            /*  u16 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  EXP,  IMP,  EXP,  IMP,  IMP,  IMP,  IMP,  NOC},
+            /*  i32 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  EXP,  IMP,  EXP,  IMP,  IMP,  IMP,  NOC},
+            /*  u32 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  EXP,  IMP,  IMP,  IMP,  IMP,  NOC},
+            /*  i64 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  EXP,  IMP,  IMP,  IMP,  NOC},
+            /*  u64 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  IMP,  IMP,  IMP,  NOC},
+            /*  f16 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  IMP,  IMP,  NOC},
+            /*  f32 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  IMP,  NOC},
+            /*  f64 */   {NOC,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  EXP,  IDN,  NOC},
+            /*string */  {NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  IDN},
         };
 
         // Convert LiteralKind to matrix index
@@ -80,8 +99,17 @@ namespace Fern
             case LiteralKind::Void:   return VOID_IDX;
             case LiteralKind::Bool:   return BOOL_IDX;
             case LiteralKind::Char:   return CHAR_IDX;
+            case LiteralKind::I8:     return I8_IDX;
+            case LiteralKind::U8:     return U8_IDX;
+            case LiteralKind::I16:    return I16_IDX;
+            case LiteralKind::U16:    return U16_IDX;
             case LiteralKind::I32:    return I32_IDX;
+            case LiteralKind::U32:    return U32_IDX;
+            case LiteralKind::I64:    return I64_IDX;
+            case LiteralKind::U64:    return U64_IDX;
+            case LiteralKind::F16:    return F16_IDX;
             case LiteralKind::F32:    return F32_IDX;
+            case LiteralKind::F64:    return F64_IDX;
             case LiteralKind::String: return STRING_IDX;
             default:                  return -1;  // Invalid/Null
             }
