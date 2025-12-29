@@ -3,7 +3,7 @@
 
 namespace Fern
 {
-    #pragma region Main Resolution Entry Point
+    #pragma region Entry
 
     bool TypeResolver::resolve(BoundCompilationUnit *unit)
     {
@@ -38,7 +38,7 @@ namespace Fern
         return !has_errors();
     }
 
-    #pragma region Core Type Resolution
+    #pragma region Core Types
 
     TypePtr TypeResolver::apply_substitution(TypePtr type)
     {
@@ -109,7 +109,7 @@ namespace Fern
         }
     }
 
-    #pragma region Symbol Resolution
+    #pragma region Symbol Res
 
     FunctionSymbol *TypeResolver::resolve_overload(const std::vector<FunctionSymbol *> &overloads,
                                                         const std::vector<TypePtr> &argTypes)
@@ -355,7 +355,7 @@ namespace Fern
         return ValueCategory::RValue;
     }
 
-    #pragma region Conversion Checking
+    #pragma region Conv Check
 
     ConversionKind TypeResolver::check_conversion(TypePtr from, TypePtr to)
     {
@@ -469,7 +469,7 @@ namespace Fern
         }
     }
 
-    #pragma region Error Reporting
+    #pragma region Errors
 
     void TypeResolver::report_error(BoundNode *node, const std::string &message)
     {
@@ -520,7 +520,7 @@ namespace Fern
         }
     }
 
-    #pragma region Expression Visitors
+    #pragma region Expressions
 
     void TypeResolver::visit(BoundLiteralExpression *node)
     {
@@ -1355,7 +1355,7 @@ namespace Fern
         node->type = typeSystem.get_type_type(node->resolvedTypeReference);
     }
 
-    #pragma region Statement Visitors
+    #pragma region Statements
 
     void TypeResolver::visit(BoundBlockStatement *node)
     {
@@ -1505,7 +1505,7 @@ namespace Fern
         // TODO: Implement when adding using support
     }
 
-    #pragma region Declaration Visitors
+    #pragma region Declarations
 
     void TypeResolver::visit(BoundVariableDeclaration *node)
     {
@@ -1589,6 +1589,14 @@ namespace Fern
                 if (currentFunction->return_type->is<UnresolvedType>())
                 {
                     currentFunction->return_type = infer_return_type(node->body);
+                }
+            }
+            else
+            {
+                if (currentFunction->return_type->is<UnresolvedType>())
+                {
+                    // No body and unresolved return type defaults to void
+                    currentFunction->return_type = typeSystem.get_void();
                 }
             }
 
