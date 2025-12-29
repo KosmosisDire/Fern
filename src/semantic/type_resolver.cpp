@@ -185,6 +185,14 @@ namespace Fern
 
     #pragma region Type Utilities
 
+    bool TypeResolver::is_integer_type(TypePtr type) const
+    {
+        if (auto* prim = type->as<PrimitiveType>()) {
+            return Fern::is_integer(prim->kind);
+        }
+        return false;
+    }
+
     TypePtr TypeResolver::resolve_type_expression(BoundExpression *typeExpr)
     {
         if (!typeExpr)
@@ -432,32 +440,12 @@ namespace Fern
             return false;
         }
 
-        auto is_integer = [](TypePtr t) -> bool {
-            if (auto* prim = t->as<PrimitiveType>()) {
-                switch (prim->kind) {
-                    case LiteralKind::Char:
-                    case LiteralKind::I8:
-                    case LiteralKind::U8:
-                    case LiteralKind::I16:
-                    case LiteralKind::U16:
-                    case LiteralKind::I32:
-                    case LiteralKind::U32:
-                    case LiteralKind::I64:
-                    case LiteralKind::U64:
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-            return false;
-        };
-
-        if (canonicalFrom->is<PointerType>() && is_integer(canonicalTo))
+        if (canonicalFrom->is<PointerType>() && is_integer_type(canonicalTo))
         {
             return true;
         }
 
-        if (is_integer(canonicalFrom) && canonicalTo->is<PointerType>())
+        if (is_integer_type(canonicalFrom) && canonicalTo->is<PointerType>())
         {
             return true;
         }
@@ -691,35 +679,14 @@ namespace Fern
 
             if (!leftType->is<UnresolvedType>() && !rightType->is<UnresolvedType>())
             {
-                // Helper lambda to check if a type is an integer
-                auto is_integer = [](TypePtr t) -> bool {
-                    if (auto* prim = t->as<PrimitiveType>()) {
-                        switch (prim->kind) {
-                            case LiteralKind::Char:
-                            case LiteralKind::I8:
-                            case LiteralKind::U8:
-                            case LiteralKind::I16:
-                            case LiteralKind::U16:
-                            case LiteralKind::I32:
-                            case LiteralKind::U32:
-                            case LiteralKind::I64:
-                            case LiteralKind::U64:
-                                return true;
-                            default:
-                                return false;
-                        }
-                    }
-                    return false;
-                };
-
                 // Check for pointer + integer or integer + pointer
-                if (leftType->is<PointerType>() && is_integer(rightType))
+                if (leftType->is<PointerType>() && is_integer_type(rightType))
                 {
                     // pointer + integer = pointer
                     resultType = leftType;
                 }
                 else if (node->operatorKind == BinaryOperatorKind::Add &&
-                         rightType->is<PointerType>() && is_integer(leftType))
+                         rightType->is<PointerType>() && is_integer_type(leftType))
                 {
                     // integer + pointer = pointer (only for addition)
                     resultType = rightType;

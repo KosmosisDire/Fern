@@ -497,23 +497,16 @@ namespace Fern
         bound->location = syntax->location;
         bound->literalKind = syntax->kind;
 
-        switch (syntax->kind)
+        if (is_integer(syntax->kind) && syntax->kind != LiteralKind::Char)
         {
-        case LiteralKind::I8:
-        case LiteralKind::U8:
-        case LiteralKind::I16:
-        case LiteralKind::U16:
-        case LiteralKind::I32:
-        case LiteralKind::U32:
-        case LiteralKind::I64:
-        case LiteralKind::U64:
             bound->constantValue = static_cast<int64_t>(std::stoll(std::string(syntax->value)));
-            break;
-        case LiteralKind::F16:
-        case LiteralKind::F32:
-        case LiteralKind::F64:
+        }
+        else if (is_float(syntax->kind))
+        {
             bound->constantValue = std::stod(std::string(syntax->value));
-            break;
+        }
+        else switch (syntax->kind)
+        {
         case LiteralKind::Bool:
             bound->constantValue = (syntax->value == "true");
             break;

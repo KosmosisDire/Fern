@@ -53,6 +53,9 @@ namespace Fern
         TypePtr infer_return_type(BoundStatement* body);
         ValueCategory compute_value_category(BoundExpression* expr, Symbol* symbol = nullptr);
 
+        // Type classification helpers
+        bool is_integer_type(TypePtr type) const;
+
         #pragma region Conversion Checking
         ConversionKind check_conversion(TypePtr from, TypePtr to);
         bool check_implicit_conversion(TypePtr from, TypePtr to, BoundNode* node, const std::string& context);

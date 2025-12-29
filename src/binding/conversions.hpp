@@ -51,23 +51,6 @@ namespace Fern
         static constexpr ConversionKind IMP = ConversionKind::ImplicitNumeric;
         static constexpr ConversionKind EXP = ConversionKind::ExplicitNumeric;
 
-        // Matrix indices (LiteralKind values are non-sequential from TokenKind)
-        static constexpr int VOID_IDX = 0;
-        static constexpr int BOOL_IDX = 1;
-        static constexpr int CHAR_IDX = 2;
-        static constexpr int I8_IDX = 3;
-        static constexpr int U8_IDX = 4;
-        static constexpr int I16_IDX = 5;
-        static constexpr int U16_IDX = 6;
-        static constexpr int I32_IDX = 7;
-        static constexpr int U32_IDX = 8;
-        static constexpr int I64_IDX = 9;
-        static constexpr int U64_IDX = 10;
-        static constexpr int F16_IDX = 11;
-        static constexpr int F32_IDX = 12;
-        static constexpr int F64_IDX = 13;
-        static constexpr int STRING_IDX = 14;
-
         // Conversion matrix using normalized indices
         // Rows = source type, Columns = target type
         // IMP = Implicit (widening, safe), EXP = Explicit (narrowing, lossy), IDN = Identity, NOC = No conversion
@@ -91,38 +74,14 @@ namespace Fern
             /*string */  {NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  NOC,  IDN},
         };
 
-        // Convert LiteralKind to matrix index
-        static constexpr int to_matrix_index(LiteralKind kind)
-        {
-            switch (kind)
-            {
-            case LiteralKind::Void:   return VOID_IDX;
-            case LiteralKind::Bool:   return BOOL_IDX;
-            case LiteralKind::Char:   return CHAR_IDX;
-            case LiteralKind::I8:     return I8_IDX;
-            case LiteralKind::U8:     return U8_IDX;
-            case LiteralKind::I16:    return I16_IDX;
-            case LiteralKind::U16:    return U16_IDX;
-            case LiteralKind::I32:    return I32_IDX;
-            case LiteralKind::U32:    return U32_IDX;
-            case LiteralKind::I64:    return I64_IDX;
-            case LiteralKind::U64:    return U64_IDX;
-            case LiteralKind::F16:    return F16_IDX;
-            case LiteralKind::F32:    return F32_IDX;
-            case LiteralKind::F64:    return F64_IDX;
-            case LiteralKind::String: return STRING_IDX;
-            default:                  return -1;  // Invalid/Null
-            }
-        }
-
     public:
         /**
          * Classify the conversion between two primitive types
          */
         static ConversionKind classify_conversion(LiteralKind source, LiteralKind target)
         {
-            int sourceIdx = to_matrix_index(source);
-            int targetIdx = to_matrix_index(target);
+            int sourceIdx = get_conversion_matrix_index(source);
+            int targetIdx = get_conversion_matrix_index(target);
 
             // Return NoConversion for invalid/null types
             if (sourceIdx < 0 || targetIdx < 0)

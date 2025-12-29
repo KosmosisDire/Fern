@@ -293,6 +293,95 @@ namespace Fern
         Void = (int)TokenKind::Void,
     };
 
+    #pragma region LiteralKind Classifiers
+
+    constexpr bool is_integer(LiteralKind kind)
+    {
+        return kind == LiteralKind::I8 || kind == LiteralKind::U8 ||
+               kind == LiteralKind::I16 || kind == LiteralKind::U16 ||
+               kind == LiteralKind::I32 || kind == LiteralKind::U32 ||
+               kind == LiteralKind::I64 || kind == LiteralKind::U64 ||
+               kind == LiteralKind::Char;
+    }
+
+    constexpr bool is_signed_integer(LiteralKind kind)
+    {
+        return kind == LiteralKind::I8 || kind == LiteralKind::I16 ||
+               kind == LiteralKind::I32 || kind == LiteralKind::I64;
+    }
+
+    constexpr bool is_unsigned_integer(LiteralKind kind)
+    {
+        return kind == LiteralKind::U8 || kind == LiteralKind::U16 ||
+               kind == LiteralKind::U32 || kind == LiteralKind::U64;
+    }
+
+    constexpr bool is_float(LiteralKind kind)
+    {
+        return kind == LiteralKind::F16 || kind == LiteralKind::F32 ||
+               kind == LiteralKind::F64;
+    }
+
+    constexpr bool is_numeric(LiteralKind kind)
+    {
+        return is_integer(kind) || is_float(kind);
+    }
+
+    constexpr bool is_signed(LiteralKind kind)
+    {
+        return is_signed_integer(kind) || is_float(kind);
+    }
+
+    constexpr uint8_t get_bit_width(LiteralKind kind)
+    {
+        switch (kind)
+        {
+        case LiteralKind::I8:
+        case LiteralKind::U8:
+        case LiteralKind::Char:
+            return 8;
+        case LiteralKind::I16:
+        case LiteralKind::U16:
+        case LiteralKind::F16:
+            return 16;
+        case LiteralKind::I32:
+        case LiteralKind::U32:
+        case LiteralKind::F32:
+            return 32;
+        case LiteralKind::I64:
+        case LiteralKind::U64:
+        case LiteralKind::F64:
+            return 64;
+        default:
+            return 0;
+        }
+    }
+
+    constexpr int get_conversion_matrix_index(LiteralKind kind)
+    {
+        switch (kind)
+        {
+        case LiteralKind::Void:   return 0;
+        case LiteralKind::Bool:   return 1;
+        case LiteralKind::Char:   return 2;
+        case LiteralKind::I8:     return 3;
+        case LiteralKind::U8:     return 4;
+        case LiteralKind::I16:    return 5;
+        case LiteralKind::U16:    return 6;
+        case LiteralKind::I32:    return 7;
+        case LiteralKind::U32:    return 8;
+        case LiteralKind::I64:    return 9;
+        case LiteralKind::U64:    return 10;
+        case LiteralKind::F16:    return 11;
+        case LiteralKind::F32:    return 12;
+        case LiteralKind::F64:    return 13;
+        case LiteralKind::String: return 14;
+        default:                  return -1;
+        }
+    }
+
+    #pragma endregion
+
     // Trivia kinds - whitespace and comments
     enum class TriviaKind : uint8_t
     {
