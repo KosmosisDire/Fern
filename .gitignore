@@ -10,6 +10,5 @@ CLAUDE.md
 out
 *.vsix
 CHECKLIST.md
-spec/
 .vs
 node_modules/
