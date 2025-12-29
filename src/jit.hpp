@@ -5,6 +5,7 @@
 #include <llvm/Support/Error.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace Fern
 {
@@ -19,6 +20,9 @@ namespace Fern
 
         bool add_module(std::unique_ptr<llvm::Module> module,
                         std::unique_ptr<llvm::LLVMContext> context);
+
+        bool load_library(const std::string &path);
+        bool load_libraries(const std::vector<std::string> &paths);
 
         llvm::Expected<llvm::orc::ExecutorAddr> lookup(const std::string &name);
 

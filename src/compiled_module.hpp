@@ -76,11 +76,29 @@ namespace Fern
         
         // Generic JIT execution for any return type and function signature
         template<typename ReturnType, typename... Args>
-        std::optional<ReturnType> execute_jit(const std::string &function_name, Args... args);
-        
+        std::optional<ReturnType> execute_jit(const std::string &function_name,
+                                              const std::vector<std::string> &libraries,
+                                              Args... args);
+
+        // Convenience overload without libraries
+        template<typename ReturnType, typename... Args>
+        std::optional<ReturnType> execute_jit(const std::string &function_name, Args... args)
+        {
+            return execute_jit<ReturnType, Args...>(function_name, {}, args...);
+        }
+
         // Specialization for void return type
         template<typename... Args>
-        bool execute_jit_void(const std::string &function_name, Args... args);
+        bool execute_jit_void(const std::string &function_name,
+                              const std::vector<std::string> &libraries,
+                              Args... args);
+
+        // Convenience overload without libraries
+        template<typename... Args>
+        bool execute_jit_void(const std::string &function_name, Args... args)
+        {
+            return execute_jit_void<Args...>(function_name, {}, args...);
+        }
 
         // Get LLVM IR as string
         std::string get_ir_string() const;
@@ -93,12 +111,13 @@ namespace Fern
         llvm::LLVMContext* get_context() const { return context.get(); }
     };
 
-    // Template implementation (must be in header)
     template<typename ReturnType, typename... Args>
-    std::optional<ReturnType> CompiledModule::execute_jit(const std::string &function_name, Args... args)
+    std::optional<ReturnType> CompiledModule::execute_jit(const std::string &function_name,
+                                                          const std::vector<std::string> &libraries,
+                                                          Args... args)
     {
         static_assert(!std::is_void_v<ReturnType>, "Use execute_jit_void for void functions");
-        
+
         if (!is_valid())
         {
             LOG_ERROR("Cannot execute: module is invalid.", LogCategory::JIT);
@@ -109,7 +128,6 @@ namespace Fern
             return std::nullopt;
         }
 
-        // Verify module before JIT execution
         std::string verify_error;
         llvm::raw_string_ostream error_stream(verify_error);
         if (llvm::verifyModule(*module, &error_stream))
@@ -118,33 +136,32 @@ namespace Fern
             return std::nullopt;
         }
 
-        // Create JIT instance
         JIT jit;
 
-        // Clone the module to preserve the original
+        if (!jit.load_libraries(libraries))
+        {
+            LOG_ERROR("Failed to load dynamic libraries", LogCategory::JIT);
+            return std::nullopt;
+        }
+
         auto cloned_module = llvm::CloneModule(*module);
-        
-        // The cloned module needs its own context for the JIT
         auto jit_context = std::make_unique<llvm::LLVMContext>();
 
-        // Move ownership to JIT
         if (!jit.add_module(std::move(cloned_module), std::move(jit_context)))
         {
             LOG_ERROR("Failed to add module to JIT", LogCategory::JIT);
             return std::nullopt;
         }
 
-        // Get function pointer using JIT's get_function template
         using FuncType = ReturnType(Args...);
         auto func = jit.get_function<FuncType>(function_name);
-        
+
         if (!func)
         {
             LOG_ERROR("Failed to find function: " + function_name, LogCategory::JIT);
             return std::nullopt;
         }
 
-        // Execute function with provided arguments
         try
         {
             ReturnType result = func(args...);
@@ -157,9 +174,10 @@ namespace Fern
         }
     }
 
-    // Template implementation for void functions
     template<typename... Args>
-    bool CompiledModule::execute_jit_void(const std::string &function_name, Args... args)
+    bool CompiledModule::execute_jit_void(const std::string &function_name,
+                                          const std::vector<std::string> &libraries,
+                                          Args... args)
     {
         if (!is_valid())
         {
@@ -171,7 +189,6 @@ namespace Fern
             return false;
         }
 
-        // Verify module before JIT execution
         std::string verify_error;
         llvm::raw_string_ostream error_stream(verify_error);
         if (llvm::verifyModule(*module, &error_stream))
@@ -180,33 +197,32 @@ namespace Fern
             return false;
         }
 
-        // Create JIT instance
         JIT jit;
 
-        // Clone the module to preserve the original
+        if (!jit.load_libraries(libraries))
+        {
+            LOG_ERROR("Failed to load dynamic libraries", LogCategory::JIT);
+            return false;
+        }
+
         auto cloned_module = llvm::CloneModule(*module);
-        
-        // The cloned module needs its own context for the JIT
         auto jit_context = std::make_unique<llvm::LLVMContext>();
 
-        // Move ownership to JIT
         if (!jit.add_module(std::move(cloned_module), std::move(jit_context)))
         {
             LOG_ERROR("Failed to add module to JIT", LogCategory::JIT);
             return false;
         }
 
-        // Get function pointer using JIT's get_function template
         using FuncType = void(Args...);
         auto func = jit.get_function<FuncType>(function_name);
-        
+
         if (!func)
         {
             LOG_ERROR("Failed to find function: " + function_name, LogCategory::JIT);
             return false;
         }
 
-        // Execute function
         try
         {
             func(args...);

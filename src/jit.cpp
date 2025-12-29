@@ -1,4 +1,3 @@
-// jit_executor.cpp
 #include "jit.hpp"
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/Support/TargetSelect.h>
@@ -9,12 +8,10 @@ namespace Fern
 
     JIT::JIT()
     {
-        // Initialize LLVM targets (if not already done)
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
 
-        // Create LLJIT instance
         auto jit_expected = llvm::orc::LLJITBuilder().create();
         if (!jit_expected)
         {
@@ -24,11 +21,8 @@ namespace Fern
         }
         jit = std::move(*jit_expected);
 
-        // Add process symbols (for linking with system libraries)
-        auto &es = jit->getExecutionSession();
         auto &main_dylib = jit->getMainJITDylib();
 
-        // Load process symbols for printf, malloc, etc.
         auto generator = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
             jit->getDataLayout().getGlobalPrefix());
         if (!generator)
@@ -38,6 +32,35 @@ namespace Fern
             exit(1);
         }
         main_dylib.addGenerator(std::move(*generator));
+    }
+
+    bool JIT::load_library(const std::string &path)
+    {
+        auto &main_dylib = jit->getMainJITDylib();
+
+        auto generator = llvm::orc::DynamicLibrarySearchGenerator::Load(
+            path.c_str(),
+            jit->getDataLayout().getGlobalPrefix());
+
+        if (!generator)
+        {
+            llvm::errs() << "Failed to load library '" << path << "': "
+                         << llvm::toString(generator.takeError()) << "\n";
+            return false;
+        }
+
+        main_dylib.addGenerator(std::move(*generator));
+        return true;
+    }
+
+    bool JIT::load_libraries(const std::vector<std::string> &paths)
+    {
+        for (const auto &path : paths)
+        {
+            if (!load_library(path))
+                return false;
+        }
+        return true;
     }
 
     bool JIT::add_module(std::unique_ptr<llvm::Module> module,
