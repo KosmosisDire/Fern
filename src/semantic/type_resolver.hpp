@@ -19,6 +19,14 @@ namespace Fern
         SymbolTable& symbolTable;
         TypeSystem& typeSystem;
 
+        // Cached primitive types to avoid common lookups
+        TypePtr cachedVoid;
+        TypePtr cachedBool;
+        TypePtr cachedI32;
+        TypePtr cachedI64;
+        TypePtr cachedF32;
+        TypePtr cachedF64;
+
         // Type inference via unification
         std::unordered_map<TypePtr, TypePtr> substitution;
         std::unordered_set<TypePtr> pendingConstraints;
@@ -34,14 +42,22 @@ namespace Fern
     public:
         explicit TypeResolver(SymbolTable& st)
             : DiagnosticSystem("TypeResolver"),
-              symbolTable(st), typeSystem(st.get_type_system()) {}
+              symbolTable(st), typeSystem(st.get_type_system())
+        {
+            cachedVoid = typeSystem.get_void();
+            cachedBool = typeSystem.get_bool();
+            cachedI32 = typeSystem.get_i32();
+            cachedI64 = typeSystem.get_i64();
+            cachedF32 = typeSystem.get_f32();
+            cachedF64 = typeSystem.get_f64();
+        }
 
         bool resolve(BoundCompilationUnit* unit);
         
     private:
         #pragma region Core Type Resolution
         TypePtr apply_substitution(TypePtr type);
-        void unify(TypePtr t1, TypePtr t2, BoundNode* error_node, const std::string& context);
+        void unify(TypePtr t1, TypePtr t2, BoundNode* error_node, const char* context);
         void annotate_expression(BoundExpression* expr, TypePtr type, Symbol* symbol = nullptr);
 
         #pragma region Symbol Resolution

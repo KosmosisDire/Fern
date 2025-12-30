@@ -14,30 +14,36 @@ namespace Fern
     private:
         // Canonicalization - ensure pointer equality for type equality
         std::vector<TypePtr> all_types;
-        
+
         // Quick lookup for primitives
         std::unordered_map<LiteralKind, TypePtr> primitives;
-        
+
         // Quick lookup for named types
         std::unordered_map<TypeSymbol*, TypePtr> named_types;
-        
+
+        // Quick lookup for pointer types (keyed by pointee)
+        std::unordered_map<TypePtr, TypePtr> pointer_types;
+
+        // Quick lookup for array types (keyed by {element, size})
+        struct ArrayKey {
+            TypePtr element;
+            int32_t size;
+            bool operator==(const ArrayKey& other) const {
+                return element == other.element && size == other.size;
+            }
+        };
+        struct ArrayKeyHash {
+            size_t operator()(const ArrayKey& k) const {
+                return std::hash<void*>()(k.element.get()) ^ (std::hash<int32_t>()(k.size) << 1);
+            }
+        };
+        std::unordered_map<ArrayKey, TypePtr, ArrayKeyHash> array_types;
+
+        // Quick lookup for meta types (keyed by inner)
+        std::unordered_map<TypePtr, TypePtr> meta_types;
+
         // For type inference
         uint32_t next_unresolved_id = 0;
-        
-        // Helper to find or create a type
-        template<typename T>
-        TypePtr find_or_create(const T& type_kind);
-        
-        // Type comparison helpers
-        bool compare_types(const PrimitiveType& a, const PrimitiveType& b) const;
-        bool compare_types(const PointerType& a, const PointerType& b) const;
-        bool compare_types(const ArrayType& a, const ArrayType& b) const;
-        bool compare_types(const NamedType& a, const NamedType& b) const;
-        bool compare_types(const UnresolvedType& a, const UnresolvedType& b) const;
-        bool compare_types(const MetaType& a, const MetaType& b) const;
-
-        template<typename T, typename U>
-        bool compare_types(const T&, const U&) const { return false; }
         
     public:
         TypeSystem();

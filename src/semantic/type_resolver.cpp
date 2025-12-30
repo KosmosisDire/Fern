@@ -12,29 +12,25 @@ namespace Fern
         pendingConstraints.clear();
         constraintNodes.clear();
 
-        // Multiple passes for type inference
-        for (int pass = 0; pass < MAX_PASSES; ++pass)
+        unit->accept(this);
+
+        if (pendingConstraints.empty())
         {
-            // Clear errors at start of each pass (we'll re-encounter them if they persist)
-            clear_diagnostics();
-
-            size_t constraintsBefore = pendingConstraints.size();
-
-            // Visit the entire tree
-            unit->accept(this);
-
-            // Check if we made progress
-            bool madeProgress = (pendingConstraints.size() < constraintsBefore);
-
-            if (!madeProgress || pendingConstraints.empty())
-            {
-                break;
-            }
+            return !has_errors();
         }
 
-        // Report any remaining unresolved types
-        report_final_errors();
+        for (int pass = 1; pass < MAX_PASSES; ++pass)
+        {
+            clear_diagnostics();
+            size_t constraintsBefore = pendingConstraints.size();
 
+            unit->accept(this);
+
+            if (pendingConstraints.empty() || pendingConstraints.size() >= constraintsBefore)
+                break;
+        }
+
+        report_final_errors();
         return !has_errors();
     }
 
@@ -47,9 +43,7 @@ namespace Fern
 
         auto it = substitution.find(type);
         if (it == substitution.end())
-        {
-            return type; // Already canonical
-        }
+            return type;
 
         // Path compression
         TypePtr root = apply_substitution(it->second);
@@ -57,7 +51,7 @@ namespace Fern
         return root;
     }
 
-    void TypeResolver::unify(TypePtr t1, TypePtr t2, BoundNode *error_node, const std::string &context)
+    void TypeResolver::unify(TypePtr t1, TypePtr t2, BoundNode *error_node, const char* context)
     {
         if (!t1 || !t2)
             return;
@@ -66,7 +60,7 @@ namespace Fern
         TypePtr root2 = apply_substitution(t2);
 
         if (root1 == root2)
-            return; // Already unified
+            return;
 
         bool root1_is_var = root1->is<UnresolvedType>();
         bool root2_is_var = root2->is<UnresolvedType>();
@@ -83,10 +77,15 @@ namespace Fern
             pendingConstraints.erase(root2);
             constraintNodes.erase(root2);
         }
-        else if (root1->get_name() != root2->get_name())
+        else if (root1 != root2)
         {
-            report_error(error_node, context + ": Type mismatch - '" + root1->get_name() +
-                                         "' and '" + root2->get_name() + "' are incompatible");
+            std::string msg = context;
+            msg += ": Type mismatch - '";
+            msg += root1->get_name();
+            msg += "' and '";
+            msg += root2->get_name();
+            msg += "' are incompatible";
+            report_error(error_node, msg);
         }
     }
 
@@ -265,9 +264,8 @@ namespace Fern
     TypePtr TypeResolver::infer_return_type(BoundStatement *body)
     {
         if (!body)
-            return typeSystem.get_void();
+            return cachedVoid;
 
-        // Find all return statements in the body
         class ReturnTypeFinder : public DefaultBoundVisitor
         {
         public:
@@ -307,7 +305,6 @@ namespace Fern
 
             void visit(BoundFunctionDeclaration *node) override
             {
-                // Don't visit nested functions
             }
         };
 
@@ -317,14 +314,14 @@ namespace Fern
         if (finder.commonType && !finder.hasVoidReturn)
             return finder.commonType;
         else if (finder.hasVoidReturn && !finder.commonType)
-            return typeSystem.get_void();
+            return cachedVoid;
         else if (finder.commonType && finder.hasVoidReturn)
         {
             report_error(body, "Inconsistent return types: both void and non-void returns");
             return finder.commonType;
         }
         else
-            return typeSystem.get_void();
+            return cachedVoid;
     }
 
     ValueCategory TypeResolver::compute_value_category(BoundExpression *expr, Symbol *symbol)
@@ -519,7 +516,10 @@ namespace Fern
 
     void TypeResolver::visit(BoundLiteralExpression *node)
     {
-        // Determine type from literal kind
+        // Early exit if already resolved
+        if (node->type && !node->type->is<UnresolvedType>())
+            return;
+
         TypePtr type = nullptr;
         switch (node->literalKind)
         {
@@ -536,13 +536,13 @@ namespace Fern
             type = typeSystem.get_u16();
             break;
         case LiteralKind::I32:
-            type = typeSystem.get_i32();
+            type = cachedI32;
             break;
         case LiteralKind::U32:
             type = typeSystem.get_u32();
             break;
         case LiteralKind::I64:
-            type = typeSystem.get_i64();
+            type = cachedI64;
             break;
         case LiteralKind::U64:
             type = typeSystem.get_u64();
@@ -551,13 +551,13 @@ namespace Fern
             type = typeSystem.get_f16();
             break;
         case LiteralKind::F32:
-            type = typeSystem.get_f32();
+            type = cachedF32;
             break;
         case LiteralKind::F64:
-            type = typeSystem.get_f64();
+            type = cachedF64;
             break;
         case LiteralKind::Bool:
-            type = typeSystem.get_bool();
+            type = cachedBool;
             break;
         case LiteralKind::Char:
             type = typeSystem.get_primitive("char");
@@ -578,7 +578,10 @@ namespace Fern
 
     void TypeResolver::visit(BoundNameExpression *node)
     {
-        // Resolve symbol if not already resolved
+        // Early exit if already resolved
+        if (node->symbol && node->type && !node->type->is<UnresolvedType>())
+            return;
+
         if (!node->symbol)
         {
             node->symbol = symbolTable.resolve_single(node->parts);
@@ -591,7 +594,6 @@ namespace Fern
             }
         }
 
-        // Extract type from symbol
         if (auto typed = node->symbol->as<VariableSymbol>())
         {
             annotate_expression(node, typed->type, node->symbol);
@@ -599,8 +601,6 @@ namespace Fern
         else if (node->symbol->is<FunctionSymbol>())
         {
             // Functions are resolved in BoundCallExpression where we have argument types
-            // for proper overload resolution. Symbol is already set, skip type annotation
-            // to avoid adding to pendingConstraints (which would cause false errors).
         }
         else
         {
@@ -610,7 +610,9 @@ namespace Fern
 
     void TypeResolver::visit(BoundBinaryExpression *node)
     {
-        // Visit operands
+        if (node->type && !node->type->is<UnresolvedType>())
+            return;
+
         if (node->left)
             node->left->accept(this);
         if (node->right)
@@ -644,7 +646,6 @@ namespace Fern
                 if (!Conversions::is_implicit_conversion(ltr) &&
                     !Conversions::is_implicit_conversion(rtl))
                 {
-                    // Check for null comparison with value type and give helpful message
                     auto* leftPrim = leftType->as<PrimitiveType>();
                     auto* rightPrim = rightType->as<PrimitiveType>();
                     auto* leftNamed = leftType->as<NamedType>();
@@ -667,7 +668,7 @@ namespace Fern
             {
                 unify(leftType, rightType, node, "comparison");
             }
-            annotate_expression(node, typeSystem.get_bool());
+            annotate_expression(node, cachedBool);
             break;
         }
 
@@ -693,11 +694,9 @@ namespace Fern
                 }
                 else if (leftType->is<PointerType>() && rightType->is<PointerType>())
                 {
-                    // pointer - pointer = integer (ptrdiff_t, represented as i32)
                     if (node->operatorKind == BinaryOperatorKind::Subtract)
                     {
-                        // TODO: Verify pointers are compatible types
-                        resultType = typeSystem.get_i32();
+                        resultType = cachedI32;
                     }
                     else
                     {
@@ -772,6 +771,9 @@ namespace Fern
 
     void TypeResolver::visit(BoundUnaryExpression *node)
     {
+        if (node->type && !node->type->is<UnresolvedType>())
+            return;
+
         if (node->operand)
             node->operand->accept(this);
 
@@ -793,8 +795,8 @@ namespace Fern
             break;
 
         case UnaryOperatorKind::Not:
-            unify(operandType, typeSystem.get_bool(), node, "logical not");
-            resultType = typeSystem.get_bool();
+            unify(operandType, cachedBool, node, "logical not");
+            resultType = cachedBool;
             break;
 
         case UnaryOperatorKind::AddressOf:
@@ -861,7 +863,10 @@ namespace Fern
 
     void TypeResolver::visit(BoundCallExpression *node)
     {
-        // Visit callee and arguments
+        // Early exit if resolved
+        if (node->method && node->type && !node->type->is<UnresolvedType>())
+            return;
+
         if (node->callee)
             node->callee->accept(this);
         for (auto arg : node->arguments)
@@ -870,15 +875,14 @@ namespace Fern
                 arg->accept(this);
         }
 
-        // Collect argument types
         std::vector<TypePtr> argTypes;
+        argTypes.reserve(node->arguments.size());
         for (auto arg : node->arguments)
         {
             if (arg)
                 argTypes.push_back(apply_substitution(arg->type));
         }
 
-        // Resolve function based on callee type
         if (!node->callee)
         {
             annotate_expression(node, typeSystem.get_unresolved());
@@ -1040,6 +1044,9 @@ namespace Fern
 
     void TypeResolver::visit(BoundMemberAccessExpression *node)
     {
+        if (node->member && node->type && !node->type->is<UnresolvedType>())
+            return;
+
         if (node->object)
             node->object->accept(this);
 
@@ -1085,8 +1092,6 @@ namespace Fern
         else if (node->member->is<FunctionSymbol>())
         {
             // Methods are resolved in BoundCallExpression where we have argument types
-            // for proper overload resolution. Member is already set, skip type annotation
-            // to avoid adding to pendingConstraints (which would cause false errors).
         }
         else
         {
@@ -1096,6 +1101,9 @@ namespace Fern
 
     void TypeResolver::visit(BoundIndexExpression *node)
     {
+        if (node->type && !node->type->is<UnresolvedType>())
+            return;
+
         if (node->object)
             node->object->accept(this);
         if (node->index)
@@ -1110,18 +1118,16 @@ namespace Fern
             return;
         }
 
-        // Check for array type
         if (objectType->is<ArrayType>())
         {
             auto arrayType = objectType->as<ArrayType>();
-            unify(indexType, typeSystem.get_i32(), node, "array index");
+            unify(indexType, cachedI32, node, "array index");
             annotate_expression(node, arrayType->element);
         }
-        // Check for pointer type (pointer arithmetic)
         else if (objectType->is<PointerType>())
         {
             auto ptrType = objectType->as<PointerType>();
-            unify(indexType, typeSystem.get_i32(), node, "pointer index");
+            unify(indexType, cachedI32, node, "pointer index");
             annotate_expression(node, ptrType->pointee);
         }
         else
@@ -1269,11 +1275,10 @@ namespace Fern
             }
         }
 
-        // Check size is integer
         if (node->size)
         {
             TypePtr sizeType = apply_substitution(node->size->type);
-            unify(sizeType, typeSystem.get_i32(), node, "array size");
+            unify(sizeType, cachedI32, node, "array size");
         }
 
         // Check initializers match element type
@@ -1400,7 +1405,7 @@ namespace Fern
         TypePtr condType = node->condition ? apply_substitution(node->condition->type) : nullptr;
         if (condType)
         {
-            unify(condType, typeSystem.get_bool(), node, "if condition");
+            unify(condType, cachedBool, node, "if condition");
         }
 
         if (node->thenStatement)
@@ -1417,7 +1422,7 @@ namespace Fern
         TypePtr condType = node->condition ? apply_substitution(node->condition->type) : nullptr;
         if (condType)
         {
-            unify(condType, typeSystem.get_bool(), node, "while condition");
+            unify(condType, cachedBool, node, "while condition");
         }
 
         if (node->body)
@@ -1435,7 +1440,7 @@ namespace Fern
             TypePtr condType = apply_substitution(node->condition->type);
             if (condType)
             {
-                unify(condType, typeSystem.get_bool(), node, "for condition");
+                unify(condType, cachedBool, node, "for condition");
             }
         }
 
@@ -1476,7 +1481,6 @@ namespace Fern
         {
             TypePtr valueType = apply_substitution(node->value->type);
 
-            // Check for void return
             if (valueType && !valueType->is<UnresolvedType>() && valueType->is_void())
             {
                 report_error(node, "Cannot return void expression");
@@ -1494,14 +1498,13 @@ namespace Fern
         }
         else
         {
-            // Void return
             if (expectedType && !expectedType->is<UnresolvedType>() && !expectedType->is_void())
             {
                 report_error(node, "Cannot return without value from non-void function");
             }
             else
             {
-                unify(expectedType, typeSystem.get_void(), node, "void return");
+                unify(expectedType, cachedVoid, node, "void return");
             }
         }
     }
@@ -1586,12 +1589,10 @@ namespace Fern
                     param->accept(this);
             }
 
-            // Visit body
             if (node->body)
             {
                 node->body->accept(this);
 
-                // Infer return type if needed
                 if (currentFunction->return_type->is<UnresolvedType>())
                 {
                     currentFunction->return_type = infer_return_type(node->body);
@@ -1601,8 +1602,7 @@ namespace Fern
             {
                 if (currentFunction->return_type->is<UnresolvedType>())
                 {
-                    // No body and unresolved return type defaults to void
-                    currentFunction->return_type = typeSystem.get_void();
+                    currentFunction->return_type = cachedVoid;
                 }
             }
 

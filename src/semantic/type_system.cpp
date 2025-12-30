@@ -4,48 +4,7 @@ namespace Fern
 {
 
 TypeSystem::TypeSystem() {
-    // Pre-create primitive types
     init_primitives();
-}
-
-template<typename T>
-TypePtr TypeSystem::find_or_create(const T& type_kind) {
-    // Linear search for now (could optimize with better hashing)
-    for (const auto& type : all_types) {
-        if (type->is<T>() && compare_types(type->as<T>(), type_kind)) {
-            return type;
-        }
-    }
-    
-    // Create new type
-    auto new_type = std::make_shared<Type>();
-    new_type->kind = type_kind;
-    all_types.push_back(new_type);
-    return new_type;
-}
-
-bool TypeSystem::compare_types(const PrimitiveType& a, const PrimitiveType& b) const {
-    return a.kind == b.kind;
-}
-
-bool TypeSystem::compare_types(const PointerType& a, const PointerType& b) const {
-    return a.pointee == b.pointee;
-}
-
-bool TypeSystem::compare_types(const ArrayType& a, const ArrayType& b) const {
-    return a.element == b.element && a.size == b.size;
-}
-
-bool TypeSystem::compare_types(const NamedType& a, const NamedType& b) const {
-    return a.symbol == b.symbol;
-}
-
-bool TypeSystem::compare_types(const UnresolvedType& a, const UnresolvedType& b) const {
-    return a.id == b.id;
-}
-
-bool TypeSystem::compare_types(const MetaType& a, const MetaType& b) const {
-    return a.inner == b.inner;
 }
 
 void TypeSystem::init_primitives() {
@@ -192,15 +151,46 @@ TypePtr TypeSystem::get_primitive(const std::string& name) {
 }
 
 TypePtr TypeSystem::get_pointer(TypePtr pointee) {
-    return find_or_create(PointerType{pointee});
+    auto it = pointer_types.find(pointee);
+    if (it != pointer_types.end()) {
+        return it->second;
+    }
+
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = PointerType{pointee};
+    all_types.push_back(new_type);
+    pointer_types[pointee] = new_type;
+    return new_type;
 }
 
 TypePtr TypeSystem::get_array(TypePtr element, int32_t size) {
-    return find_or_create(ArrayType{element, size});
+    ArrayKey key{element, size};
+    auto it = array_types.find(key);
+    if (it != array_types.end()) {
+        return it->second;
+    }
+
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = ArrayType{element, size};
+    all_types.push_back(new_type);
+    array_types[key] = new_type;
+    return new_type;
 }
 
 TypePtr TypeSystem::get_function(TypePtr return_type, std::vector<TypePtr> params) {
-    return find_or_create(FunctionType{return_type, std::move(params)});
+    // Function types are less common, use linear search
+    for (const auto& type : all_types) {
+        if (auto* func = type->as<FunctionType>()) {
+            if (func->returnType == return_type && func->paramTypes == params) {
+                return type;
+            }
+        }
+    }
+
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = FunctionType{return_type, std::move(params)};
+    all_types.push_back(new_type);
+    return new_type;
 }
 
 TypePtr TypeSystem::get_named(TypeSymbol* symbol) {
@@ -209,17 +199,31 @@ TypePtr TypeSystem::get_named(TypeSymbol* symbol) {
         return it->second;
     }
 
-    auto type = find_or_create(NamedType{symbol});
-    named_types[symbol] = type;
-    return type;
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = NamedType{symbol};
+    all_types.push_back(new_type);
+    named_types[symbol] = new_type;
+    return new_type;
 }
 
 TypePtr TypeSystem::get_unresolved() {
-    return find_or_create(UnresolvedType{next_unresolved_id++});
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = UnresolvedType{next_unresolved_id++};
+    all_types.push_back(new_type);
+    return new_type;
 }
 
 TypePtr TypeSystem::get_type_type(TypePtr inner) {
-    return find_or_create(MetaType{inner});
+    auto it = meta_types.find(inner);
+    if (it != meta_types.end()) {
+        return it->second;
+    }
+
+    auto new_type = std::make_shared<Type>();
+    new_type->kind = MetaType{inner};
+    all_types.push_back(new_type);
+    meta_types[inner] = new_type;
+    return new_type;
 }
 
 bool TypeSystem::are_equal(TypePtr a, TypePtr b) const {

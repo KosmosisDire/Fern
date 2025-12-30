@@ -95,26 +95,27 @@ namespace Fern
          */
         static ConversionKind classify_conversion(TypePtr sourceType, TypePtr targetType)
         {
+            if (sourceType == targetType)
+                return ConversionKind::Identity;
+
             // Handle array conversions
             auto sourceArray = sourceType->as<ArrayType>();
             auto targetArray = targetType->as<ArrayType>();
 
             if (sourceArray && targetArray)
             {
-                // Array to array conversion
-                // Check if element types match
-                if (sourceArray->element == targetArray->element ||
-                    sourceArray->element->get_name() == targetArray->element->get_name())
+                // Check if element types match (pointer equality since types are canonical)
+                if (sourceArray->element == targetArray->element)
                 {
                     // Sized array to unsized array is allowed (char[12] -> char[])
                     // Unsized to unsized is allowed (char[] -> char[])
                     // Sized to same-sized is allowed (char[12] -> char[12])
                     // But sized to different-sized is not (char[12] -> char[10])
-                    if (targetArray->size == -1 ||              // Target is unsized array
-                        sourceArray->size == -1 ||              // Source is unsized array
-                        sourceArray->size == targetArray->size) // Same size
+                    if (targetArray->size == -1 ||
+                        sourceArray->size == -1 ||
+                        sourceArray->size == targetArray->size)
                     {
-                        return ConversionKind::Identity; // Treat as identity for parameter passing
+                        return ConversionKind::Identity;
                     }
                 }
                 return ConversionKind::NoConversion;
@@ -124,11 +125,9 @@ namespace Fern
             auto targetPointer = targetType->as<PointerType>();
             if (sourceArray && targetPointer)
             {
-                // Check if array element type matches pointer target type
-                if (sourceArray->element == targetPointer->pointee ||
-                    sourceArray->element->get_name() == targetPointer->pointee->get_name())
+                if (sourceArray->element == targetPointer->pointee)
                 {
-                    return ConversionKind::Identity; // Array-to-pointer decay is implicit
+                    return ConversionKind::Identity;
                 }
             }
 
@@ -136,18 +135,14 @@ namespace Fern
             auto sourcePointer = sourceType->as<PointerType>();
             if (sourcePointer && targetPointer)
             {
-                if (sourcePointer->pointee == targetPointer->pointee ||
-                    sourcePointer->pointee->get_name() == targetPointer->pointee->get_name())
+                if (sourcePointer->pointee == targetPointer->pointee)
                 {
                     return ConversionKind::Identity;
                 }
-                // void* is implicitly convertible to/from any pointer type (like C)
                 if (sourcePointer->pointee->is_void() || targetPointer->pointee->is_void())
                 {
                     return ConversionKind::ImplicitReference;
                 }
-                // Allow explicit casts between different pointer types
-                // Pointers are inherently unsafe, so allow conversions with explicit cast
                 return ConversionKind::ExplicitReference;
             }
 
@@ -157,7 +152,6 @@ namespace Fern
             auto targetNamed = targetType->as<NamedType>();
             auto sourceNamed = sourceType->as<NamedType>();
 
-            // null -> reference type (for null assignment)
             if (sourcePrim && sourcePrim->kind == LiteralKind::Null && targetNamed)
             {
                 if (targetNamed->symbol && targetNamed->symbol->is_ref())
@@ -166,13 +160,11 @@ namespace Fern
                 }
             }
 
-            // null -> pointer type
             if (sourcePrim && sourcePrim->kind == LiteralKind::Null && targetPointer)
             {
                 return ConversionKind::ImplicitReference;
             }
 
-            // reference type -> null (for null comparison)
             if (sourceNamed && targetPrim && targetPrim->kind == LiteralKind::Null)
             {
                 if (sourceNamed->symbol && sourceNamed->symbol->is_ref())
@@ -181,28 +173,21 @@ namespace Fern
                 }
             }
 
-            // pointer type -> null (for null comparison)
             if (sourcePointer && targetPrim && targetPrim->kind == LiteralKind::Null)
             {
                 return ConversionKind::ImplicitReference;
             }
 
-            // Handle other primitive type conversions
+            // Handle primitive type conversions
             if (sourcePrim && targetPrim)
             {
                 return classify_conversion(sourcePrim->kind, targetPrim->kind);
             }
 
-            // For all other types, only identity conversions
-            if (sourceType == targetType || sourceType->get_name() == targetType->get_name())
-                return ConversionKind::Identity;
-
+            // Named types: already checked pointer equality at top
             return ConversionKind::NoConversion;
         }
-        
-        /**
-         * Check if a conversion is implicit (can be done automatically)
-         */
+
         static bool is_implicit_conversion(ConversionKind kind)
         {
             return kind == ConversionKind::Identity ||
@@ -210,18 +195,12 @@ namespace Fern
                    kind == ConversionKind::ImplicitReference;
         }
 
-        /**
-         * Check if a conversion requires an explicit cast
-         */
         static bool is_explicit_conversion(ConversionKind kind)
         {
             return kind == ConversionKind::ExplicitNumeric ||
                    kind == ConversionKind::ExplicitReference;
         }
 
-        /**
-         * Check if any conversion is possible
-         */
         static bool is_conversion_possible(ConversionKind kind)
         {
             return kind != ConversionKind::NoConversion;
