@@ -138,7 +138,6 @@ endif()
 # ─────────────────────────────────────────────────────────────────────────────
 
 set(RUNTIME_SOURCES
-    lib/clay/clay_wrapper.cpp
     runtime/runtime.cpp
 )
 
