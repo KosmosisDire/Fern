@@ -1,3 +1,4 @@
+// jit.hpp - LLVM JIT Execution Engine
 #pragma once
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
@@ -30,7 +31,7 @@ namespace Fern
         FuncType *get_function(const std::string &name)
         {
             auto addr_or_err = lookup(name);
-            
+
             // Check if lookup returned an error
             if (auto E = addr_or_err.takeError())
             {
@@ -38,10 +39,10 @@ namespace Fern
                 llvm::consumeError(std::move(E));
                 return nullptr;
             }
-            
+
             // Get the address value
             auto addr = *addr_or_err;
-            
+
             // Check if the address is valid (non-null)
             // ExecutorAddr can be implicitly converted to uint64_t
             if (!addr)
@@ -49,7 +50,7 @@ namespace Fern
                 // Function not found - address is null
                 return nullptr;
             }
-            
+
             // Convert to function pointer
             return addr.toPtr<FuncType *>();
         }

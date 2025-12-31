@@ -9,7 +9,7 @@
         {
             "name": "windows-debug",
             "displayName": "Windows - Debug",
-            "description": "Debug build (LLVM auto-downloaded).",
+            "description": "Debug build with LLVM",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/Debug",
             "condition": {
@@ -22,10 +22,27 @@
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
             }
         },
+         {
+            "name": "windows-debug-no-llvm",
+            "displayName": "Windows - Debug (No LLVM)",
+            "description": "Debug build without LLVM backend (VM only).",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/Debug-NoLLVM",
+            "condition": {
+                "type": "notEquals",
+                "lhs": "$env{CI}",
+                "rhs": "true"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE",
+                "FERN_BUILD_LLVM": "OFF"
+            }
+        },
         {
             "name": "windows-release",
             "displayName": "Windows - Release",
-            "description": "Release build (LLVM auto-downloaded).",
+            "description": "Release build with LLVM",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/Release",
             "condition": {

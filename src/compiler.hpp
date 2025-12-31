@@ -3,7 +3,7 @@
 #include "ast/ast.hpp"
 #include "semantic/symbol_table.hpp"
 #include "semantic/type_system.hpp"
-#include "compiled_module.hpp"
+#include "compile_result.hpp"
 #include "parser/token_stream.hpp"
 #include "binding/bound_tree.hpp"
 #include "binding/binding_arena.hpp"
@@ -92,8 +92,8 @@ namespace Fern
     public:
 
         // Main compilation function
-        std::unique_ptr<CompiledModule> compile(const std::vector<SourceFile> &source_files);
-        std::unique_ptr<CompiledModule> compile(const SourceFile &source)
+        CompileResult compile(const std::vector<SourceFile> &source_files);
+        CompileResult compile(const SourceFile &source)
         {
             return compile(std::vector<SourceFile>{source});
         }

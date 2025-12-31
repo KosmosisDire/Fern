@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backend/backend.hpp"
 #include <string>
 #include <vector>
 
@@ -25,6 +26,8 @@ struct BenchmarkResult {
 
 class TestRunner {
 public:
+    explicit TestRunner(BackendType backend) : m_backend_type(backend) {}
+
     std::vector<TestResult> run_all_tests(const std::string& test_dir);
     BenchmarkResult run_compile_benchmark(const std::string& test_dir, int iterations = 10);
 
@@ -33,6 +36,8 @@ public:
 
 private:
     TestResult run_single_test(const std::string& test_file);
+
+    BackendType m_backend_type;
 };
 
 } // namespace Fern

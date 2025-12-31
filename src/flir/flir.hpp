@@ -545,6 +545,8 @@ namespace Fern::FLIR
             return symbol ? (is_external ? symbol->name : get_mangled_name()) : "<!null symbol!>";
         }
 
+        bool has_valid_symbol() const { return symbol != nullptr; }
+
     private:
         FunctionSymbol *symbol = nullptr;
 

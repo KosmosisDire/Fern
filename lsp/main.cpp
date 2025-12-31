@@ -134,34 +134,32 @@ std::vector<lsp::Diagnostic> compile_and_get_diagnostics(
 
     auto result = compiler.compile(sources);
 
-    if (result) {
-        for (const auto& diag : result->get_diagnostics()) {
-            lsp::Diagnostic lsp_diag;
-            lsp_diag.message = diag.message;
-            lsp_diag.range.start.line = static_cast<lsp::uint>(diag.location.start.line > 0 ? diag.location.start.line - 1 : 0);
-            lsp_diag.range.start.character = static_cast<lsp::uint>(diag.location.start.column > 0 ? diag.location.start.column - 1 : 0);
-            lsp_diag.range.end.line = lsp_diag.range.start.line;
-            lsp_diag.range.end.character = lsp_diag.range.start.character + static_cast<lsp::uint>(diag.location.width);
+    for (const auto& diag : result.diagnostics) {
+        lsp::Diagnostic lsp_diag;
+        lsp_diag.message = diag.message;
+        lsp_diag.range.start.line = static_cast<lsp::uint>(diag.location.start.line > 0 ? diag.location.start.line - 1 : 0);
+        lsp_diag.range.start.character = static_cast<lsp::uint>(diag.location.start.column > 0 ? diag.location.start.column - 1 : 0);
+        lsp_diag.range.end.line = lsp_diag.range.start.line;
+        lsp_diag.range.end.character = lsp_diag.range.start.character + static_cast<lsp::uint>(diag.location.width);
 
-            switch (diag.severity) {
-                case Diagnostic::Severity::Error:
-                case Diagnostic::Severity::Fatal:
-                    lsp_diag.severity = lsp::DiagnosticSeverity::Error;
-                    break;
-                case Diagnostic::Severity::Warning:
-                    lsp_diag.severity = lsp::DiagnosticSeverity::Warning;
-                    break;
-                case Diagnostic::Severity::Info:
-                    lsp_diag.severity = lsp::DiagnosticSeverity::Information;
-                    break;
-                default:
-                    lsp_diag.severity = lsp::DiagnosticSeverity::Hint;
-                    break;
-            }
-
-            lsp_diag.source = "fern";
-            lsp_diagnostics.push_back(std::move(lsp_diag));
+        switch (diag.severity) {
+            case Diagnostic::Severity::Error:
+            case Diagnostic::Severity::Fatal:
+                lsp_diag.severity = lsp::DiagnosticSeverity::Error;
+                break;
+            case Diagnostic::Severity::Warning:
+                lsp_diag.severity = lsp::DiagnosticSeverity::Warning;
+                break;
+            case Diagnostic::Severity::Info:
+                lsp_diag.severity = lsp::DiagnosticSeverity::Information;
+                break;
+            default:
+                lsp_diag.severity = lsp::DiagnosticSeverity::Hint;
+                break;
         }
+
+        lsp_diag.source = "fern";
+        lsp_diagnostics.push_back(std::move(lsp_diag));
     }
 
     return lsp_diagnostics;

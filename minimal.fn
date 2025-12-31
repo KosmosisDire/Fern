@@ -1,17 +1,6 @@
-type Player
-{
-    i32 health
-}
-
-type TestStruct
-{
-    Player* player
-    f32 multiplier
-}
 
 fn Main
 {
-    var p = new TestStruct()
-    return 0.0
+    return 10.0 + 5.0
 }
 

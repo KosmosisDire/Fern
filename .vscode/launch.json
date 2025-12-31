@@ -5,7 +5,7 @@
 			"name": "Fern (custom args)",
 			"type": "cppvsdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/build/Debug/Fern.exe",
+			"program": "${workspaceFolder}/build/Debug/ferncli.exe",
 			"args": "${input:args}",
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",

@@ -1,8 +1,8 @@
+// compiler.cpp - Main Compilation Pipeline (LLVM-free)
 #include "compiler.hpp"
 
 #include "common/logger.hpp"
 #include "common/source_database.hpp"
-#include "codegen/flir_codegen.hpp"
 #include "semantic/symbol_table.hpp"
 #include "parser/lexer.hpp"
 #include "parser/parser.hpp"
@@ -22,23 +22,6 @@
 #include "flir/bound_to_flir.hpp"
 #include "binding/conversion_inserter.hpp"
 
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Target/TargetOptions.h>
-#include <llvm/MC/TargetRegistry.h>
-#include <llvm/TargetParser/Host.h>
-#include <llvm/Transforms/InstCombine/InstCombine.h>
-#include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Scalar/GVN.h>
-#include <llvm/Transforms/Scalar/Reassociate.h>
-#include <llvm/Transforms/Scalar/SimplifyCFG.h>
-#include <llvm/Transforms/Utils.h>
-#include <llvm/Passes/PassBuilder.h>
-#include <llvm/Analysis/LoopAnalysisManager.h>
-#include <llvm/Analysis/CGSCCPassManager.h>
 #include <optional>
 #include <iostream>
 
@@ -161,13 +144,13 @@ namespace Fern
         return all_diagnostics;
     }
 
-    std::unique_ptr<CompiledModule> Compiler::compile(const std::vector<SourceFile> &source_files)
+    CompileResult Compiler::compile(const std::vector<SourceFile> &source_files)
     {
         try
         {
         if (source_files.empty())
         {
-            return std::make_unique<CompiledModule>();
+            return CompileResult{};
         }
 
         // Build source database for file_id -> path lookups
@@ -180,10 +163,10 @@ namespace Fern
         std::vector<FileCompilationState> file_states(source_files.size());
 
         // Global diagnostics for errors not associated with a specific file
-        // (e.g., codegen errors that operate on merged FLIR)
         std::vector<Diagnostic> global_diagnostics;
 
-        // === Parse all files sequentially ===
+        #pragma region Parsing
+
         LOG_HEADER("Sequential parsing", LogCategory::COMPILER);
 
         for (size_t i = 0; i < source_files.size(); ++i)
@@ -230,13 +213,13 @@ namespace Fern
             state.parse_complete = true;
         }
 
-        // Early return if parsing failed - can't continue without ASTs
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
-        // === Syntax validation (AST structural validation) ===
+        #pragma region Syntax Validation
+
         LOG_HEADER("Syntax validation", LogCategory::COMPILER);
 
         for (size_t i = 0; i < file_states.size(); ++i)
@@ -255,10 +238,11 @@ namespace Fern
 
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
-        // // === Build local symbol tables sequentially ===
+        #pragma region Symbol Collection
+
         LOG_HEADER("Sequential symbol collection", LogCategory::COMPILER);
 
         for (size_t i = 0; i < file_states.size(); ++i)
@@ -291,13 +275,13 @@ namespace Fern
             state.symbols_complete = true;
         }
 
-        // Early return if symbol building failed - can't continue without symbols
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
-        // === Merge symbol tables ===
+        #pragma region Symbol Merging
+
         LOG_HEADER("Merging symbol tables", LogCategory::COMPILER);
 
         // Create the global symbol table
@@ -316,7 +300,7 @@ namespace Fern
 
         // Define built-in functions (intrinsics) in global symbol table
         define_intrinsics(global_symbols.get(), global_type_system.get());
-        
+
         // get the String symbol and initialize string type in global type system
         auto string_symbol = global_symbols->resolve_single("String");
         if (string_symbol)
@@ -337,10 +321,11 @@ namespace Fern
             {
                 diags.push_back(d);
             }
-            return std::make_unique<CompiledModule>(diags, source_db);
+            return CompileResult{nullptr, diags, source_db, nullptr, nullptr};
         }
 
-        // === Binding ===
+        #pragma region Binding
+
         for (auto &state : file_states)
         {
             if (!state.symbols_complete)
@@ -370,14 +355,13 @@ namespace Fern
             state.parse_complete = true;
         }
 
-        // Early return if binding failed - can't continue without bound trees
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
+        #pragma region Type Resolution
 
-        // === Type resolution with global symbol table ===
         LOG_HEADER("Type resolution", LogCategory::COMPILER);
 
         TypeResolver resolver(*global_symbols);
@@ -406,7 +390,6 @@ namespace Fern
                 }
 
                 // Collect type resolver diagnostics for this file
-                // Note: TypeResolver diagnostics are collected per-file after each file's resolution
                 state.collect_diagnostics(resolver);
                 resolver.clear_diagnostics();
             }
@@ -418,13 +401,13 @@ namespace Fern
             LOG_INFO(global_symbols->to_string(), LogCategory::COMPILER);
         }
 
-        // Early return if type resolution failed - can't continue with unresolved types
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
-        // === Insert implicit conversions ===
+        #pragma region Conversion Insertion
+
         LOG_HEADER("Conversion insertion", LogCategory::COMPILER);
 
         for (auto &state : file_states)
@@ -439,13 +422,13 @@ namespace Fern
             state.collect_diagnostics(inserter);
         }
 
-        // Early return if conversion insertion failed
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
-        // === Semantic validation (bound tree) ===
+        #pragma region Semantic Validation
+
         LOG_HEADER("Semantic validation", LogCategory::COMPILER);
 
         for (auto& state : file_states)
@@ -460,7 +443,7 @@ namespace Fern
 
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
         symbol_validator.validate_typed(*global_symbols);
@@ -472,11 +455,11 @@ namespace Fern
             {
                 diags.push_back(d);
             }
-            return std::make_unique<CompiledModule>(diags, source_db);
+            return CompileResult{nullptr, diags, source_db, nullptr, nullptr};
         }
 
+        #pragma region Type Topology
 
-        // === Build type topology (detect cycles, compute dependency order) ===
         LOG_HEADER("Type topology", LogCategory::COMPILER);
 
         auto global_ns = global_symbols->get_global_namespace();
@@ -493,10 +476,11 @@ namespace Fern
 
         if (type_topology.has_cycles())
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states, global_diagnostics), source_db, nullptr, nullptr};
         }
 
-        // === Convert bound tree to FLIR ===
+        #pragma region FLIR Generation
+
         LOG_HEADER("FLIR generation", LogCategory::COMPILER);
 
         // Create FLIR module
@@ -520,10 +504,9 @@ namespace Fern
             state.collect_diagnostics(converter);
         }
 
-        // Early return if FLIR generation failed
         if (has_any_errors(file_states))
         {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states), source_db);
+            return CompileResult{nullptr, gather_all_diagnostics(file_states), source_db, nullptr, nullptr};
         }
 
         // Dump non-SSA FLIR if requested
@@ -533,7 +516,9 @@ namespace Fern
             LOG_INFO(flir_module->dump() + "\n", LogCategory::COMPILER);
         }
 
-        // convert ABI to target ABI
+        #pragma region ABI Lowering
+
+        // Convert to target ABI
         auto rules = FLIR::ABI::create_rules_for_target(
             FLIR::ABI::get_host_target(),
             &flir_module->ir_types
@@ -549,71 +534,15 @@ namespace Fern
             LOG_INFO(flir_module->dump() + "\n", LogCategory::COMPILER);
         }
 
-        // === LLVM Code Generation from FLIR ===
-        LOG_HEADER("LLVM code generation", LogCategory::COMPILER);
+        LOG_INFO("Compilation successful - FLIR module ready", LogCategory::COMPILER);
 
-        auto llvm_context = std::make_unique<llvm::LLVMContext>();
-        FLIRCodeGen codegen(*llvm_context, "FernProgram", global_type_system.get());
-
-        std::unique_ptr<llvm::Module> llvm_module;
-        try
-        {
-            llvm_module = codegen.lower(flir_module.get());
-            LOG_INFO("LLVM IR generation successful", LogCategory::COMPILER);
-        }
-        catch (const std::exception &e)
-        {
-            global_diagnostics.push_back(Diagnostic(
-                Diagnostic::Severity::Error,
-                "LLVM code generation error: " + std::string(e.what()),
-                SourceRange(),
-                "CodeGen"
-            ));
-        }
-
-        // Collect any codegen diagnostics (in addition to exceptions)
-        const auto& codegen_diags = codegen.get_diagnostics();
-        global_diagnostics.insert(global_diagnostics.end(), codegen_diags.begin(), codegen_diags.end());
-
-        // Early return if code generation failed
-        if (has_any_errors(file_states, global_diagnostics))
-        {
-            return std::make_unique<CompiledModule>(gather_all_diagnostics(file_states, global_diagnostics), source_db);
-        }
-
-        // === Run optimization passes ===
-        LOG_HEADER("Running optimization passes", LogCategory::COMPILER);
-
-        // Create analysis managers
-        llvm::LoopAnalysisManager LAM;
-        llvm::FunctionAnalysisManager FAM;
-        llvm::CGSCCAnalysisManager CGAM;
-        llvm::ModuleAnalysisManager MAM;
-
-        // Create pass builder
-        llvm::PassBuilder PB;
-
-        // Register analysis managers
-        // PB.registerModuleAnalyses(MAM);
-        // PB.registerCGSCCAnalyses(CGAM);
-        // PB.registerFunctionAnalyses(FAM);
-        // PB.registerLoopAnalyses(LAM);
-        // PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-
-        // // Build optimization pipeline (O2 level)
-        // llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2);
-
-        // // Run the optimization passes
-        // MPM.run(*llvm_module, MAM);
-
-        LOG_INFO("Optimization passes completed", LogCategory::COMPILER);
-
-        return std::make_unique<CompiledModule>(
-            std::move(llvm_context),
-            std::move(llvm_module),
-            "FernProgram",
+        return CompileResult{
+            std::move(flir_module),
             gather_all_diagnostics(file_states, global_diagnostics),
-            source_db);
+            source_db,
+            std::move(global_symbols),
+            std::move(global_type_system)
+        };
 
         }
         catch (const std::exception &e)
@@ -625,7 +554,7 @@ namespace Fern
                 SourceRange(),
                 "Compiler"
             ));
-            return std::make_unique<CompiledModule>(diags);
+            return CompileResult{nullptr, diags, nullptr, nullptr, nullptr};
         }
     }
 

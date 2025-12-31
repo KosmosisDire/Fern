@@ -1,4 +1,6 @@
-#include "compiled_module.hpp"
+// llvm_backend.cpp - LLVM Backend Implementation
+#include "llvm_backend.hpp"
+#include "llvm_codegen.hpp"
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/TargetSelect.h>
@@ -7,16 +9,51 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/TargetParser/Host.h>
+#include <iostream>
 
 namespace Fern
 {
-    static void initializeCommonTargets()
+
+    LLVMBackend::LLVMBackend()
+        : Backend("LLVMBackend")
+    {
+    }
+
+    bool LLVMBackend::lower(FLIR::Module* flir_module)
+    {
+        if (!flir_module)
+        {
+            error("Cannot lower null FLIR module", SourceRange());
+            return false;
+        }
+
+        try
+        {
+            context = std::make_unique<llvm::LLVMContext>();
+            module_name = flir_module->name;
+
+            FLIRCodeGen codegen(*context, module_name);
+            module = codegen.lower(flir_module);
+
+            for (const auto& diag : codegen.get_diagnostics())
+            {
+                report(diag);
+            }
+
+            return module != nullptr && !has_errors();
+        }
+        catch (const std::exception& e)
+        {
+            error("LLVM code generation error: " + std::string(e.what()), SourceRange());
+            return false;
+        }
+    }
+
+    void LLVMBackend::initialize_targets()
     {
         static bool initialized = false;
-        if (initialized)
-            return;
+        if (initialized) return;
 
-        // X86 (Intel/AMD - Windows, Linux)
         LLVMInitializeX86TargetInfo();
         LLVMInitializeX86Target();
         LLVMInitializeX86TargetMC();
@@ -26,7 +63,7 @@ namespace Fern
         initialized = true;
     }
 
-    bool CompiledModule::write_ir(const std::string &filename) const
+    bool LLVMBackend::write_ir(const std::string& filename) const
     {
         if (!is_valid())
         {
@@ -47,7 +84,7 @@ namespace Fern
         return true;
     }
 
-    std::string CompiledModule::get_ir_string() const
+    std::string LLVMBackend::get_ir_string() const
     {
         if (!is_valid())
             return "";
@@ -58,7 +95,7 @@ namespace Fern
         return stream.str();
     }
 
-    void CompiledModule::dump_ir() const
+    void LLVMBackend::dump_ir() const
     {
         if (!is_valid())
         {
@@ -71,7 +108,7 @@ namespace Fern
         std::cout << "\n===============\n";
     }
 
-    bool CompiledModule::write_object_file(const std::string &filename) const
+    bool LLVMBackend::write_object_file(const std::string& filename) const
     {
         if (!is_valid())
         {
@@ -79,7 +116,7 @@ namespace Fern
             return false;
         }
 
-        initializeCommonTargets();
+        initialize_targets();
 
         // Clone module since we need to modify it
         auto cloned_module = llvm::CloneModule(*module);
@@ -134,7 +171,7 @@ namespace Fern
         return true;
     }
 
-    bool CompiledModule::write_assembly(const std::string &filename) const
+    bool LLVMBackend::write_assembly(const std::string& filename) const
     {
         if (!is_valid())
         {
@@ -142,7 +179,7 @@ namespace Fern
             return false;
         }
 
-        initializeCommonTargets();
+        initialize_targets();
 
         auto cloned_module = llvm::CloneModule(*module);
         auto target_triple = llvm::sys::getDefaultTargetTriple();
@@ -186,6 +223,23 @@ namespace Fern
         dest.flush();
 
         return true;
+    }
+
+    #pragma region Backend Interface
+
+    std::optional<float> LLVMBackend::execute(const std::string& function_name)
+    {
+        return execute_jit<float>(function_name);
+    }
+
+    void LLVMBackend::dump() const
+    {
+        dump_ir();
+    }
+
+    std::string LLVMBackend::get_dump_string() const
+    {
+        return get_ir_string();
     }
 
 } // namespace Fern

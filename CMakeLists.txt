@@ -9,28 +9,105 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(FERN_DEBUG)
 endif()
 
+include_directories(include)
+
 # ─────────────────────────────────────────────────────────────────────────────
-# LLVM Configuration
+# FernLib - Core Compiler Library (Backend-free)
 # ─────────────────────────────────────────────────────────────────────────────
 
-include(cmake/FetchLLVM.cmake)
+set(FERN_LIB_SOURCES
+    # Parser
+    src/parser/lexer.cpp
+    src/parser/token_stream.cpp
+    src/parser/parser.cpp
 
-find_package(LLVM CONFIG)
+    # Semantic Analysis
+    src/semantic/type.cpp
+    src/semantic/symbol.cpp
+    src/semantic/symbol_table.cpp
+    src/semantic/type_system.cpp
+    src/semantic/symbol_table_builder.cpp
+    src/semantic/type_resolver.cpp
+    src/semantic/syntax_validator.cpp
+    src/semantic/type_topology.cpp
+    src/semantic/symbol_table_validator.cpp
+    src/semantic/semantic_validator.cpp
 
-if(LLVM_FOUND)
-    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-    message(STATUS "LLVM Include Dirs: ${LLVM_INCLUDE_DIRS}")
-    include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
-    set(LLVM_AVAILABLE TRUE)
-    if(WIN32)
-        add_link_options("LINKER:/ignore:4099")
-    endif()
+    # Binding
+    src/binding/bound_tree_builder.cpp
+    src/binding/conversion_inserter.cpp
+
+    # FLIR
+    src/flir/ir_type.cpp
+    src/flir/bound_to_flir.cpp
+    src/flir/abi/abi_rules.cpp
+    src/flir/abi/abi_lowering_pass.cpp
+    src/flir/abi/windows_x64.cpp
+
+    # Common
+    src/common/logger.cpp
+    src/common/error.cpp
+    src/common/file_utils.cpp
+
+    # Core
+    src/compiler.cpp
+)
+
+add_library(FernLib STATIC ${FERN_LIB_SOURCES})
+target_include_directories(FernLib PUBLIC src include)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Backend Options
+# ─────────────────────────────────────────────────────────────────────────────
+
+option(FERN_BUILD_VM "Build the VM interpreter backend" ON)
+option(FERN_BUILD_LLVM "Build the LLVM backend for native code generation" ON)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VM Backend (Optional)
+# ─────────────────────────────────────────────────────────────────────────────
+
+if(FERN_BUILD_VM)
+    message(STATUS "VM backend enabled")
+    set(VM_AVAILABLE TRUE)
+
+    set(FERN_VM_SOURCES
+        src/vm/vm.cpp
+        src/vm/vm_backend.cpp
+    )
+
+    add_library(FernVM STATIC ${FERN_VM_SOURCES})
+    target_include_directories(FernVM PUBLIC src include)
+    target_link_libraries(FernVM PUBLIC FernLib)
+    target_compile_definitions(FernVM PUBLIC FERN_VM_AVAILABLE)
 else()
-    message(STATUS "LLVM not found - building without JIT functionality")
-    set(LLVM_AVAILABLE FALSE)
+    message(STATUS "VM backend disabled by FERN_BUILD_VM=OFF")
+    set(VM_AVAILABLE FALSE)
 endif()
 
-include_directories(include)
+# ─────────────────────────────────────────────────────────────────────────────
+# LLVM Backend (Optional)
+# ─────────────────────────────────────────────────────────────────────────────
+
+if(FERN_BUILD_LLVM)
+    include(cmake/FetchLLVM.cmake)
+    find_package(LLVM CONFIG)
+
+    if(LLVM_FOUND)
+        message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+        message(STATUS "LLVM Include Dirs: ${LLVM_INCLUDE_DIRS}")
+        set(LLVM_AVAILABLE TRUE)
+        if(WIN32)
+            add_link_options("LINKER:/ignore:4099")
+        endif()
+    else()
+        message(STATUS "LLVM not found - building without LLVM backend")
+        set(LLVM_AVAILABLE FALSE)
+    endif()
+else()
+    message(STATUS "LLVM backend disabled by FERN_BUILD_LLVM=OFF")
+    set(LLVM_AVAILABLE FALSE)
+endif()
 
 if(LLVM_AVAILABLE)
     set(LLVM_LINK_COMPONENTS
@@ -74,63 +151,42 @@ if(LLVM_AVAILABLE)
             message(STATUS "Using LLVM component libraries: ${LLVM_LIBS}")
         endif()
     endif()
+
+    set(FERN_LLVM_SOURCES
+        src/llvm/llvm_codegen.cpp
+        src/llvm/llvm_backend.cpp
+        src/llvm/codegen_context.cpp
+        src/llvm/jit.cpp
+    )
+
+    add_library(FernLLVM STATIC ${FERN_LLVM_SOURCES})
+    target_include_directories(FernLLVM PUBLIC src include SYSTEM ${LLVM_INCLUDE_DIRS})
+    target_link_libraries(FernLLVM PUBLIC FernLib ${LLVM_LIBS})
+    target_compile_definitions(FernLLVM PUBLIC FERN_LLVM_AVAILABLE)
+
+    if(VM_AVAILABLE)
+        target_compile_definitions(FernLLVM PUBLIC FERN_VM_AVAILABLE)
+    endif()
 endif()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FernLib - Core Compiler Library
+# Backend Factory Library
 # ─────────────────────────────────────────────────────────────────────────────
 
-set(FERN_LIB_SOURCES
-    # Parser
-    src/parser/lexer.cpp
-    src/parser/token_stream.cpp
-    src/parser/parser.cpp
-
-    # Semantic Analysis
-    src/semantic/type.cpp
-    src/semantic/symbol.cpp
-    src/semantic/symbol_table.cpp
-    src/semantic/type_system.cpp
-    src/semantic/symbol_table_builder.cpp
-    src/semantic/type_resolver.cpp
-    src/semantic/syntax_validator.cpp
-    src/semantic/type_topology.cpp
-    src/semantic/symbol_table_validator.cpp
-    src/semantic/semantic_validator.cpp
-
-    # Binding
-    src/binding/bound_tree_builder.cpp
-    src/binding/conversion_inserter.cpp
-
-    # FLIR
-    src/flir/ir_type.cpp
-    src/flir/bound_to_flir.cpp
-    src/flir/abi/abi_rules.cpp
-    src/flir/abi/abi_lowering_pass.cpp
-    src/flir/abi/windows_x64.cpp
-
-    # Code Generator
-    src/codegen/llvm_ir_builder.cpp
-    src/codegen/codegen_module.cpp
-    src/codegen/codegen_function.cpp
-    src/codegen/flir_codegen.cpp
-
-    # Common
-    src/common/logger.cpp
-    src/common/error.cpp
-    src/common/file_utils.cpp
-
-    # Core
-    src/compiler.cpp
-    src/jit.cpp
-    src/compiled_module.cpp
+add_library(FernBackend STATIC
+    src/backend/backend.cpp
 )
+target_include_directories(FernBackend PUBLIC src include)
+target_link_libraries(FernBackend PUBLIC FernLib)
 
-add_library(FernLib STATIC ${FERN_LIB_SOURCES})
-target_include_directories(FernLib PUBLIC src include)
+if(VM_AVAILABLE)
+    target_link_libraries(FernBackend PUBLIC FernVM)
+    target_compile_definitions(FernBackend PUBLIC FERN_VM_AVAILABLE)
+endif()
 
 if(LLVM_AVAILABLE)
-    target_link_libraries(FernLib PUBLIC ${LLVM_LIBS})
+    target_link_libraries(FernBackend PUBLIC FernLLVM)
+    target_compile_definitions(FernBackend PUBLIC FERN_LLVM_AVAILABLE)
 endif()
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -147,8 +203,16 @@ add_executable(ferncli
     ${RUNTIME_SOURCES}
 )
 
-target_link_libraries(ferncli PRIVATE FernLib)
 target_include_directories(ferncli PRIVATE src lib)
+target_link_libraries(ferncli PRIVATE FernBackend)
+
+if(VM_AVAILABLE)
+    target_compile_definitions(ferncli PRIVATE FERN_VM_AVAILABLE)
+endif()
+
+if(LLVM_AVAILABLE)
+    target_compile_definitions(ferncli PRIVATE FERN_LLVM_AVAILABLE)
+endif()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fern LSP Server

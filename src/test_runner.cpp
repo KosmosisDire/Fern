@@ -1,6 +1,17 @@
+// test_runner.cpp - Test Runner
 #include "test_runner.hpp"
 #include "compiler.hpp"
+#include "backend/backend.hpp"
 #include "common/logger.hpp"
+
+#ifdef FERN_LLVM_AVAILABLE
+#include "llvm/llvm_backend.hpp"
+#endif
+
+#ifdef FERN_VM_AVAILABLE
+#include "vm/vm_backend.hpp"
+#endif
+
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -60,6 +71,7 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
     r.name = fs::path(test_file).filename().string();
     r.path = test_file;
 
+#if defined(FERN_LLVM_AVAILABLE) || defined(FERN_VM_AVAILABLE)
     try {
         std::string source = read_file(test_file);
         if (!extract_expected(source, r.expected)) {
@@ -76,27 +88,40 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
         for (auto& f : load_stdlib()) sources.push_back(f);
 
         auto result = compiler.compile(sources);
-        if (!result || !result->is_valid()) {
-            if (result) {
-                for (const auto& d : result->get_diagnostics())
-                    r.error += d.message + "; ";
-            }
+        if (!result.is_valid()) {
+            for (const auto& d : result.diagnostics)
+                r.error += d.message + "; ";
             return r;
         }
 
-        auto jit = result->execute_jit<float>("Main");
+        auto backend = create_backend(m_backend_type);
+        if (!backend) {
+            r.error = "Failed to create backend";
+            return r;
+        }
+
+        if (!backend->lower(result.module.get())) {
+            r.error = "Backend lowering failed";
+            return r;
+        }
+
+        auto jit = backend->execute("Main");
         if (jit) {
             r.actual = *jit;
             r.status = (std::abs(r.actual - r.expected) < 1e-5f)
                 ? TestStatus::Passed : TestStatus::Failed;
         } else {
             r.status = TestStatus::Crashed;
-            r.error = "JIT failed";
+            r.error = "Execution failed";
         }
     } catch (const std::exception& e) {
         r.status = TestStatus::Crashed;
         r.error = e.what();
     }
+#else
+    r.status = TestStatus::Crashed;
+    r.error = "No backend available";
+#endif
     return r;
 }
 
@@ -138,7 +163,6 @@ BenchmarkResult TestRunner::run_compile_benchmark(const std::string& test_dir, i
         return {};
     }
 
-    // Pre-load all sources
     auto stdlib = load_stdlib();
     size_t stdlib_lines = 0;
     for (auto& f : stdlib) stdlib_lines += count_lines(f.source);
@@ -168,7 +192,7 @@ BenchmarkResult TestRunner::run_compile_benchmark(const std::string& test_dir, i
             c.set_print_ast(false);
             c.set_print_symbols(false);
             c.set_print_flir(false);
-            if (auto r = c.compile(sources); r && r->is_valid()) ok++;
+            if (auto r = c.compile(sources); r.is_valid()) ok++;
         }
     }
     auto end = std::chrono::high_resolution_clock::now();

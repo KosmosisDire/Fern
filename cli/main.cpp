@@ -1,10 +1,21 @@
+// cli/main.cpp - Fern Compiler CLI
 #include "compiler.hpp"
 #include "test_runner.hpp"
+#include "backend/backend.hpp"
 #include "parser/lexer.hpp"
 #include "parser/parser.hpp"
 #include "common/logger.hpp"
 #include "common/file_utils.hpp"
 #include "ast/ast.hpp"
+
+#ifdef FERN_LLVM_AVAILABLE
+#include "llvm/llvm_backend.hpp"
+#endif
+
+#ifdef FERN_VM_AVAILABLE
+#include "vm/vm_backend.hpp"
+#endif
+
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -34,36 +45,75 @@ struct CommandLineArgs {
     std::vector<std::string> source_files;
     std::vector<std::string> dynamic_libs;
     std::string output_file;
+    std::string backend_name;
     bool show_help = false;
     bool run_tests = false;
     std::string test_dir = "tests";
 };
 
+BackendType get_default_backend()
+{
+#ifdef FERN_LLVM_AVAILABLE
+    return BackendType::LLVM;
+#elif defined(FERN_VM_AVAILABLE)
+    return BackendType::VM;
+#else
+    return BackendType::VM;
+#endif
+}
+
+BackendType parse_backend_name(const std::string& name)
+{
+    if (name == "vm" || name == "VM")
+        return BackendType::VM;
+    if (name == "llvm" || name == "LLVM")
+        return BackendType::LLVM;
+    return get_default_backend();
+}
+
+std::string backend_type_name(BackendType type)
+{
+    switch (type)
+    {
+    case BackendType::VM: return "VM";
+    case BackendType::LLVM: return "LLVM";
+    }
+    return "Unknown";
+}
+
 void show_help(const std::string& program_name) {
     std::cout << "Fern Programming Language Compiler\n\n";
     std::cout << "Usage:\n";
-    std::cout << "  " << program_name << " run <source files>              Compile and run via JIT\n";
+    std::cout << "  " << program_name << " run <source files>              Compile and execute\n";
     std::cout << "  " << program_name << " build <source files> [options]  Compile to object file\n";
     std::cout << "\nOptions:\n";
     std::cout << "  --help, -h              Show this help message\n";
+    std::cout << "  --backend <name>        Select backend: vm, llvm (default: ";
+    std::cout << backend_type_name(get_default_backend()) << ")\n";
     std::cout << "  -o, --output <file>     Specify output file (build mode only)\n";
-    std::cout << "  -l, --lib <path>        Load dynamic library for JIT execution (run mode only)\n";
+#ifdef FERN_LLVM_AVAILABLE
+    std::cout << "  -l, --lib <path>        Load dynamic library for JIT execution\n";
+#endif
     #ifdef FERN_DEBUG
     std::cout << "  --test, -t [dir]        Run tests in the specified directory (default: tests)\n";
     #endif
+    std::cout << "\nAvailable Backends:\n";
+    auto backends = get_available_backends();
+    for (auto type : backends)
+    {
+        std::cout << "  " << backend_type_name(type);
+        if (type == get_default_backend())
+            std::cout << " (default)";
+        std::cout << "\n";
+    }
     std::cout << "\nWildcard Support:\n";
     std::cout << "  *       Matches any sequence of characters\n";
     std::cout << "  ?       Matches any single character\n";
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " run main.fn\n";
-    std::cout << "  " << program_name << " run runtime/std.fn main.fn\n";
-    std::cout << "  " << program_name << " run *.fn                  # Run all .fn files in current dir\n";
-    std::cout << "  " << program_name << " run runtime/*.fn          # Run all .fn files in runtime/\n";
-    std::cout << "  " << program_name << " run main.fn -l mylib.dll  # Load dynamic library\n";
-    std::cout << "  " << program_name << " build main.fn\n";
+    std::cout << "  " << program_name << " run main.fn --backend vm\n";
+    std::cout << "  " << program_name << " run *.fn\n";
     std::cout << "  " << program_name << " build main.fn -o program.o\n";
-    std::cout << "  " << program_name << " build lib.fn utils.fn --output mylib.o\n";
-    std::cout << "  " << program_name << " build src/*.fn -o output.o   # Build all .fn files in src/\n";
 }
 
 std::string get_default_output_name(const std::string& first_source_file) {
@@ -94,8 +144,16 @@ CommandLineArgs parse_args(int argc, char* argv[]) {
 
     if (first_arg == "--test" || first_arg == "-t") {
         args.run_tests = true;
-        if (argc > 2) {
-            args.test_dir = argv[2];
+        for (int i = 2; i < argc; i++) {
+            std::string arg = argv[i];
+            if (arg == "--backend") {
+                if (i + 1 < argc) {
+                    args.backend_name = argv[i + 1];
+                    i++;
+                }
+            } else if (arg[0] != '-') {
+                args.test_dir = arg;
+            }
         }
         return args;
     }
@@ -130,6 +188,15 @@ CommandLineArgs parse_args(int argc, char* argv[]) {
                 i++;
             } else {
                 std::cerr << "Error: " << arg << " requires a library path\n";
+                args.show_help = true;
+                return args;
+            }
+        } else if (arg == "--backend") {
+            if (i + 1 < argc) {
+                args.backend_name = argv[i + 1];
+                i++;
+            } else {
+                std::cerr << "Error: " << arg << " requires a backend name (vm, llvm)\n";
                 args.show_help = true;
                 return args;
             }
@@ -172,7 +239,20 @@ int main(int argc, char* argv[])
     }
 
     if (args.run_tests) {
-        TestRunner runner;
+#if defined(FERN_LLVM_AVAILABLE) || defined(FERN_VM_AVAILABLE)
+        BackendType test_backend = args.backend_name.empty()
+            ? get_default_backend()
+            : parse_backend_name(args.backend_name);
+
+        if (!is_backend_available(test_backend)) {
+            std::cerr << "Error: Backend '" << backend_type_name(test_backend)
+                      << "' is not available in this build\n";
+            return 1;
+        }
+
+        std::cout << "Using backend: " << backend_type_name(test_backend) << "\n";
+
+        TestRunner runner(test_backend);
         auto results = runner.run_all_tests(args.test_dir);
         runner.print_summary(results);
         auto benchmark = runner.run_compile_benchmark(args.test_dir, 10);
@@ -181,6 +261,28 @@ int main(int argc, char* argv[])
         bool all_passed = std::all_of(results.begin(), results.end(),
             [](const TestResult& r) { return r.status == TestStatus::Passed; });
         return all_passed ? 0 : 1;
+#else
+        std::cerr << "Error: Tests require a backend (VM or LLVM)\n";
+        return 1;
+#endif
+    }
+
+    // Select backend
+    BackendType backend_type = args.backend_name.empty()
+        ? get_default_backend()
+        : parse_backend_name(args.backend_name);
+
+    if (!is_backend_available(backend_type))
+    {
+        std::cerr << "Error: Backend '" << backend_type_name(backend_type)
+                  << "' is not available in this build\n";
+        std::cerr << "Available backends:";
+        for (auto type : get_available_backends())
+        {
+            std::cerr << " " << backend_type_name(type);
+        }
+        std::cerr << "\n";
+        return 1;
     }
 
     Compiler compiler;
@@ -213,31 +315,57 @@ int main(int argc, char* argv[])
 
     auto result = compiler.compile(source_files);
 
-    if (!result || !result->is_valid())
+    if (!result.is_valid())
     {
-        std::cerr << "\nCompilation failed with " << result->error_count() << " error(s):\n" << std::endl;
-        const auto& errors = result->get_diagnostics();
-        if (errors.empty())
+        std::cerr << "\nCompilation failed with " << result.error_count() << " error(s):\n" << std::endl;
+        if (result.diagnostics.empty())
         {
             std::cerr << "  (No error details available)" << std::endl;
         }
         else
         {
-            for (const auto& error : errors)
+            for (const auto& error : result.diagnostics)
             {
-                std::cerr << "  " << result->format_diagnostic(error) << std::endl;
+                std::cerr << "  " << result.format_diagnostic(error) << std::endl;
             }
+        }
+        return 1;
+    }
+
+    // Create backend
+    auto backend = create_backend(backend_type);
+    if (!backend)
+    {
+        std::cerr << "Error: Failed to create backend\n";
+        return 1;
+    }
+
+    // Lower FLIR to backend
+    if (!backend->lower(result.module.get()))
+    {
+        std::cerr << "\nBackend lowering failed:\n" << std::endl;
+        for (const auto& error : backend->get_diagnostics())
+        {
+            std::cerr << "  " << error.to_string() << std::endl;
         }
         return 1;
     }
 
     if (args.mode == CompileMode::Build)
     {
+        if (!backend->supports_native_output())
+        {
+            std::cerr << "Error: Backend '" << backend_type_name(backend_type)
+                      << "' does not support native code generation\n";
+            std::cerr << "Use the LLVM backend for native compilation\n";
+            return 1;
+        }
+
         #ifdef FERN_DEBUG
-            result->dump_ir();
+            backend->dump();
         #endif
 
-        if (result->write_object_file(args.output_file))
+        if (backend->write_object_file(args.output_file))
         {
             std::cout << "Compiled successfully to: " << args.output_file << std::endl;
             return 0;
@@ -251,10 +379,23 @@ int main(int argc, char* argv[])
     else
     {
         #ifdef FERN_DEBUG
-            result->dump_ir();
+            backend->dump();
         #endif
 
-        auto ret = result->execute_jit<float>("Main", args.dynamic_libs).value_or(-1.0f);
+        // Execute with appropriate return type
+#ifdef FERN_LLVM_AVAILABLE
+        if (backend_type == BackendType::LLVM && !args.dynamic_libs.empty())
+        {
+            auto* llvm_backend = static_cast<LLVMBackend*>(backend.get());
+            auto ret = llvm_backend->execute_jit<float>("Main", args.dynamic_libs).value_or(-1.0f);
+            std::cout << "\n";
+            std::cout << "______________________________\n\n";
+            std::cout << "Program returned: " << ret << std::endl;
+            return static_cast<int>(ret);
+        }
+#endif
+
+        auto ret = backend->execute("Main").value_or(-1.0f);
         std::cout << "\n";
         std::cout << "______________________________\n\n";
         std::cout << "Program returned: " << ret << std::endl;

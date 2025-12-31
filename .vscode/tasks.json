@@ -9,7 +9,7 @@
 				"--build",
 				"build/Debug",
 				"--target",
-				"Fern",
+				"ferncli",
 				"-j",
 				"18"
 			],
