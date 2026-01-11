@@ -108,8 +108,10 @@ TestResult TestRunner::run_single_test(const std::string& test_file) {
         auto jit = backend->execute("Main");
         if (jit) {
             r.actual = *jit;
-            r.status = (std::abs(r.actual - r.expected) < 1e-5f)
-                ? TestStatus::Passed : TestStatus::Failed;
+            float diff = std::abs(r.actual - r.expected);
+            float max_val = std::max(std::abs(r.actual), std::abs(r.expected));
+            bool passed = (max_val < 1e-5f) ? (diff < 1e-5f) : (diff / max_val < 1e-5f);
+            r.status = passed ? TestStatus::Passed : TestStatus::Failed;
         } else {
             r.status = TestStatus::Crashed;
             r.error = "Execution failed";

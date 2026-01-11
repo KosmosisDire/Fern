@@ -1,0 +1,16 @@
+-- Expected: 1.09786e+09
+
+fn Main
+{
+    var i = 10.0
+    var iptr = &i
+    *iptr += 5.0
+    var nextptr = iptr + 1
+    var ptr = &something
+    var addr = (i64)ptr     -- PtrToInt: get raw address as integer
+    var ptr2 = (f32*)addr   -- IntToPtr: cast integer back to pointer
+    var bitcast = *(int*)iptr
+    var bitcastf = (float)bitcast
+
+    return bitcastf
+}

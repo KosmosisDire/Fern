@@ -18,13 +18,12 @@ namespace Fern::FLIR
 {
     struct Value;
     struct Instruction;
-    struct BasicBlock;
     struct Function;
     struct Module;
 
     using ValuePtr = Value *;
-    using InstPtr = Instruction *;
-    using BlockPtr = BasicBlock *;
+    using InstPtr = std::unique_ptr<Instruction>;
+    using InstructionList = std::vector<InstPtr>;
 
 #pragma region SSA Value
 
@@ -50,18 +49,20 @@ namespace Fern::FLIR
         ConstNull,
         ConstString,
 
+        // Allocation
+        StackAlloc,
+        HeapAlloc,
+        HeapFree,
+        StackAllocBytes,
+        HeapAllocBytes,
+
         // Memory
-        StackAlloc,       // Stack allocation of typed value
-        StackAllocBytes,  // Stack allocation of dynamic byte count
-        HeapAlloc,        // Heap allocation of typed value
-        HeapAllocBytes,   // Heap allocation of dynamic byte count
-        HeapFree,         // Heap deallocation (free)
-        MemCpy,         // Memory copy (llvm.memcpy)
-        MemSet,         // Memory set (llvm.memset)
         Load,
         Store,
         FieldAddr,
         ElementAddr,
+        MemCpy,
+        MemSet,
 
         // Arithmetic
         Add,
@@ -89,24 +90,84 @@ namespace Fern::FLIR
         BitOr,
         BitXor,
         BitNot,
-        ShiftL,
-        ShiftR,
+        Shl,
+        Shr,
+        Sar,
 
         // Conversion
-        Cast,
-        Bitcast,
+        Convert,
 
-        // Control flow
-        Call,
-        Ret,
+        // Control Flow
+        Block,
+        Loop,
+        If,
+        // Match (Will implement once the rest of the match pipeline is set up)
         Br,
-        CondBr,
-        Switch
+        BrIf,
+        Continue,
+        ContinueIf,
+
+        // Calls
+        Call,
+        CallIndirect,
+        Return,
     };
 
-    static std::string to_string(Opcode op)
+    inline std::string to_string(Opcode op)
     {
-        return std::string(magic_enum::enum_name(op));
+        switch (op)
+        {
+        case Opcode::ConstInt:       return "const.int";
+        case Opcode::ConstFloat:     return "const.float";
+        case Opcode::ConstBool:      return "const.bool";
+        case Opcode::ConstNull:      return "const.null";
+        case Opcode::ConstString:    return "const.string";
+        case Opcode::StackAlloc:     return "stack.alloc";
+        case Opcode::HeapAlloc:      return "heap.alloc";
+        case Opcode::HeapFree:       return "heap.free";
+        case Opcode::StackAllocBytes: return "stack.alloc.bytes";
+        case Opcode::HeapAllocBytes: return "heap.alloc.bytes";
+        case Opcode::Load:           return "load";
+        case Opcode::Store:          return "store";
+        case Opcode::FieldAddr:      return "fieldaddr";
+        case Opcode::ElementAddr:    return "elementaddr";
+        case Opcode::MemCpy:         return "memcpy";
+        case Opcode::MemSet:         return "memset";
+        case Opcode::Add:            return "add";
+        case Opcode::Sub:            return "sub";
+        case Opcode::Mul:            return "mul";
+        case Opcode::Div:            return "div";
+        case Opcode::Rem:            return "rem";
+        case Opcode::Neg:            return "neg";
+        case Opcode::Eq:             return "eq";
+        case Opcode::Ne:             return "ne";
+        case Opcode::Lt:             return "lt";
+        case Opcode::Le:             return "le";
+        case Opcode::Gt:             return "gt";
+        case Opcode::Ge:             return "ge";
+        case Opcode::And:            return "and";
+        case Opcode::Or:             return "or";
+        case Opcode::Not:            return "not";
+        case Opcode::BitAnd:         return "bit_and";
+        case Opcode::BitOr:          return "bit_or";
+        case Opcode::BitXor:         return "bit_xor";
+        case Opcode::BitNot:         return "bit_not";
+        case Opcode::Shl:            return "shl";
+        case Opcode::Shr:            return "shr";
+        case Opcode::Sar:            return "sar";
+        case Opcode::Convert:        return "convert";
+        case Opcode::Block:          return "block";
+        case Opcode::Loop:           return "loop";
+        case Opcode::If:             return "if";
+        case Opcode::Br:             return "br";
+        case Opcode::BrIf:           return "br_if";
+        case Opcode::Continue:       return "continue";
+        case Opcode::ContinueIf:     return "continue_if";
+        case Opcode::Call:           return "call";
+        case Opcode::CallIndirect:   return "call_indirect";
+        case Opcode::Return:         return "return";
+        }
+        return "unknown";
     }
 
 #pragma region Base Inst
@@ -115,10 +176,15 @@ namespace Fern::FLIR
     {
         Opcode op;
         Value *result = nullptr;
-        BasicBlock *parent = nullptr;
         uint32_t debug_line = 0;
 
         virtual ~Instruction() = default;
+
+        // Is this instruction a terminator for its containing region?
+        virtual bool is_region_terminator() const { return false; }
+
+        // Does this instruction contain nested instruction lists?
+        virtual bool is_control_flow() const { return false; }
     };
 
 #pragma region Constant Inst
@@ -185,12 +251,11 @@ namespace Fern::FLIR
 
 #pragma region Memory Inst
 
-    // Stack allocation of a typed value (lowered to alloca)
     struct StackAllocInst : Instruction
     {
         IRTypePtr alloc_type;
-        bool escapes = true;            // Pessimistic default
-        std::set<Function *> escape_to; // Functions it escapes to
+        bool escapes = true;
+        std::set<Function *> escape_to;
 
         StackAllocInst(Value *result, IRTypePtr type)
         {
@@ -200,7 +265,6 @@ namespace Fern::FLIR
         }
     };
 
-    // Stack allocation of dynamic byte count (lowered to alloca with size)
     struct StackAllocBytesInst : Instruction
     {
         Value *size;
@@ -210,6 +274,41 @@ namespace Fern::FLIR
             op = Opcode::StackAllocBytes;
             this->result = result;
             this->size = size_val;
+        }
+    };
+
+    struct HeapAllocInst : Instruction
+    {
+        IRTypePtr alloc_type;
+
+        HeapAllocInst(Value *result, IRTypePtr type)
+        {
+            op = Opcode::HeapAlloc;
+            this->result = result;
+            this->alloc_type = type;
+        }
+    };
+
+    struct HeapAllocBytesInst : Instruction
+    {
+        Value *size;
+
+        HeapAllocBytesInst(Value *result, Value *size_val)
+        {
+            op = Opcode::HeapAllocBytes;
+            this->result = result;
+            this->size = size_val;
+        }
+    };
+
+    struct HeapFreeInst : Instruction
+    {
+        Value *ptr;
+
+        HeapFreeInst(Value *ptr_val)
+        {
+            op = Opcode::HeapFree;
+            this->ptr = ptr_val;
         }
     };
 
@@ -242,13 +341,19 @@ namespace Fern::FLIR
     {
         Value *object;
         uint32_t field_index;
+        std::string field_name;
+        IRTypePtr struct_type;
+        IRTypePtr field_type;
 
-        FieldAddrInst(Value *result, Value *obj, uint32_t idx)
+        FieldAddrInst(Value *result, Value *obj, uint32_t idx,
+                      const std::string &name = "",
+                      IRTypePtr stype = nullptr,
+                      IRTypePtr ftype = nullptr)
+            : object(obj), field_index(idx), field_name(name),
+              struct_type(stype), field_type(ftype)
         {
             op = Opcode::FieldAddr;
             this->result = result;
-            this->object = obj;
-            this->field_index = idx;
         }
     };
 
@@ -266,45 +371,6 @@ namespace Fern::FLIR
         }
     };
 
-    // Heap allocation of a typed value (lowered to malloc with computed size)
-    struct HeapAllocInst : Instruction
-    {
-        IRTypePtr alloc_type;
-
-        HeapAllocInst(Value *result, IRTypePtr type)
-        {
-            op = Opcode::HeapAlloc;
-            this->result = result;
-            this->alloc_type = type;
-        }
-    };
-
-    // Heap allocation of dynamic byte count (lowered to malloc call)
-    struct HeapAllocBytesInst : Instruction
-    {
-        Value *size;  // Size in bytes
-
-        HeapAllocBytesInst(Value *result, Value *size_val)
-        {
-            op = Opcode::HeapAllocBytes;
-            this->result = result;
-            this->size = size_val;
-        }
-    };
-
-    // Heap deallocation (lowered to free call)
-    struct HeapFreeInst : Instruction
-    {
-        Value *ptr;
-
-        HeapFreeInst(Value *ptr_val)
-        {
-            op = Opcode::HeapFree;
-            this->ptr = ptr_val;
-        }
-    };
-
-    // Memory copy (lowered to llvm.memcpy intrinsic)
     struct MemCpyInst : Instruction
     {
         Value *dest;
@@ -312,21 +378,17 @@ namespace Fern::FLIR
         Value *size;
         bool is_volatile = false;
 
-        MemCpyInst(Value *dest_val, Value *src_val, Value *size_val, bool volatile_flag = false)
+        MemCpyInst(Value *dest_ptr, Value *src_ptr, Value *size_val, bool volatile_flag = false)
+            : dest(dest_ptr), src(src_ptr), size(size_val), is_volatile(volatile_flag)
         {
             op = Opcode::MemCpy;
-            this->dest = dest_val;
-            this->src = src_val;
-            this->size = size_val;
-            this->is_volatile = volatile_flag;
         }
     };
 
-    // Memory set (lowered to llvm.memset intrinsic)
     struct MemSetInst : Instruction
     {
         Value *dest;
-        Value *value;  // Byte value to set (i8)
+        Value *value;
         Value *size;
         bool is_volatile = false;
 
@@ -370,16 +432,16 @@ namespace Fern::FLIR
         }
     };
 
-#pragma region Cast Inst
+#pragma region Conversion Inst
 
-    struct CastInst : Instruction
+    struct ConvertInst : Instruction
     {
         Value *value;
         IRTypePtr target_type;
 
-        CastInst(Value *result, Value *val, IRTypePtr type)
+        ConvertInst(Value *result, Value *val, IRTypePtr type)
         {
-            op = Opcode::Cast;
+            op = Opcode::Convert;
             this->result = result;
             this->value = val;
             this->target_type = type;
@@ -402,85 +464,152 @@ namespace Fern::FLIR
         }
     };
 
-#pragma region Control Flow Inst
-
-    struct RetInst : Instruction
+    struct CallIndirectInst : Instruction
     {
-        Value *value = nullptr;
+        Value *callee;
+        IRTypePtr signature;
+        std::vector<Value *> args;
 
-        RetInst(Value *val = nullptr)
+        CallIndirectInst(Value *result, Value *func_ptr, IRTypePtr sig, std::vector<Value *> arguments)
+            : callee(func_ptr), signature(sig), args(std::move(arguments))
         {
-            op = Opcode::Ret;
-            this->value = val;
+            op = Opcode::CallIndirect;
+            this->result = result;
         }
+    };
+
+#pragma region Control Flow
+
+    struct BlockInst : Instruction
+    {
+        InstructionList body;
+        std::string label;
+
+        BlockInst()
+        {
+            op = Opcode::Block;
+        }
+
+        bool is_control_flow() const override { return true; }
+    };
+
+    struct LoopInst : Instruction
+    {
+        InstructionList body;
+        std::string label;
+
+        LoopInst()
+        {
+            op = Opcode::Loop;
+        }
+
+        bool is_control_flow() const override { return true; }
+    };
+
+    struct IfInst : Instruction
+    {
+        Value *condition;
+        InstructionList then_body;
+        InstructionList else_body;
+
+        IfInst(Value *cond) : condition(cond)
+        {
+            op = Opcode::If;
+        }
+
+        bool is_control_flow() const override { return true; }
     };
 
     struct BrInst : Instruction
     {
-        BasicBlock *target;
+        uint32_t depth;
 
-        BrInst(BasicBlock *dest)
+        BrInst(uint32_t depth = 0) : depth(depth)
         {
             op = Opcode::Br;
-            this->target = dest;
         }
+
+        bool is_region_terminator() const override { return true; }
     };
 
-    struct CondBrInst : Instruction
+    struct BrIfInst : Instruction
     {
         Value *condition;
-        BasicBlock *true_block;
-        BasicBlock *false_block;
+        uint32_t depth;
 
-        CondBrInst(Value *cond, BasicBlock *t, BasicBlock *f)
+        BrIfInst(Value *cond, uint32_t depth = 0)
+            : condition(cond), depth(depth)
         {
-            op = Opcode::CondBr;
-            this->condition = cond;
-            this->true_block = t;
-            this->false_block = f;
+            op = Opcode::BrIf;
         }
     };
 
-
-#pragma region Basic Block
-
-    struct BasicBlock
+    struct ContinueInst : Instruction
     {
-        uint32_t id;
-        std::string name;
-        Function *parent;
+        uint32_t depth;
 
-        std::vector<std::unique_ptr<Instruction>> instructions;
-        std::vector<BasicBlock *> predecessors;
-        std::vector<BasicBlock *> successors;
-
-        BasicBlock(uint32_t id, const std::string &name = "")
-            : id(id), name(name) {}
-
-        void add_inst(std::unique_ptr<Instruction> inst)
+        ContinueInst(uint32_t depth = 0) : depth(depth)
         {
-            inst->parent = this;
-            instructions.push_back(std::move(inst));
+            op = Opcode::Continue;
         }
 
-        Instruction *terminator() const
-        {
-            if (instructions.empty())
-                return nullptr;
+        bool is_region_terminator() const override { return true; }
+    };
 
-            auto *last = instructions.back().get();
-            // Check if the last instruction is actually a terminator
-            if (last->op == Opcode::Ret ||
-                last->op == Opcode::Br ||
-                last->op == Opcode::CondBr ||
-                last->op == Opcode::Switch)
+    struct ContinueIfInst : Instruction
+    {
+        Value *condition;
+        uint32_t depth;
+
+        ContinueIfInst(Value *cond, uint32_t depth = 0)
+            : condition(cond), depth(depth)
+        {
+            op = Opcode::ContinueIf;
+        }
+    };
+
+    struct ReturnInst : Instruction
+    {
+        Value *value = nullptr;
+
+        ReturnInst(Value *val = nullptr)
+        {
+            op = Opcode::Return;
+            this->value = val;
+        }
+
+        bool is_region_terminator() const override { return true; }
+    };
+
+#pragma region Helpers
+
+    inline bool definitely_terminates(const InstructionList &list)
+    {
+        for (const auto &inst : list)
+        {
+            if (inst->is_region_terminator())
+                return true;
+
+            if (inst->op == Opcode::If)
             {
-                return last;
+                auto *if_inst = static_cast<IfInst *>(inst.get());
+                if (!if_inst->else_body.empty() &&
+                    definitely_terminates(if_inst->then_body) &&
+                    definitely_terminates(if_inst->else_body))
+                {
+                    return true;
+                }
             }
 
-            return nullptr;
+            if (inst->op == Opcode::Block)
+            {
+                auto *block = static_cast<BlockInst *>(inst.get());
+                if (definitely_terminates(block->body))
+                    return true;
+            }
         }
-    };
+        return false;
+    }
 
 #pragma region Function
 
@@ -491,21 +620,24 @@ namespace Fern::FLIR
         std::vector<bool> param_escapes;  // Which params escape
         std::vector<bool> param_modified; // Which params are modified
 
-        std::vector<std::unique_ptr<BasicBlock>> blocks;
-        std::vector<std::unique_ptr<Value>> values;
-        BasicBlock *entry = nullptr;
+        // Flat instruction list with nested control structures
+        InstructionList body;
 
+        // Value storage
+        std::vector<std::unique_ptr<Value>> values;
         uint32_t next_value_id = 0;
-        uint32_t next_block_id = 0;
 
         bool is_external = false;
-        bool is_static = false; // if not then we need a this pointer as first arg
+        bool is_static = false;
 
-        Function(FunctionSymbol *symbol) : symbol(symbol){}
+        // This pointer tracking (for methods)
+        Value *this_param = nullptr;
+
+        Function(FunctionSymbol *symbol) : symbol(symbol) {}
 
         bool is_empty() const
         {
-            return blocks.empty();
+            return body.empty();
         }
 
         Value *create_value(IRTypePtr type, const std::string &name = "")
@@ -517,20 +649,10 @@ namespace Fern::FLIR
             return ptr;
         }
 
-        BasicBlock *create_block(const std::string &name = "")
-        {
-            auto block = std::make_unique<BasicBlock>(next_block_id++, name);
-            block->parent = this;
-            BasicBlock *ptr = block.get();
-            blocks.push_back(std::move(block));
-            return ptr;
-        }
-
         std::string get_mangled_name() const
         {
             std::string mangled = symbol->get_qualified_name();
 
-            // use symbol instead of params so lowered types are still differentiated
             for (auto param : symbol->parameters) {
                 mangled += "_";
                 if (param->type) {
@@ -547,27 +669,33 @@ namespace Fern::FLIR
 
         bool has_valid_symbol() const { return symbol != nullptr; }
 
+        FunctionSymbol *get_symbol() const { return symbol; }
+
     private:
         FunctionSymbol *symbol = nullptr;
-
     };
 
-#pragma region Type Definition
-
-
 #pragma region Module
+
+    struct Global
+    {
+        std::string name;
+        IRTypePtr type;
+        bool is_mutable = true;
+    };
 
     struct Module
     {
         std::string name;
         std::vector<std::unique_ptr<Function>> functions;
-        std::unordered_map<FunctionSymbol*, Function*> function_map;
+        std::unordered_map<FunctionSymbol *, Function *> function_map;
         IRTypeSystem ir_types;
+
+        std::vector<Global> globals;
 
         Module(const std::string &name) : name(name) {}
 
-        // Lookup function by symbol
-        Function* find_function(FunctionSymbol* sym)
+        Function *find_function(FunctionSymbol *sym)
         {
             auto it = function_map.find(sym);
             if (it != function_map.end())
@@ -578,9 +706,9 @@ namespace Fern::FLIR
             return nullptr;
         }
 
-        Function* find_function_by_name(const std::string& name)
+        Function *find_function_by_name(const std::string &name)
         {
-            for (const auto& func : functions)
+            for (const auto &func : functions)
             {
                 if (func->name() == name)
                 {
@@ -590,13 +718,11 @@ namespace Fern::FLIR
             return nullptr;
         }
 
-        // Create a function shell (signature will be filled in by lowering)
-        // Returns existing function if already created
-        Function* create_function(FunctionSymbol *sym)
+        Function *create_function(FunctionSymbol *sym)
         {
-            // Check if already exists
             auto it = function_map.find(sym);
-            if (it != function_map.end()) {
+            if (it != function_map.end())
+            {
                 return it->second;
             }
 
@@ -607,446 +733,14 @@ namespace Fern::FLIR
             return ptr;
         }
 
-        // Dump human-readable text representation
-        std::string dump() const
-        {
-            std::stringstream ss;
-            ss << "Module: " << name << "\n";
-            ss << "===============================================\n\n";
-
-            // Dump type definitions first
-            for (const auto &struct_def : ir_types.get_all_structs())
-            {
-                ss << dump_type_definition(struct_def.get());
-                ss << "\n";
-            }
-
-            for (const auto &func : functions)
-            {
-                ss << dump_function(func.get());
-                ss << "\n";
-            }
-
-            return ss.str();
-        }
-
-#pragma region Dump Functions
+        std::string dump() const;
 
     private:
-    
-        static std::string dump_type_definition(const IRStruct *type_def)
-        {
-            std::stringstream ss;
-
-            ss << "type " << type_def->name << "   ::   " << type_def->size << " bytes, align " << type_def->alignment;
-
-            if (type_def->fields.empty())
-            {
-            ss << " { }\n";
-            return ss.str();
-            }
-
-            ss << " \n{\n";
-
-            // dump fields
-            for (const auto &field : type_def->fields)
-            {
-            ss << "  ";
-            if (field.type)
-            {
-                ss << field.type->get_name();
-            }
-            else
-            {
-                ss << "?";
-            }
-
-            ss << " " << field.name << "   ::   " << field.type->get_size() << " bytes, align " << field.type->get_alignment() << ", offset " << field.offset << "\n";
-            }
-
-            ss << "}\n";
-            return ss.str();
-        }
-
-        static std::string dump_function(const Function *func)
-        {
-            std::stringstream ss;
-
-            if (func->is_external)
-            {
-                ss << "extern ";
-            }
-
-            // Function signature
-            ss << "fn " << func->name() << "(";
-            for (size_t i = 0; i < func->params.size(); ++i)
-            {
-                if (i > 0)
-                    ss << ", ";
-                ss << value_ref(func->params[i]) << ": " << func->params[i]->type->get_name();
-            }
-            ss << ") -> " << func->return_type->get_name();
-
-            if (func->is_external)
-            {
-                return ss.str();
-            }
-
-            if (func->is_empty())
-            {
-                ss << " { }\n";
-                return ss.str();
-            }
-
-            ss << "\n{\n";
-
-            // Dump all blocks
-            for (const auto &block : func->blocks)
-            {
-                ss << "\n" << dump_block(block.get());
-            }
-
-            ss << "}\n";
-            return ss.str();
-        }
-
-        // Helper struct for table-formatted instruction output
-        struct InstructionParts {
-            std::string result;      // e.g., "%x" or ""
-            std::string operation;   // e.g., "const.int 0" or "load %addr"
-            std::string type;        // e.g., "i32" or ""
-        };
-
-        // Get just the operation string (without result prefix or type suffix)
-        static std::string get_operation_string(const Instruction *inst)
-        {
-            std::stringstream ss;
-
-            switch (inst->op)
-            {
-            case Opcode::ConstInt:
-            {
-                auto *ci = static_cast<const ConstIntInst *>(inst);
-                ss << "const.int " << ci->value;
-                break;
-            }
-            case Opcode::ConstFloat:
-            {
-                auto *cf = static_cast<const ConstFloatInst *>(inst);
-                ss << "const.float " << cf->value;
-                break;
-            }
-            case Opcode::ConstBool:
-            {
-                auto *cb = static_cast<const ConstBoolInst *>(inst);
-                ss << "const.bool " << (cb->value ? "true" : "false");
-                break;
-            }
-            case Opcode::ConstString:
-            {
-                auto *cs = static_cast<const ConstStringInst *>(inst);
-                ss << "const.string \"" << cs->value << "\"";
-                break;
-            }
-            case Opcode::ConstNull:
-            {
-                auto *cn = static_cast<const ConstNullInst *>(inst);
-                ss << "const.null " << cn->null_type->get_name();
-                break;
-            }
-            case Opcode::StackAlloc:
-            {
-                auto *alloc = static_cast<const StackAllocInst *>(inst);
-                ss << "stack.alloc " << alloc->alloc_type->get_name();
-                if (!alloc->escapes)
-                    ss << " [no-escape]";
-                break;
-            }
-            case Opcode::StackAllocBytes:
-            {
-                auto *alloc = static_cast<const StackAllocBytesInst *>(inst);
-                ss << "stack.alloc.bytes " << value_ref(alloc->size);
-                break;
-            }
-            case Opcode::Load:
-            {
-                auto *load = static_cast<const LoadInst *>(inst);
-                ss << "load " << value_ref(load->address);
-                break;
-            }
-            case Opcode::Store:
-            {
-                auto *store = static_cast<const StoreInst *>(inst);
-                ss << "store " << value_ref(store->value) << ", " << value_ref(store->address);
-                break;
-            }
-            case Opcode::FieldAddr:
-            {
-                auto *field = static_cast<const FieldAddrInst *>(inst);
-                ss << "fieldaddr " << value_ref(field->object) << ", " << field->field_index;
-                break;
-            }
-            case Opcode::ElementAddr:
-            {
-                auto *elem = static_cast<const ElementAddrInst *>(inst);
-                ss << "elementaddr " << value_ref(elem->array) << ", " << value_ref(elem->index);
-                break;
-            }
-            case Opcode::HeapAlloc:
-            {
-                auto *alloc = static_cast<const HeapAllocInst *>(inst);
-                ss << "heap.alloc " << alloc->alloc_type->get_name();
-                break;
-            }
-            case Opcode::HeapAllocBytes:
-            {
-                auto *alloc = static_cast<const HeapAllocBytesInst *>(inst);
-                ss << "heap.alloc.bytes " << value_ref(alloc->size);
-                break;
-            }
-            case Opcode::HeapFree:
-            {
-                auto *free_inst = static_cast<const HeapFreeInst *>(inst);
-                ss << "heap.free " << value_ref(free_inst->ptr);
-                break;
-            }
-            case Opcode::MemCpy:
-            {
-                auto *memcpy_inst = static_cast<const MemCpyInst *>(inst);
-                ss << "memcpy " << value_ref(memcpy_inst->dest) << ", " << value_ref(memcpy_inst->src) << ", " << value_ref(memcpy_inst->size);
-                if (memcpy_inst->is_volatile) ss << " [volatile]";
-                break;
-            }
-            case Opcode::MemSet:
-            {
-                auto *memset_inst = static_cast<const MemSetInst *>(inst);
-                ss << "memset " << value_ref(memset_inst->dest) << ", " << value_ref(memset_inst->value) << ", " << value_ref(memset_inst->size);
-                if (memset_inst->is_volatile) ss << " [volatile]";
-                break;
-            }
-            case Opcode::Add:
-            case Opcode::Sub:
-            case Opcode::Mul:
-            case Opcode::Div:
-            case Opcode::Rem:
-            case Opcode::Eq:
-            case Opcode::Ne:
-            case Opcode::Lt:
-            case Opcode::Le:
-            case Opcode::Gt:
-            case Opcode::Ge:
-            case Opcode::And:
-            case Opcode::Or:
-            case Opcode::BitAnd:
-            case Opcode::BitOr:
-            case Opcode::BitXor:
-            case Opcode::ShiftL:
-            case Opcode::ShiftR:
-            {
-                auto *bin = static_cast<const BinaryInst *>(inst);
-                ss << to_string(inst->op) << " " << value_ref(bin->left) << ", " << value_ref(bin->right);
-                break;
-            }
-            case Opcode::Neg:
-            case Opcode::Not:
-            case Opcode::BitNot:
-            {
-                auto *un = static_cast<const UnaryInst *>(inst);
-                ss << to_string(inst->op) << " " << value_ref(un->operand);
-                break;
-            }
-            case Opcode::Cast:
-            {
-                auto *cast = static_cast<const CastInst *>(inst);
-                ss << "cast " << value_ref(cast->value) << " to " << cast->target_type->get_name();
-                break;
-            }
-            case Opcode::Call:
-            {
-                auto *call = static_cast<const CallInst *>(inst);
-                ss << "call ";
-                if (call->callee->is_external)
-                {
-                    ss << "external ";
-                }
-                ss << call->callee->name() << "(";
-                for (size_t i = 0; i < call->args.size(); ++i)
-                {
-                    if (i > 0)
-                        ss << ", ";
-                    ss << value_ref(call->args[i]);
-                }
-                ss << ")";
-                break;
-            }
-            case Opcode::Ret:
-            {
-                auto *ret = static_cast<const RetInst *>(inst);
-                ss << "ret";
-                if (ret->value)
-                {
-                    ss << " " << value_ref(ret->value);
-                }
-                break;
-            }
-            case Opcode::Br:
-            {
-                auto *br = static_cast<const BrInst *>(inst);
-                ss << "br bb" << br->target->id;
-                break;
-            }
-            case Opcode::CondBr:
-            {
-                auto *cbr = static_cast<const CondBrInst *>(inst);
-                ss << "condbr " << value_ref(cbr->condition)
-                   << ", bb" << cbr->true_block->id
-                   << ", bb" << cbr->false_block->id;
-                break;
-            }
-            default:
-                ss << "unknown_op_" << static_cast<int>(inst->op);
-            }
-
-            return ss.str();
-        }
-
-        static InstructionParts get_instruction_parts(const Instruction *inst)
-        {
-            InstructionParts parts;
-
-            // Result value
-            if (inst->result)
-            {
-                parts.result = value_ref(inst->result);
-            }
-
-            // Operation (reuse existing logic but without result prefix)
-            parts.operation = get_operation_string(inst);
-
-            // Type annotation
-            if (inst->result && inst->result->type)
-            {
-                parts.type = inst->result->type->get_name();
-            }
-
-            return parts;
-        }
-
-        static std::string dump_block(const BasicBlock *block)
-        {
-            std::stringstream ss;
-
-            // Block label
-            ss << "  bb" << block->id;
-            if (!block->name.empty())
-            {
-                ss << " <" << block->name << ">";
-            }
-
-            // Show predecessors if any
-            if (!block->predecessors.empty())
-            {
-                ss << "  ; preds: ";
-                for (size_t i = 0; i < block->predecessors.size(); ++i)
-                {
-                    if (i > 0)
-                        ss << ", ";
-                    ss << "bb" << block->predecessors[i]->id;
-                }
-            }
-            ss << ":\n";
-
-            // First pass: collect parts and compute column widths
-            std::vector<InstructionParts> all_parts;
-            size_t max_result_width = 0;
-            size_t max_op_width = 0;
-
-            for (const auto &inst : block->instructions)
-            {
-                auto parts = get_instruction_parts(inst.get());
-                max_result_width = std::max(max_result_width, parts.result.length());
-                max_op_width = std::max(max_op_width, parts.operation.length());
-                all_parts.push_back(std::move(parts));
-            }
-
-            // Second pass: format with alignment
-            for (const auto &parts : all_parts)
-            {
-                ss << "    ";
-
-                if (!parts.result.empty())
-                {
-                    // Left-align result in its column
-                    ss << std::left << std::setw(max_result_width) << parts.result;
-                    ss << " = ";
-                }
-                else
-                {
-                    // No result - pad to align with instructions that have results
-                    if (max_result_width > 0)
-                    {
-                        ss << std::string(max_result_width + 3, ' '); // +3 for " = "
-                    }
-                }
-
-                // Left-align operation
-                ss << std::left << std::setw(max_op_width) << parts.operation;
-
-                // Type annotation
-                if (!parts.type.empty())
-                {
-                    ss << "  ::  " << parts.type;
-                }
-
-                ss << "\n";
-            }
-
-            return ss.str();
-        }
-
-        // Legacy single-line dump (still used for debug output in some places)
-        static std::string dump_instruction(const Instruction *inst)
-        {
-            std::stringstream ss;
-
-            if (inst->result)
-            {
-                ss << value_ref(inst->result) << " = ";
-            }
-
-            ss << get_operation_string(inst);
-
-            if (inst->result && inst->result->type)
-            {
-                ss << "  ::  " << inst->result->type->get_name();
-            }
-
-            if (inst->debug_line > 0)
-            {
-                ss << "  ; line " << inst->debug_line;
-            }
-
-            return ss.str();
-        }
-
-        static std::string value_ref(const Value *val)
-        {
-            if (!val)
-                return "<null>";
-            std::stringstream ss;
-            // Use name as primary identifier if available, otherwise use numeric ID
-            if (!val->debug_name.empty())
-            {
-                ss << "%" << val->debug_name;
-            }
-            else
-            {
-                ss << "%" << val->id;
-            }
-            return ss.str();
-        }
-
-        
+        static std::string dump_type_definition(const IRStruct *type_def);
+        static std::string dump_function(const Function *func);
+        static std::string dump_instruction_list(const InstructionList &list, int indent);
+        static std::string dump_instruction(const Instruction *inst, int indent);
+        static std::string value_ref(const Value *val);
     };
 
 } // namespace Fern::FLIR

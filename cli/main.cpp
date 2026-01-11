@@ -396,6 +396,17 @@ int main(int argc, char* argv[])
 #endif
 
         auto ret = backend->execute("Main").value_or(-1.0f);
+
+        // Print any execution errors
+        if (backend->has_errors())
+        {
+            std::cerr << "\nExecution errors:\n";
+            for (const auto& diag : backend->get_diagnostics())
+            {
+                std::cerr << "  " << diag.to_string() << std::endl;
+            }
+        }
+
         std::cout << "\n";
         std::cout << "______________________________\n\n";
         std::cout << "Program returned: " << ret << std::endl;

@@ -18,6 +18,7 @@ public:
 private:
     std::unique_ptr<Rules> rules;
     Module* current_module = nullptr;
+    Function* current_function = nullptr;
 
     // Cache of function ABI info for extern functions
     std::unordered_map<Function*, FunctionABIInfo> function_abi_cache;
@@ -38,8 +39,11 @@ private:
 
     void lower_calls_in_function(Function& fn);
 
-    void lower_extern_call_inst(Function& fn, BasicBlock& block,
-                                 std::vector<std::unique_ptr<Instruction>>& output,
+    // Recursively process instruction list (handles nested control flow)
+    void lower_calls_in_list(InstructionList& list);
+
+    // Lower a single extern call, returning replacement instructions
+    void lower_extern_call_inst(InstructionList& output,
                                  CallInst* call, const FunctionABIInfo& abi_info);
 
     #pragma region Helpers

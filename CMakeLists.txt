@@ -38,6 +38,7 @@ set(FERN_LIB_SOURCES
     src/binding/conversion_inserter.cpp
 
     # FLIR
+    src/flir/flir.cpp
     src/flir/ir_type.cpp
     src/flir/bound_to_flir.cpp
     src/flir/abi/abi_rules.cpp
@@ -71,15 +72,44 @@ if(FERN_BUILD_VM)
     message(STATUS "VM backend enabled")
     set(VM_AVAILABLE TRUE)
 
+    include(FetchContent)
+    FetchContent_Declare(
+        libffi
+        GIT_REPOSITORY https://github.com/chrysante/ffi.git
+        GIT_TAG        main
+    )
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(FFI_USE_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+    FetchContent_GetProperties(libffi)
+    if(NOT libffi_POPULATED)
+        FetchContent_Populate(libffi)
+
+        # Patch libffi CMakeLists.txt for Windows+Clang compatibility
+        file(READ "${libffi_SOURCE_DIR}/CMakeLists.txt" FFI_CMAKE)
+
+        # Fix: AMD64 is the Windows name for x64
+        string(REPLACE
+            "CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL \"x64\""
+            "CMAKE_HOST_SYSTEM_PROCESSOR MATCHES \"x64|AMD64\""
+            FFI_CMAKE "${FFI_CMAKE}")
+
+        file(WRITE "${libffi_SOURCE_DIR}/CMakeLists.txt" "${FFI_CMAKE}")
+
+        add_subdirectory(${libffi_SOURCE_DIR} ${libffi_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
+
     set(FERN_VM_SOURCES
         src/vm/vm.cpp
         src/vm/vm_backend.cpp
+        # src/vm/interpreter.cpp
     )
 
     add_library(FernVM STATIC ${FERN_VM_SOURCES})
     target_include_directories(FernVM PUBLIC src include)
-    target_link_libraries(FernVM PUBLIC FernLib)
-    target_compile_definitions(FernVM PUBLIC FERN_VM_AVAILABLE)
+    target_link_libraries(FernVM PUBLIC FernLib libffi)
+    target_compile_definitions(FernVM PUBLIC FERN_VM_AVAILABLE FFI_STATIC_BUILD)
+    target_compile_definitions(libffi PRIVATE FFI_STATIC_BUILD)
 else()
     message(STATUS "VM backend disabled by FERN_BUILD_VM=OFF")
     set(VM_AVAILABLE FALSE)

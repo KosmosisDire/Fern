@@ -10,15 +10,31 @@
 #include <llvm/IR/DataLayout.h>
 #include <unordered_map>
 #include <string>
+#include <stack>
+#include <vector>
 
 namespace Fern
 {
+
+// Loop context for break/continue targeting
+struct LoopContext
+{
+    llvm::BasicBlock* continue_bb;  // Where 'continue' should jump
+    llvm::BasicBlock* break_bb;     // Where 'break' should jump
+};
+
+// Block context for WASM-style Br/BrIf
+struct BlockContext
+{
+    llvm::BasicBlock* exit_bb;
+    bool is_loop;
+};
 
 class CodeGenContext
 {
 private:
     llvm::LLVMContext& context;
-    llvm::Module& module;
+    llvm::Module& llvm_module;
     llvm::IRBuilder<>& builder;
 
     // Module-level caches (persist across functions)
@@ -28,13 +44,18 @@ private:
 
     // Function-level state (cleared per function)
     std::unordered_map<FLIR::Value*, llvm::Value*> value_map;
-    std::unordered_map<FLIR::BasicBlock*, llvm::BasicBlock*> block_map;
     FLIR::Function* current_flir_func = nullptr;
     llvm::Function* current_llvm_func = nullptr;
 
+    // Loop stack for break/continue targeting
+    std::stack<LoopContext> loop_stack;
+
+    // Block stack for Br/BrIf depth targeting
+    std::vector<BlockContext> block_stack;
+
 public:
     CodeGenContext(llvm::LLVMContext& ctx, llvm::Module& mod, llvm::IRBuilder<>& bldr)
-        : context(ctx), module(mod), builder(bldr) {}
+        : context(ctx), llvm_module(mod), builder(bldr) {}
 
     #pragma region Module Setup
 
@@ -54,19 +75,29 @@ public:
     void begin_function(FLIR::Function* flir_func, llvm::Function* llvm_func);
     void end_function();
 
-    #pragma region Value/Block Management
+    #pragma region Value Management
 
     llvm::Value* get_value(FLIR::Value* flir_value);
     void map_value(FLIR::Value* flir_value, llvm::Value* llvm_value);
 
-    llvm::BasicBlock* get_block(FLIR::BasicBlock* flir_block);
-    void map_block(FLIR::BasicBlock* flir_block, llvm::BasicBlock* llvm_block);
-
-    void create_all_blocks();
     void map_parameters();
+
+    #pragma region Loop Stack Management
+
+    void push_loop(llvm::BasicBlock* continue_bb, llvm::BasicBlock* break_bb);
+    void pop_loop();
+    LoopContext& current_loop();
+    bool in_loop() const { return !loop_stack.empty(); }
+
+    #pragma region Block Stack Management
+
+    void push_block(llvm::BasicBlock* exit_bb, bool is_loop = false);
+    void pop_block();
+    llvm::BasicBlock* get_break_target(uint32_t depth);
 
     #pragma region IR Generation Helpers
 
+    llvm::BasicBlock* create_block(const std::string& name);
     llvm::Value* create_entry_alloca(llvm::Type* type, const std::string& name = "");
     llvm::Value* create_malloc(llvm::Type* type, const std::string& name = "");
     llvm::Value* create_malloc_bytes(llvm::Value* size, const std::string& name = "");
@@ -76,7 +107,7 @@ public:
     #pragma region Accessors
 
     llvm::LLVMContext& ctx() { return context; }
-    llvm::Module& mod() { return module; }
+    llvm::Module& module() { return llvm_module; }
     llvm::IRBuilder<>& ir() { return builder; }
 
     FLIR::Function* flir_func() { return current_flir_func; }
@@ -90,7 +121,6 @@ public:
 private:
     llvm::FunctionType* get_function_type(FLIR::Function* flir_func);
     std::string format_value_error(FLIR::Value* value, const std::string& message);
-    std::string format_block_error(FLIR::BasicBlock* block, const std::string& message);
 };
 
 } // namespace Fern

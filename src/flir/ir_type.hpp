@@ -33,7 +33,17 @@ enum class IRTypeKind
     Float,
     Pointer,
     Array,
-    Struct
+    Struct,
+    Function
+};
+
+#pragma region IR Function Signature
+
+struct IRFunctionSignature
+{
+    IRTypePtr return_type = nullptr;
+    std::vector<IRTypePtr> param_types;
+    bool is_vararg = false;
 };
 
 #pragma region IR Type
@@ -56,6 +66,9 @@ struct IRType
     // For Struct: reference to struct definition
     IRStruct* struct_def = nullptr;
 
+    // For Function: signature
+    std::unique_ptr<IRFunctionSignature> func_sig = nullptr;
+
     // Helpers
     bool is_void() const { return kind == IRTypeKind::Void; }
     bool is_bool() const { return kind == IRTypeKind::Bool; }
@@ -64,6 +77,7 @@ struct IRType
     bool is_pointer() const { return kind == IRTypeKind::Pointer; }
     bool is_array() const { return kind == IRTypeKind::Array; }
     bool is_struct() const { return kind == IRTypeKind::Struct; }
+    bool is_function() const { return kind == IRTypeKind::Function; }
 
     std::string get_name() const;
     size_t get_size() const;
@@ -119,6 +133,7 @@ public:
     IRTypePtr get_pointer(IRTypePtr pointee);
     IRTypePtr get_array(IRTypePtr element, int32_t size);
     IRTypePtr get_struct(TypeSymbol* symbol);
+    IRTypePtr get_function_type(IRTypePtr return_type, std::vector<IRTypePtr> params, bool vararg = false);
 
     // Define a struct (called during lowering setup)
     IRStruct* define_struct(TypeSymbol* symbol);
@@ -143,6 +158,7 @@ private:
     std::vector<std::unique_ptr<IRType>> pointer_types;
     std::vector<std::unique_ptr<IRType>> array_types;
     std::vector<std::unique_ptr<IRStruct>> struct_defs;
+    std::vector<std::unique_ptr<IRType>> function_types;
 
     // Caches for deduplication
     std::unordered_map<IRTypePtr, IRTypePtr> pointer_cache;

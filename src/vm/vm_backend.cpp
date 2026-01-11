@@ -1,4 +1,3 @@
-// vm_backend.cpp - VM Backend Implementation (Stub)
 #include "vm_backend.hpp"
 #include <iostream>
 

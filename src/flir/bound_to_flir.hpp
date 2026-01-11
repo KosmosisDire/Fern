@@ -1,11 +1,10 @@
-// bound_to_flir.hpp
+// bound_to_flir.hpp - Lowering from Bound Tree to Structured FLIR
 #pragma once
 
 #include "binding/bound_tree.hpp"
 #include "flir_builder.hpp"
 #include "common/error.hpp"
 #include <unordered_map>
-#include <stack>
 #include <optional>
 #include <functional>
 
@@ -16,12 +15,7 @@ namespace Fern::FLIR
 
 struct LoweredExpr {
     FLIR::Value* result = nullptr;
-    bool is_address = false;
-};
-
-struct LoopContext {
-    FLIR::BasicBlock* continue_target;
-    FLIR::BasicBlock* break_target;
+    bool is_address = false;  // True if result is an lvalue (address)
 };
 
 #pragma endregion
@@ -96,13 +90,17 @@ private:
     #pragma region Core State
 
     FLIR::Module* module;
-
     FLIR::Function* current_function = nullptr;
-    FLIR::BasicBlock* current_block = nullptr;
 
+    // Variable address tracking
     std::unordered_map<Symbol*, FLIR::Value*> variable_addresses;
+
+    // Expression lowering results
     std::unordered_map<BoundExpression*, LoweredExpr> lowered;
-    std::stack<LoopContext> loop_stack;
+
+    // For-loop continue handling: when > 0, we're inside a for-loop body block
+    // and continue should emit br(0) to exit the body block instead of Continue(0)
+    int for_loop_body_depth = 0;
 
     #pragma endregion
 
@@ -120,8 +118,6 @@ private:
 
     FLIR::Value* get_this_param();
     size_t get_field_index(TypeSymbol* type_sym, Symbol* field_sym);
-    FLIR::BasicBlock* create_block(const std::string& name);
-    void branch_if_open(FLIR::BasicBlock* target);
 
     void emit_store(FLIR::Value* dest, FLIR::Value* src, FLIR::IRTypePtr type);
     void emit_string_init(FLIR::Value* string_addr, FLIR::Value* data_ptr, size_t length);
@@ -158,27 +154,21 @@ private:
 
 #pragma region Scoped Context
 
+// RAII helper for managing function context during lowering
 class ScopedFunctionContext {
 public:
-    ScopedFunctionContext(BoundToFLIR& flir, FLIR::Function* func, FLIR::BasicBlock* block)
+    ScopedFunctionContext(BoundToFLIR& flir, FLIR::Function* func)
         : self(flir)
         , prev_function(flir.current_function)
-        , prev_block(flir.current_block) 
     {
         self.current_function = func;
-        self.current_block = block;
         self.builder.set_function(func);
-        self.builder.set_block(block);
     }
-    
+
     ~ScopedFunctionContext() {
         self.current_function = prev_function;
-        self.current_block = prev_block;
         if (prev_function) {
             self.builder.set_function(prev_function);
-            if (prev_block) {
-                self.builder.set_block(prev_block);
-            }
         }
     }
 
@@ -188,7 +178,6 @@ public:
 private:
     BoundToFLIR& self;
     FLIR::Function* prev_function;
-    FLIR::BasicBlock* prev_block;
 };
 
 #pragma endregion

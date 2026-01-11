@@ -1,4 +1,3 @@
-// vm_backend.hpp - VM Backend Interface (Stub)
 #pragma once
 
 #include "backend/backend.hpp"

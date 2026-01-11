@@ -518,19 +518,15 @@ namespace Fern
 
         #pragma region ABI Lowering
 
-        // Convert to target ABI
-        auto rules = FLIR::ABI::create_rules_for_target(
-            FLIR::ABI::get_host_target(),
-            &flir_module->ir_types
-        );
+        LOG_HEADER("ABI lowering", LogCategory::COMPILER);
 
-        FLIR::ABI::LoweringPass pass(std::move(rules));
-        pass.run(*flir_module);
+        // Apply ABI lowering for extern function calls (Windows x64 for now)
+        FLIR::ABI::LoweringPass abi_pass(std::make_unique<FLIR::ABI::WindowsX64Rules>(&flir_module->ir_types));
+        abi_pass.run(*flir_module);
 
-        // dump flir again after abi lowering
         if (print_flir)
         {
-            LOG_HEADER("FLIR Output (Post-ABI Lowering)", LogCategory::COMPILER);
+            LOG_HEADER("FLIR Output (After ABI Lowering)", LogCategory::COMPILER);
             LOG_INFO(flir_module->dump() + "\n", LogCategory::COMPILER);
         }
 

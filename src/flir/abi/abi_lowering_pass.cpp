@@ -99,44 +99,72 @@ void LoweringPass::lower_extern_calls(Module& module)
 
 void LoweringPass::lower_calls_in_function(Function& fn)
 {
-    for (auto& block : fn.blocks)
-    {
-        // Build a new instruction list to avoid modifying while iterating
-        std::vector<std::unique_ptr<Instruction>> new_instructions;
-
-        for (size_t i = 0; i < block->instructions.size(); ++i)
-        {
-            auto& inst = block->instructions[i];
-
-            if (inst->op == Opcode::Call)
-            {
-                auto* call = static_cast<CallInst*>(inst.get());
-
-                if (call->callee->is_external)
-                {
-                    // Check if this function has ABI lowering info
-                    auto it = function_abi_cache.find(call->callee);
-                    if (it != function_abi_cache.end() && it->second.requires_transformation())
-                    {
-                        lower_extern_call_inst(fn, *block, new_instructions, call, it->second);
-                        continue;
-                    }
-                }
-            }
-
-            // No transformation needed
-            new_instructions.push_back(std::move(inst));
-        }
-
-        // Replace instructions with transformed ones
-        block->instructions = std::move(new_instructions);
-    }
+    current_function = &fn;
+    lower_calls_in_list(fn.body);
+    current_function = nullptr;
 }
 
-void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
-                                           std::vector<std::unique_ptr<Instruction>>& output,
+void LoweringPass::lower_calls_in_list(InstructionList& list)
+{
+    // Build a new instruction list to avoid modifying while iterating
+    InstructionList new_instructions;
+
+    for (size_t i = 0; i < list.size(); ++i)
+    {
+        auto& inst = list[i];
+
+        // First, recursively process any nested instruction lists
+        if (inst->is_control_flow())
+        {
+            switch (inst->op)
+            {
+            case Opcode::If:
+            {
+                auto* if_inst = static_cast<IfInst*>(inst.get());
+                lower_calls_in_list(if_inst->then_body);
+                lower_calls_in_list(if_inst->else_body);
+                break;
+            }
+            case Opcode::Block:
+            {
+                auto* block_inst = static_cast<BlockInst*>(inst.get());
+                lower_calls_in_list(block_inst->body);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+
+        // Now handle the instruction itself
+        if (inst->op == Opcode::Call)
+        {
+            auto* call = static_cast<CallInst*>(inst.get());
+
+            if (call->callee->is_external)
+            {
+                // Check if this function has ABI lowering info
+                auto it = function_abi_cache.find(call->callee);
+                if (it != function_abi_cache.end() && it->second.requires_transformation())
+                {
+                    lower_extern_call_inst(new_instructions, call, it->second);
+                    continue;
+                }
+            }
+        }
+
+        // No transformation needed - move instruction to new list
+        new_instructions.push_back(std::move(inst));
+    }
+
+    // Replace instructions with transformed ones
+    list = std::move(new_instructions);
+}
+
+void LoweringPass::lower_extern_call_inst(InstructionList& output,
                                            CallInst* call, const FunctionABIInfo& abi_info)
 {
+    Function& fn = *current_function;
     std::vector<Value*> new_args;
     Value* sret_alloc = nullptr;
     IRTypePtr original_return_type = nullptr;
@@ -155,7 +183,6 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
         sret_alloc = fn.create_value(ptr_type, "sret.tmp");
 
         auto alloc_inst = std::make_unique<StackAllocInst>(sret_alloc, original_return_type);
-        alloc_inst->parent = &block;
         output.push_back(std::move(alloc_inst));
 
         // Add sret pointer as first argument
@@ -182,7 +209,6 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
                 // Create a new load that loads as the coerced type
                 Value* coerced = fn.create_value(param_info.coerced_type, "coerce.arg");
                 auto new_load = std::make_unique<LoadInst>(coerced, load->address);
-                new_load->parent = &block;
                 output.push_back(std::move(new_load));
                 new_args.push_back(coerced);
             }
@@ -193,16 +219,13 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
                 Value* temp = fn.create_value(ptr_type, "coerce.tmp");
 
                 auto alloc = std::make_unique<StackAllocInst>(temp, arg->type);
-                alloc->parent = &block;
                 output.push_back(std::move(alloc));
 
                 auto store = std::make_unique<StoreInst>(arg, temp);
-                store->parent = &block;
                 output.push_back(std::move(store));
 
                 Value* coerced = fn.create_value(param_info.coerced_type, "coerce.arg");
                 auto load = std::make_unique<LoadInst>(coerced, temp);
-                load->parent = &block;
                 output.push_back(std::move(load));
 
                 new_args.push_back(coerced);
@@ -224,11 +247,9 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
                 Value* temp = fn.create_value(ptr_type, "indirect.tmp");
 
                 auto alloc = std::make_unique<StackAllocInst>(temp, arg->type);
-                alloc->parent = &block;
                 output.push_back(std::move(alloc));
 
                 auto store = std::make_unique<StoreInst>(arg, temp);
-                store->parent = &block;
                 output.push_back(std::move(store));
 
                 new_args.push_back(temp);
@@ -255,7 +276,6 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
     }
 
     auto new_call = std::make_unique<CallInst>(new_result, call->callee, std::move(new_args));
-    new_call->parent = &block;
     output.push_back(std::move(new_call));
 
     // Handle return value conversion
@@ -263,7 +283,6 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
     {
         // Load the result from sret location into the original result value
         auto load = std::make_unique<LoadInst>(call->result, sret_alloc);
-        load->parent = &block;
         output.push_back(std::move(load));
     }
     else if (abi_info.return_info.is_coerce() && call->result && original_return_type)
@@ -273,17 +292,14 @@ void LoweringPass::lower_extern_call_inst(Function& fn, BasicBlock& block,
         Value* temp = fn.create_value(ptr_type, "ret.tmp");
 
         auto alloc = std::make_unique<StackAllocInst>(temp, original_return_type);
-        alloc->parent = &block;
         output.push_back(std::move(alloc));
 
         // Store the coerced return value
         auto store = std::make_unique<StoreInst>(new_result, temp);
-        store->parent = &block;
         output.push_back(std::move(store));
 
         // Load as original struct type into the original result
         auto load = std::make_unique<LoadInst>(call->result, temp);
-        load->parent = &block;
         output.push_back(std::move(load));
     }
 }

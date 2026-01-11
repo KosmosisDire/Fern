@@ -153,7 +153,7 @@ llvm::Function* CodeGenContext::declare_function(FLIR::Function* flir_func)
         func_type,
         llvm::Function::ExternalLinkage,
         flir_func->name(),
-        &module);
+        &llvm_module);
 
     size_t param_idx = 0;
     for (auto& arg : llvm_func->args())
@@ -189,7 +189,8 @@ llvm::FunctionType* CodeGenContext::get_function_type(FLIR::Function* flir_func)
 void CodeGenContext::begin_function(FLIR::Function* flir_func, llvm::Function* llvm_func)
 {
     value_map.clear();
-    block_map.clear();
+    while (!loop_stack.empty()) loop_stack.pop();
+    block_stack.clear();
     current_flir_func = flir_func;
     current_llvm_func = llvm_func;
 }
@@ -197,12 +198,13 @@ void CodeGenContext::begin_function(FLIR::Function* flir_func, llvm::Function* l
 void CodeGenContext::end_function()
 {
     value_map.clear();
-    block_map.clear();
+    while (!loop_stack.empty()) loop_stack.pop();
+    block_stack.clear();
     current_flir_func = nullptr;
     current_llvm_func = nullptr;
 }
 
-#pragma region Value/Block Management
+#pragma region Value Management
 
 llvm::Value* CodeGenContext::get_value(FLIR::Value* flir_value)
 {
@@ -217,33 +219,6 @@ void CodeGenContext::map_value(FLIR::Value* flir_value, llvm::Value* llvm_value)
     value_map[flir_value] = llvm_value;
 }
 
-llvm::BasicBlock* CodeGenContext::get_block(FLIR::BasicBlock* flir_block)
-{
-    auto it = block_map.find(flir_block);
-    if (it == block_map.end())
-        throw std::runtime_error(format_block_error(flir_block, "FLIR block not found"));
-    return it->second;
-}
-
-void CodeGenContext::map_block(FLIR::BasicBlock* flir_block, llvm::BasicBlock* llvm_block)
-{
-    block_map[flir_block] = llvm_block;
-}
-
-void CodeGenContext::create_all_blocks()
-{
-    for (const auto& flir_block : current_flir_func->blocks)
-    {
-        std::string block_name = flir_block->name.empty()
-            ? "bb" + std::to_string(flir_block->id)
-            : flir_block->name;
-
-        llvm::BasicBlock* llvm_block = llvm::BasicBlock::Create(
-            context, block_name, current_llvm_func);
-        map_block(flir_block.get(), llvm_block);
-    }
-}
-
 void CodeGenContext::map_parameters()
 {
     size_t arg_idx = 0;
@@ -255,7 +230,54 @@ void CodeGenContext::map_parameters()
     }
 }
 
+#pragma region Loop Stack Management
+
+void CodeGenContext::push_loop(llvm::BasicBlock* continue_bb, llvm::BasicBlock* break_bb)
+{
+    loop_stack.push({continue_bb, break_bb});
+}
+
+void CodeGenContext::pop_loop()
+{
+    if (!loop_stack.empty())
+        loop_stack.pop();
+}
+
+LoopContext& CodeGenContext::current_loop()
+{
+    if (loop_stack.empty())
+        throw std::runtime_error("No active loop for break/continue");
+    return loop_stack.top();
+}
+
+#pragma region Block Stack Management
+
+void CodeGenContext::push_block(llvm::BasicBlock* exit_bb, bool is_loop)
+{
+    block_stack.push_back({exit_bb, is_loop});
+}
+
+void CodeGenContext::pop_block()
+{
+    if (!block_stack.empty())
+        block_stack.pop_back();
+}
+
+llvm::BasicBlock* CodeGenContext::get_break_target(uint32_t depth)
+{
+    if (depth >= block_stack.size())
+        return nullptr;
+
+    size_t index = block_stack.size() - 1 - depth;
+    return block_stack[index].exit_bb;
+}
+
 #pragma region IR Generation Helpers
+
+llvm::BasicBlock* CodeGenContext::create_block(const std::string& name)
+{
+    return llvm::BasicBlock::Create(context, name, current_llvm_func);
+}
 
 llvm::Value* CodeGenContext::create_entry_alloca(llvm::Type* type, const std::string& name)
 {
@@ -264,7 +286,7 @@ llvm::Value* CodeGenContext::create_entry_alloca(llvm::Type* type, const std::st
 
     builder.SetInsertPoint(entry_block, entry_block->getFirstInsertionPt());
 
-    llvm::Align align = module.getDataLayout().getABITypeAlign(type);
+    llvm::Align align = llvm_module.getDataLayout().getABITypeAlign(type);
     llvm::AllocaInst* alloca = builder.CreateAlloca(type, nullptr, name);
     alloca->setAlignment(align);
 
@@ -278,10 +300,10 @@ llvm::Value* CodeGenContext::create_malloc(llvm::Type* type, const std::string& 
     llvm::Type* ptr = llvm::PointerType::get(context, 0);
 
     llvm::Value* count = llvm::ConstantInt::get(i64, 1);
-    llvm::Value* size = llvm::ConstantInt::get(i64, module.getDataLayout().getTypeAllocSize(type));
+    llvm::Value* size = llvm::ConstantInt::get(i64, llvm_module.getDataLayout().getTypeAllocSize(type));
 
     llvm::FunctionType* calloc_type = llvm::FunctionType::get(ptr, {i64, i64}, false);
-    llvm::FunctionCallee calloc_func = module.getOrInsertFunction("calloc", calloc_type);
+    llvm::FunctionCallee calloc_func = llvm_module.getOrInsertFunction("calloc", calloc_type);
 
     return builder.CreateCall(calloc_func, {count, size}, name);
 }
@@ -297,7 +319,7 @@ llvm::Value* CodeGenContext::create_malloc_bytes(llvm::Value* size, const std::s
     llvm::Value* count = llvm::ConstantInt::get(i64, 1);
 
     llvm::FunctionType* calloc_type = llvm::FunctionType::get(ptr, {i64, i64}, false);
-    llvm::FunctionCallee calloc_func = module.getOrInsertFunction("calloc", calloc_type);
+    llvm::FunctionCallee calloc_func = llvm_module.getOrInsertFunction("calloc", calloc_type);
 
     return builder.CreateCall(calloc_func, {count, size}, name);
 }
@@ -308,7 +330,7 @@ void CodeGenContext::create_free(llvm::Value* ptr)
     llvm::Type* ptr_ty = llvm::PointerType::get(context, 0);
 
     llvm::FunctionType* free_type = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
-    llvm::FunctionCallee free_func = module.getOrInsertFunction("free", free_type);
+    llvm::FunctionCallee free_func = llvm_module.getOrInsertFunction("free", free_type);
 
     builder.CreateCall(free_func, {ptr});
 }
@@ -317,7 +339,7 @@ llvm::Value* CodeGenContext::create_global_string(const std::string& str, const 
 {
     llvm::Constant* str_const = llvm::ConstantDataArray::getString(context, str);
     llvm::GlobalVariable* global_str = new llvm::GlobalVariable(
-        module,
+        llvm_module,
         str_const->getType(),
         true,
         llvm::GlobalValue::PrivateLinkage,
@@ -339,15 +361,6 @@ std::string CodeGenContext::format_value_error(FLIR::Value* value, const std::st
     if (!value->debug_name.empty())
         ss << " <" << value->debug_name << ">";
     ss << " : " << (value->type ? value->type->get_name() : "null");
-    return ss.str();
-}
-
-std::string CodeGenContext::format_block_error(FLIR::BasicBlock* block, const std::string& message)
-{
-    std::stringstream ss;
-    ss << message << ": bb" << block->id;
-    if (!block->name.empty())
-        ss << " <" << block->name << ">";
     return ss.str();
 }
 

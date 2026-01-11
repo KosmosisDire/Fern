@@ -35,18 +35,22 @@ private:
 
     void generate_function_bodies(CodeGenContext& ctx, FLIR::Module* flir_module);
     void generate_function_body(CodeGenContext& ctx, FLIR::Function* flir_func);
-    void generate_basic_block(CodeGenContext& ctx, FLIR::BasicBlock* flir_block);
+
+    // Generate instructions from an instruction list (recursive for nested control flow)
+    void generate_instruction_list(CodeGenContext& ctx, const FLIR::InstructionList& list);
 
     #pragma region Instruction Generation
 
     void generate_instruction(CodeGenContext& ctx, FLIR::Instruction* inst);
 
+    // Constants
     void gen_const_int(CodeGenContext& ctx, FLIR::ConstIntInst* inst);
     void gen_const_float(CodeGenContext& ctx, FLIR::ConstFloatInst* inst);
     void gen_const_bool(CodeGenContext& ctx, FLIR::ConstBoolInst* inst);
     void gen_const_string(CodeGenContext& ctx, FLIR::ConstStringInst* inst);
     void gen_const_null(CodeGenContext& ctx, FLIR::ConstNullInst* inst);
 
+    // Memory operations
     void gen_stack_alloc(CodeGenContext& ctx, FLIR::StackAllocInst* inst);
     void gen_stack_alloc_bytes(CodeGenContext& ctx, FLIR::StackAllocBytesInst* inst);
     void gen_heap_alloc(CodeGenContext& ctx, FLIR::HeapAllocInst* inst);
@@ -63,13 +67,26 @@ private:
     llvm::Value* gen_dynamic_array_element_addr(CodeGenContext& ctx, FLIR::ElementAddrInst* inst);
     llvm::Value* gen_pointer_element_addr(CodeGenContext& ctx, FLIR::ElementAddrInst* inst);
 
+    // Arithmetic/logic
     void gen_binary(CodeGenContext& ctx, FLIR::BinaryInst* inst);
     void gen_unary(CodeGenContext& ctx, FLIR::UnaryInst* inst);
-    void gen_cast(CodeGenContext& ctx, FLIR::CastInst* inst);
+
+    // Conversions
+    void gen_convert(CodeGenContext& ctx, FLIR::ConvertInst* inst);
+
+    // Calls
     void gen_call(CodeGenContext& ctx, FLIR::CallInst* inst);
-    void gen_ret(CodeGenContext& ctx, FLIR::RetInst* inst);
+    void gen_call_indirect(CodeGenContext& ctx, FLIR::CallIndirectInst* inst);
+    void gen_return(CodeGenContext& ctx, FLIR::ReturnInst* inst);
+
+    // Structured control flow
+    void gen_if(CodeGenContext& ctx, FLIR::IfInst* inst);
+    void gen_loop(CodeGenContext& ctx, FLIR::LoopInst* inst);
+    void gen_block(CodeGenContext& ctx, FLIR::BlockInst* inst);
     void gen_br(CodeGenContext& ctx, FLIR::BrInst* inst);
-    void gen_cond_br(CodeGenContext& ctx, FLIR::CondBrInst* inst);
+    void gen_br_if(CodeGenContext& ctx, FLIR::BrIfInst* inst);
+    void gen_continue(CodeGenContext& ctx, FLIR::ContinueInst* inst);
+    void gen_continue_if(CodeGenContext& ctx, FLIR::ContinueIfInst* inst);
 
     #pragma region Helpers
 

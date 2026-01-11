@@ -36,7 +36,7 @@ void FLIRCodeGen::generate_function_bodies(CodeGenContext& ctx, FLIR::Module* fl
         if (!flir_func->has_valid_symbol())
             continue;
 
-        if (!flir_func->is_external && flir_func->entry)
+        if (!flir_func->is_external && !flir_func->is_empty())
         {
             generate_function_body(ctx, flir_func.get());
         }
@@ -52,24 +52,45 @@ void FLIRCodeGen::generate_function_body(CodeGenContext& ctx, FLIR::Function* fl
     }
 
     ctx.begin_function(flir_func, llvm_func);
-    ctx.map_parameters();
-    ctx.create_all_blocks();
 
-    for (const auto& flir_block : flir_func->blocks)
+    // Create entry block
+    llvm::BasicBlock* entry_bb = ctx.create_block("entry");
+    ctx.ir().SetInsertPoint(entry_bb);
+
+    ctx.map_parameters();
+
+    // Generate the function body
+    generate_instruction_list(ctx, flir_func->body);
+
+    // Ensure function ends with a terminator
+    llvm::BasicBlock* current_bb = ctx.ir().GetInsertBlock();
+    if (current_bb && !current_bb->getTerminator())
     {
-        generate_basic_block(ctx, flir_block.get());
+        // Add implicit void return if needed
+        if (llvm_func->getReturnType()->isVoidTy())
+        {
+            ctx.ir().CreateRetVoid();
+        }
+        else
+        {
+            // Return zero/null for non-void functions without explicit return
+            llvm::Value* zero = llvm::Constant::getNullValue(llvm_func->getReturnType());
+            ctx.ir().CreateRet(zero);
+        }
     }
 
     ctx.end_function();
 }
 
-void FLIRCodeGen::generate_basic_block(CodeGenContext& ctx, FLIR::BasicBlock* flir_block)
+void FLIRCodeGen::generate_instruction_list(CodeGenContext& ctx, const FLIR::InstructionList& list)
 {
-    llvm::BasicBlock* llvm_block = ctx.get_block(flir_block);
-    ctx.ir().SetInsertPoint(llvm_block);
-
-    for (const auto& inst : flir_block->instructions)
+    for (const auto& inst : list)
     {
+        // Skip generating after a terminator (unreachable code)
+        llvm::BasicBlock* current_bb = ctx.ir().GetInsertBlock();
+        if (current_bb && current_bb->getTerminator())
+            break;
+
         generate_instruction(ctx, inst.get());
     }
 }
@@ -80,6 +101,7 @@ void FLIRCodeGen::generate_instruction(CodeGenContext& ctx, FLIR::Instruction* i
 {
     switch (inst->op)
     {
+    // Constants
     case FLIR::Opcode::ConstInt:
         gen_const_int(ctx, static_cast<FLIR::ConstIntInst*>(inst));
         break;
@@ -95,6 +117,8 @@ void FLIRCodeGen::generate_instruction(CodeGenContext& ctx, FLIR::Instruction* i
     case FLIR::Opcode::ConstNull:
         gen_const_null(ctx, static_cast<FLIR::ConstNullInst*>(inst));
         break;
+
+    // Memory
     case FLIR::Opcode::StackAlloc:
         gen_stack_alloc(ctx, static_cast<FLIR::StackAllocInst*>(inst));
         break;
@@ -128,6 +152,8 @@ void FLIRCodeGen::generate_instruction(CodeGenContext& ctx, FLIR::Instruction* i
     case FLIR::Opcode::MemSet:
         gen_memset(ctx, static_cast<FLIR::MemSetInst*>(inst));
         break;
+
+    // Binary operations
     case FLIR::Opcode::Add:
     case FLIR::Opcode::Sub:
     case FLIR::Opcode::Mul:
@@ -144,30 +170,57 @@ void FLIRCodeGen::generate_instruction(CodeGenContext& ctx, FLIR::Instruction* i
     case FLIR::Opcode::BitAnd:
     case FLIR::Opcode::BitOr:
     case FLIR::Opcode::BitXor:
-    case FLIR::Opcode::ShiftL:
-    case FLIR::Opcode::ShiftR:
+    case FLIR::Opcode::Shl:
+    case FLIR::Opcode::Shr:
         gen_binary(ctx, static_cast<FLIR::BinaryInst*>(inst));
         break;
+
+    // Unary operations
     case FLIR::Opcode::Neg:
     case FLIR::Opcode::Not:
     case FLIR::Opcode::BitNot:
         gen_unary(ctx, static_cast<FLIR::UnaryInst*>(inst));
         break;
-    case FLIR::Opcode::Cast:
-        gen_cast(ctx, static_cast<FLIR::CastInst*>(inst));
+
+    // Conversions
+    case FLIR::Opcode::Convert:
+        gen_convert(ctx, static_cast<FLIR::ConvertInst*>(inst));
         break;
+
+    // Calls
     case FLIR::Opcode::Call:
         gen_call(ctx, static_cast<FLIR::CallInst*>(inst));
         break;
-    case FLIR::Opcode::Ret:
-        gen_ret(ctx, static_cast<FLIR::RetInst*>(inst));
+    case FLIR::Opcode::CallIndirect:
+        gen_call_indirect(ctx, static_cast<FLIR::CallIndirectInst*>(inst));
+        break;
+    case FLIR::Opcode::Return:
+        gen_return(ctx, static_cast<FLIR::ReturnInst*>(inst));
+        break;
+
+    // Structured control flow
+    case FLIR::Opcode::If:
+        gen_if(ctx, static_cast<FLIR::IfInst*>(inst));
+        break;
+    case FLIR::Opcode::Loop:
+        gen_loop(ctx, static_cast<FLIR::LoopInst*>(inst));
+        break;
+    case FLIR::Opcode::Block:
+        gen_block(ctx, static_cast<FLIR::BlockInst*>(inst));
         break;
     case FLIR::Opcode::Br:
         gen_br(ctx, static_cast<FLIR::BrInst*>(inst));
         break;
-    case FLIR::Opcode::CondBr:
-        gen_cond_br(ctx, static_cast<FLIR::CondBrInst*>(inst));
+    case FLIR::Opcode::BrIf:
+        gen_br_if(ctx, static_cast<FLIR::BrIfInst*>(inst));
         break;
+    case FLIR::Opcode::Continue:
+        gen_continue(ctx, static_cast<FLIR::ContinueInst*>(inst));
+        break;
+    case FLIR::Opcode::ContinueIf:
+        gen_continue_if(ctx, static_cast<FLIR::ContinueIfInst*>(inst));
+        break;
+
     default:
         throw std::runtime_error("Unsupported FLIR opcode: " +
             Fern::FLIR::to_string(inst->op));
@@ -481,8 +534,8 @@ void FLIRCodeGen::gen_binary(CodeGenContext& ctx, FLIR::BinaryInst* inst)
     case FLIR::Opcode::BitAnd:
     case FLIR::Opcode::BitOr:
     case FLIR::Opcode::BitXor:
-    case FLIR::Opcode::ShiftL:
-    case FLIR::Opcode::ShiftR:
+    case FLIR::Opcode::Shl:
+    case FLIR::Opcode::Shr:
         result = gen_bitwise_op(ctx, inst->op, left, right, is_signed);
         break;
 
@@ -580,9 +633,9 @@ llvm::Value* FLIRCodeGen::gen_bitwise_op(CodeGenContext& ctx, FLIR::Opcode op,
         return ctx.ir().CreateOr(left, right, "bitor");
     case FLIR::Opcode::BitXor:
         return ctx.ir().CreateXor(left, right, "bitxor");
-    case FLIR::Opcode::ShiftL:
+    case FLIR::Opcode::Shl:
         return ctx.ir().CreateShl(left, right, "shl");
-    case FLIR::Opcode::ShiftR:
+    case FLIR::Opcode::Shr:
         return is_signed ? ctx.ir().CreateAShr(left, right, "ashr")
                          : ctx.ir().CreateLShr(left, right, "lshr");
     default:
@@ -619,9 +672,9 @@ void FLIRCodeGen::gen_unary(CodeGenContext& ctx, FLIR::UnaryInst* inst)
     ctx.map_value(inst->result, result);
 }
 
-#pragma region Cast Gen
+#pragma region Conversion Gen
 
-void FLIRCodeGen::gen_cast(CodeGenContext& ctx, FLIR::CastInst* inst)
+void FLIRCodeGen::gen_convert(CodeGenContext& ctx, FLIR::ConvertInst* inst)
 {
     llvm::Value* val = ctx.get_value(inst->value);
     llvm::Type* target_type = ctx.get_type(inst->target_type);
@@ -639,7 +692,7 @@ void FLIRCodeGen::gen_cast(CodeGenContext& ctx, FLIR::CastInst* inst)
     bool dst_int = ctx.is_integer(dst_type);
 
     llvm::Value* result = nullptr;
-    std::string name = inst->result->debug_name.empty() ? "cast" : inst->result->debug_name;
+    std::string name = inst->result->debug_name.empty() ? "convert" : inst->result->debug_name;
 
     if (src_ptr && dst_ptr)
     {
@@ -729,9 +782,7 @@ void FLIRCodeGen::gen_call(CodeGenContext& ctx, FLIR::CallInst* inst)
     }
 }
 
-#pragma region Control Flow Gen
-
-void FLIRCodeGen::gen_ret(CodeGenContext& ctx, FLIR::RetInst* inst)
+void FLIRCodeGen::gen_return(CodeGenContext& ctx, FLIR::ReturnInst* inst)
 {
     if (inst->value)
     {
@@ -744,19 +795,155 @@ void FLIRCodeGen::gen_ret(CodeGenContext& ctx, FLIR::RetInst* inst)
     }
 }
 
+void FLIRCodeGen::gen_call_indirect(CodeGenContext& ctx, FLIR::CallIndirectInst* inst)
+{
+    llvm::Value* callee_ptr = ctx.get_value(inst->callee);
+    llvm::Type* func_type = ctx.get_type(inst->signature);
+
+    std::vector<llvm::Value*> args;
+    args.reserve(inst->args.size());
+
+    for (FLIR::Value* arg : inst->args)
+    {
+        args.push_back(ctx.get_value(arg));
+    }
+
+    llvm::FunctionType* llvm_func_type = llvm::cast<llvm::FunctionType>(func_type);
+    std::string name = "";
+    if (inst->result && !llvm_func_type->getReturnType()->isVoidTy())
+    {
+        name = inst->result->debug_name.empty() ? "call_indirect" : inst->result->debug_name;
+    }
+
+    llvm::Value* result = ctx.ir().CreateCall(llvm_func_type, callee_ptr, args, name);
+
+    if (inst->result)
+    {
+        ctx.map_value(inst->result, result);
+    }
+}
+
+#pragma region Structured Control Flow Gen
+
+void FLIRCodeGen::gen_if(CodeGenContext& ctx, FLIR::IfInst* inst)
+{
+    llvm::Value* cond = ctx.get_value(inst->condition);
+
+    llvm::BasicBlock* then_bb = ctx.create_block("if.then");
+    llvm::BasicBlock* else_bb = inst->else_body.empty() ? nullptr : ctx.create_block("if.else");
+    llvm::BasicBlock* merge_bb = ctx.create_block("if.end");
+
+    ctx.ir().CreateCondBr(cond, then_bb, else_bb ? else_bb : merge_bb);
+
+    ctx.ir().SetInsertPoint(then_bb);
+    ctx.push_block(merge_bb);
+    generate_instruction_list(ctx, inst->then_body);
+    ctx.pop_block();
+
+    if (!ctx.ir().GetInsertBlock()->getTerminator())
+    {
+        ctx.ir().CreateBr(merge_bb);
+    }
+
+    if (else_bb)
+    {
+        ctx.ir().SetInsertPoint(else_bb);
+        ctx.push_block(merge_bb);
+        generate_instruction_list(ctx, inst->else_body);
+        ctx.pop_block();
+
+        if (!ctx.ir().GetInsertBlock()->getTerminator())
+        {
+            ctx.ir().CreateBr(merge_bb);
+        }
+    }
+
+    ctx.ir().SetInsertPoint(merge_bb);
+}
+
+void FLIRCodeGen::gen_loop(CodeGenContext& ctx, FLIR::LoopInst* inst)
+{
+    llvm::BasicBlock* loop_bb = ctx.create_block("loop");
+    llvm::BasicBlock* exit_bb = ctx.create_block("loop.end");
+
+    ctx.ir().CreateBr(loop_bb);
+
+    ctx.ir().SetInsertPoint(loop_bb);
+    ctx.push_loop(loop_bb, exit_bb);
+    ctx.push_block(exit_bb, true);
+    generate_instruction_list(ctx, inst->body);
+    ctx.pop_block();
+    ctx.pop_loop();
+
+    if (!ctx.ir().GetInsertBlock()->getTerminator())
+    {
+        ctx.ir().CreateBr(loop_bb);
+    }
+
+    ctx.ir().SetInsertPoint(exit_bb);
+}
+
+void FLIRCodeGen::gen_block(CodeGenContext& ctx, FLIR::BlockInst* inst)
+{
+    llvm::BasicBlock* exit_bb = ctx.create_block("block.end");
+
+    ctx.push_block(exit_bb);
+    generate_instruction_list(ctx, inst->body);
+    ctx.pop_block();
+
+    if (!ctx.ir().GetInsertBlock()->getTerminator())
+    {
+        ctx.ir().CreateBr(exit_bb);
+    }
+
+    ctx.ir().SetInsertPoint(exit_bb);
+}
+
 void FLIRCodeGen::gen_br(CodeGenContext& ctx, FLIR::BrInst* inst)
 {
-    llvm::BasicBlock* target = ctx.get_block(inst->target);
+    llvm::BasicBlock* target = ctx.get_break_target(inst->depth);
+    if (!target)
+    {
+        throw std::runtime_error("Br depth " + std::to_string(inst->depth) + " has no target");
+    }
     ctx.ir().CreateBr(target);
 }
 
-void FLIRCodeGen::gen_cond_br(CodeGenContext& ctx, FLIR::CondBrInst* inst)
+void FLIRCodeGen::gen_br_if(CodeGenContext& ctx, FLIR::BrIfInst* inst)
 {
     llvm::Value* cond = ctx.get_value(inst->condition);
-    llvm::BasicBlock* true_bb = ctx.get_block(inst->true_block);
-    llvm::BasicBlock* false_bb = ctx.get_block(inst->false_block);
+    llvm::BasicBlock* target = ctx.get_break_target(inst->depth);
+    if (!target)
+    {
+        throw std::runtime_error("BrIf depth " + std::to_string(inst->depth) + " has no target");
+    }
 
-    ctx.ir().CreateCondBr(cond, true_bb, false_bb);
+    llvm::BasicBlock* continue_bb = ctx.create_block("br_if.continue");
+    ctx.ir().CreateCondBr(cond, target, continue_bb);
+    ctx.ir().SetInsertPoint(continue_bb);
+}
+
+void FLIRCodeGen::gen_continue(CodeGenContext& ctx, FLIR::ContinueInst* inst)
+{
+    if (!ctx.in_loop())
+    {
+        throw std::runtime_error("Continue outside of loop");
+    }
+
+    ctx.ir().CreateBr(ctx.current_loop().continue_bb);
+}
+
+void FLIRCodeGen::gen_continue_if(CodeGenContext& ctx, FLIR::ContinueIfInst* inst)
+{
+    if (!ctx.in_loop())
+    {
+        throw std::runtime_error("ContinueIf outside of loop");
+    }
+
+    llvm::Value* cond = ctx.get_value(inst->condition);
+    llvm::BasicBlock* continue_bb = ctx.create_block("continue_if.next");
+    ctx.ir().CreateCondBr(cond, ctx.current_loop().continue_bb, continue_bb);
+    ctx.ir().SetInsertPoint(continue_bb);
 }
 
 #pragma region Verification
