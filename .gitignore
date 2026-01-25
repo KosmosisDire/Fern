@@ -1,0 +1,54 @@
+experiments/
+spec/
+
+
+
+
+
+# Compiled object files
+*.o
+*.obj
+
+# Compiled dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled static libraries
+*.a
+*.lib
+
+# Executables
+*.exe
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.vscode/settings.json
+.vscode/c_cpp_properties.json
+
+# Build directories
+build/
+dist/
+cmake-build-debug/
+cmake-build-release/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Dependency directories
+.deps/
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+.env

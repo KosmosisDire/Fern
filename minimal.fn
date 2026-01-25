@@ -1,0 +1,23 @@
+fn Add(a: f32, b: f32) -> f32
+{
+    return a + b
+}
+
+---
+Hello there
+How are you?
+---
+
+-- Main function
+fn Main -> f32
+{
+    var pi = 3.14159
+    var radius: f32 = 10.0 + 5.0
+    var result = Add(pi, radius)
+    result = result * 2.0
+    
+    -> result + 14.2
+}
+
+
+
