@@ -110,7 +110,7 @@ std::string TokenWalker::format() const
             : std::string(token.lexeme);
         table.add_row({
             std::to_string(i),
-            std::string(to_string(token.kind)),
+            std::string(Fern::format(token.kind)),
             "'" + lexemeStr + "'",
             token.span.format()
         });

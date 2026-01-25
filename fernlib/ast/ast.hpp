@@ -11,7 +11,7 @@ namespace Fern
 
 #pragma region Forward Declarations
 
-class DefaultAstVisitor;
+class AstVisitor;
 
 // Base
 struct BaseSyntax;
@@ -50,10 +50,10 @@ using DeclPtr = BaseDeclSyntax*;
 
 #pragma region DefaultAstVisitor
 
-class DefaultAstVisitor
+class AstVisitor
 {
 public:
-    virtual ~DefaultAstVisitor() = default;
+    virtual ~AstVisitor() = default;
 
     // Expressions
     virtual void visit(IdentifierExprSyntax* node) = 0;
@@ -84,7 +84,7 @@ public:
 #define SYNTAX_NODE(K, Base) \
     static constexpr int Kind = __LINE__; \
     std::string_view syntax_node_name() const override { return #K; } \
-    void accept(DefaultAstVisitor* visitor) override { visitor->visit(this); } \
+    void accept(AstVisitor* visitor) override { visitor->visit(this); } \
     K##Syntax() : Base(Kind) {}
 
 #pragma region Base Nodes
@@ -100,7 +100,7 @@ struct BaseSyntax
     BaseSyntax(int k) : kind(k) {}
     virtual ~BaseSyntax() = default;
     virtual std::string_view syntax_node_name() const = 0;
-    virtual void accept(DefaultAstVisitor* visitor) = 0;
+    virtual void accept(AstVisitor* visitor) = 0;
 
     template<typename T>
     bool is() const { return kind == T::Kind; }
@@ -155,13 +155,12 @@ struct ParenExprSyntax : BaseExprSyntax
     ExprPtr expression = nullptr;
 };
 
-// { statements... tailExpr }
+// { statements... }
 struct BlockExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(BlockExpr, BaseExprSyntax)
 
     std::vector<StmtPtr> statements;
-    ExprPtr tailExpression = nullptr;
 };
 
 // identifier(args...)
@@ -268,9 +267,9 @@ struct ProgramSyntax : BaseSyntax
 
 
 
-#pragma region Default DefaultAstVisitor
+#pragma region DefaultAstVisitor
 
-class DefaultVisitor : public DefaultAstVisitor
+class DefaultAstVisitor : public AstVisitor
 {
 public:
     void visit(IdentifierExprSyntax* node) override {}
@@ -285,7 +284,6 @@ public:
     {
         for (auto& stmt : node->statements)
             if (stmt) stmt->accept(this);
-        if (node->tailExpression) node->tailExpression->accept(this);
     }
 
     void visit(CallExprSyntax* node) override

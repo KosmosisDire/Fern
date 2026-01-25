@@ -16,10 +16,7 @@ std::vector<Token> Lexer::tokenize()
     while (!walker.is_at_end())
     {
         Token token = scan_token();
-        if (token.kind != TokenKind::Invalid || walker.is_at_end())
-        {
-            tokens.push_back(token);
-        }
+        tokens.push_back(token);
     }
 
     if (tokens.empty() || tokens.back().kind != TokenKind::EndOfFile)
