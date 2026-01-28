@@ -18,6 +18,12 @@ struct Token
     constexpr bool is_operator() const { return Fern::is_operator(kind); }
     constexpr bool is_punctuation() const { return Fern::is_punctuation(kind); }
     constexpr bool is_type_keyword() const { return Fern::is_type_keyword(kind); }
+
+    static Token Invalid()
+    {
+        static Token instance{TokenKind::Invalid, Span(), ""};
+        return instance;
+    }
 };
 
 } 

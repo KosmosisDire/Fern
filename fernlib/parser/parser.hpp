@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ast/ast.hpp"
-#include "ast/arena.hpp"
+#include <arena.hpp>
 #include <token/walker.hpp>
 
 namespace Fern
@@ -10,9 +10,9 @@ namespace Fern
 class Parser
 {
 public:
-    Parser(TokenWalker& walker, AstArena& arena);
+    Parser(TokenWalker& walker, AllocArena& arena);
 
-    ProgramSyntax* parse();
+    RootSyntax* parse();
 
 private:
     // Declarations
@@ -20,6 +20,8 @@ private:
     FunctionDeclSyntax* parse_function_decl();
     VariableDeclSyntax* parse_variable_decl();
     ParameterDeclSyntax* parse_parameter_decl();
+    TypeDeclSyntax* parse_type_decl();
+    FieldDeclSyntax* parse_field_decl();
 
     // Statements
     BaseStmtSyntax* parse_statement();
@@ -37,7 +39,7 @@ private:
     BaseExprSyntax* parse_type();
 
     TokenWalker& walker;
-    AstArena& arena;
+    AllocArena& arena;
 };
 
 }

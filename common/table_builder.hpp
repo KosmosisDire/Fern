@@ -5,8 +5,6 @@
 #include <sstream>
 #include <iomanip>
 
-namespace Fern
-{
 
 class TableBuilder
 {
@@ -49,5 +47,3 @@ private:
     std::vector<std::vector<std::string>> rows;
     std::vector<size_t> columnWidths;
 };
-
-} 

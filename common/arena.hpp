@@ -8,22 +8,22 @@
 namespace Fern
 {
 
-class AstArena
+class AllocArena
 {
 public:
     static constexpr size_t DefaultBlockSize = 4096;
 
-    explicit AstArena(size_t blockSize = DefaultBlockSize)
+    explicit AllocArena(size_t blockSize = DefaultBlockSize)
         : blockSize(blockSize)
     {
         allocate_block();
     }
 
-    ~AstArena() = default;
+    ~AllocArena() = default;
 
     // Non-copyable, non-movable
-    AstArena(const AstArena&) = delete;
-    AstArena& operator=(const AstArena&) = delete;
+    AllocArena(const AllocArena&) = delete;
+    AllocArena& operator=(const AllocArena&) = delete;
 
     template <typename T, typename... Args>
     T* alloc(Args&&... args)

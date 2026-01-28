@@ -5,7 +5,7 @@
 			"name": "Fern",
 			"type": "cppvsdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/build/Debug/ferncli.exe",
+			"program": "${workspaceFolder}/build/debug/bin/ferncli.exe",
 			"args": "${input:args}",
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
@@ -18,7 +18,7 @@
 			"id": "args",
 			"type": "promptString",
 			"description": "Command line arguments",
-			"default": "minimal.fn runtime/string.fn"
+			"default": "minimal.fn"
 		}
 	]
 }

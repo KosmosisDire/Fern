@@ -1,3 +1,16 @@
+
+
+type Test
+{
+    value: f32 = 42.0 + 15.0
+
+    fn GetValue
+    {
+        var temp = 10.0
+         return value + temp
+    }
+}
+
 fn Add(a: f32, b: f32) -> f32
 {
     return a + b
@@ -17,6 +30,5 @@ fn Main -> f32
     
     return result + 14.2
 }
-
 
 

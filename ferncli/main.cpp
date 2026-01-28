@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     Fern::TokenWalker tokenWalker(tokens);
     std::cout << tokenWalker.format() << "\n";
 
-    Fern::AstArena astArena;
+    Fern::AllocArena astArena;
     Fern::Parser parser(tokenWalker, astArena);
     auto ast = parser.parse();
 

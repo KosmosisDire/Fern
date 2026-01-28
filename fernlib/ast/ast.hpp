@@ -37,9 +37,11 @@ struct BaseDeclSyntax;
 struct ParameterDeclSyntax;
 struct VariableDeclSyntax;
 struct FunctionDeclSyntax;
+struct TypeDeclSyntax;
+struct FieldDeclSyntax;
 
 // Root
-struct ProgramSyntax;
+struct RootSyntax;
 
 // Pointer aliases (arena-managed, no ownership semantics)
 using ExprPtr = BaseExprSyntax*;
@@ -73,9 +75,11 @@ public:
     virtual void visit(ParameterDeclSyntax* node) = 0;
     virtual void visit(VariableDeclSyntax* node) = 0;
     virtual void visit(FunctionDeclSyntax* node) = 0;
+    virtual void visit(TypeDeclSyntax* node) = 0;
+    virtual void visit(FieldDeclSyntax* node) = 0;
 
     // Root
-    virtual void visit(ProgramSyntax* node) = 0;
+    virtual void visit(RootSyntax* node) = 0;
 };
 
 
@@ -136,7 +140,7 @@ struct IdentifierExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(IdentifierExpr, BaseExprSyntax)
 
-    std::string name;
+    Token name = Token::Invalid();
 };
 
 // LiteralF32
@@ -197,7 +201,7 @@ struct TypeExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(TypeExpr, BaseExprSyntax)
 
-    std::string name;
+    Token name = Token::Invalid();
 };
 
 
@@ -229,7 +233,7 @@ struct ParameterDeclSyntax : BaseDeclSyntax
 {
     SYNTAX_NODE(ParameterDecl, BaseDeclSyntax)
 
-    std::string name;
+    Token name = Token::Invalid();
     ExprPtr type = nullptr;
 };
 
@@ -238,7 +242,7 @@ struct VariableDeclSyntax : BaseDeclSyntax
 {
     SYNTAX_NODE(VariableDecl, BaseDeclSyntax)
 
-    std::string name;
+    Token name = Token::Invalid();
     ExprPtr type = nullptr;
     ExprPtr initializer = nullptr;
 };
@@ -248,19 +252,35 @@ struct FunctionDeclSyntax : BaseDeclSyntax
 {
     SYNTAX_NODE(FunctionDecl, BaseDeclSyntax)
 
-    std::string name;
+    Token name = Token::Invalid();
     std::vector<ParameterDeclSyntax*> parameters;
     ExprPtr returnType = nullptr;
     BlockExprSyntax* body = nullptr;
 };
 
+// type name { ... }
+struct TypeDeclSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(TypeDecl, BaseDeclSyntax)
 
+    Token name = Token::Invalid();
+    std::vector<DeclPtr> declarations;
+};
+
+struct FieldDeclSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(FieldDecl, BaseDeclSyntax)
+
+    Token name = Token::Invalid();
+    ExprPtr type = nullptr;
+    ExprPtr initializer = nullptr;
+};
 
 #pragma region Root
 
-struct ProgramSyntax : BaseSyntax
+struct RootSyntax : BaseSyntax
 {
-    SYNTAX_NODE(Program, BaseSyntax)
+    SYNTAX_NODE(Root, BaseSyntax)
 
     std::vector<DeclPtr> declarations;
 };
@@ -336,7 +356,14 @@ public:
         if (node->body) node->body->accept(this);
     }
 
-    void visit(ProgramSyntax* node) override
+    void visit(TypeDeclSyntax* node) override {}
+
+    void visit(FieldDeclSyntax* node) override
+    {
+        if (node->type) node->type->accept(this);
+    }
+
+    void visit(RootSyntax* node) override
     {
         for (auto& decl : node->declarations)
             if (decl) decl->accept(this);

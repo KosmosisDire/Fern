@@ -4,7 +4,7 @@
 namespace Fern
 {
 
-Parser::Parser(TokenWalker& walker, AstArena& arena)
+Parser::Parser(TokenWalker& walker, AllocArena& arena)
     : walker(walker)
     , arena(arena)
 {
@@ -37,9 +37,9 @@ static float parse_float_lexeme(std::string_view lexeme)
 
 #pragma region Main Entry
 
-ProgramSyntax* Parser::parse()
+RootSyntax* Parser::parse()
 {
-    auto* program = arena.alloc<ProgramSyntax>();
+    auto* program = arena.alloc<RootSyntax>();
     Span startSpan = walker.current().span;
 
     skip_newlines(walker);
@@ -80,6 +80,10 @@ BaseDeclSyntax* Parser::parse_declaration()
     {
         return parse_variable_decl();
     }
+    if (walker.check(TokenKind::Type))
+    {
+        return parse_type_decl();
+    }
 
     walker.advance();
     return nullptr;
@@ -88,14 +92,15 @@ BaseDeclSyntax* Parser::parse_declaration()
 FunctionDeclSyntax* Parser::parse_function_decl()
 {
     auto* func = arena.alloc<FunctionDeclSyntax>();
-    Span startSpan = walker.current().span;
+    Span span = walker.current().span;
 
     walker.advance();
     skip_newlines(walker);
 
     if (walker.check(TokenKind::Identifier))
     {
-        func->name = std::string(walker.current().lexeme);
+        func->name = walker.current();
+        span = span.merge(func->name.span);
         walker.advance();
     }
     skip_newlines(walker);
@@ -127,6 +132,7 @@ FunctionDeclSyntax* Parser::parse_function_decl()
 
         if (walker.check(TokenKind::RightParen))
         {
+            span = span.merge(walker.current().span);
             walker.advance();
         }
     }
@@ -137,16 +143,20 @@ FunctionDeclSyntax* Parser::parse_function_decl()
         walker.advance();
         skip_newlines(walker);
         func->returnType = parse_type();
+        if (func->returnType)
+        {
+            span = span.merge(func->returnType->span);
+        }
     }
     skip_newlines(walker);
 
     if (walker.check(TokenKind::LeftBrace))
     {
         func->body = parse_block();
+        span = span.merge(func->body->span);
     }
 
-    Span endSpan = func->body ? func->body->span : walker.current().span;
-    func->span = startSpan.merge(endSpan);
+    func->span = span;
 
     return func;
 }
@@ -154,14 +164,15 @@ FunctionDeclSyntax* Parser::parse_function_decl()
 VariableDeclSyntax* Parser::parse_variable_decl()
 {
     auto* var = arena.alloc<VariableDeclSyntax>();
-    Span startSpan = walker.current().span;
+    Span span = walker.current().span;
 
     walker.advance();
     skip_newlines(walker);
 
     if (walker.check(TokenKind::Identifier))
     {
-        var->name = std::string(walker.current().lexeme);
+        var->name = walker.current();
+        span = span.merge(var->name.span);
         walker.advance();
     }
 
@@ -170,6 +181,10 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         walker.advance();
         skip_newlines(walker);
         var->type = parse_type();
+        if (var->type)
+        {
+            span = span.merge(var->type->span);
+        }
     }
 
     if (walker.check(TokenKind::Assign))
@@ -177,18 +192,13 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         walker.advance();
         skip_newlines(walker);
         var->initializer = parse_expression();
+        if (var->initializer)
+        {
+            span = span.merge(var->initializer->span);
+        }
     }
 
-    Span endSpan = walker.current().span;
-    if (var->initializer)
-    {
-        endSpan = var->initializer->span;
-    }
-    else if (var->type)
-    {
-        endSpan = var->type->span;
-    }
-    var->span = startSpan.merge(endSpan);
+    var->span = span;
 
     return var;
 }
@@ -196,11 +206,11 @@ VariableDeclSyntax* Parser::parse_variable_decl()
 ParameterDeclSyntax* Parser::parse_parameter_decl()
 {
     auto* param = arena.alloc<ParameterDeclSyntax>();
-    Span startSpan = walker.current().span;
+    Span span = walker.current().span;
 
     if (walker.check(TokenKind::Identifier))
     {
-        param->name = std::string(walker.current().lexeme);
+        param->name = walker.current();
         walker.advance();
     }
 
@@ -209,12 +219,111 @@ ParameterDeclSyntax* Parser::parse_parameter_decl()
         walker.advance();
         skip_newlines(walker);
         param->type = parse_type();
+        if (param->type)
+        {
+            span = span.merge(param->type->span);
+        }
     }
 
-    Span endSpan = param->type ? param->type->span : startSpan;
-    param->span = startSpan.merge(endSpan);
+    param->span = span;
 
     return param;
+}
+
+TypeDeclSyntax* Parser::parse_type_decl()
+{
+    auto* typeDecl = arena.alloc<TypeDeclSyntax>();
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::Identifier))
+    {
+        typeDecl->name = walker.current();
+        span = span.merge(typeDecl->name.span);
+        walker.advance();
+    }
+
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        walker.advance();
+        skip_newlines(walker);
+
+        while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
+        {
+            auto* field = parse_field_decl();
+            if (field)
+            {
+                typeDecl->declarations.push_back(field);
+            }
+            else
+            {
+                auto* declaration = parse_declaration();
+                if (declaration)
+                {
+                    typeDecl->declarations.push_back(declaration);
+                }
+            }
+            skip_newlines(walker);
+        }
+
+        if (walker.check(TokenKind::RightBrace))
+        {
+            span = span.merge(walker.current().span);
+            walker.advance();
+        }
+    }
+
+    typeDecl->span = span;
+
+    return typeDecl;
+}
+
+FieldDeclSyntax* Parser::parse_field_decl()
+{
+    if (!walker.check(TokenKind::Identifier) || 
+        !(walker.peek(1).kind == TokenKind::Colon || walker.peek(1).kind == TokenKind::Assign))
+    {
+        return nullptr;
+    }
+
+    auto* field = arena.alloc<FieldDeclSyntax>();
+    Span span = walker.current().span;
+
+    if (walker.check(TokenKind::Identifier))
+    {
+        field->name = walker.current();
+        walker.advance();
+    }
+
+    if (walker.check(TokenKind::Colon))
+    {
+        walker.advance();
+        skip_newlines(walker);
+        field->type = parse_type();
+        if (field->type)
+        {
+            span = span.merge(field->type->span);
+        }
+    }
+
+    if (walker.check(TokenKind::Assign))
+    {
+        walker.advance();
+        skip_newlines(walker);
+        field->initializer = parse_expression();
+        if (field->initializer)
+        {
+            span = span.merge(field->initializer->span);
+        }
+    }
+
+    field->span = span;
+
+    return field;
 }
 
 #pragma region Statements
@@ -247,17 +356,20 @@ BaseStmtSyntax* Parser::parse_statement()
 ReturnStmtSyntax* Parser::parse_return_stmt()
 {
     auto* stmt = arena.alloc<ReturnStmtSyntax>();
-    Span startSpan = walker.current().span;
+    Span span = walker.current().span;
 
     walker.advance();
 
     if (!is_at_statement_boundary(walker))
     {
         stmt->value = parse_expression();
+        if (stmt->value)
+        {
+            span = span.merge(stmt->value->span);
+        }
     }
 
-    Span endSpan = stmt->value ? stmt->value->span : startSpan;
-    stmt->span = startSpan.merge(endSpan);
+    stmt->span = span;
 
     return stmt;
 }
@@ -288,8 +400,12 @@ BaseExprSyntax* Parser::parse_assignment()
 
         assign->value = parse_assignment();
 
-        Span endSpan = assign->value ? assign->value->span : walker.current().span;
-        assign->span = left->span.merge(endSpan);
+        Span span = left->span;
+        if (assign->value)
+        {
+            span = span.merge(assign->value->span);
+        }
+        assign->span = span;
 
         return assign;
     }
@@ -318,8 +434,12 @@ BaseExprSyntax* Parser::parse_binary()
         binary->op = binaryOp.value_or(BinaryOp::Add);
         binary->right = right;
 
-        Span endSpan = right ? right->span : walker.current().span;
-        binary->span = left->span.merge(endSpan);
+        Span span = left->span;
+        if (right)
+        {
+            span = span.merge(right->span);
+        }
+        binary->span = span;
 
         left = binary;
     }
@@ -363,12 +483,13 @@ BaseExprSyntax* Parser::parse_call()
             }
         }
 
-        Span endSpan = walker.current().span;
+        Span span = callee->span;
         if (walker.check(TokenKind::RightParen))
         {
+            span = span.merge(walker.current().span);
             walker.advance();
         }
-        call->span = callee->span.merge(endSpan);
+        call->span = span;
 
         callee = call;
     }
@@ -381,7 +502,7 @@ BaseExprSyntax* Parser::parse_primary()
     if (walker.check(TokenKind::Identifier))
     {
         auto* ident = arena.alloc<IdentifierExprSyntax>();
-        ident->name = std::string(walker.current().lexeme);
+        ident->name = walker.current();
         ident->span = walker.current().span;
         walker.advance();
         return ident;
@@ -399,7 +520,7 @@ BaseExprSyntax* Parser::parse_primary()
     if (walker.check(TokenKind::LeftParen))
     {
         auto* paren = arena.alloc<ParenExprSyntax>();
-        Span startSpan = walker.current().span;
+        Span span = walker.current().span;
 
         walker.advance();
         skip_newlines(walker);
@@ -407,12 +528,12 @@ BaseExprSyntax* Parser::parse_primary()
         paren->expression = parse_expression();
         skip_newlines(walker);
 
-        Span endSpan = walker.current().span;
         if (walker.check(TokenKind::RightParen))
         {
+            span = span.merge(walker.current().span);
             walker.advance();
         }
-        paren->span = startSpan.merge(endSpan);
+        paren->span = span;
 
         return paren;
     }
@@ -428,7 +549,7 @@ BaseExprSyntax* Parser::parse_primary()
 BlockExprSyntax* Parser::parse_block()
 {
     auto* block = arena.alloc<BlockExprSyntax>();
-    Span startSpan = walker.current().span;
+    Span span = walker.current().span;
 
     walker.advance();
     skip_newlines(walker);
@@ -450,12 +571,12 @@ BlockExprSyntax* Parser::parse_block()
         }
     }
 
-    Span endSpan = walker.current().span;
     if (walker.check(TokenKind::RightBrace))
     {
+        span = span.merge(walker.current().span);
         walker.advance();
     }
-    block->span = startSpan.merge(endSpan);
+    block->span = span;
 
     return block;
 }
@@ -467,7 +588,7 @@ BaseExprSyntax* Parser::parse_type()
     if (walker.check(TokenKind::F32Keyword))
     {
         auto* type = arena.alloc<TypeExprSyntax>();
-        type->name = std::string(walker.current().lexeme);
+        type->name = walker.current();
         type->span = walker.current().span;
         walker.advance();
         return type;
@@ -476,7 +597,7 @@ BaseExprSyntax* Parser::parse_type()
     if (walker.check(TokenKind::Identifier))
     {
         auto* type = arena.alloc<TypeExprSyntax>();
-        type->name = std::string(walker.current().lexeme);
+        type->name = walker.current();
         type->span = walker.current().span;
         walker.advance();
         return type;

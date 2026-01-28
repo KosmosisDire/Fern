@@ -86,7 +86,7 @@ class AstDebugFormatter : public DefaultAstVisitor
 public:
     void visit(IdentifierExprSyntax* node) override
     {
-        begin_node_with_name(node, node->name);
+        begin_node_with_name(node, node->name.lexeme);
     }
 
     void visit(LiteralExprSyntax* node) override
@@ -165,7 +165,7 @@ public:
 
     void visit(TypeExprSyntax* node) override
     {
-        begin_node_with_name(node, node->name);
+        begin_node_with_name(node, node->name.lexeme);
     }
 
 #pragma region Statement Visitors
@@ -200,7 +200,7 @@ public:
 
     void visit(ParameterDeclSyntax* node) override
     {
-        begin_node_with_name(node, node->name);
+        begin_node_with_name(node, node->name.lexeme);
         out << "\n";
         write_indent();
         out << "{\n";
@@ -213,7 +213,7 @@ public:
 
     void visit(VariableDeclSyntax* node) override
     {
-        begin_node_with_name(node, node->name);
+        begin_node_with_name(node, node->name.lexeme);
         out << "\n";
         write_indent();
         out << "{\n";
@@ -227,7 +227,7 @@ public:
 
     void visit(FunctionDeclSyntax* node) override
     {
-        begin_node_with_name(node, node->name);
+        begin_node_with_name(node, node->name.lexeme);
         out << "\n";
         write_indent();
         out << "{\n";
@@ -240,7 +240,34 @@ public:
         out << "}";
     }
 
-    void visit(ProgramSyntax* node) override
+    void visit(TypeDeclSyntax* node) override
+    {
+        begin_node_with_name(node, node->name.lexeme);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_children("declarations", node->declarations);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(FieldDeclSyntax* node) override
+    {
+        begin_node_with_name(node, node->name.lexeme);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("type", node->type);
+        write_child("initializer", node->initializer);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(RootSyntax* node) override
     {
         begin_node(node);
         out << "\n";

@@ -189,6 +189,10 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::Var;
     }
+    if (lexeme == "type")
+    {
+        kind = TokenKind::Type;
+    }
     else if (lexeme == "return")
     {
         kind = TokenKind::Return;
@@ -222,7 +226,7 @@ Token Lexer::scan_number()
 
 
 
-#pragma region Character Classification
+#pragma region Character Class
 
 bool Lexer::is_digit(char c)
 {
