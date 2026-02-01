@@ -1,0 +1,35 @@
+
+
+
+namespace Utils
+{
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    fn Magnitude
+    {
+        return Math.Sqrt(x * x + y * y)
+    }
+
+    fn Add(other: Vector2) -> Vector2
+    {
+        return Vector2
+        {
+            x = this.x + other.x
+            y = this.y + other.y
+        }
+    }
+}
+
+type Math
+{
+    static fn Inc(x: f32)
+    {
+        return x + 1.0
+    }
+}
+
+}

@@ -22,6 +22,7 @@ private:
     ParameterDeclSyntax* parse_parameter_decl();
     TypeDeclSyntax* parse_type_decl();
     FieldDeclSyntax* parse_field_decl();
+    NamespaceDeclSyntax* parse_namespace_decl();
 
     // Statements
     BaseStmtSyntax* parse_statement();

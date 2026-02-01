@@ -10,6 +10,13 @@ SourceFile::SourceFile(std::string source, std::string path, uint32_t fileId)
 {
 }
 
+SourceFile::SourceFile(std::string_view source, std::string path, uint32_t fileId)
+    : m_source(source)
+    , m_path(std::move(path))
+    , m_fileId(fileId)
+{
+}
+
 std::string_view SourceFile::source() const
 {
     return m_source;

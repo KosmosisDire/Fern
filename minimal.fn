@@ -1,34 +1,19 @@
+using Utils
 
 
-type Test
+type Program
 {
-    value: f32 = 42.0 + 15.0
-
-    fn GetValue
+    pub static fn Main()
     {
-        var temp = 10.0
-         return value + temp
+        let vec1 = Vector2 { x = 3.0, y = 4.0 }
+        let vec2 = Vector2 { x = 1.0, y = 2.0 }
+
+        let resultVec = vec1.Add(vec2)
+        let magnitude = resultVec.Magnitude()
+
+        let incrementedValue = Math.Inc(5.0)
     }
 }
 
-fn Add(a: f32, b: f32) -> f32
-{
-    return a + b
-}
-
----
-Hello there
-How are you?
----
-
--- Main function
-fn Main -> f32
-{
-    var pi = 3.14159
-    var radius: f32 = 10.0 + 5.0
-    var result = Add(pi, radius)
-    
-    return result + 14.2
-}
 
 

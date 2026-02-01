@@ -189,9 +189,13 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::Var;
     }
-    if (lexeme == "type")
+    else if (lexeme == "type")
     {
         kind = TokenKind::Type;
+    }
+    else if (lexeme == "namespace")
+    {
+        kind = TokenKind::Namespace;
     }
     else if (lexeme == "return")
     {

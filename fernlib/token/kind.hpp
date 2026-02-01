@@ -20,6 +20,7 @@ enum class TokenKind
     Fn,
     Var,
     Type,
+    Namespace,
     Return,
     F32Keyword,
 
@@ -57,6 +58,7 @@ constexpr bool is_keyword(TokenKind k)
         case TokenKind::Fn:
         case TokenKind::Var:
         case TokenKind::Type:
+        case TokenKind::Namespace:
         case TokenKind::Return:
         case TokenKind::F32Keyword:
             return true;
@@ -159,6 +161,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Fn:          return "Fn";
         case TokenKind::Var:         return "Var";
         case TokenKind::Type:        return "Type";
+        case TokenKind::Namespace:   return "Namespace";
         case TokenKind::Return:      return "Return";
         case TokenKind::F32Keyword:  return "F32Keyword";
         case TokenKind::Assign:      return "Assign";

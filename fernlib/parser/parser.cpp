@@ -84,6 +84,10 @@ BaseDeclSyntax* Parser::parse_declaration()
     {
         return parse_type_decl();
     }
+    if (walker.check(TokenKind::Namespace))
+    {
+        return parse_namespace_decl();
+    }
 
     walker.advance();
     return nullptr;
@@ -324,6 +328,63 @@ FieldDeclSyntax* Parser::parse_field_decl()
     field->span = span;
 
     return field;
+}
+
+NamespaceDeclSyntax* Parser::parse_namespace_decl()
+{
+    auto* nsDecl = arena.alloc<NamespaceDeclSyntax>();
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::Identifier))
+    {
+        nsDecl->name = walker.current();
+        span = span.merge(nsDecl->name.span);
+        walker.advance();
+    }
+
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        walker.advance();
+        skip_newlines(walker);
+
+        while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
+        {
+            auto* decl = parse_declaration();
+            if (decl)
+            {
+                nsDecl->declarations.push_back(decl);
+            }
+            skip_newlines(walker);
+        }
+
+        if (walker.check(TokenKind::RightBrace))
+        {
+            span = span.merge(walker.current().span);
+            walker.advance();
+        }
+    }
+    else
+    {
+        while (!walker.is_at_end())
+        {
+            auto* decl = parse_declaration();
+            if (decl)
+            {
+                nsDecl->declarations.push_back(decl);
+                span = span.merge(decl->span);
+            }
+            skip_newlines(walker);
+        }
+    }
+
+    nsDecl->span = span;
+
+    return nsDecl;
 }
 
 #pragma region Statements

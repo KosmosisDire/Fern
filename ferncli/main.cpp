@@ -1,10 +1,7 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-
 #include <logger.hpp>
-#include <source/file.hpp>
+
 #include <fern.hpp>
+
 
 int main(int argc, char* argv[])
 {
@@ -14,30 +11,24 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::ifstream file(argv[1]);
-    if (!file)
+    Fern::Compilation compilation;
+
+    for (int i = 1; i < argc; ++i)
     {
-        LOG(LogChannel::Debug) << "Error: Could not open file '" << argv[1] << "'\n";
-        return 1;
+        compilation.add_file(argv[i]);
     }
 
-    std::ostringstream buffer;
-    buffer << file.rdbuf();
-    std::string source = buffer.str();
+    compilation.compile();
 
-    Fern::SourceFile sourceFile(source, argv[1], 0);
+    for (const auto& unit : compilation.units())
+    {
+        Fern::TokenWalker walker(unit.tokens);
+        LOG(LogChannel::Debug) << walker.format() << "\n";
+        LOG(LogChannel::Debug) << Fern::AstDebugFormatter::format(unit.ast) << "\n";
+    }
 
-    Fern::Lexer lexer(sourceFile);
-    std::vector<Fern::Token> tokens = lexer.tokenize();
-
-    Fern::TokenWalker tokenWalker(tokens);
-    std::cout << tokenWalker.format() << "\n";
-
-    Fern::AllocArena astArena;
-    Fern::Parser parser(tokenWalker, astArena);
-    auto ast = parser.parse();
-
-    std::cout << Fern::AstDebugFormatter::format(ast) << "\n";
+    LOG(LogChannel::Debug) << compilation.declaration_table().format() << "\n";
 
     return 0;
 }
+

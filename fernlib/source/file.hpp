@@ -13,6 +13,7 @@ class SourceFile
 {
 public:
     SourceFile(std::string source, std::string path, uint32_t fileId);
+    SourceFile(std::string_view source, std::string path, uint32_t fileId);
 
     std::string_view source() const;
     std::string_view path() const;

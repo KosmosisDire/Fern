@@ -4,9 +4,14 @@ set(FERNLIB_SOURCES
     ${CMAKE_SOURCE_DIR}/common/logger.cpp
 
     #common
+    common/compilation.cpp
+
+    #declaration
+    declaration/table.cpp
 
     #source
     source/file.cpp
+    # source/fuzzer.cpp
     source/span.cpp
     source/walker.cpp
 

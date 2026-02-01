@@ -39,6 +39,7 @@ struct VariableDeclSyntax;
 struct FunctionDeclSyntax;
 struct TypeDeclSyntax;
 struct FieldDeclSyntax;
+struct NamespaceDeclSyntax;
 
 // Root
 struct RootSyntax;
@@ -77,6 +78,7 @@ public:
     virtual void visit(FunctionDeclSyntax* node) = 0;
     virtual void visit(TypeDeclSyntax* node) = 0;
     virtual void visit(FieldDeclSyntax* node) = 0;
+    virtual void visit(NamespaceDeclSyntax* node) = 0;
 
     // Root
     virtual void visit(RootSyntax* node) = 0;
@@ -276,6 +278,15 @@ struct FieldDeclSyntax : BaseDeclSyntax
     ExprPtr initializer = nullptr;
 };
 
+struct NamespaceDeclSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(NamespaceDecl, BaseDeclSyntax)
+
+    bool is_file_level = false;
+    Token name = Token::Invalid();
+    std::vector<DeclPtr> declarations;
+};
+
 #pragma region Root
 
 struct RootSyntax : BaseSyntax
@@ -361,6 +372,12 @@ public:
     void visit(FieldDeclSyntax* node) override
     {
         if (node->type) node->type->accept(this);
+    }
+
+    void visit(NamespaceDeclSyntax* node) override
+    {
+        for (auto& decl : node->declarations)
+            if (decl) decl->accept(this);
     }
 
     void visit(RootSyntax* node) override

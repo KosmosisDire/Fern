@@ -267,6 +267,19 @@ public:
         out << "}";
     }
 
+    void visit(NamespaceDeclSyntax* node) override
+    {
+        begin_node_with_name(node, node->name.lexeme);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_children("declarations", node->declarations);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
     void visit(RootSyntax* node) override
     {
         begin_node(node);
