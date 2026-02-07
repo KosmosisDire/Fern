@@ -155,7 +155,13 @@ Token Lexer::scan_token()
             return make_token(TokenKind::Semicolon);
         case ',':
             return make_token(TokenKind::Comma);
+        case '.':
+            return make_token(TokenKind::Dot);
         case '+':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::AssignAdd);
+            }
             return make_token(TokenKind::Plus);
         case '=':
             return make_token(TokenKind::Assign);

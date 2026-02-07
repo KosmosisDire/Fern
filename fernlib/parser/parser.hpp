@@ -33,7 +33,9 @@ private:
     BaseExprSyntax* parse_assignment();
     BaseExprSyntax* parse_binary();
     BaseExprSyntax* parse_primary();
-    BaseExprSyntax* parse_call();
+    CallExprSyntax* parse_call(BaseExprSyntax* callee);
+    BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
+    BaseExprSyntax* parse_postfix();
     BlockExprSyntax* parse_block();
 
     // Types

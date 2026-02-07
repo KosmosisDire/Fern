@@ -450,11 +450,12 @@ BaseExprSyntax* Parser::parse_assignment()
         return nullptr;
     }
 
-    if (walker.check(TokenKind::Assign))
+    auto assignOp = to_assign_op(walker.current().kind);
+    if (assignOp)
     {
         auto* assign = arena.alloc<AssignmentExprSyntax>();
         assign->target = left;
-        assign->op = AssignOp::Simple;
+        assign->op = *assignOp;
 
         walker.advance();
         skip_newlines(walker);
@@ -476,7 +477,7 @@ BaseExprSyntax* Parser::parse_assignment()
 
 BaseExprSyntax* Parser::parse_binary()
 {
-    auto* left = parse_call();
+    auto* left = parse_postfix();
     if (!left)
     {
         return nullptr;
@@ -488,7 +489,7 @@ BaseExprSyntax* Parser::parse_binary()
         walker.advance();
         skip_newlines(walker);
 
-        auto* right = parse_call();
+        auto* right = parse_postfix();
 
         auto* binary = arena.alloc<BinaryExprSyntax>();
         binary->left = left;
@@ -508,54 +509,89 @@ BaseExprSyntax* Parser::parse_binary()
     return left;
 }
 
-BaseExprSyntax* Parser::parse_call()
+CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
 {
-    auto* callee = parse_primary();
-    if (!callee)
+    auto* call = arena.alloc<CallExprSyntax>();
+    call->callee = callee;
+
+    walker.advance(); // consume '('
+    skip_newlines(walker);
+
+    while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
+    {
+        auto* arg = parse_expression();
+        if (arg)
+        {
+            call->arguments.push_back(arg);
+        }
+        skip_newlines(walker);
+
+        if (walker.check(TokenKind::Comma))
+        {
+            walker.advance();
+            skip_newlines(walker);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    Span span = callee->span;
+    if (walker.check(TokenKind::RightParen))
+    {
+        span = span.merge(walker.current().span);
+        walker.advance();
+    }
+    call->span = span;
+
+    return call;
+}
+
+BaseExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
+{
+    auto* memberAccess = arena.alloc<MemberAccessExprSyntax>();
+    memberAccess->left = left;
+
+    walker.advance(); // consume '.'
+
+    if (walker.check(TokenKind::Identifier))
+    {
+        memberAccess->right = walker.current();
+        memberAccess->span = left->span.merge(walker.current().span);
+        walker.advance();
+        return memberAccess;
+    }
+
+    memberAccess->span = left->span;
+    return memberAccess;
+}
+
+BaseExprSyntax* Parser::parse_postfix()
+{
+    auto* left = parse_primary();
+    if (!left)
     {
         return nullptr;
     }
 
-    while (walker.check(TokenKind::LeftParen))
+    while (true)
     {
-        auto* call = arena.alloc<CallExprSyntax>();
-        call->callee = callee;
-
-        walker.advance();
-        skip_newlines(walker);
-
-        while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
+        if (walker.check(TokenKind::Dot))
         {
-            auto* arg = parse_expression();
-            if (arg)
-            {
-                call->arguments.push_back(arg);
-            }
-            skip_newlines(walker);
-
-            if (walker.check(TokenKind::Comma))
-            {
-                walker.advance();
-                skip_newlines(walker);
-            }
-            else
-            {
-                break;
-            }
+            left = parse_member_access(left);
         }
-
-        Span span = callee->span;
-        if (walker.check(TokenKind::RightParen))
+        else if (walker.check(TokenKind::LeftParen))
         {
-            span = span.merge(walker.current().span);
-            walker.advance();
+            left = parse_call(left);
         }
-        call->span = span;
-
-        callee = call;
+        else
+        {
+            break;
+        }
     }
 
-    return callee;
+    return left;
 }
 
 BaseExprSyntax* Parser::parse_primary()
@@ -646,25 +682,31 @@ BlockExprSyntax* Parser::parse_block()
 
 BaseExprSyntax* Parser::parse_type()
 {
+    BaseExprSyntax* type = nullptr;
+
     if (walker.check(TokenKind::F32Keyword))
     {
-        auto* type = arena.alloc<TypeExprSyntax>();
-        type->name = walker.current();
-        type->span = walker.current().span;
+        auto* t = arena.alloc<TypeExprSyntax>();
+        t->name = walker.current();
+        t->span = walker.current().span;
         walker.advance();
-        return type;
+        type = t;
     }
-
-    if (walker.check(TokenKind::Identifier))
+    else if (walker.check(TokenKind::Identifier))
     {
-        auto* type = arena.alloc<TypeExprSyntax>();
-        type->name = walker.current();
-        type->span = walker.current().span;
+        auto* t = arena.alloc<TypeExprSyntax>();
+        t->name = walker.current();
+        t->span = walker.current().span;
         walker.advance();
-        return type;
+        type = t;
     }
 
-    return nullptr;
+    while (type && walker.check(TokenKind::Dot))
+    {
+        type = parse_member_access(type);
+    }
+
+    return type;
 }
 
 }

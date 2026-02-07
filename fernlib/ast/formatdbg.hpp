@@ -163,6 +163,19 @@ public:
         out << "}";
     }
 
+    void visit(MemberAccessExprSyntax* node) override
+    {
+        begin_node_with_name(node, node->right.lexeme);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("left", node->left);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
     void visit(TypeExprSyntax* node) override
     {
         begin_node_with_name(node, node->name.lexeme);

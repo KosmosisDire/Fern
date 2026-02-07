@@ -25,6 +25,7 @@ struct BlockExprSyntax;
 struct CallExprSyntax;
 struct BinaryExprSyntax;
 struct AssignmentExprSyntax;
+struct MemberAccessExprSyntax;
 struct TypeExprSyntax;
 
 // Statements
@@ -66,6 +67,7 @@ public:
     virtual void visit(CallExprSyntax* node) = 0;
     virtual void visit(BinaryExprSyntax* node) = 0;
     virtual void visit(AssignmentExprSyntax* node) = 0;
+    virtual void visit(MemberAccessExprSyntax* node) = 0;
     virtual void visit(TypeExprSyntax* node) = 0;
 
     // Statements
@@ -196,6 +198,15 @@ struct AssignmentExprSyntax : BaseExprSyntax
     ExprPtr target = nullptr;
     AssignOp op = AssignOp::Simple;
     ExprPtr value = nullptr;
+};
+
+// object.member
+struct MemberAccessExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(MemberAccessExpr, BaseExprSyntax)
+
+    ExprPtr left = nullptr;
+    Token right = Token::Invalid();
 };
 
 // f32 (type reference)
@@ -334,6 +345,11 @@ public:
     {
         if (node->target) node->target->accept(this);
         if (node->value) node->value->accept(this);
+    }
+
+    void visit(MemberAccessExprSyntax* node) override
+    {
+        if (node->left) node->left->accept(this);
     }
 
     void visit(TypeExprSyntax* node) override {}
