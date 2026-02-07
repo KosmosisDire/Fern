@@ -25,6 +25,7 @@ enum class TokenKind
     F32Keyword,
 
     Assign,
+    AssignAdd,
     Plus,
 
     Colon,
@@ -35,79 +36,8 @@ enum class TokenKind
     RightBrace,
     Semicolon,
     Comma,
+    Dot,
 };
-
-
-#pragma region Category Checks
-
-constexpr bool is_literal(TokenKind k)
-{
-    switch (k)
-    {
-        case TokenKind::LiteralF32:
-            return true;
-        default:
-            return false;
-    }
-}
-
-constexpr bool is_keyword(TokenKind k)
-{
-    switch (k)
-    {
-        case TokenKind::Fn:
-        case TokenKind::Var:
-        case TokenKind::Type:
-        case TokenKind::Namespace:
-        case TokenKind::Return:
-        case TokenKind::F32Keyword:
-            return true;
-        default:
-            return false;
-    }
-}
-
-constexpr bool is_operator(TokenKind k)
-{
-    switch (k)
-    {
-        case TokenKind::Assign:
-        case TokenKind::Plus:
-            return true;
-        default:
-            return false;
-    }
-}
-
-constexpr bool is_punctuation(TokenKind k)
-{
-    switch (k)
-    {
-        case TokenKind::Colon:
-        case TokenKind::ThinArrow:
-        case TokenKind::LeftParen:
-        case TokenKind::RightParen:
-        case TokenKind::LeftBrace:
-        case TokenKind::RightBrace:
-        case TokenKind::Semicolon:
-        case TokenKind::Comma:
-            return true;
-        default:
-            return false;
-    }
-}
-
-constexpr bool is_type_keyword(TokenKind k)
-{
-    switch (k)
-    {
-        case TokenKind::F32Keyword:
-            return true;
-        default:
-            return false;
-    }
-}
-
 
 
 #pragma region Semantic Enums
@@ -120,6 +50,7 @@ enum class BinaryOp
 enum class AssignOp
 {
     Simple,
+    Add,
 };
 
 #pragma region Conversions
@@ -141,6 +72,8 @@ constexpr std::optional<AssignOp> to_assign_op(TokenKind k)
     {
         case TokenKind::Assign:
             return AssignOp::Simple;
+        case TokenKind::AssignAdd:
+            return AssignOp::Add;
         default:
             return std::nullopt;
     }
@@ -165,6 +98,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Return:      return "Return";
         case TokenKind::F32Keyword:  return "F32Keyword";
         case TokenKind::Assign:      return "Assign";
+        case TokenKind::AssignAdd:   return "AssignAdd";
         case TokenKind::Plus:        return "Plus";
         case TokenKind::Colon:       return "Colon";
         case TokenKind::ThinArrow:   return "ThinArrow";
@@ -174,6 +108,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::RightBrace:  return "RightBrace";
         case TokenKind::Semicolon:   return "Semicolon";
         case TokenKind::Comma:       return "Comma";
+        case TokenKind::Dot:         return "Dot";
     }
 }
 
@@ -190,6 +125,7 @@ constexpr std::string_view format(AssignOp op)
     switch (op)
     {
         case AssignOp::Simple: return "Simple";
+        case AssignOp::Add: return "Add";
     }
 }
 
