@@ -31,15 +31,15 @@ public:
     void reset();
 
 private:
-    const SourceFile& m_file;
+    const SourceFile& sourceFile;
 
-    size_t m_current = 0;
-    uint32_t m_line = 1;
-    uint32_t m_column = 1;
+    size_t currentPos = 0;
+    uint32_t currentLine = 1;
+    uint32_t currentColumn = 1;
 
-    size_t m_start = 0;
-    uint32_t m_startLine = 1;
-    uint32_t m_startColumn = 1;
+    size_t startPos = 0;
+    uint32_t startLine = 1;
+    uint32_t startColumn = 1;
 };
 
 }

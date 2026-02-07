@@ -4,13 +4,13 @@ namespace Fern
 {
 
 SourceWalker::SourceWalker(const SourceFile& file)
-    : m_file(file)
+    : sourceFile(file)
 {
 }
 
 bool SourceWalker::is_at_end() const
 {
-    return m_current >= m_file.source().size();
+    return currentPos >= sourceFile.source().size();
 }
 
 char SourceWalker::peek() const
@@ -19,29 +19,29 @@ char SourceWalker::peek() const
     {
         return '\0';
     }
-    return m_file.source()[m_current];
+    return sourceFile.source()[currentPos];
 }
 
 char SourceWalker::peek_next() const
 {
-    if (m_current + 1 >= m_file.source().size())
+    if (currentPos + 1 >= sourceFile.source().size())
     {
         return '\0';
     }
-    return m_file.source()[m_current + 1];
+    return sourceFile.source()[currentPos + 1];
 }
 
 char SourceWalker::advance()
 {
-    char c = m_file.source()[m_current++];
+    char c = sourceFile.source()[currentPos++];
     if (c == '\n')
     {
-        m_line++;
-        m_column = 1;
+        currentLine++;
+        currentColumn = 1;
     }
     else
     {
-        m_column++;
+        currentColumn++;
     }
     return c;
 }
@@ -52,7 +52,7 @@ bool SourceWalker::match(char expected)
     {
         return false;
     }
-    if (m_file.source()[m_current] != expected)
+    if (sourceFile.source()[currentPos] != expected)
     {
         return false;
     }
@@ -62,44 +62,44 @@ bool SourceWalker::match(char expected)
 
 uint32_t SourceWalker::line() const
 {
-    return m_line;
+    return currentLine;
 }
 
 uint32_t SourceWalker::column() const
 {
-    return m_column;
+    return currentColumn;
 }
 
 size_t SourceWalker::position() const
 {
-    return m_current;
+    return currentPos;
 }
 
 void SourceWalker::mark_start()
 {
-    m_start = m_current;
-    m_startLine = m_line;
-    m_startColumn = m_column;
+    startPos = currentPos;
+    startLine = currentLine;
+    startColumn = currentColumn;
 }
 
 std::string_view SourceWalker::lexeme() const
 {
-    return m_file.source().substr(m_start, m_current - m_start);
+    return sourceFile.source().substr(startPos, currentPos - startPos);
 }
 
 Span SourceWalker::make_span() const
 {
-    return Span(m_startLine, m_startColumn, m_line, m_column, m_file.file_id());
+    return Span(startLine, startColumn, currentLine, currentColumn, sourceFile.file_id());
 }
 
 void SourceWalker::reset()
 {
-    m_current = 0;
-    m_line = 1;
-    m_column = 1;
-    m_start = 0;
-    m_startLine = 1;
-    m_startColumn = 1;
+    currentPos = 0;
+    currentLine = 1;
+    currentColumn = 1;
+    startPos = 0;
+    startLine = 1;
+    startColumn = 1;
 }
 
 }
