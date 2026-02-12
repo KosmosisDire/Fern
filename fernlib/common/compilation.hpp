@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <arena.hpp>
+#include <common/diagnostic.hpp>
 #include <source/file.hpp>
 #include <token/token.hpp>
 #include <semantic/context.hpp>
@@ -23,10 +24,13 @@ struct CompilationUnit
     RootSyntax* ast = nullptr;
 };
 
-class Compilation
+class Compilation : public DiagnosticSystem
 {
 public:
-    Compilation() = default;
+    Compilation()
+        : DiagnosticSystem("Compilation")
+    {
+    }
 
     void add_file(std::string_view path);
     void add_source(std::string source, std::string_view path);

@@ -5,9 +5,20 @@ namespace Fern
 {
 
 Parser::Parser(TokenWalker& walker, AllocArena& arena)
-    : walker(walker)
+    : DiagnosticSystem("Parser")
+    , walker(walker)
     , arena(arena)
 {
+}
+
+const Token* Parser::expect(TokenKind kind, std::string_view message)
+{
+    if (walker.check(kind))
+    {
+        return &walker.advance();
+    }
+    error(message, walker.current().span);
+    return nullptr;
 }
 
 #pragma region Helpers
@@ -101,11 +112,10 @@ FunctionDeclSyntax* Parser::parse_function_decl()
     walker.advance();
     skip_newlines(walker);
 
-    if (walker.check(TokenKind::Identifier))
+    if (auto* name = expect(TokenKind::Identifier, "expected name after 'fn'"))
     {
-        func->name = walker.current();
-        span = span.merge(func->name.span);
-        walker.advance();
+        func->name = *name;
+        span = span.merge(name->span);
     }
     skip_newlines(walker);
 
@@ -134,10 +144,9 @@ FunctionDeclSyntax* Parser::parse_function_decl()
             }
         }
 
-        if (walker.check(TokenKind::RightParen))
+        if (auto* token = expect(TokenKind::RightParen, "expected ')' after parameter list"))
         {
-            span = span.merge(walker.current().span);
-            walker.advance();
+            span = span.merge(token->span);
         }
     }
     skip_newlines(walker);
@@ -173,11 +182,10 @@ VariableDeclSyntax* Parser::parse_variable_decl()
     walker.advance();
     skip_newlines(walker);
 
-    if (walker.check(TokenKind::Identifier))
+    if (auto* name = expect(TokenKind::Identifier, "expected name after 'var'"))
     {
-        var->name = walker.current();
-        span = span.merge(var->name.span);
-        walker.advance();
+        var->name = *name;
+        span = span.merge(name->span);
     }
 
     if (walker.check(TokenKind::Colon))
@@ -212,10 +220,9 @@ ParameterDeclSyntax* Parser::parse_parameter_decl()
     auto* param = arena.alloc<ParameterDeclSyntax>();
     Span span = walker.current().span;
 
-    if (walker.check(TokenKind::Identifier))
+    if (auto* name = expect(TokenKind::Identifier, "expected parameter name"))
     {
-        param->name = walker.current();
-        walker.advance();
+        param->name = *name;
     }
 
     if (walker.check(TokenKind::Colon))
@@ -242,11 +249,10 @@ TypeDeclSyntax* Parser::parse_type_decl()
     walker.advance();
     skip_newlines(walker);
 
-    if (walker.check(TokenKind::Identifier))
+    if (auto* name = expect(TokenKind::Identifier, "expected name after 'type'"))
     {
-        typeDecl->name = walker.current();
-        span = span.merge(typeDecl->name.span);
-        walker.advance();
+        typeDecl->name = *name;
+        span = span.merge(name->span);
     }
 
     skip_newlines(walker);
@@ -274,10 +280,9 @@ TypeDeclSyntax* Parser::parse_type_decl()
             skip_newlines(walker);
         }
 
-        if (walker.check(TokenKind::RightBrace))
+        if (auto* token = expect(TokenKind::RightBrace, "expected '}' after type body"))
         {
-            span = span.merge(walker.current().span);
-            walker.advance();
+            span = span.merge(token->span);
         }
     }
 
@@ -338,11 +343,10 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
     walker.advance();
     skip_newlines(walker);
 
-    if (walker.check(TokenKind::Identifier))
+    if (auto* name = expect(TokenKind::Identifier, "expected name after 'namespace'"))
     {
-        nsDecl->name = walker.current();
-        span = span.merge(nsDecl->name.span);
-        walker.advance();
+        nsDecl->name = *name;
+        span = span.merge(name->span);
     }
 
     skip_newlines(walker);
@@ -362,10 +366,9 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
             skip_newlines(walker);
         }
 
-        if (walker.check(TokenKind::RightBrace))
+        if (auto* token = expect(TokenKind::RightBrace, "expected '}' after namespace body"))
         {
-            span = span.merge(walker.current().span);
-            walker.advance();
+            span = span.merge(token->span);
         }
     }
     else
@@ -538,10 +541,9 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     }
 
     Span span = callee->span;
-    if (walker.check(TokenKind::RightParen))
+    if (auto* token = expect(TokenKind::RightParen, "expected ')' after arguments"))
     {
-        span = span.merge(walker.current().span);
-        walker.advance();
+        span = span.merge(token->span);
     }
     call->span = span;
 
@@ -553,13 +555,12 @@ BaseExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
     auto* memberAccess = arena.alloc<MemberAccessExprSyntax>();
     memberAccess->left = left;
 
-    walker.advance(); // consume '.'
+    walker.advance();
 
-    if (walker.check(TokenKind::Identifier))
+    if (auto* name = expect(TokenKind::Identifier, "expected member name after '.'"))
     {
-        memberAccess->right = walker.current();
-        memberAccess->span = left->span.merge(walker.current().span);
-        walker.advance();
+        memberAccess->right = *name;
+        memberAccess->span = left->span.merge(name->span);
         return memberAccess;
     }
 
@@ -625,10 +626,9 @@ BaseExprSyntax* Parser::parse_primary()
         paren->expression = parse_expression();
         skip_newlines(walker);
 
-        if (walker.check(TokenKind::RightParen))
+        if (auto* token = expect(TokenKind::RightParen, "expected ')' after expression"))
         {
-            span = span.merge(walker.current().span);
-            walker.advance();
+            span = span.merge(token->span);
         }
         paren->span = span;
 
@@ -668,10 +668,9 @@ BlockExprSyntax* Parser::parse_block()
         }
     }
 
-    if (walker.check(TokenKind::RightBrace))
+    if (auto* token = expect(TokenKind::RightBrace, "expected '}' after block"))
     {
-        span = span.merge(walker.current().span);
-        walker.advance();
+        span = span.merge(token->span);
     }
     block->span = span;
 

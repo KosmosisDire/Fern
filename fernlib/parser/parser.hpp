@@ -2,12 +2,13 @@
 
 #include "ast/ast.hpp"
 #include <arena.hpp>
+#include <common/diagnostic.hpp>
 #include <token/walker.hpp>
 
 namespace Fern
 {
 
-class Parser
+class Parser : public DiagnosticSystem
 {
 public:
     Parser(TokenWalker& walker, AllocArena& arena);
@@ -15,6 +16,8 @@ public:
     RootSyntax* parse();
 
 private:
+    const Token* expect(TokenKind kind, std::string_view message);
+
     // Declarations
     BaseDeclSyntax* parse_declaration();
     FunctionDeclSyntax* parse_function_decl();

@@ -62,6 +62,11 @@ void Compilation::compile()
         TokenWalker walker(unit->tokens);
         Parser parser(walker, unit->arena);
         unit->ast = parser.parse();
+
+        for (const auto& diag : parser.get_diagnostics())
+        {
+            report(diag);
+        }
     }
 
     // Phase 2: Bind symbols and method bodies
