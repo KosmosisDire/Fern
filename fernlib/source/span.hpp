@@ -8,10 +8,10 @@ namespace Fern
 
 struct Span
 {
-    uint32_t startLine = 1;
-    uint32_t startColumn = 1;
-    uint32_t endLine = 1;
-    uint32_t endColumn = 1;
+    uint32_t startLine = 0;
+    uint32_t startColumn = 0;
+    uint32_t endLine = 0;
+    uint32_t endColumn = 0;
 
     uint32_t fileId = 0;
 

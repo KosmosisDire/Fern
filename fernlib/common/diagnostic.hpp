@@ -54,8 +54,8 @@ struct Diagnostic
 
     std::string format(std::string_view filename) const
     {
-        return std::string(filename) + ":" + std::to_string(location.startLine) +
-               ":" + std::to_string(location.startColumn) + ": " +
+        return std::string(filename) + ":" + std::to_string(location.startLine + 1) +
+               ":" + std::to_string(location.startColumn + 1) + ": " +
                std::string(severity_string()) + ": " + message;
     }
 };

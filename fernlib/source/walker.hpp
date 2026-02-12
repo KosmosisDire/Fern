@@ -34,12 +34,12 @@ private:
     const SourceFile& sourceFile;
 
     size_t currentPos = 0;
-    uint32_t currentLine = 1;
-    uint32_t currentColumn = 1;
+    uint32_t currentLine = 0;
+    uint32_t currentColumn = 0;
 
     size_t startPos = 0;
-    uint32_t startLine = 1;
-    uint32_t startColumn = 1;
+    uint32_t startLine = 0;
+    uint32_t startColumn = 0;
 };
 
 }

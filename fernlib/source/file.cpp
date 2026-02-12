@@ -26,7 +26,7 @@ std::string_view SourceFile::get_text(const Span& span) const
 size_t SourceFile::line_column_to_offset(uint32_t targetLine, uint32_t targetColumn) const
 {
     size_t offset = 0;
-    uint32_t currentLine = 1;
+    uint32_t currentLine = 0;
 
     while (offset < sourceText.size() && currentLine < targetLine)
     {
@@ -37,7 +37,7 @@ size_t SourceFile::line_column_to_offset(uint32_t targetLine, uint32_t targetCol
         offset++;
     }
 
-    offset += targetColumn - 1;
+    offset += targetColumn;
     return offset;
 }
 

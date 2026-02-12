@@ -37,7 +37,7 @@ char SourceWalker::advance()
     if (c == '\n')
     {
         currentLine++;
-        currentColumn = 1;
+        currentColumn = 0;
     }
     else
     {
@@ -95,11 +95,11 @@ Span SourceWalker::make_span() const
 void SourceWalker::reset()
 {
     currentPos = 0;
-    currentLine = 1;
-    currentColumn = 1;
+    currentLine = 0;
+    currentColumn = 0;
     startPos = 0;
-    startLine = 1;
-    startColumn = 1;
+    startLine = 0;
+    startColumn = 0;
 }
 
 }

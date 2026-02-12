@@ -45,11 +45,11 @@ std::string Span::format() const
 {
     if (startLine == endLine && startColumn == endColumn)
     {
-        return std::to_string(startLine) + ":" + std::to_string(startColumn);
+        return std::to_string(startLine + 1) + ":" + std::to_string(startColumn + 1);
     }
-    return std::to_string(startLine) + ":" + std::to_string(startColumn) +
+    return std::to_string(startLine + 1) + ":" + std::to_string(startColumn + 1) +
            " - " +
-           std::to_string(endLine) + ":" + std::to_string(endColumn);
+           std::to_string(endLine + 1) + ":" + std::to_string(endColumn + 1);
 }
 
 } 
