@@ -1,19 +1,25 @@
-using Utils
-
-
-type Program
+type Test
 {
-    pub static fn Main()
+    value: Nested
+    type Nested
     {
-        let vec1 = Vector2 { x = 3.0, y = 4.0 }
-        let vec2 = Vector2 { x = 1.0, y = 2.0 }
+        value: f32
+        self: Nested
 
-        let resultVec = vec1.Add(vec2)
-        let magnitude = resultVec.Magnitude()
+        fn Inc
+        {
+            value += 1
+        }
 
-        let incrementedValue = Math.Inc(5.0)
+        type Nested2
+        {
+            value: f32
+            self: Nested
+
+            fn Inc
+            {
+                value += 1
+            }
+        }
     }
 }
-
-
-

@@ -1,0 +1,20 @@
+
+namespace Core
+{
+
+type F32
+{
+    value: f32
+
+    fn Inc
+    {
+        value += 1
+    }
+
+    fn Add(other: f32) -> f32
+    {
+        return value + other
+    }
+}
+
+}

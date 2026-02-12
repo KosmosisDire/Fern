@@ -3,13 +3,16 @@ set(FERNLIB_SOURCES
     # global common
     ${CMAKE_SOURCE_DIR}/common/logger.cpp
 
-    #common
+    # common
     common/compilation.cpp
 
-    #declaration
-    declaration/table.cpp
+    # semantic
+    semantic/symbol/symbol.cpp
+    semantic/symbol/table.cpp
+    semantic/context.cpp
+    semantic/binder/binder.cpp
 
-    #source
+    # source
     source/file.cpp
     # source/fuzzer.cpp
     source/span.cpp
@@ -31,6 +34,7 @@ add_library(fernlib STATIC ${FERNLIB_SOURCES})
 
 target_include_directories(fernlib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/semantic
     ${CMAKE_SOURCE_DIR}/common
 )
 

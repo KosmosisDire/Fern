@@ -1,0 +1,3 @@
+# Binder
+
+The binder walks the AST, builds symbols and infers types. The binder starts by creating symbols for all top level declarations, not not locals. It then binds the members of those top level declarations, like fields and the method signatures (not the bodies). After that it walks all method declaration bodies. As it walks it builds a scope stack which it uses for name resolution. Creating the scope stack also is where we allocate the symbols for locals. These symbols are created by the binder but owned by the symbol table.

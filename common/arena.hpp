@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include <memory>
+#include <type_traits>
 
 namespace Fern
 {
@@ -19,7 +20,10 @@ public:
         allocate_block();
     }
 
-    ~AllocArena() = default;
+    ~AllocArena()
+    {
+        destroy_all();
+    }
 
     // Non-copyable, non-movable
     AllocArena(const AllocArena&) = delete;
@@ -29,7 +33,12 @@ public:
     T* alloc(Args&&... args)
     {
         void* mem = allocate(sizeof(T), alignof(T));
-        return new (mem) T(std::forward<Args>(args)...);
+        T* obj = new (mem) T(std::forward<Args>(args)...);
+        if constexpr (!std::is_trivially_destructible_v<T>)
+        {
+            destructors.push_back({obj, [](void* p) { static_cast<T*>(p)->~T(); }});
+        }
+        return obj;
     }
 
     template <typename T>
@@ -42,6 +51,7 @@ public:
 
     void reset()
     {
+        destroy_all();
         blocks.clear();
         current = nullptr;
         end = nullptr;
@@ -49,6 +59,21 @@ public:
     }
 
 private:
+    struct DestructorEntry
+    {
+        void* ptr;
+        void (*destroy)(void*);
+    };
+
+    void destroy_all()
+    {
+        for (auto it = destructors.rbegin(); it != destructors.rend(); ++it)
+        {
+            it->destroy(it->ptr);
+        }
+        destructors.clear();
+    }
+
     void* allocate(size_t size, size_t align)
     {
         uintptr_t currentAddr = reinterpret_cast<uintptr_t>(current);
@@ -77,6 +102,7 @@ private:
 
     size_t blockSize;
     std::vector<std::unique_ptr<uint8_t[]>> blocks;
+    std::vector<DestructorEntry> destructors;
     uint8_t* current = nullptr;
     uint8_t* end = nullptr;
 };

@@ -7,15 +7,17 @@
 #include <arena.hpp>
 #include <source/file.hpp>
 #include <token/token.hpp>
-#include <declaration/table.hpp>
+#include <semantic/context.hpp>
 
 namespace Fern
 {
 
 struct RootSyntax;
+class Binder;
 
 struct CompilationUnit
 {
+    AllocArena arena;
     std::unique_ptr<SourceFile> sourceFile;
     std::vector<Token> tokens;
     RootSyntax* ast = nullptr;
@@ -30,14 +32,18 @@ public:
     void add_source(std::string source, std::string_view path);
     void compile();
 
-    const DeclarationTable& declaration_table() const;
-    const std::vector<CompilationUnit>& units() const;
+    SemanticContext & semantic() { return semanticContext; }
+    const SemanticContext & semantic() const { return semanticContext; }
+
+    const auto& get_units() const
+    {
+        return units;
+    }
 
 private:
-    std::vector<CompilationUnit> m_units;
-    AllocArena m_arena;
-    DeclarationTable m_declTable;
-    uint32_t m_nextFileId = 0;
+    std::vector<std::unique_ptr<CompilationUnit>> units;
+    SemanticContext  semanticContext;
+    bool compiled = false;
 };
 
 }
