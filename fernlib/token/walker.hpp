@@ -1,7 +1,7 @@
 #pragma once
 
 #include "token.hpp"
-#include <vector>
+#include <span>
 #include <string_view>
 
 namespace Fern
@@ -10,7 +10,7 @@ namespace Fern
 class TokenWalker
 {
 public:
-    explicit TokenWalker(const std::vector<Token>& tokens);
+    explicit TokenWalker(std::span<const Token> tokens);
 
     bool is_at_end() const;
     size_t position() const;
@@ -21,7 +21,6 @@ public:
 
     bool check(TokenKind kind) const;
     bool match(TokenKind kind);
-    const Token& expect(TokenKind kind, std::string_view message);
 
     struct Checkpoint
     {
@@ -34,7 +33,7 @@ public:
     std::string format() const;
 
 private:
-    const std::vector<Token>& tokens;
+    std::span<const Token> tokens;
     size_t tokenIndex = 0;
 };
 

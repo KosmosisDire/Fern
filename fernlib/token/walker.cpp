@@ -1,11 +1,10 @@
 #include "walker.hpp"
 #include <table_builder.hpp>
-#include <stdexcept>
 
 namespace Fern
 {
 
-TokenWalker::TokenWalker(const std::vector<Token>& tokens)
+TokenWalker::TokenWalker(std::span<const Token> tokens)
     : tokens(tokens)
 {
 }
@@ -59,17 +58,6 @@ bool TokenWalker::match(TokenKind kind)
     }
     return false;
 }
-
-const Token& TokenWalker::expect(TokenKind kind, std::string_view message)
-{
-    if (check(kind))
-    {
-        return advance();
-    }
-    throw std::runtime_error(std::string(message));
-}
-
-
 
 #pragma region Checkpointing
 
