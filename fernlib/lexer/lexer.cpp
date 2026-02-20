@@ -235,6 +235,18 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::BoolKeyword;
     }
+    else if (lexeme == "pub")
+    {
+        kind = TokenKind::Pub;
+    }
+    else if (lexeme == "static")
+    {
+        kind = TokenKind::Static;
+    }
+    else if (lexeme == "ref")
+    {
+        kind = TokenKind::Ref;
+    }
     else if (lexeme == "fn")
     {
         kind = TokenKind::Fn;

@@ -97,6 +97,7 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
     typePtr->name = std::string(typeDecl->name.lexeme);
     typePtr->syntax = typeDecl;
     typePtr->parent = parent;
+    typePtr->modifiers = typeDecl->modifiers;
 
     auto* type = context.symbols.own(std::move(typePtr));
 
@@ -120,6 +121,7 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
             fieldPtr->name = std::string(fieldAst->name.lexeme);
             fieldPtr->syntax = fieldAst;
             fieldPtr->parent = type;
+            fieldPtr->modifiers = fieldAst->modifiers;
             fieldPtr->index = fieldIndex++;
 
             type->fields.push_back(context.symbols.own(std::move(fieldPtr)));
@@ -130,6 +132,7 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
             methodPtr->name = std::string(methodAst->name.lexeme);
             methodPtr->syntax = methodAst;
             methodPtr->parent = type;
+            methodPtr->modifiers = methodAst->modifiers;
 
             auto* method = context.symbols.own(std::move(methodPtr));
             create_parameters(method, methodAst->parameters);
@@ -166,7 +169,7 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
             methodPtr->syntax = initAst;
             methodPtr->parent = type;
             methodPtr->isConstructor = true;
-            methodPtr->modifiers = Modifier::Public;
+            methodPtr->modifiers = initAst->modifiers;
 
             auto* method = context.symbols.own(std::move(methodPtr));
             create_parameters(method, initAst->parameters);

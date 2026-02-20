@@ -24,6 +24,9 @@ enum class TokenKind
     I32Keyword,
     BoolKeyword,
 
+    Pub,
+    Static,
+    Ref,
     Fn,
     Init,
     Op,
@@ -104,6 +107,7 @@ enum class Modifier : uint16_t
     None   = 0,
     Public = 1 << 0,
     Static = 1 << 1,
+    Ref    = 1 << 2,
 };
 
 constexpr Modifier operator|(Modifier a, Modifier b)
@@ -122,6 +126,24 @@ constexpr bool has_modifier(Modifier set, Modifier flag)
 }
 
 #pragma region Category Helpers
+
+constexpr std::optional<Modifier> to_modifier(TokenKind k)
+{
+    switch (k)
+    {
+        case TokenKind::Pub:    return Modifier::Public;
+        case TokenKind::Static: return Modifier::Static;
+        case TokenKind::Ref:    return Modifier::Ref;
+        default:                return std::nullopt;
+    }
+}
+
+constexpr bool is_modifier(TokenKind k)
+{
+    return k == TokenKind::Pub ||
+           k == TokenKind::Static ||
+           k == TokenKind::Ref;
+}
 
 constexpr bool is_literal(TokenKind k)
 {
@@ -269,6 +291,9 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::I32Keyword:   return "I32Keyword";
         case TokenKind::BoolKeyword:  return "BoolKeyword";
 
+        case TokenKind::Pub:          return "Pub";
+        case TokenKind::Static:       return "Static";
+        case TokenKind::Ref:          return "Ref";
         case TokenKind::Fn:           return "Fn";
         case TokenKind::Init:         return "Init";
         case TokenKind::Op:           return "Op";
@@ -352,6 +377,10 @@ inline std::string format(Modifier mods)
     if (has_modifier(mods, Modifier::Static))
     {
         result += "static ";
+    }
+    if (has_modifier(mods, Modifier::Ref))
+    {
+        result += "ref ";
     }
     return result;
 }

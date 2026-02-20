@@ -35,6 +35,22 @@ static void skip_terminators(TokenWalker& walker)
     }
 }
 
+Modifier Parser::parse_modifiers()
+{
+    Modifier mods = Modifier::None;
+    while (auto mod = to_modifier(walker.current().kind))
+    {
+        if (has_modifier(mods, *mod))
+        {
+            error("duplicate modifier '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+        }
+        mods = mods | *mod;
+        walker.advance();
+        skip_terminators(walker);
+    }
+    return mods;
+}
+
 static bool is_initializer_list_ahead(const TokenWalker& walker)
 {
     if (walker.peek(0).kind != TokenKind::LeftBrace)
@@ -97,25 +113,50 @@ BaseDeclSyntax* Parser::parse_declaration()
 {
     skip_terminators(walker);
 
+    Span modSpan = walker.current().span;
+    Modifier mods = parse_modifiers();
+
+    BaseDeclSyntax* decl = nullptr;
+
     if (walker.check(TokenKind::Fn))
     {
-        return parse_function_decl();
+        decl = parse_function_decl();
     }
-    if (walker.check(TokenKind::Var))
+    else if (walker.check(TokenKind::Var))
     {
-        return parse_variable_decl();
+        decl = parse_variable_decl();
     }
-    if (walker.check(TokenKind::Type))
+    else if (walker.check(TokenKind::Type))
     {
-        return parse_type_decl();
+        decl = parse_type_decl();
     }
-    if (walker.check(TokenKind::Namespace))
+    else if (walker.check(TokenKind::Namespace))
     {
-        return parse_namespace_decl();
+        decl = parse_namespace_decl();
+    }
+    else
+    {
+        if (mods != Modifier::None)
+        {
+            error("modifiers must be followed by a declaration", walker.current().span);
+        }
+        walker.advance();
+        return nullptr;
     }
 
-    walker.advance();
-    return nullptr;
+    if (decl)
+    {
+        if (has_modifier(mods, Modifier::Ref) && !decl->is<TypeDeclSyntax>())
+        {
+            error("'ref' modifier can only be applied to type declarations", modSpan);
+        }
+        decl->modifiers = mods;
+        if (mods != Modifier::None)
+        {
+            decl->span = modSpan.merge(decl->span);
+        }
+    }
+    return decl;
 }
 
 FunctionDeclSyntax* Parser::parse_function_decl()
@@ -239,33 +280,40 @@ TypeDeclSyntax* Parser::parse_type_decl()
 
         while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
         {
+            Span modSpan = walker.current().span;
+            Modifier mods = parse_modifiers();
+
+            BaseDeclSyntax* member = nullptr;
+
             if (walker.check(TokenKind::Init))
             {
-                auto* initDecl = parse_init_decl();
-                if (initDecl)
-                {
-                    typeDecl->declarations.push_back(initDecl);
-                }
+                member = parse_init_decl();
             }
             else if (walker.check(TokenKind::Op))
             {
-                auto* opDecl = parse_operator_decl();
-                if (opDecl)
-                {
-                    typeDecl->declarations.push_back(opDecl);
-                }
+                member = parse_operator_decl();
             }
             else if (auto* field = parse_field_decl())
             {
-                typeDecl->declarations.push_back(field);
+                member = field;
             }
             else
             {
-                auto* declaration = parse_declaration();
-                if (declaration)
+                member = parse_declaration();
+            }
+
+            if (member)
+            {
+                if (has_modifier(mods, Modifier::Ref) && !member->is<TypeDeclSyntax>())
                 {
-                    typeDecl->declarations.push_back(declaration);
+                    error("'ref' modifier can only be applied to type declarations", modSpan);
                 }
+                member->modifiers = member->modifiers | mods;
+                if (mods != Modifier::None)
+                {
+                    member->span = modSpan.merge(member->span);
+                }
+                typeDecl->declarations.push_back(member);
             }
             skip_terminators(walker);
         }
@@ -505,6 +553,19 @@ BaseStmtSyntax* Parser::parse_statement()
     {
         return parse_return_stmt();
     }
+
+    if (is_modifier(walker.current().kind))
+    {
+        Span modSpan = walker.current().span;
+        auto* decl = parse_declaration();
+        if (decl && decl->is<VariableDeclSyntax>())
+        {
+            error("modifiers are not allowed on local variable declarations", modSpan);
+            decl->modifiers = Modifier::None;
+        }
+        return decl;
+    }
+
     if (walker.check(TokenKind::Var))
     {
         return parse_variable_decl();

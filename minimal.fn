@@ -23,13 +23,19 @@ namespace Test
         x: f32
         y: f32
     }
+
+    ref type Player
+    {
+        position: Vector2
+    }
 }
 
-type Program
+pub static type Program
 {
-    fn Main
+    pub static fn Main
     {
         var v1 = Test.Vector2(1.0, 2.0)
+        var p = Test.Player(v1)
         return 42
     }
 }

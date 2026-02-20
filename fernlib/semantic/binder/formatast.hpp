@@ -19,14 +19,9 @@ class AnnotatedAstFormatter : public DefaultAstVisitor
 
     void write_indent()
     {
-        for (int i = 0; i < indent; ++i)
-            out << "  ";
-    }
-
-    void maybe_write_indent()
-    {
         if (!suppressNextIndent)
-            write_indent();
+            for (int i = 0; i < indent; ++i)
+            out << "  ";
         suppressNextIndent = false;
     }
 
@@ -72,6 +67,14 @@ class AnnotatedAstFormatter : public DefaultAstVisitor
         out << "\n";
     }
 
+    void write_modifiers(Modifier mods)
+    {
+        if (mods != Modifier::None)
+        {
+            out << "[" << Fern::format(mods) << "] ";
+        }
+    }
+
     void write_annotation(BaseExprSyntax* expr)
     {
         TypeSymbol* type = info.get_type(expr);
@@ -107,21 +110,21 @@ class AnnotatedAstFormatter : public DefaultAstVisitor
 public:
     void visit(IdentifierExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "IdentifierExpr \"" << node->name.lexeme << "\"";
         write_annotation(node);
     }
 
     void visit(LiteralExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "LiteralExpr " << node->token.lexeme;
         write_annotation(node);
     }
 
     void visit(ParenExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "ParenExpr";
         write_annotation(node);
         out << "\n";
@@ -136,7 +139,7 @@ public:
 
     void visit(BlockExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "BlockExpr";
         write_annotation(node);
         out << "\n";
@@ -151,7 +154,7 @@ public:
 
     void visit(CallExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "CallExpr";
         write_annotation(node);
         out << "\n";
@@ -167,7 +170,7 @@ public:
 
     void visit(InitializerExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "InitializerExpr";
         write_annotation(node);
         out << "\n";
@@ -183,7 +186,7 @@ public:
 
     void visit(UnaryExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "UnaryExpr (op: " << Fern::format(node->op) << ")";
         write_annotation(node);
         out << "\n";
@@ -198,7 +201,7 @@ public:
 
     void visit(BinaryExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "BinaryExpr (op: " << Fern::format(node->op) << ")";
         write_annotation(node);
         out << "\n";
@@ -214,7 +217,7 @@ public:
 
     void visit(AssignmentExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "AssignmentExpr (op: " << Fern::format(node->op) << ")";
         write_annotation(node);
         out << "\n";
@@ -230,7 +233,7 @@ public:
 
     void visit(MemberAccessExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "MemberAccessExpr \"" << node->right.lexeme << "\"";
         write_annotation(node);
         out << "\n";
@@ -245,14 +248,14 @@ public:
 
     void visit(ThisExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "ThisExpr";
         write_annotation(node);
     }
 
     void visit(TypeExprSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "TypeExpr \"" << node->name.lexeme << "\"";
         write_annotation(node);
     }
@@ -261,7 +264,7 @@ public:
 
     void visit(ReturnStmtSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "ReturnStmt\n";
         write_indent();
         out << "{\n";
@@ -274,7 +277,7 @@ public:
 
     void visit(ExpressionStmtSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "ExpressionStmt\n";
         write_indent();
         out << "{\n";
@@ -289,7 +292,7 @@ public:
 
     void visit(ParameterDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "ParameterDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -302,7 +305,8 @@ public:
 
     void visit(VariableDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "VariableDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -316,7 +320,8 @@ public:
 
     void visit(FunctionDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "FunctionDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -331,7 +336,8 @@ public:
 
     void visit(OperatorDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "OperatorDecl (op: " << Fern::format(node->op.kind) << ")\n";
         write_indent();
         out << "{\n";
@@ -346,7 +352,8 @@ public:
 
     void visit(InitDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "InitDecl\n";
         write_indent();
         out << "{\n";
@@ -360,7 +367,8 @@ public:
 
     void visit(TypeDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "TypeDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -373,7 +381,8 @@ public:
 
     void visit(FieldDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "FieldDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -387,7 +396,7 @@ public:
 
     void visit(FieldInitSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "FieldInit \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -400,7 +409,8 @@ public:
 
     void visit(NamespaceDeclSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
+        write_modifiers(node->modifiers);
         out << "NamespaceDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
         out << "{\n";
@@ -413,7 +423,7 @@ public:
 
     void visit(RootSyntax* node) override
     {
-        maybe_write_indent();
+        write_indent();
         out << "Root\n";
         write_indent();
         out << "{\n";

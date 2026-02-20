@@ -144,6 +144,7 @@ struct BaseStmtSyntax : BaseSyntax
 
 struct BaseDeclSyntax : BaseStmtSyntax
 {
+    Modifier modifiers = Modifier::None;
     BaseDeclSyntax(int k) : BaseStmtSyntax(k) {}
 };
 

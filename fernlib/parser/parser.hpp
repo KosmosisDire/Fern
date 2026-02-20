@@ -17,6 +17,7 @@ public:
 
 private:
     const Token* expect(TokenKind kind, std::string_view message);
+    Modifier parse_modifiers();
 
     // Declarations
     BaseDeclSyntax* parse_declaration();
