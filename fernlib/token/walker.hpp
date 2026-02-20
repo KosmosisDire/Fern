@@ -29,6 +29,8 @@ public:
 
     Checkpoint checkpoint() const;
     void restore(Checkpoint cp);
+    bool check_progress(Checkpoint cp);
+    bool synchronize_to(TokenKind target);
 
     std::string format() const;
 

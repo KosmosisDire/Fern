@@ -23,9 +23,12 @@ struct LiteralExprSyntax;
 struct ParenExprSyntax;
 struct BlockExprSyntax;
 struct CallExprSyntax;
+struct InitializerExprSyntax;
+struct UnaryExprSyntax;
 struct BinaryExprSyntax;
 struct AssignmentExprSyntax;
 struct MemberAccessExprSyntax;
+struct ThisExprSyntax;
 struct TypeExprSyntax;
 
 // Statements
@@ -38,8 +41,11 @@ struct BaseDeclSyntax;
 struct ParameterDeclSyntax;
 struct VariableDeclSyntax;
 struct FunctionDeclSyntax;
+struct InitDeclSyntax;
+struct OperatorDeclSyntax;
 struct TypeDeclSyntax;
 struct FieldDeclSyntax;
+struct FieldInitSyntax;
 struct NamespaceDeclSyntax;
 
 // Root
@@ -65,9 +71,12 @@ public:
     virtual void visit(ParenExprSyntax* node) = 0;
     virtual void visit(BlockExprSyntax* node) = 0;
     virtual void visit(CallExprSyntax* node) = 0;
+    virtual void visit(InitializerExprSyntax* node) = 0;
+    virtual void visit(UnaryExprSyntax* node) = 0;
     virtual void visit(BinaryExprSyntax* node) = 0;
     virtual void visit(AssignmentExprSyntax* node) = 0;
     virtual void visit(MemberAccessExprSyntax* node) = 0;
+    virtual void visit(ThisExprSyntax* node) = 0;
     virtual void visit(TypeExprSyntax* node) = 0;
 
     // Statements
@@ -78,8 +87,11 @@ public:
     virtual void visit(ParameterDeclSyntax* node) = 0;
     virtual void visit(VariableDeclSyntax* node) = 0;
     virtual void visit(FunctionDeclSyntax* node) = 0;
+    virtual void visit(InitDeclSyntax* node) = 0;
+    virtual void visit(OperatorDeclSyntax* node) = 0;
     virtual void visit(TypeDeclSyntax* node) = 0;
     virtual void visit(FieldDeclSyntax* node) = 0;
+    virtual void visit(FieldInitSyntax* node) = 0;
     virtual void visit(NamespaceDeclSyntax* node) = 0;
 
     // Root
@@ -147,12 +159,12 @@ struct IdentifierExprSyntax : BaseExprSyntax
     Token name = Token::Invalid();
 };
 
-// LiteralF32
+// 2, 2.5, true, false
 struct LiteralExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(LiteralExpr, BaseExprSyntax)
 
-    float value = 0.0f;
+    Token token = Token::Invalid();
 };
 
 // (expr)
@@ -178,6 +190,24 @@ struct CallExprSyntax : BaseExprSyntax
 
     ExprPtr callee = nullptr;
     std::vector<ExprPtr> arguments;
+};
+
+// Vector2(1.0, 2.0) { y: 5.0 }
+struct InitializerExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(InitializerExpr, BaseExprSyntax)
+
+    ExprPtr target = nullptr;
+    std::vector<FieldInitSyntax*> initializers;
+};
+
+// -operand, +operand
+struct UnaryExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(UnaryExpr, BaseExprSyntax)
+
+    UnaryOp op = UnaryOp::Negative;
+    ExprPtr operand = nullptr;
 };
 
 // left + right
@@ -207,6 +237,14 @@ struct MemberAccessExprSyntax : BaseExprSyntax
 
     ExprPtr left = nullptr;
     Token right = Token::Invalid();
+};
+
+// this
+struct ThisExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(ThisExpr, BaseExprSyntax)
+
+    Token token = Token::Invalid();
 };
 
 // f32 (type reference)
@@ -260,12 +298,32 @@ struct VariableDeclSyntax : BaseDeclSyntax
     ExprPtr initializer = nullptr;
 };
 
-// fn name(params...): returnType { body }
+// fn name(params...)-> returnType { body }
 struct FunctionDeclSyntax : BaseDeclSyntax
 {
     SYNTAX_NODE(FunctionDecl, BaseDeclSyntax)
 
     Token name = Token::Invalid();
+    std::vector<ParameterDeclSyntax*> parameters;
+    ExprPtr returnType = nullptr;
+    BlockExprSyntax* body = nullptr;
+};
+
+// init(params...) { body }
+struct InitDeclSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(InitDecl, BaseDeclSyntax)
+
+    std::vector<ParameterDeclSyntax*> parameters;
+    BlockExprSyntax* body = nullptr;
+};
+
+// op +(params) -> Type { body }
+struct OperatorDeclSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(OperatorDecl, BaseDeclSyntax)
+
+    Token op = Token::Invalid();
     std::vector<ParameterDeclSyntax*> parameters;
     ExprPtr returnType = nullptr;
     BlockExprSyntax* body = nullptr;
@@ -287,6 +345,15 @@ struct FieldDeclSyntax : BaseDeclSyntax
     Token name = Token::Invalid();
     ExprPtr type = nullptr;
     ExprPtr initializer = nullptr;
+};
+
+// x: 3.0 (field initializer in initializer list)
+struct FieldInitSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(FieldInit, BaseDeclSyntax)
+
+    Token name = Token::Invalid();
+    ExprPtr value = nullptr;
 };
 
 struct NamespaceDeclSyntax : BaseDeclSyntax
@@ -335,6 +402,18 @@ public:
             if (arg) arg->accept(this);
     }
 
+    void visit(InitializerExprSyntax* node) override
+    {
+        if (node->target) node->target->accept(this);
+        for (auto& init : node->initializers)
+            if (init) init->accept(this);
+    }
+
+    void visit(UnaryExprSyntax* node) override
+    {
+        if (node->operand) node->operand->accept(this);
+    }
+
     void visit(BinaryExprSyntax* node) override
     {
         if (node->left) node->left->accept(this);
@@ -351,6 +430,8 @@ public:
     {
         if (node->left) node->left->accept(this);
     }
+
+    void visit(ThisExprSyntax* node) override {}
 
     void visit(TypeExprSyntax* node) override {}
 
@@ -383,11 +464,31 @@ public:
         if (node->body) node->body->accept(this);
     }
 
+    void visit(InitDeclSyntax* node) override
+    {
+        for (auto& param : node->parameters)
+            if (param) param->accept(this);
+        if (node->body) node->body->accept(this);
+    }
+
+    void visit(OperatorDeclSyntax* node) override
+    {
+        for (auto& param : node->parameters)
+            if (param) param->accept(this);
+        if (node->returnType) node->returnType->accept(this);
+        if (node->body) node->body->accept(this);
+    }
+
     void visit(TypeDeclSyntax* node) override {}
 
     void visit(FieldDeclSyntax* node) override
     {
         if (node->type) node->type->accept(this);
+    }
+
+    void visit(FieldInitSyntax* node) override
+    {
+        if (node->value) node->value->accept(this);
     }
 
     void visit(NamespaceDeclSyntax* node) override

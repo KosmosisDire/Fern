@@ -1,25 +1,36 @@
-type Test
+namespace Core
 {
-    value: Nested
-    type Nested
+    type Bool
+    {
+        value: bool
+    }
+
+    type I32
+    {
+        value: i32
+    }
+
+    type F32
     {
         value: f32
-        self: Nested
-
-        fn Inc
-        {
-            value += 1
-        }
-
-        type Nested2
-        {
-            value: f32
-            self: Nested
-
-            fn Inc
-            {
-                value += 1
-            }
-        }
     }
 }
+
+namespace Test
+{
+    type Vector2
+    {
+        x: f32
+        y: f32
+    }
+}
+
+type Program
+{
+    fn Main
+    {
+        var v1 = Test.Vector2(1.0, 2.0)
+        return 42
+    }
+}
+

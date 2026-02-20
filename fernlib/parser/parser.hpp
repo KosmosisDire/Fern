@@ -25,7 +25,14 @@ private:
     ParameterDeclSyntax* parse_parameter_decl();
     TypeDeclSyntax* parse_type_decl();
     FieldDeclSyntax* parse_field_decl();
+    InitDeclSyntax* parse_init_decl();
+    OperatorDeclSyntax* parse_operator_decl();
     NamespaceDeclSyntax* parse_namespace_decl();
+
+    // Shared parse helpers
+    void parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& span);
+    BaseExprSyntax* parse_return_type(Span& span);
+    BlockExprSyntax* parse_body(Span& span);
 
     // Statements
     BaseStmtSyntax* parse_statement();
@@ -34,9 +41,11 @@ private:
     // Expressions
     BaseExprSyntax* parse_expression();
     BaseExprSyntax* parse_assignment();
-    BaseExprSyntax* parse_binary();
+    BaseExprSyntax* parse_binary(Precedence minPrec = Precedence::None);
+    BaseExprSyntax* parse_unary();
     BaseExprSyntax* parse_primary();
     CallExprSyntax* parse_call(BaseExprSyntax* callee);
+    InitializerExprSyntax* parse_initializer(BaseExprSyntax* target);
     BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
     BaseExprSyntax* parse_postfix();
     BlockExprSyntax* parse_block();

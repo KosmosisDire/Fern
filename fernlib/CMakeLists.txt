@@ -2,6 +2,7 @@ set(FERNLIB_SOURCES
 
     # global common
     ${CMAKE_SOURCE_DIR}/common/logger.cpp
+    # ${CMAKE_SOURCE_DIR}/common/source_mutator.cpp
 
     # common
     common/compilation.cpp
@@ -19,7 +20,7 @@ set(FERNLIB_SOURCES
     source/walker.cpp
 
     # token
-    token/token.cpp
+    # token/token.cpp
     token/walker.cpp
 
     # lexer

@@ -80,6 +80,69 @@ void TokenWalker::restore(Checkpoint cp)
     tokenIndex = cp.position;
 }
 
+bool TokenWalker::check_progress(Checkpoint cp)
+{
+    if (tokenIndex == cp.position)
+    {
+        advance();
+        return false;
+    }
+    return true;
+}
+
+bool TokenWalker::synchronize_to(TokenKind target)
+{
+    int parenDepth = 0;
+    int braceDepth = 0;
+
+    while (!is_at_end())
+    {
+        TokenKind kind = current().kind;
+
+        if (kind == target && parenDepth == 0 && braceDepth == 0)
+        {
+            advance();
+            return true;
+        }
+
+        switch (kind)
+        {
+            case TokenKind::LeftParen:
+                parenDepth++;
+                break;
+            case TokenKind::RightParen:
+                if (parenDepth > 0)
+                {
+                    parenDepth--;
+                }
+                else
+                {
+                    return false;
+                }
+                break;
+            case TokenKind::LeftBrace:
+                braceDepth++;
+                break;
+            case TokenKind::RightBrace:
+                if (braceDepth > 0)
+                {
+                    braceDepth--;
+                }
+                else
+                {
+                    return false;
+                }
+                break;
+            default:
+                break;
+        }
+
+        advance();
+    }
+
+    return false;
+}
+
 
 
 #pragma region Formatable

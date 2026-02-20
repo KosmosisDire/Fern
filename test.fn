@@ -1,35 +1,385 @@
+---
+Big test file
+With lots of stuff and things
+Yay
+---
 
-
-
-namespace Utils
+namespace Math
 {
 
 type Vector2
 {
+    x: f32 = 0.0
+    y: f32 = 0.0
+
+    init
+    {
+        x = 0.0
+        y = 0.0
+    }
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    init(basis: Vector2, scale: f32)
+    {
+        x = basis.x * scale
+        y = basis.y * scale
+    }
+
+    -- Function with no parameters and no return type
+    fn IsZero
+    {
+        return x == 0.0
+    }
+
+    -- Function with parameter
+    fn Dot(other: Vector2) -> f32
+    {
+        return x * other.x + y * other.y
+    }
+
+    -- Function with return type, no parameters
+    fn LengthSquared -> f32
+    {
+        return x * x + y * y
+    }
+
+    -- All arithmetic operators
+    op +(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2(left.x + right.x, left.y + right.y)
+    }
+
+    op -(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2(left.x - right.x, left.y - right.y)
+    }
+
+    op *(left: Vector2, right: f32) -> Vector2
+    {
+        return Vector2(left.x * right, left.y * right)
+    }
+
+    op /(left: Vector2, right: f32) -> Vector2
+    {
+        return Vector2(left.x / right, left.y / right)
+    }
+
+    -- Comparison operators
+    op ==(left: Vector2, right: Vector2) -> bool
+    {
+        return left.x == right.x
+    }
+
+    op <(left: Vector2, right: Vector2) -> bool
+    {
+        return left.LengthSquared() < right.LengthSquared()
+    }
+
+    op >(left: Vector2, right: Vector2) -> bool
+    {
+        return left.LengthSquared() > right.LengthSquared()
+    }
+}
+
+type Vector3
+{
     x: f32
     y: f32
+    z: f32 = 0.0
 
-    fn Magnitude
+    init(x: f32, y: f32, z: f32)
     {
-        return Math.Sqrt(x * x + y * y)
+        this.x = x
+        this.y = y
+        this.z = z
     }
 
-    fn Add(other: Vector2) -> Vector2
+    init(v2: Vector2, z: f32)
     {
-        return Vector2
-        {
-            x = this.x + other.x
-            y = this.y + other.y
-        }
+        x = v2.x
+        y = v2.y
+        this.z = z
+    }
+
+    init
+    {
+        x = 0.0
+        y = 0.0
+        z = 0.0
+    }
+
+    fn Dot(other: Vector3) -> f32
+    {
+        return x * other.x + y * other.y + z * other.z
+    }
+
+    op +(left: Vector3, right: Vector3) -> Vector3
+    {
+        return Vector3(left.x + right.x, left.y + right.y, left.z + right.z)
+    }
+
+    op -(left: Vector3, right: Vector3) -> Vector3
+    {
+        return Vector3(left.x - right.x, left.y - right.y, left.z - right.z)
+    }
+
+    op *(left: Vector3, right: f32) -> Vector3
+    {
+        return Vector3(left.x * right, left.y * right, left.z * right)
     }
 }
 
-type Math
+}
+
+-- Type with only fields, no methods (auto-constructor)
+type Color
 {
-    static fn Inc(x: f32)
+    r: f32 = 0.0
+    g: f32 = 0.0
+    b: f32 = 0.0
+    a: f32 = 1.0
+     
+    -- Allow parameterless construction
+    init{}
+
+    -- Allow construction with all fields
+    init(r: f32, g: f32, b: f32, a: f32)
     {
-        return x + 1.0
+        this.r = r
+        this.g = g
+        this.b = b
+        this.a = a
     }
 }
 
+-- Type with a nested type-reference field
+type Particle
+{
+    position: Math.Vector3
+    velocity: Math.Vector3
+    color: Color
+    lifetime: f32 = 1.0
+    alive: bool = true
+
+    init(pos: Math.Vector3, vel: Math.Vector3)
+    {
+        position = pos
+        velocity = vel
+        color = Color(1.0, 1.0, 1.0, 1.0)
+        lifetime = 5.0
+        alive = true
+    }
+
+    fn Tick(dt: f32)
+    {
+        position = position + velocity * dt
+        lifetime -= dt
+        alive = lifetime > 0.0
+    }
+
+    fn IsAlive -> bool
+    {
+        return alive
+    }
+}
+
+-- Empty type
+type Marker
+{
+}
+
+-- Type with only an init
+type Wrapper
+{
+    value: i32
+
+    init(v: i32)
+    {
+        value = v
+    }
+}
+
+---
+Main program entry point.
+Tests many expression forms and spacing variations.
+---
+type Program
+{
+    fn Main
+    {
+        -- Basic variable declarations with type inference
+        var x = 10
+        var y = 20
+        var z = x + y
+
+        -- Explicit type annotations
+        var pi: f32 = 3.14
+        var count: i32 = 0
+        var flag: bool = true
+
+        -- Boolean literals
+        var a = true
+        var b = false
+
+        -- Unary operators
+        var neg = -42
+        var pos = +1
+        var negFloat = -3.14
+        var doubleNeg = -(-5)
+
+        -- All binary operators on integers
+        var sum = x + y
+        var diff = x - y
+        var prod = x * y
+        var quot = x / y
+        var gt = x > y
+        var lt = x < y
+        var gte = x >= y
+        var lte = x <= y
+        var eq = x == y
+
+        -- Operator precedence: multiplication before addition
+        var prec1 = 1 + 2 * 3
+        var prec2 = (1 + 2) * 3
+        var prec3 = 1 + 2 * 3 + 4
+        var prec4 = 1 * 2 + 3 * 4
+
+        -- Nested parentheses
+        var nested = ((((1 + 2))))
+
+        -- Float arithmetic
+        var f1 = 1.0 + 2.5
+        var f2 = 10.0 / 3.0
+        var f3 = 1.5 * 2.0 - 0.5
+
+        -- All compound assignment operators
+        x = 100
+        x += 10
+        x -= 5
+        x *= 2
+        x /= 3
+
+        -- Chained assignment
+        var ca = 0
+        var cb = 0
+        ca = cb = 42
+
+        -- Vector2 construction: direct call
+        var v1 = Math.Vector2(1.0, 2.0)
+
+        -- Vector2 construction: initializer list on same line
+        var v2 = Math.Vector2 { x: 3.0, y: 4.0 }
+
+        -- Vector2 construction: initializer list on new lines
+        var v3 = Math.Vector2
+        {
+            x: 5.0
+            y: 6.0
+        }
+
+        -- Constructor call followed by initializer override
+        var v4 = Math.Vector2(10.0, 20.0) { y: 99.0 }
+
+        -- Empty-arg constructor with initializer on next line
+        var v5 = Math.Vector2()
+        {
+            x: 7.0
+            y: 8.0
+        }
+
+        -- Parameterless init
+        var v6 = Math.Vector2()
+
+        -- Scaled construction from another vector
+        var v7 = Math.Vector2(v1, 3.0)
+
+        -- Chained binary with mixed calls
+        var v8 = v1 + v2 * 2.0 + Math.Vector2(1.0, 1.0)
+
+        -- Member access
+        var xVal = v1.x
+        var yVal = v1.y
+
+        -- Method calls
+        var isZero = v6.IsZero()
+        var dot = v1.Dot(v2)
+        var lenSq = v1.LengthSquared()
+
+        -- Chained member access
+        var deepX = v1.x
+
+        -- Method call on expression result
+        var dotOnExpr = Math.Vector2(1.0, 0.0)
+            .Dot(Math.Vector2(0.0, 1.0))
+
+        -- Member access across newline
+        var crossLine = v1
+            .x
+
+        -- Call across newline
+        var crossCall = v1
+            .Dot(v2)
+
+        -- Vector3 from Vector2
+        var v3d = Math.Vector3(v1, 5.0)
+
+        -- Vector3 initializer list
+        var v3d2 = Math.Vector3
+        {
+            x: 1.0
+            y: 2.0
+            z: 3.0
+        }
+
+        -- Particle with constructor
+        var origin = Math.Vector3(0.0, 0.0, 0.0)
+        var vel = Math.Vector3(1.0, 0.0, 0.0)
+        var p = Particle(origin, vel)
+        p.Tick(0.016)
+        var stillAlive = p.IsAlive()
+
+        -- Color with initializer list, comma separated
+        var red = Color { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }
+
+        -- Color with initializer list, newline separated
+        var green = Color
+        {
+            r: 0.0
+            g: 1.0
+            b: 0.0
+            a: 1.0
+        }
+
+        -- Color with constructor call
+        var blue = Color(0.0, 0.0, 1.0, 1.0)
+
+        -- Auto-constructor for field-only type
+        var white = Color(1.0, 1.0, 1.0, 1.0)
+
+        -- Wrapper type
+        var w = Wrapper(42)
+
+        -- Expression using comparison result
+        var isPositive = x > 0
+        var isNonNeg = x >= 0
+        var isSmall = x < 1000
+        var isSmallEq = x <= 1000
+        var isHundred = x == 100
+
+        -- Complex expressions mixing everything
+        var complex1 = (v1.x + v2.y) * 2.0
+        var complex2 = Math.Vector2(v1.x * 2.0, v2.y + 1.0)
+        var complex3 = v1 + v2 + Math.Vector2(0.0, 0.0)
+
+        -- Semicolons as statement terminators
+        var s1 = 1; var s2 = 2; var s3 = s1 + s2
+
+        -- Return with value
+        return 0
+    }
 }

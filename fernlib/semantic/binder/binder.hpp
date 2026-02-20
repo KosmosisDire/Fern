@@ -1,8 +1,10 @@
 #pragma once
 
+#include <unordered_set>
 #include <vector>
 
 #include "scope.hpp"
+#include <common/diagnostic.hpp>
 
 namespace Fern
 {
@@ -27,9 +29,14 @@ struct ParenExprSyntax;
 struct BlockExprSyntax;
 struct ReturnStmtSyntax;
 struct VariableDeclSyntax;
+struct UnaryExprSyntax;
+struct InitializerExprSyntax;
+struct OperatorDeclSyntax;
+struct ParameterDeclSyntax;
+struct ThisExprSyntax;
 struct TypeExprSyntax;
 
-class Binder
+class Binder : public DiagnosticSystem
 {
 public:
     Binder(SemanticContext& context);
@@ -47,11 +54,18 @@ private:
     std::vector<Scope> scopes;
     std::vector<NamedTypeSymbol*> allTypes;
     std::vector<MethodSymbol*> allMethods;
+    std::unordered_set<MethodSymbol*> boundMethods;
+    std::unordered_set<MethodSymbol*> bindingMethods;
 
 #pragma region Symbol Creation
 
     void process_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs);
     NamedTypeSymbol* create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* parent);
+
+#pragma region Method Binding
+
+    void bind_method(MethodSymbol* method);
+    TypeSymbol* get_return_type(MethodSymbol* method);
 
 #pragma region Expression Binding
 
@@ -59,9 +73,12 @@ private:
     TypeSymbol* bind_identifier(IdentifierExprSyntax* expr);
     TypeSymbol* bind_literal(LiteralExprSyntax* expr);
     TypeSymbol* bind_binary(BinaryExprSyntax* expr);
+    TypeSymbol* bind_unary(UnaryExprSyntax* expr);
     TypeSymbol* bind_assignment(AssignmentExprSyntax* expr);
     TypeSymbol* bind_call(CallExprSyntax* expr);
     TypeSymbol* bind_member_access(MemberAccessExprSyntax* expr);
+    TypeSymbol* bind_initializer(InitializerExprSyntax* expr);
+    TypeSymbol* bind_this(ThisExprSyntax* expr);
     TypeSymbol* bind_paren(ParenExprSyntax* expr);
     TypeSymbol* bind_block(BlockExprSyntax* expr);
 
@@ -82,7 +99,10 @@ private:
     Scope& current_scope();
 
     Symbol* resolve_name(std::string_view name);
+    MethodSymbol* resolve_method(NamedTypeSymbol* type, std::string_view name, const std::vector<TypeSymbol*>& argTypes);
+    MethodSymbol* resolve_constructor(NamedTypeSymbol* type, const std::vector<TypeSymbol*>& argTypes);
 
+    void create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params);
     void store_type(BaseExprSyntax* expr, TypeSymbol* type);
     void store_symbol(BaseExprSyntax* expr, Symbol* symbol);
 };

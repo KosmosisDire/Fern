@@ -13,6 +13,18 @@ TypeSymbol* SemanticContext::resolve_type_name(TokenKind kind)
             if (sym) return sym->as<TypeSymbol>();
             return nullptr;
         }
+        case TokenKind::I32Keyword:
+        {
+            Symbol* sym = symbols.lookup({"Core", "I32"});
+            if (sym) return sym->as<TypeSymbol>();
+            return nullptr;
+        }
+        case TokenKind::BoolKeyword:
+        {
+            Symbol* sym = symbols.lookup({"Core", "Bool"});
+            if (sym) return sym->as<TypeSymbol>();
+            return nullptr;
+        }
         default:
             return nullptr;
     }

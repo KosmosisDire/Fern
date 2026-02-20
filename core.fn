@@ -6,14 +6,179 @@ type F32
 {
     value: f32
 
-    fn Inc
+    op -(value: f32) -> f32
     {
-        value += 1
+        return -value
     }
 
-    fn Add(other: f32) -> f32
+    op +(value: f32) -> f32
     {
-        return value + other
+        return value
+    }
+
+    op +(left: f32, right: f32) -> f32
+    {
+        return left + right
+    }
+
+    op -(left: f32, right: f32) -> f32
+    {
+        return left - right
+    }
+
+    op *(left: f32, right: f32) -> f32
+    {
+        return left * right
+    }
+
+    op /(left: f32, right: f32) -> f32
+    {
+        return left / right
+    }
+
+    op ==(left: f32, right: f32) -> bool
+    {
+        return left == right
+    }
+
+    op >(left: f32, right: f32) -> bool
+    {
+        return left > right
+    }
+
+    op <(left: f32, right: f32) -> bool
+    {
+        return left < right
+    }
+
+    op +(left: f32, right: i32) -> f32
+    {
+        return left + right
+    }
+
+    op -(left: f32, right: i32) -> f32
+    {
+        return left - right
+    }
+
+    op *(left: f32, right: i32) -> f32
+    {
+        return left * right
+    }
+
+    op /(left: f32, right: i32) -> f32
+    {
+        return left / right
+    }
+
+    op ==(left: f32, right: i32) -> bool
+    {
+        return left == right
+    }
+
+    op >(left: f32, right: i32) -> bool
+    {
+        return left > right
+    }
+
+    op <(left: f32, right: i32) -> bool
+    {
+        return left < right
+    }
+}
+
+type I32
+{
+    value: i32
+
+    op -(value: i32) -> i32
+    {
+        return -value
+    }
+
+    op +(value: i32) -> i32
+    {
+        return value
+    }
+
+    op +(left: i32, right: i32) -> i32
+    {
+        return left + right
+    }
+
+    op -(left: i32, right: i32) -> i32
+    {
+        return left - right
+    }
+
+    op *(left: i32, right: i32) -> i32
+    {
+        return left * right
+    }
+
+    op /(left: i32, right: i32) -> i32
+    {
+        return left / right
+    }
+
+    op ==(left: i32, right: i32) -> bool
+    {
+        return left == right
+    }
+
+    op >(left: i32, right: i32) -> bool
+    {
+        return left > right
+    }
+
+    op <(left: i32, right: i32) -> bool
+    {
+        return left < right
+    }
+
+    op +(left: i32, right: f32) -> f32
+    {
+        return left + right
+    }
+
+    op -(left: i32, right: f32) -> f32
+    {
+        return left - right
+    }
+
+    op *(left: i32, right: f32) -> f32
+    {
+        return left * right
+    }
+
+    op /(left: i32, right: f32) -> f32
+    {
+        return left / right
+    }
+
+    op ==(left: i32, right: f32) -> bool
+    {
+        return left == right
+    }
+
+    op >(left: i32, right: f32) -> bool
+    {
+        return left > right
+    }
+
+    op <(left: i32, right: f32) -> bool
+    {
+        return left < right
+    }
+}
+
+type Bool
+{
+    value: bool
+
+    op ==(left: bool, right: bool) -> bool
+    {
+        return left == right
     }
 }
 

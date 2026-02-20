@@ -4,6 +4,7 @@
 #include <semantic/binder/binding.hpp>
 #include <token/token.hpp>
 
+
 namespace Fern
 {
 

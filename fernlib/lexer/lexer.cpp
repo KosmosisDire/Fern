@@ -163,14 +163,46 @@ Token Lexer::scan_token()
                 return make_token(TokenKind::AssignAdd);
             }
             return make_token(TokenKind::Plus);
-        case '=':
-            return make_token(TokenKind::Assign);
         case '-':
             if (walker.match('>'))
             {
                 return make_token(TokenKind::ThinArrow);
             }
-            return make_error_token();
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::AssignSub);
+            }
+            return make_token(TokenKind::Minus);
+        case '*':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::AssignMul);
+            }
+            return make_token(TokenKind::Star);
+        case '/':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::AssignDiv);
+            }
+            return make_token(TokenKind::Slash);
+        case '>':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::GreaterEqual);
+            }
+            return make_token(TokenKind::Greater);
+        case '<':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::LessEqual);
+            }
+            return make_token(TokenKind::Less);
+        case '=':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::Equal);
+            }
+            return make_token(TokenKind::Assign);
         default:
             return make_error_token();
     }
@@ -187,9 +219,33 @@ Token Lexer::scan_identifier()
 
     TokenKind kind = TokenKind::Identifier;
 
-    if (lexeme == "fn")
+    if (lexeme == "true" || lexeme == "false")
+    {
+        kind = TokenKind::LiteralBool;
+    }
+    else if (lexeme == "f32")
+    {
+        kind = TokenKind::F32Keyword;
+    }
+    else if (lexeme == "i32")
+    {
+        kind = TokenKind::I32Keyword;
+    }
+    else if (lexeme == "bool")
+    {
+        kind = TokenKind::BoolKeyword;
+    }
+    else if (lexeme == "fn")
     {
         kind = TokenKind::Fn;
+    }
+    else if (lexeme == "init")
+    {
+        kind = TokenKind::Init;
+    }
+    else if (lexeme == "op")
+    {
+        kind = TokenKind::Op;
     }
     else if (lexeme == "var")
     {
@@ -207,9 +263,9 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::Return;
     }
-    else if (lexeme == "f32")
+    else if (lexeme == "this")
     {
-        kind = TokenKind::F32Keyword;
+        kind = TokenKind::This;
     }
 
     return make_token(kind);
@@ -229,9 +285,10 @@ Token Lexer::scan_number()
         {
             walker.advance();
         }
+        return make_token(TokenKind::LiteralF32);
     }
 
-    return make_token(TokenKind::LiteralF32);
+    return make_token(TokenKind::LiteralI32);
 }
 
 

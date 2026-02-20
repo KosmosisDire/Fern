@@ -92,7 +92,7 @@ public:
     void visit(LiteralExprSyntax* node) override
     {
         maybe_write_indent();
-        out << node->syntax_node_name() << " (value: " << node->value << ", span: " << node->span.format() << ")";
+        out << node->syntax_node_name() << " (value: " << node->token.lexeme << ", span: " << node->span.format() << ")";
     }
 
     void visit(ParenExprSyntax* node) override
@@ -130,6 +130,33 @@ public:
         ++indent;
         write_child("callee", node->callee, true);
         write_children("arguments", node->arguments);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(InitializerExprSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("target", node->target, true);
+        write_children("initializers", node->initializers);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(UnaryExprSyntax* node) override
+    {
+        maybe_write_indent();
+        out << node->syntax_node_name() << " (op: " << Fern::format(node->op) << ", span: " << node->span.format() << ")\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("operand", node->operand);
         --indent;
         write_indent();
         out << "}";
@@ -174,6 +201,11 @@ public:
         --indent;
         write_indent();
         out << "}";
+    }
+
+    void visit(ThisExprSyntax* node) override
+    {
+        begin_node(node);
     }
 
     void visit(TypeExprSyntax* node) override
@@ -253,6 +285,36 @@ public:
         out << "}";
     }
 
+    void visit(OperatorDeclSyntax* node) override
+    {
+        maybe_write_indent();
+        out << node->syntax_node_name() << " (op: " << Fern::format(node->op.kind) << ", span: " << node->span.format() << ")";
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_children("parameters", node->parameters, true);
+        write_child("returnType", node->returnType, true);
+        write_child("body", node->body);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(InitDeclSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_children("parameters", node->parameters, true);
+        write_child("body", node->body);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
     void visit(TypeDeclSyntax* node) override
     {
         begin_node_with_name(node, node->name.lexeme);
@@ -275,6 +337,19 @@ public:
         ++indent;
         write_child("type", node->type);
         write_child("initializer", node->initializer);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(FieldInitSyntax* node) override
+    {
+        begin_node_with_name(node, node->name.lexeme);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("value", node->value);
         --indent;
         write_indent();
         out << "}";

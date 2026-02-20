@@ -1,5 +1,4 @@
 #include "parser.hpp"
-#include <charconv>
 
 namespace Fern
 {
@@ -23,12 +22,34 @@ const Token* Parser::expect(TokenKind kind, std::string_view message)
 
 #pragma region Helpers
 
-static void skip_newlines(TokenWalker& walker)
+static bool is_terminator(TokenKind kind)
 {
-    while (walker.check(TokenKind::Newline))
+    return kind == TokenKind::Newline || kind == TokenKind::Semicolon;
+}
+
+static void skip_terminators(TokenWalker& walker)
+{
+    while (is_terminator(walker.current().kind))
     {
         walker.advance();
     }
+}
+
+static bool is_initializer_list_ahead(const TokenWalker& walker)
+{
+    if (walker.peek(0).kind != TokenKind::LeftBrace)
+    {
+        return false;
+    }
+
+    size_t offset = 1;
+    while (is_terminator(walker.peek(offset).kind))
+    {
+        ++offset;
+    }
+
+    return walker.peek(offset).kind == TokenKind::Identifier &&
+           walker.peek(offset + 1).kind == TokenKind::Colon;
 }
 
 static bool is_at_statement_boundary(const TokenWalker& walker)
@@ -39,13 +60,6 @@ static bool is_at_statement_boundary(const TokenWalker& walker)
            walker.check(TokenKind::EndOfFile);
 }
 
-static float parse_float_lexeme(std::string_view lexeme)
-{
-    float value = 0.0f;
-    std::from_chars(lexeme.data(), lexeme.data() + lexeme.size(), value);
-    return value;
-}
-
 #pragma region Main Entry
 
 RootSyntax* Parser::parse()
@@ -53,7 +67,7 @@ RootSyntax* Parser::parse()
     auto* program = arena.alloc<RootSyntax>();
     Span startSpan = walker.current().span;
 
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     while (!walker.is_at_end())
     {
@@ -62,7 +76,7 @@ RootSyntax* Parser::parse()
         {
             program->declarations.push_back(decl);
         }
-        skip_newlines(walker);
+        skip_terminators(walker);
     }
 
     if (!program->declarations.empty())
@@ -81,7 +95,7 @@ RootSyntax* Parser::parse()
 
 BaseDeclSyntax* Parser::parse_declaration()
 {
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (walker.check(TokenKind::Fn))
     {
@@ -110,65 +124,22 @@ FunctionDeclSyntax* Parser::parse_function_decl()
     Span span = walker.current().span;
 
     walker.advance();
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (auto* name = expect(TokenKind::Identifier, "expected name after 'fn'"))
     {
         func->name = *name;
         span = span.merge(name->span);
     }
-    skip_newlines(walker);
+    skip_terminators(walker);
 
-    if (walker.check(TokenKind::LeftParen))
-    {
-        walker.advance();
-        skip_newlines(walker);
+    parse_parameter_list(func->parameters, span);
+    skip_terminators(walker);
 
-        while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
-        {
-            auto* param = parse_parameter_decl();
-            if (param)
-            {
-                func->parameters.push_back(param);
-            }
-            skip_newlines(walker);
+    func->returnType = parse_return_type(span);
+    skip_terminators(walker);
 
-            if (walker.check(TokenKind::Comma))
-            {
-                walker.advance();
-                skip_newlines(walker);
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        if (auto* token = expect(TokenKind::RightParen, "expected ')' after parameter list"))
-        {
-            span = span.merge(token->span);
-        }
-    }
-    skip_newlines(walker);
-
-    if (walker.check(TokenKind::ThinArrow))
-    {
-        walker.advance();
-        skip_newlines(walker);
-        func->returnType = parse_type();
-        if (func->returnType)
-        {
-            span = span.merge(func->returnType->span);
-        }
-    }
-    skip_newlines(walker);
-
-    if (walker.check(TokenKind::LeftBrace))
-    {
-        func->body = parse_block();
-        span = span.merge(func->body->span);
-    }
-
+    func->body = parse_body(span);
     func->span = span;
 
     return func;
@@ -180,7 +151,7 @@ VariableDeclSyntax* Parser::parse_variable_decl()
     Span span = walker.current().span;
 
     walker.advance();
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (auto* name = expect(TokenKind::Identifier, "expected name after 'var'"))
     {
@@ -188,10 +159,12 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         span = span.merge(name->span);
     }
 
+    skip_terminators(walker);
+
     if (walker.check(TokenKind::Colon))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
         var->type = parse_type();
         if (var->type)
         {
@@ -199,10 +172,12 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         }
     }
 
+    skip_terminators(walker);
+
     if (walker.check(TokenKind::Assign))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
         var->initializer = parse_expression();
         if (var->initializer)
         {
@@ -228,7 +203,7 @@ ParameterDeclSyntax* Parser::parse_parameter_decl()
     if (walker.check(TokenKind::Colon))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
         param->type = parse_type();
         if (param->type)
         {
@@ -247,7 +222,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
     Span span = walker.current().span;
 
     walker.advance();
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (auto* name = expect(TokenKind::Identifier, "expected name after 'type'"))
     {
@@ -255,17 +230,32 @@ TypeDeclSyntax* Parser::parse_type_decl()
         span = span.merge(name->span);
     }
 
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (walker.check(TokenKind::LeftBrace))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
 
         while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
         {
-            auto* field = parse_field_decl();
-            if (field)
+            if (walker.check(TokenKind::Init))
+            {
+                auto* initDecl = parse_init_decl();
+                if (initDecl)
+                {
+                    typeDecl->declarations.push_back(initDecl);
+                }
+            }
+            else if (walker.check(TokenKind::Op))
+            {
+                auto* opDecl = parse_operator_decl();
+                if (opDecl)
+                {
+                    typeDecl->declarations.push_back(opDecl);
+                }
+            }
+            else if (auto* field = parse_field_decl())
             {
                 typeDecl->declarations.push_back(field);
             }
@@ -277,7 +267,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
                     typeDecl->declarations.push_back(declaration);
                 }
             }
-            skip_newlines(walker);
+            skip_terminators(walker);
         }
 
         if (auto* token = expect(TokenKind::RightBrace, "expected '}' after type body"))
@@ -311,7 +301,7 @@ FieldDeclSyntax* Parser::parse_field_decl()
     if (walker.check(TokenKind::Colon))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
         field->type = parse_type();
         if (field->type)
         {
@@ -322,7 +312,7 @@ FieldDeclSyntax* Parser::parse_field_decl()
     if (walker.check(TokenKind::Assign))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
         field->initializer = parse_expression();
         if (field->initializer)
         {
@@ -335,13 +325,128 @@ FieldDeclSyntax* Parser::parse_field_decl()
     return field;
 }
 
+void Parser::parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& span)
+{
+    if (!walker.check(TokenKind::LeftParen))
+    {
+        return;
+    }
+
+    walker.advance();
+    skip_terminators(walker);
+
+    while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
+    {
+        auto* param = parse_parameter_decl();
+        if (param)
+        {
+            out.push_back(param);
+        }
+        skip_terminators(walker);
+
+        if (walker.check(TokenKind::Comma))
+        {
+            walker.advance();
+            skip_terminators(walker);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (auto* token = expect(TokenKind::RightParen, "expected ')' after parameter list"))
+    {
+        span = span.merge(token->span);
+    }
+}
+
+BaseExprSyntax* Parser::parse_return_type(Span& span)
+{
+    if (!walker.check(TokenKind::ThinArrow))
+    {
+        return nullptr;
+    }
+
+    walker.advance();
+    skip_terminators(walker);
+
+    auto* type = parse_type();
+    if (type)
+    {
+        span = span.merge(type->span);
+    }
+    return type;
+}
+
+BlockExprSyntax* Parser::parse_body(Span& span)
+{
+    if (!walker.check(TokenKind::LeftBrace))
+    {
+        return nullptr;
+    }
+
+    auto* body = parse_block();
+    span = span.merge(body->span);
+    return body;
+}
+
+InitDeclSyntax* Parser::parse_init_decl()
+{
+    auto* initDecl = arena.alloc<InitDeclSyntax>();
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_terminators(walker);
+
+    parse_parameter_list(initDecl->parameters, span);
+    skip_terminators(walker);
+
+    initDecl->body = parse_body(span);
+    initDecl->span = span;
+
+    return initDecl;
+}
+
+OperatorDeclSyntax* Parser::parse_operator_decl()
+{
+    auto* opDecl = arena.alloc<OperatorDeclSyntax>();
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_terminators(walker);
+
+    if (is_operator_token(walker.current().kind))
+    {
+        opDecl->op = walker.current();
+        span = span.merge(walker.current().span);
+        walker.advance();
+    }
+    else
+    {
+        error("expected operator symbol after 'op'", walker.current().span);
+    }
+    skip_terminators(walker);
+
+    parse_parameter_list(opDecl->parameters, span);
+    skip_terminators(walker);
+
+    opDecl->returnType = parse_return_type(span);
+    skip_terminators(walker);
+
+    opDecl->body = parse_body(span);
+    opDecl->span = span;
+
+    return opDecl;
+}
+
 NamespaceDeclSyntax* Parser::parse_namespace_decl()
 {
     auto* nsDecl = arena.alloc<NamespaceDeclSyntax>();
     Span span = walker.current().span;
 
     walker.advance();
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (auto* name = expect(TokenKind::Identifier, "expected name after 'namespace'"))
     {
@@ -349,12 +454,12 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
         span = span.merge(name->span);
     }
 
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (walker.check(TokenKind::LeftBrace))
     {
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
 
         while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
         {
@@ -363,7 +468,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
             {
                 nsDecl->declarations.push_back(decl);
             }
-            skip_newlines(walker);
+            skip_terminators(walker);
         }
 
         if (auto* token = expect(TokenKind::RightBrace, "expected '}' after namespace body"))
@@ -381,7 +486,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
                 nsDecl->declarations.push_back(decl);
                 span = span.merge(decl->span);
             }
-            skip_newlines(walker);
+            skip_terminators(walker);
         }
     }
 
@@ -394,7 +499,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
 
 BaseStmtSyntax* Parser::parse_statement()
 {
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     if (walker.check(TokenKind::Return))
     {
@@ -461,7 +566,7 @@ BaseExprSyntax* Parser::parse_assignment()
         assign->op = *assignOp;
 
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
 
         assign->value = parse_assignment();
 
@@ -478,25 +583,36 @@ BaseExprSyntax* Parser::parse_assignment()
     return left;
 }
 
-BaseExprSyntax* Parser::parse_binary()
+BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
 {
-    auto* left = parse_postfix();
+    auto* left = parse_unary();
     if (!left)
     {
         return nullptr;
     }
 
-    while (walker.check(TokenKind::Plus))
+    while (true)
     {
         auto binaryOp = to_binary_op(walker.current().kind);
-        walker.advance();
-        skip_newlines(walker);
+        if (!binaryOp)
+        {
+            break;
+        }
 
-        auto* right = parse_postfix();
+        Precedence prec = precedence_of(*binaryOp);
+        if (prec < minPrec)
+        {
+            break;
+        }
+
+        walker.advance();
+        skip_terminators(walker);
+
+        auto* right = parse_binary(static_cast<Precedence>(static_cast<int>(prec) + 1));
 
         auto* binary = arena.alloc<BinaryExprSyntax>();
         binary->left = left;
-        binary->op = binaryOp.value_or(BinaryOp::Add);
+        binary->op = *binaryOp;
         binary->right = right;
 
         Span span = left->span;
@@ -512,13 +628,41 @@ BaseExprSyntax* Parser::parse_binary()
     return left;
 }
 
+BaseExprSyntax* Parser::parse_unary()
+{
+    if (walker.check(TokenKind::Minus) || walker.check(TokenKind::Plus))
+    {
+        UnaryOp op = walker.check(TokenKind::Minus) ? UnaryOp::Negative : UnaryOp::Positive;
+        Span opSpan = walker.current().span;
+        walker.advance();
+        skip_terminators(walker);
+
+        auto* operand = parse_unary();
+
+        auto* unary = arena.alloc<UnaryExprSyntax>();
+        unary->op = op;
+        unary->operand = operand;
+
+        Span span = opSpan;
+        if (operand)
+        {
+            span = span.merge(operand->span);
+        }
+        unary->span = span;
+
+        return unary;
+    }
+
+    return parse_postfix();
+}
+
 CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
 {
     auto* call = arena.alloc<CallExprSyntax>();
     call->callee = callee;
 
     walker.advance(); // consume '('
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
     {
@@ -527,12 +671,12 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
         {
             call->arguments.push_back(arg);
         }
-        skip_newlines(walker);
+        skip_terminators(walker);
 
         if (walker.check(TokenKind::Comma))
         {
             walker.advance();
-            skip_newlines(walker);
+            skip_terminators(walker);
         }
         else
         {
@@ -545,9 +689,79 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     {
         span = span.merge(token->span);
     }
+    else
+    {
+        walker.synchronize_to(TokenKind::RightParen);
+    }
     call->span = span;
 
     return call;
+}
+
+InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
+{
+    auto* init = arena.alloc<InitializerExprSyntax>();
+    init->target = target;
+    Span span = target->span;
+
+    walker.advance();
+    skip_terminators(walker);
+
+    while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
+    {
+        auto cp = walker.checkpoint();
+
+        auto* fieldInit = arena.alloc<FieldInitSyntax>();
+        Span fieldSpan = walker.current().span;
+
+        if (auto* name = expect(TokenKind::Identifier, "expected field name in initializer"))
+        {
+            fieldInit->name = *name;
+        }
+        else
+        {
+            walker.synchronize_to(TokenKind::Comma);
+            skip_terminators(walker);
+            walker.check_progress(cp);
+            continue;
+        }
+
+        if (!expect(TokenKind::Colon, "expected ':' after field name"))
+        {
+            walker.synchronize_to(TokenKind::Comma);
+            skip_terminators(walker);
+            walker.check_progress(cp);
+            continue;
+        }
+        skip_terminators(walker);
+
+        fieldInit->value = parse_expression();
+        if (fieldInit->value)
+        {
+            fieldSpan = fieldSpan.merge(fieldInit->value->span);
+        }
+
+        fieldInit->span = fieldSpan;
+        init->initializers.push_back(fieldInit);
+        skip_terminators(walker);
+
+        if (walker.check(TokenKind::Comma))
+        {
+            walker.advance();
+            skip_terminators(walker);
+        }
+
+        walker.check_progress(cp);
+    }
+
+    if (auto* token = expect(TokenKind::RightBrace, "expected '}' after initializer list"))
+    {
+        span = span.merge(token->span);
+    }
+
+    init->span = span;
+
+    return init;
 }
 
 BaseExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
@@ -562,6 +776,11 @@ BaseExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
         memberAccess->right = *name;
         memberAccess->span = left->span.merge(name->span);
         return memberAccess;
+    }
+
+    if (is_literal(walker.current().kind))
+    {
+        walker.advance();
     }
 
     memberAccess->span = left->span;
@@ -586,6 +805,32 @@ BaseExprSyntax* Parser::parse_postfix()
         {
             left = parse_call(left);
         }
+        else if (is_initializer_list_ahead(walker))
+        {
+            left = parse_initializer(left);
+        }
+        else if (is_terminator(walker.current().kind))
+        {
+            auto cp = walker.checkpoint();
+            skip_terminators(walker);
+            if (is_initializer_list_ahead(walker))
+            {
+                left = parse_initializer(left);
+            }
+            else if (walker.check(TokenKind::Dot))
+            {
+                left = parse_member_access(left);
+            }
+            else if (walker.check(TokenKind::LeftParen))
+            {
+                left = parse_call(left);
+            }
+            else
+            {
+                walker.restore(cp);
+                break;
+            }
+        }
         else
         {
             break;
@@ -606,11 +851,11 @@ BaseExprSyntax* Parser::parse_primary()
         return ident;
     }
 
-    if (walker.check(TokenKind::LiteralF32))
+    if (is_literal(walker.current().kind))
     {
         auto* lit = arena.alloc<LiteralExprSyntax>();
-        lit->value = parse_float_lexeme(walker.current().lexeme);
-        lit->span = walker.current().span;
+        lit->token = walker.current();
+        lit->span = lit->token.span;
         walker.advance();
         return lit;
     }
@@ -621,10 +866,10 @@ BaseExprSyntax* Parser::parse_primary()
         Span span = walker.current().span;
 
         walker.advance();
-        skip_newlines(walker);
+        skip_terminators(walker);
 
         paren->expression = parse_expression();
-        skip_newlines(walker);
+        skip_terminators(walker);
 
         if (auto* token = expect(TokenKind::RightParen, "expected ')' after expression"))
         {
@@ -633,6 +878,15 @@ BaseExprSyntax* Parser::parse_primary()
         paren->span = span;
 
         return paren;
+    }
+
+    if (walker.check(TokenKind::This))
+    {
+        auto* thisExpr = arena.alloc<ThisExprSyntax>();
+        thisExpr->token = walker.current();
+        thisExpr->span = walker.current().span;
+        walker.advance();
+        return thisExpr;
     }
 
     if (walker.check(TokenKind::LeftBrace))
@@ -649,23 +903,20 @@ BlockExprSyntax* Parser::parse_block()
     Span span = walker.current().span;
 
     walker.advance();
-    skip_newlines(walker);
+    skip_terminators(walker);
 
     while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
     {
-        auto checkpoint = walker.checkpoint();
+        auto cp = walker.checkpoint();
 
         auto* stmt = parse_statement();
         if (stmt)
         {
             block->statements.push_back(stmt);
         }
-        skip_newlines(walker);
+        skip_terminators(walker);
 
-        if (walker.position() == checkpoint.position)
-        {
-            walker.advance();
-        }
+        walker.check_progress(cp);
     }
 
     if (auto* token = expect(TokenKind::RightBrace, "expected '}' after block"))
@@ -683,15 +934,7 @@ BaseExprSyntax* Parser::parse_type()
 {
     BaseExprSyntax* type = nullptr;
 
-    if (walker.check(TokenKind::F32Keyword))
-    {
-        auto* t = arena.alloc<TypeExprSyntax>();
-        t->name = walker.current();
-        t->span = walker.current().span;
-        walker.advance();
-        type = t;
-    }
-    else if (walker.check(TokenKind::Identifier))
+    if (is_type_keyword(walker.current().kind) || walker.check(TokenKind::Identifier))
     {
         auto* t = arena.alloc<TypeExprSyntax>();
         t->name = walker.current();

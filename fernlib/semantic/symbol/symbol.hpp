@@ -5,6 +5,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+#include <token/kind.hpp>
 
 namespace Fern
 {
@@ -64,7 +65,7 @@ struct Symbol
 
     std::string qualified_name() const
     {
-        if (parent)
+        if (parent && parent->parent) // Don't include global namespace
         {
             return parent->qualified_name() + "." + name;
         }
@@ -125,9 +126,14 @@ struct TypeSymbol : Symbol
 
 struct NamedTypeSymbol : TypeSymbol
 {
+    Modifier modifiers = Modifier::None;
     std::vector<FieldSymbol*> fields;
     std::vector<MethodSymbol*> methods;
     std::vector<NamedTypeSymbol*> nestedTypes;
+
+    FieldSymbol* find_field(std::string_view name);
+    MethodSymbol* find_method(std::string_view name);
+    NamedTypeSymbol* find_nested_type(std::string_view name);
 
     std::string format(int indent = 0) const override;
 };
@@ -137,6 +143,7 @@ struct NamedTypeSymbol : TypeSymbol
 struct FieldSymbol : Symbol
 {
     static constexpr SymbolKind Kind = SymbolKind::Field;
+    Modifier modifiers = Modifier::None;
     TypeSymbol* type = nullptr;
     int index = 0;
 
@@ -152,10 +159,15 @@ struct FieldSymbol : Symbol
 struct MethodSymbol : Symbol
 {
     static constexpr SymbolKind Kind = SymbolKind::Method;
+    Modifier modifiers = Modifier::None;
+    TokenKind operatorKind = TokenKind::Invalid;
+    bool isConstructor = false;
     std::vector<ParameterSymbol*> parameters;
     TypeSymbol* returnType = nullptr;
 
     MethodSymbol() { kind = Kind; }
+
+    bool is_operator() const { return operatorKind != TokenKind::Invalid; }
 
     std::string format(int indent = 0) const override;
 };

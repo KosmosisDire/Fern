@@ -60,7 +60,7 @@ void Compilation::compile()
         unit->tokens = lexer.tokenize();
 
         TokenWalker walker(unit->tokens);
-        Parser parser(walker, unit->arena);
+        Parser parser(walker, arena);
         unit->ast = parser.parse();
 
         for (const auto& diag : parser.get_diagnostics())
@@ -77,6 +77,11 @@ void Compilation::compile()
     }
     binder.resolve_all_types();
     binder.bind_all_methods();
+
+    for (const auto& diag : binder.get_diagnostics())
+    {
+        report(diag);
+    }
 
     compiled = true;
 }

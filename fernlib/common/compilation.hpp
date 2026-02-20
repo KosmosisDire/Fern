@@ -18,7 +18,6 @@ class Binder;
 
 struct CompilationUnit
 {
-    AllocArena arena;
     std::unique_ptr<SourceFile> sourceFile;
     std::vector<Token> tokens;
     RootSyntax* ast = nullptr;
@@ -47,6 +46,7 @@ public:
 private:
     std::vector<std::unique_ptr<CompilationUnit>> units;
     SemanticContext  semanticContext;
+    AllocArena arena;
     bool compiled = false;
 };
 
