@@ -279,6 +279,18 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::This;
     }
+    else if (lexeme == "if")
+    {
+        kind = TokenKind::If;
+    }
+    else if (lexeme == "else")
+    {
+        kind = TokenKind::Else;
+    }
+    else if (lexeme == "while")
+    {
+        kind = TokenKind::While;
+    }
 
     return make_token(kind);
 }

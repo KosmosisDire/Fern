@@ -35,6 +35,9 @@ enum class TokenKind
     Namespace,
     Return,
     This,
+    If,
+    Else,
+    While,
 
     Assign,
     AssignAdd,
@@ -302,6 +305,9 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Namespace:    return "Namespace";
         case TokenKind::Return:       return "Return";
         case TokenKind::This:         return "This";
+        case TokenKind::If:           return "If";
+        case TokenKind::Else:         return "Else";
+        case TokenKind::While:        return "While";
 
         case TokenKind::Assign:       return "=";
         case TokenKind::AssignAdd:    return "+=";

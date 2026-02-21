@@ -554,6 +554,16 @@ BaseStmtSyntax* Parser::parse_statement()
         return parse_return_stmt();
     }
 
+    if (walker.check(TokenKind::If))
+    {
+        return parse_if();
+    }
+
+    if (walker.check(TokenKind::While))
+    {
+        return parse_while();
+    }
+
     if (is_modifier(walker.current().kind))
     {
         Span modSpan = walker.current().span;
@@ -956,6 +966,79 @@ BaseExprSyntax* Parser::parse_primary()
     }
 
     return nullptr;
+}
+
+IfStmtSyntax* Parser::parse_if()
+{
+    auto* ifStmt = arena.alloc<IfStmtSyntax>();
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_terminators(walker);
+
+    ifStmt->condition = parse_expression();
+    skip_terminators(walker);
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        ifStmt->thenBody = parse_block();
+        span = span.merge(ifStmt->thenBody->span);
+    }
+    else
+    {
+        error("expected '{' after if condition", walker.current().span);
+    }
+
+    skip_terminators(walker);
+
+    if (walker.check(TokenKind::Else))
+    {
+        walker.advance();
+        skip_terminators(walker);
+
+        if (walker.check(TokenKind::If))
+        {
+            ifStmt->elseIf = parse_if();
+            span = span.merge(ifStmt->elseIf->span);
+        }
+        else if (walker.check(TokenKind::LeftBrace))
+        {
+            ifStmt->elseBlock = parse_block();
+            span = span.merge(ifStmt->elseBlock->span);
+        }
+        else
+        {
+            error("expected '{' or 'if' after 'else'", walker.current().span);
+        }
+    }
+
+    ifStmt->span = span;
+    return ifStmt;
+}
+
+WhileStmtSyntax* Parser::parse_while()
+{
+    auto* whileStmt = arena.alloc<WhileStmtSyntax>();
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_terminators(walker);
+
+    whileStmt->condition = parse_expression();
+    skip_terminators(walker);
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        whileStmt->body = parse_block();
+        span = span.merge(whileStmt->body->span);
+    }
+    else
+    {
+        error("expected '{' after while condition", walker.current().span);
+    }
+
+    whileStmt->span = span;
+    return whileStmt;
 }
 
 BlockExprSyntax* Parser::parse_block()

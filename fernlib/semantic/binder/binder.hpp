@@ -35,6 +35,8 @@ struct OperatorDeclSyntax;
 struct ParameterDeclSyntax;
 struct ThisExprSyntax;
 struct TypeExprSyntax;
+struct IfStmtSyntax;
+struct WhileStmtSyntax;
 
 class Binder : public DiagnosticSystem
 {
@@ -87,6 +89,8 @@ private:
     void bind_stmt(BaseStmtSyntax* stmt);
     void bind_return(ReturnStmtSyntax* stmt);
     void bind_var_decl(VariableDeclSyntax* decl);
+    void bind_if(IfStmtSyntax* stmt);
+    void bind_while(WhileStmtSyntax* stmt);
 
 #pragma region Type Resolution
 

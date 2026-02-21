@@ -50,6 +50,8 @@ private:
     BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
     BaseExprSyntax* parse_postfix();
     BlockExprSyntax* parse_block();
+    IfStmtSyntax* parse_if();
+    WhileStmtSyntax* parse_while();
 
     // Types
     BaseExprSyntax* parse_type();

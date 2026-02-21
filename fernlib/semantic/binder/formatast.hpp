@@ -288,6 +288,36 @@ public:
         out << "}";
     }
 
+    void visit(IfStmtSyntax* node) override
+    {
+        write_indent();
+        out << "IfStmt\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("condition", node->condition, true);
+        write_child("then", node->thenBody, true);
+        write_child("elseIf", node->elseIf, true);
+        write_child("else", node->elseBlock);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(WhileStmtSyntax* node) override
+    {
+        write_indent();
+        out << "WhileStmt\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("condition", node->condition, true);
+        write_child("body", node->body);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
 #pragma region Declaration Visitors
 
     void visit(ParameterDeclSyntax* node) override

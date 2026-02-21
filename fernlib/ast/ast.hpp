@@ -35,6 +35,8 @@ struct TypeExprSyntax;
 struct BaseStmtSyntax;
 struct ReturnStmtSyntax;
 struct ExpressionStmtSyntax;
+struct IfStmtSyntax;
+struct WhileStmtSyntax;
 
 // Declarations
 struct BaseDeclSyntax;
@@ -82,6 +84,8 @@ public:
     // Statements
     virtual void visit(ReturnStmtSyntax* node) = 0;
     virtual void visit(ExpressionStmtSyntax* node) = 0;
+    virtual void visit(IfStmtSyntax* node) = 0;
+    virtual void visit(WhileStmtSyntax* node) = 0;
 
     // Declarations
     virtual void visit(ParameterDeclSyntax* node) = 0;
@@ -276,7 +280,25 @@ struct ExpressionStmtSyntax : BaseStmtSyntax
     ExprPtr expression = nullptr;
 };
 
+// if condition { ... } else { ... }
+struct IfStmtSyntax : BaseStmtSyntax
+{
+    SYNTAX_NODE(IfStmt, BaseStmtSyntax)
 
+    ExprPtr condition = nullptr;
+    BlockExprSyntax* thenBody = nullptr;
+    IfStmtSyntax* elseIf = nullptr;
+    BlockExprSyntax* elseBlock = nullptr;
+};
+
+// while condition { ... }
+struct WhileStmtSyntax : BaseStmtSyntax
+{
+    SYNTAX_NODE(WhileStmt, BaseStmtSyntax)
+
+    ExprPtr condition = nullptr;
+    BlockExprSyntax* body = nullptr;
+};
 
 #pragma region Declarations
 
@@ -444,6 +466,20 @@ public:
     void visit(ExpressionStmtSyntax* node) override
     {
         if (node->expression) node->expression->accept(this);
+    }
+
+    void visit(IfStmtSyntax* node) override
+    {
+        if (node->condition) node->condition->accept(this);
+        if (node->thenBody) node->thenBody->accept(this);
+        if (node->elseIf) node->elseIf->accept(this);
+        if (node->elseBlock) node->elseBlock->accept(this);
+    }
+
+    void visit(WhileStmtSyntax* node) override
+    {
+        if (node->condition) node->condition->accept(this);
+        if (node->body) node->body->accept(this);
     }
 
     void visit(ParameterDeclSyntax* node) override

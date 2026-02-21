@@ -892,11 +892,19 @@ TypeSymbol* Binder::bind_block(BlockExprSyntax* expr)
 {
     push_scope();
 
-    // TODO: track type of last expression for block-as-expression
     TypeSymbol* lastType = nullptr;
     for (auto* stmt : expr->statements)
     {
         bind_stmt(stmt);
+
+        if (auto* exprStmt = stmt->as<ExpressionStmtSyntax>())
+        {
+            lastType = context.bindings.get_type(exprStmt->expression);
+        }
+        else
+        {
+            lastType = nullptr;
+        }
     }
 
     pop_scope();
@@ -919,9 +927,61 @@ void Binder::bind_stmt(BaseStmtSyntax* stmt)
     {
         bind_var_decl(varDecl);
     }
+    else if (auto* ifStmt = stmt->as<IfStmtSyntax>())
+    {
+        bind_if(ifStmt);
+    }
+    else if (auto* whileStmt = stmt->as<WhileStmtSyntax>())
+    {
+        bind_while(whileStmt);
+    }
     else if (auto* exprStmt = stmt->as<ExpressionStmtSyntax>())
     {
         bind_expr(exprStmt->expression);
+    }
+}
+
+void Binder::bind_if(IfStmtSyntax* stmt)
+{
+    TypeSymbol* condType = bind_expr(stmt->condition);
+
+    TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
+    if (condType && boolType && condType != boolType)
+    {
+        error("if condition must be of type 'bool', got '" +
+              condType->name + "'", stmt->condition->span);
+    }
+
+    if (stmt->thenBody)
+    {
+        bind_block(stmt->thenBody);
+    }
+
+    if (stmt->elseIf)
+    {
+        bind_if(stmt->elseIf);
+    }
+
+    if (stmt->elseBlock)
+    {
+        bind_block(stmt->elseBlock);
+    }
+}
+
+void Binder::bind_while(WhileStmtSyntax* stmt)
+{
+    TypeSymbol* condType = bind_expr(stmt->condition);
+
+    TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
+    if (condType && boolType && condType != boolType)
+    {
+        error("while condition must be of type 'bool', got '" +
+              condType->name + "'", stmt->condition->span);
+    }
+
+    if (stmt->body)
+    {
+        bind_block(stmt->body);
     }
 }
 
