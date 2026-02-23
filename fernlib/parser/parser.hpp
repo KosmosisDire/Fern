@@ -18,6 +18,8 @@ public:
 private:
     const Token* expect(TokenKind kind, std::string_view message);
     Modifier parse_modifiers();
+    void parse_attributes(std::vector<AttributeSyntax*>& out);
+    void attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs);
 
     // Declarations
     BaseDeclSyntax* parse_declaration();

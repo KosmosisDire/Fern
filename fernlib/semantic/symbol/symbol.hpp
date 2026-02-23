@@ -33,6 +33,12 @@ struct MethodSymbol;
 struct ParameterSymbol;
 struct LocalSymbol;
 
+struct ResolvedAttribute
+{
+    NamedTypeSymbol* type = nullptr;
+    MethodSymbol* constructor = nullptr;
+};
+
 enum class SymbolKind
 {
     Namespace,
@@ -62,6 +68,10 @@ struct Symbol
 
     template<typename T>
     const T* as() const { return is<T>() ? static_cast<const T*>(this) : nullptr; }
+
+    bool is_auto_generated() const { return syntax == nullptr; }
+
+    NamespaceSymbol* find_enclosing_namespace();
 
     std::string qualified_name() const
     {
@@ -127,13 +137,20 @@ struct TypeSymbol : Symbol
 struct NamedTypeSymbol : TypeSymbol
 {
     Modifier modifiers = Modifier::None;
+    bool isAttribute = false;
     std::vector<FieldSymbol*> fields;
     std::vector<MethodSymbol*> methods;
     std::vector<NamedTypeSymbol*> nestedTypes;
+    std::vector<ResolvedAttribute> resolvedAttributes;
 
     FieldSymbol* find_field(std::string_view name);
     MethodSymbol* find_method(std::string_view name);
     NamedTypeSymbol* find_nested_type(std::string_view name);
+
+    MethodSymbol* resolve_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
+    MethodSymbol* resolve_constructor(const std::vector<TypeSymbol*>& argTypes);
+    bool has_constructor_with_count(size_t count) const;
+    bool has_method_with_count(std::string_view name, size_t count) const;
 
     std::string format(int indent = 0) const override;
 };
@@ -146,14 +163,11 @@ struct FieldSymbol : Symbol
     Modifier modifiers = Modifier::None;
     TypeSymbol* type = nullptr;
     int index = 0;
+    std::vector<ResolvedAttribute> resolvedAttributes;
 
     FieldSymbol() { kind = Kind; }
 
-    std::string format(int indent = 0) const override
-    {
-        std::string typeName = type ? type->name : "?";
-        return std::string(indent, ' ') + name + ": " + typeName;
-    }
+    std::string format(int indent = 0) const override;
 };
 
 struct MethodSymbol : Symbol
@@ -164,6 +178,7 @@ struct MethodSymbol : Symbol
     bool isConstructor = false;
     std::vector<ParameterSymbol*> parameters;
     TypeSymbol* returnType = nullptr;
+    std::vector<ResolvedAttribute> resolvedAttributes;
 
     MethodSymbol() { kind = Kind; }
 

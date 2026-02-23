@@ -27,6 +27,7 @@ enum class TokenKind
     Pub,
     Static,
     Ref,
+    Attr,
     Fn,
     Init,
     Op,
@@ -54,6 +55,7 @@ enum class TokenKind
     LessEqual,
     Equal,
 
+    At,
     Colon,
     ThinArrow,
     LeftParen,
@@ -111,6 +113,7 @@ enum class Modifier : uint16_t
     Public = 1 << 0,
     Static = 1 << 1,
     Ref    = 1 << 2,
+    Attr   = 1 << 3,
 };
 
 constexpr Modifier operator|(Modifier a, Modifier b)
@@ -137,6 +140,7 @@ constexpr std::optional<Modifier> to_modifier(TokenKind k)
         case TokenKind::Pub:    return Modifier::Public;
         case TokenKind::Static: return Modifier::Static;
         case TokenKind::Ref:    return Modifier::Ref;
+        case TokenKind::Attr:   return Modifier::Attr;
         default:                return std::nullopt;
     }
 }
@@ -145,7 +149,8 @@ constexpr bool is_modifier(TokenKind k)
 {
     return k == TokenKind::Pub ||
            k == TokenKind::Static ||
-           k == TokenKind::Ref;
+           k == TokenKind::Ref ||
+           k == TokenKind::Attr;
 }
 
 constexpr bool is_literal(TokenKind k)
@@ -297,6 +302,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Pub:          return "Pub";
         case TokenKind::Static:       return "Static";
         case TokenKind::Ref:          return "Ref";
+        case TokenKind::Attr:         return "Attr";
         case TokenKind::Fn:           return "Fn";
         case TokenKind::Init:         return "Init";
         case TokenKind::Op:           return "Op";
@@ -324,6 +330,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::LessEqual:    return "<=";
         case TokenKind::Equal:        return "==";
 
+        case TokenKind::At:           return "@";
         case TokenKind::Colon:        return ":";
         case TokenKind::ThinArrow:    return "->";
         case TokenKind::LeftParen:    return "(";
@@ -387,6 +394,14 @@ inline std::string format(Modifier mods)
     if (has_modifier(mods, Modifier::Ref))
     {
         result += "ref ";
+    }
+    if (has_modifier(mods, Modifier::Attr))
+    {
+        result += "attr ";
+    }
+    if (!result.empty())
+    {
+        result.pop_back();
     }
     return result;
 }

@@ -58,7 +58,11 @@ using ExprPtr = BaseExprSyntax*;
 using StmtPtr = BaseStmtSyntax*;
 using DeclPtr = BaseDeclSyntax*;
 
-
+struct AttributeSyntax
+{
+    ExprPtr value = nullptr;
+    Span span;
+};
 
 #pragma region DefaultAstVisitor
 
@@ -149,6 +153,7 @@ struct BaseStmtSyntax : BaseSyntax
 struct BaseDeclSyntax : BaseStmtSyntax
 {
     Modifier modifiers = Modifier::None;
+    std::vector<AttributeSyntax*> attributes;
     BaseDeclSyntax(int k) : BaseStmtSyntax(k) {}
 };
 
@@ -383,7 +388,7 @@ struct NamespaceDeclSyntax : BaseDeclSyntax
 {
     SYNTAX_NODE(NamespaceDecl, BaseDeclSyntax)
 
-    bool is_file_level = false;
+    bool isFileLevel = false;
     Token name = Token::Invalid();
     std::vector<DeclPtr> declarations;
 };

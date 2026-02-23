@@ -39,11 +39,114 @@ NamedTypeSymbol* NamedTypeSymbol::find_nested_type(std::string_view name)
     return nullptr;
 }
 
+static bool match_parameters(const std::vector<ParameterSymbol*>& params, const std::vector<TypeSymbol*>& argTypes)
+{
+    if (params.size() != argTypes.size())
+    {
+        return false;
+    }
+    for (size_t i = 0; i < argTypes.size(); ++i)
+    {
+        if (argTypes[i] && params[i]->type && argTypes[i] != params[i]->type)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+MethodSymbol* NamedTypeSymbol::resolve_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
+{
+    for (auto* method : methods)
+    {
+        if (method->name == name && match_parameters(method->parameters, argTypes))
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
+MethodSymbol* NamedTypeSymbol::resolve_constructor(const std::vector<TypeSymbol*>& argTypes)
+{
+    for (auto* method : methods)
+    {
+        if (method->isConstructor && match_parameters(method->parameters, argTypes))
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
+bool NamedTypeSymbol::has_constructor_with_count(size_t count) const
+{
+    for (auto* method : methods)
+    {
+        if (method->isConstructor && method->parameters.size() == count)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool NamedTypeSymbol::has_method_with_count(std::string_view name, size_t count) const
+{
+    for (auto* method : methods)
+    {
+        if (method->name == name && method->parameters.size() == count)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+NamespaceSymbol* Symbol::find_enclosing_namespace()
+{
+    for (auto* s = this; s != nullptr; s = s->parent)
+    {
+        if (auto* ns = s->as<NamespaceSymbol>())
+        {
+            return ns;
+        }
+    }
+    return nullptr;
+}
+
+static void format_attributes(std::ostringstream& ss, const std::vector<ResolvedAttribute>& attrs, std::string_view pad)
+{
+    for (const auto& attr : attrs)
+    {
+        if (attr.type)
+        {
+            ss << pad << "@" << attr.type->qualified_name() << "\n";
+        }
+    }
+}
+
+std::string FieldSymbol::format(int indent) const
+{
+    std::ostringstream ss;
+    std::string pad(indent, ' ');
+    format_attributes(ss, resolvedAttributes, pad);
+    std::string typeName = type ? type->name : "?";
+    ss << pad << name << ": " << typeName;
+    return ss.str();
+}
+
 std::string NamedTypeSymbol::format(int indent) const
 {
     std::ostringstream ss;
     std::string pad(indent, ' ');
-    ss << pad << Fern::format(modifiers) << "type " << name;
+    format_attributes(ss, resolvedAttributes, pad);
+    ss << pad << Fern::format(modifiers);
+    if (modifiers != Modifier::None)
+    {
+        ss << " ";
+    }
+    ss << "type " << name;
     if (!fields.empty() || !methods.empty() || !nestedTypes.empty())
     {
         ss << "\n" << pad << "{\n";
@@ -70,7 +173,12 @@ std::string MethodSymbol::format(int indent) const
     std::string pad(indent, ' ');
     std::string retName = returnType ? returnType->name : "void";
 
+    format_attributes(ss, resolvedAttributes, pad);
     ss << pad << Fern::format(modifiers);
+    if (modifiers != Modifier::None)
+    {
+        ss << " ";
+    }
 
     if (isConstructor)
     {

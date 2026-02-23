@@ -35,6 +35,29 @@ static void skip_terminators(TokenWalker& walker)
     }
 }
 
+void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
+{
+    while (walker.check(TokenKind::At))
+    {
+        Span span = walker.current().span;
+        walker.advance();
+
+        auto* value = parse_postfix();
+        if (value)
+        {
+            auto* attr = arena.alloc<AttributeSyntax>();
+            attr->value = value;
+            attr->span = span.merge(value->span);
+            out.push_back(attr);
+        }
+        else
+        {
+            error("expected attribute name after '@'", span);
+        }
+        skip_terminators(walker);
+    }
+}
+
 Modifier Parser::parse_modifiers()
 {
     Modifier mods = Modifier::None;
@@ -49,6 +72,28 @@ Modifier Parser::parse_modifiers()
         skip_terminators(walker);
     }
     return mods;
+}
+
+void Parser::attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs)
+{
+    if (has_modifier(mods, Modifier::Ref) && !decl->is<TypeDeclSyntax>())
+    {
+        error("'ref' modifier can only be applied to type declarations", modSpan);
+    }
+    if (has_modifier(mods, Modifier::Attr) && !decl->is<TypeDeclSyntax>())
+    {
+        error("'attr' modifier can only be applied to type declarations", modSpan);
+    }
+    decl->modifiers = decl->modifiers | mods;
+    decl->attributes = std::move(attrs);
+    if (mods != Modifier::None)
+    {
+        decl->span = modSpan.merge(decl->span);
+    }
+    if (!decl->attributes.empty())
+    {
+        decl->span = decl->attributes.front()->span.merge(decl->span);
+    }
 }
 
 static bool is_initializer_list_ahead(const TokenWalker& walker)
@@ -113,6 +158,9 @@ BaseDeclSyntax* Parser::parse_declaration()
 {
     skip_terminators(walker);
 
+    std::vector<AttributeSyntax*> attrs;
+    parse_attributes(attrs);
+
     Span modSpan = walker.current().span;
     Modifier mods = parse_modifiers();
 
@@ -136,6 +184,10 @@ BaseDeclSyntax* Parser::parse_declaration()
     }
     else
     {
+        if (!attrs.empty())
+        {
+            error("expected a declaration", walker.current().span);
+        }
         if (mods != Modifier::None)
         {
             error("modifiers must be followed by a declaration", walker.current().span);
@@ -146,15 +198,7 @@ BaseDeclSyntax* Parser::parse_declaration()
 
     if (decl)
     {
-        if (has_modifier(mods, Modifier::Ref) && !decl->is<TypeDeclSyntax>())
-        {
-            error("'ref' modifier can only be applied to type declarations", modSpan);
-        }
-        decl->modifiers = mods;
-        if (mods != Modifier::None)
-        {
-            decl->span = modSpan.merge(decl->span);
-        }
+        attach_declaration_metadata(decl, mods, modSpan, attrs);
     }
     return decl;
 }
@@ -280,6 +324,9 @@ TypeDeclSyntax* Parser::parse_type_decl()
 
         while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
         {
+            std::vector<AttributeSyntax*> memberAttrs;
+            parse_attributes(memberAttrs);
+
             Span modSpan = walker.current().span;
             Modifier mods = parse_modifiers();
 
@@ -304,16 +351,12 @@ TypeDeclSyntax* Parser::parse_type_decl()
 
             if (member)
             {
-                if (has_modifier(mods, Modifier::Ref) && !member->is<TypeDeclSyntax>())
-                {
-                    error("'ref' modifier can only be applied to type declarations", modSpan);
-                }
-                member->modifiers = member->modifiers | mods;
-                if (mods != Modifier::None)
-                {
-                    member->span = modSpan.merge(member->span);
-                }
+                attach_declaration_metadata(member, mods, modSpan, memberAttrs);
                 typeDecl->declarations.push_back(member);
+            }
+            else if (!memberAttrs.empty())
+            {
+                error("expected a declaration", walker.current().span);
             }
             skip_terminators(walker);
         }
@@ -526,6 +569,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
     }
     else
     {
+        nsDecl->isFileLevel = true;
         while (!walker.is_at_end())
         {
             auto* decl = parse_declaration();
@@ -564,14 +608,22 @@ BaseStmtSyntax* Parser::parse_statement()
         return parse_while();
     }
 
-    if (is_modifier(walker.current().kind))
+    if (walker.check(TokenKind::At) || is_modifier(walker.current().kind))
     {
         Span modSpan = walker.current().span;
         auto* decl = parse_declaration();
         if (decl && decl->is<VariableDeclSyntax>())
         {
-            error("modifiers are not allowed on local variable declarations", modSpan);
-            decl->modifiers = Modifier::None;
+            if (!decl->attributes.empty())
+            {
+                error("attributes are not allowed on local variable declarations", decl->attributes.front()->span);
+                decl->attributes.clear();
+            }
+            if (decl->modifiers != Modifier::None)
+            {
+                error("modifiers are not allowed on local variable declarations", modSpan);
+                decl->modifiers = Modifier::None;
+            }
         }
         return decl;
     }

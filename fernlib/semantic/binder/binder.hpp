@@ -13,6 +13,7 @@ struct SemanticContext;
 struct RootSyntax;
 struct NamespaceDeclSyntax;
 struct TypeDeclSyntax;
+struct BaseDeclSyntax;
 struct NamespaceSymbol;
 struct MethodSymbol;
 struct NamedTypeSymbol;
@@ -37,6 +38,7 @@ struct ThisExprSyntax;
 struct TypeExprSyntax;
 struct IfStmtSyntax;
 struct WhileStmtSyntax;
+struct ResolvedAttribute;
 
 class Binder : public DiagnosticSystem
 {
@@ -45,6 +47,7 @@ public:
 
     void bind_ast(RootSyntax* ast);
     void resolve_all_types();
+    void resolve_all_attributes();
     void bind_all_methods();
 
 private:
@@ -92,6 +95,10 @@ private:
     void bind_if(IfStmtSyntax* stmt);
     void bind_while(WhileStmtSyntax* stmt);
 
+#pragma region Attribute Resolution
+
+    void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
+
 #pragma region Type Resolution
 
     TypeSymbol* resolve_type_expr(BaseExprSyntax* expr);
@@ -103,8 +110,6 @@ private:
     Scope& current_scope();
 
     Symbol* resolve_name(std::string_view name);
-    MethodSymbol* resolve_method(NamedTypeSymbol* type, std::string_view name, const std::vector<TypeSymbol*>& argTypes);
-    MethodSymbol* resolve_constructor(NamedTypeSymbol* type, const std::vector<TypeSymbol*>& argTypes);
 
     void create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params);
     void store_type(BaseExprSyntax* expr, TypeSymbol* type);

@@ -76,6 +76,7 @@ void Compilation::compile()
         binder.bind_ast(unit->ast);
     }
     binder.resolve_all_types();
+    binder.resolve_all_attributes();
     binder.bind_all_methods();
 
     for (const auto& diag : binder.get_diagnostics())

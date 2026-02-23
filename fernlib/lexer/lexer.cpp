@@ -157,6 +157,8 @@ Token Lexer::scan_token()
             return make_token(TokenKind::Comma);
         case '.':
             return make_token(TokenKind::Dot);
+        case '@':
+            return make_token(TokenKind::At);
         case '+':
             if (walker.match('='))
             {
@@ -246,6 +248,10 @@ Token Lexer::scan_identifier()
     else if (lexeme == "ref")
     {
         kind = TokenKind::Ref;
+    }
+    else if (lexeme == "attr")
+    {
+        kind = TokenKind::Attr;
     }
     else if (lexeme == "fn")
     {

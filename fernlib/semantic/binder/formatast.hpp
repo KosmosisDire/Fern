@@ -75,6 +75,21 @@ class AnnotatedAstFormatter : public DefaultAstVisitor
         }
     }
 
+    void write_attributes(const std::vector<AttributeSyntax*>& attrs)
+    {
+        for (auto* attr : attrs)
+        {
+            out << "@";
+            if (attr->value)
+            {
+                suppressNextIndent = true;
+                attr->value->accept(this);
+            }
+            out << "\n";
+            write_indent();
+        }
+    }
+
     void write_annotation(BaseExprSyntax* expr)
     {
         TypeSymbol* type = info.get_type(expr);
@@ -336,6 +351,7 @@ public:
     void visit(VariableDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "VariableDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
@@ -351,6 +367,7 @@ public:
     void visit(FunctionDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "FunctionDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
@@ -367,6 +384,7 @@ public:
     void visit(OperatorDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "OperatorDecl (op: " << Fern::format(node->op.kind) << ")\n";
         write_indent();
@@ -383,6 +401,7 @@ public:
     void visit(InitDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "InitDecl\n";
         write_indent();
@@ -398,6 +417,7 @@ public:
     void visit(TypeDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "TypeDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
@@ -412,6 +432,7 @@ public:
     void visit(FieldDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "FieldDecl \"" << node->name.lexeme << "\"\n";
         write_indent();
@@ -440,6 +461,7 @@ public:
     void visit(NamespaceDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << "NamespaceDecl \"" << node->name.lexeme << "\"\n";
         write_indent();

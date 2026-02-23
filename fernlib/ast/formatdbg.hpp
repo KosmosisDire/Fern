@@ -72,6 +72,21 @@ class AstDebugFormatter : public DefaultAstVisitor
         }
     }
 
+    void write_attributes(const std::vector<AttributeSyntax*>& attrs)
+    {
+        for (auto* attr : attrs)
+        {
+            out << "@";
+            if (attr->value)
+            {
+                suppressNextIndent = true;
+                attr->value->accept(this);
+            }
+            out << "\n";
+            write_indent();
+        }
+    }
+
     void begin_node(BaseSyntax* node)
     {
         write_indent();
@@ -292,6 +307,7 @@ public:
     void visit(VariableDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
         write_indent();
@@ -307,6 +323,7 @@ public:
     void visit(FunctionDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
         write_indent();
@@ -323,6 +340,7 @@ public:
     void visit(OperatorDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (op: " << Fern::format(node->op.kind) << ", span: " << node->span.format() << ")\n";
         write_indent();
@@ -339,6 +357,7 @@ public:
     void visit(InitDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (span: " << node->span.format() << ")\n";
         write_indent();
@@ -354,6 +373,7 @@ public:
     void visit(TypeDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
         write_indent();
@@ -368,6 +388,7 @@ public:
     void visit(FieldDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
         write_indent();
@@ -396,6 +417,7 @@ public:
     void visit(NamespaceDeclSyntax* node) override
     {
         write_indent();
+        write_attributes(node->attributes);
         write_modifiers(node->modifiers);
         out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
         write_indent();
