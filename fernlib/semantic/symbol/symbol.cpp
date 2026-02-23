@@ -79,6 +79,39 @@ MethodSymbol* NamedTypeSymbol::resolve_constructor(const std::vector<TypeSymbol*
     return nullptr;
 }
 
+MethodSymbol* NamedTypeSymbol::find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType)
+{
+    for (auto* method : methods)
+    {
+        if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 2)
+        {
+            continue;
+        }
+        if ((!leftType || method->parameters[0]->type == leftType) &&
+            (!rightType || method->parameters[1]->type == rightType))
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
+MethodSymbol* NamedTypeSymbol::find_unary_operator(TokenKind opKind, TypeSymbol* operandType)
+{
+    for (auto* method : methods)
+    {
+        if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 1)
+        {
+            continue;
+        }
+        if (!operandType || method->parameters[0]->type == operandType)
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
 bool NamedTypeSymbol::has_constructor_with_count(size_t count) const
 {
     for (auto* method : methods)

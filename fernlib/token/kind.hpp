@@ -17,13 +17,17 @@ enum class TokenKind
     Newline,
     Identifier,
 
+    // Literals
     LiteralF32,
     LiteralI32,
     LiteralBool,
+
+    // Type keywords
     F32Keyword,
     I32Keyword,
     BoolKeyword,
 
+    // Keywords
     Pub,
     Static,
     Ref,
@@ -40,21 +44,33 @@ enum class TokenKind
     Else,
     While,
 
+    // Assignment operators
     Assign,
     AssignAdd,
     AssignSub,
     AssignMul,
     AssignDiv,
+
+    // Arithmetic operators
     Plus,
     Minus,
     Star,
     Slash,
+
+    // Comparison operators
     Greater,
     Less,
     GreaterEqual,
     LessEqual,
     Equal,
+    NotEqual,
 
+    // Logical operators
+    And,
+    Or,
+    Not,
+
+    // Other symbols
     At,
     Colon,
     ThinArrow,
@@ -81,21 +97,26 @@ enum class BinaryOp
     GreaterEqual,
     LessEqual,
     Equal,
+    NotEqual,
+    And,
+    Or,
 };
 
 enum class Precedence
 {
     None = 0,
+    Or,
+    And,
     Comparison,
     Addition,
-    Multiplication,
-    Unary,
+    Multiplication
 };
 
 enum class UnaryOp
 {
     Negative,
     Positive,
+    Not,
 };
 
 enum class AssignOp
@@ -175,7 +196,13 @@ constexpr bool is_operator_token(TokenKind k)
            k == TokenKind::Slash ||
            k == TokenKind::Greater ||
            k == TokenKind::Less ||
-           k == TokenKind::Equal;
+           k == TokenKind::GreaterEqual ||
+           k == TokenKind::LessEqual ||
+           k == TokenKind::Equal ||
+           k == TokenKind::NotEqual ||
+           k == TokenKind::And ||
+           k == TokenKind::Or ||
+           k == TokenKind::Not;
 }
 
 constexpr TokenKind binary_op_to_token(BinaryOp op)
@@ -191,6 +218,9 @@ constexpr TokenKind binary_op_to_token(BinaryOp op)
         case BinaryOp::GreaterEqual: return TokenKind::GreaterEqual;
         case BinaryOp::LessEqual:    return TokenKind::LessEqual;
         case BinaryOp::Equal:        return TokenKind::Equal;
+        case BinaryOp::NotEqual:     return TokenKind::NotEqual;
+        case BinaryOp::And:          return TokenKind::And;
+        case BinaryOp::Or:           return TokenKind::Or;
     }
 }
 
@@ -200,6 +230,7 @@ constexpr TokenKind unary_op_to_token(UnaryOp op)
     {
         case UnaryOp::Negative: return TokenKind::Minus;
         case UnaryOp::Positive: return TokenKind::Plus;
+        case UnaryOp::Not:      return TokenKind::Not;
     }
 }
 
@@ -238,6 +269,12 @@ constexpr std::optional<BinaryOp> to_binary_op(TokenKind k)
             return BinaryOp::LessEqual;
         case TokenKind::Equal:
             return BinaryOp::Equal;
+        case TokenKind::NotEqual:
+            return BinaryOp::NotEqual;
+        case TokenKind::And:
+            return BinaryOp::And;
+        case TokenKind::Or:
+            return BinaryOp::Or;
         default:
             return std::nullopt;
     }
@@ -247,11 +284,16 @@ constexpr Precedence precedence_of(BinaryOp op)
 {
     switch (op)
     {
+        case BinaryOp::Or:
+            return Precedence::Or;
+        case BinaryOp::And:
+            return Precedence::And;
         case BinaryOp::Greater:
         case BinaryOp::Less:
         case BinaryOp::GreaterEqual:
         case BinaryOp::LessEqual:
         case BinaryOp::Equal:
+        case BinaryOp::NotEqual:
             return Precedence::Comparison;
         case BinaryOp::Add:
         case BinaryOp::Sub:
@@ -259,6 +301,17 @@ constexpr Precedence precedence_of(BinaryOp op)
         case BinaryOp::Mul:
         case BinaryOp::Div:
             return Precedence::Multiplication;
+    }
+}
+
+constexpr std::optional<UnaryOp> to_unary_op(TokenKind k)
+{
+    switch (k)
+    {
+        case TokenKind::Minus: return UnaryOp::Negative;
+        case TokenKind::Plus:  return UnaryOp::Positive;
+        case TokenKind::Not:   return UnaryOp::Not;
+        default:               return std::nullopt;
     }
 }
 
@@ -329,6 +382,10 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::GreaterEqual: return ">=";
         case TokenKind::LessEqual:    return "<=";
         case TokenKind::Equal:        return "==";
+        case TokenKind::NotEqual:     return "!=";
+        case TokenKind::And:          return "&&";
+        case TokenKind::Or:           return "||";
+        case TokenKind::Not:          return "!";
 
         case TokenKind::At:           return "@";
         case TokenKind::Colon:        return ":";
@@ -347,15 +404,18 @@ constexpr std::string_view format(BinaryOp op)
 {
     switch (op)
     {
-        case BinaryOp::Add:          return "Add";
-        case BinaryOp::Sub:          return "Sub";
-        case BinaryOp::Mul:          return "Mul";
-        case BinaryOp::Div:          return "Div";
-        case BinaryOp::Greater:      return "Greater";
-        case BinaryOp::Less:         return "Less";
-        case BinaryOp::GreaterEqual: return "GreaterEqual";
-        case BinaryOp::LessEqual:    return "LessEqual";
-        case BinaryOp::Equal:        return "Equal";
+        case BinaryOp::Add:          return "+";
+        case BinaryOp::Sub:          return "-";
+        case BinaryOp::Mul:          return "*";
+        case BinaryOp::Div:          return "/";
+        case BinaryOp::Greater:      return ">";
+        case BinaryOp::Less:         return "<";
+        case BinaryOp::GreaterEqual: return ">=";
+        case BinaryOp::LessEqual:    return "<=";
+        case BinaryOp::Equal:        return "==";
+        case BinaryOp::NotEqual:     return "!=";
+        case BinaryOp::And:          return "&&";
+        case BinaryOp::Or:           return "||";
     }
 }
 
@@ -363,8 +423,9 @@ constexpr std::string_view format(UnaryOp op)
 {
     switch (op)
     {
-        case UnaryOp::Negative:   return "Negative";
-        case UnaryOp::Positive: return "Positive";
+        case UnaryOp::Negative:     return "-";
+        case UnaryOp::Positive:     return "+";
+        case UnaryOp::Not:          return "!";
     }
 }
 
@@ -372,11 +433,11 @@ constexpr std::string_view format(AssignOp op)
 {
     switch (op)
     {
-        case AssignOp::Simple: return "Simple";
-        case AssignOp::Add:    return "Add";
-        case AssignOp::Sub:    return "Sub";
-        case AssignOp::Mul:    return "Mul";
-        case AssignOp::Div:    return "Div";
+        case AssignOp::Simple: return "=";
+        case AssignOp::Add:    return "+=";
+        case AssignOp::Sub:    return "-=";
+        case AssignOp::Mul:    return "*=";
+        case AssignOp::Div:    return "/=";
     }
 }
 

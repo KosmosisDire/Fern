@@ -149,6 +149,8 @@ struct NamedTypeSymbol : TypeSymbol
 
     MethodSymbol* resolve_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
     MethodSymbol* resolve_constructor(const std::vector<TypeSymbol*>& argTypes);
+    MethodSymbol* find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
+    MethodSymbol* find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
     bool has_constructor_with_count(size_t count) const;
     bool has_method_with_count(std::string_view name, size_t count) const;
 

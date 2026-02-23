@@ -721,19 +721,14 @@ TypeSymbol* Binder::bind_unary(UnaryExprSyntax* expr)
     if (namedType)
     {
         TokenKind opToken = unary_op_to_token(expr->op);
-        for (auto* method : namedType->methods)
+        if (auto* method = namedType->find_unary_operator(opToken, operandType))
         {
-            if (method->operatorKind == opToken &&
-                method->parameters.size() == 1 &&
-                method->parameters[0]->type == namedType)
-            {
-                store_type(expr, method->returnType);
-                return method->returnType;
-            }
+            store_type(expr, method->returnType);
+            return method->returnType;
         }
 
         error("operator '" + std::string(Fern::format(opToken)) +
-              "' cannot be applied to operand of type '" + namedType->name + "'", expr->span);
+              "' cannot be applied to value of type '" + namedType->name + "'", expr->span);
     }
 
     store_type(expr, operandType);
@@ -747,8 +742,20 @@ TypeSymbol* Binder::bind_binary(BinaryExprSyntax* expr)
 
     TokenKind opToken = binary_op_to_token(expr->op);
 
-    // Derived operators: >= is > + ==, <= is < + ==
-    bool isDerived = (opToken == TokenKind::GreaterEqual || opToken == TokenKind::LessEqual);
+    auto* namedType = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
+    if (!namedType)
+    {
+        store_type(expr, leftType);
+        return leftType;
+    }
+
+    if (auto* method = namedType->find_binary_operator(opToken, leftType, rightType))
+    {
+        store_type(expr, method->returnType);
+        return method->returnType;
+    }
+
+    // Derived operators: >= needs > and ==, <= needs < and ==, != needs ==
     TokenKind baseToken = TokenKind::Invalid;
     if (opToken == TokenKind::GreaterEqual)
     {
@@ -758,59 +765,53 @@ TypeSymbol* Binder::bind_binary(BinaryExprSyntax* expr)
     {
         baseToken = TokenKind::Less;
     }
-
-    auto* namedType = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
-    if (namedType)
+    else if (opToken == TokenKind::NotEqual)
     {
-        for (auto* method : namedType->methods)
+        baseToken = TokenKind::Equal;
+    }
+
+    if (baseToken != TokenKind::Invalid)
+    {
+        bool hasBase = namedType->find_binary_operator(baseToken, leftType, rightType) != nullptr;
+        bool hasEqual = (baseToken == TokenKind::Equal) || namedType->find_binary_operator(TokenKind::Equal, leftType, rightType) != nullptr;
+
+        if (hasBase && hasEqual)
         {
-            if (!method->is_operator())
-            {
-                continue;
-            }
-
-            if (method->operatorKind != opToken &&
-                !(isDerived && (method->operatorKind == baseToken || method->operatorKind == TokenKind::Equal)))
-            {
-                continue;
-            }
-
-            if (method->parameters.size() != 2)
-            {
-                continue;
-            }
-
-            bool leftMatch = method->parameters[0]->type == leftType || !leftType;
-            bool rightMatch = method->parameters[1]->type == rightType || !rightType;
-            if (leftMatch && rightMatch)
-            {
-                if (method->operatorKind == opToken)
-                {
-                    store_type(expr, method->returnType);
-                    return method->returnType;
-                }
-                if (isDerived)
-                {
-                    TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
-                    store_type(expr, boolType);
-                    return boolType;
-                }
-            }
+            TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
+            store_type(expr, boolType);
+            return boolType;
         }
 
         std::string leftName = leftType ? leftType->name : "?";
         std::string rightName = rightType ? rightType->name : "?";
-        if (isDerived)
+        std::string msg = "operator '" + std::string(Fern::format(opToken)) +
+              "' cannot be applied to values of type '" + leftName + "' and '" + rightName + "'";
+
+        if (baseToken == TokenKind::Equal)
         {
-            error("operator '" + std::string(Fern::format(opToken)) +
-                  "' requires '" + namedType->name + "' to define both '" +
-                  std::string(Fern::format(baseToken)) + "' and '==' operators", expr->span);
+            msg += " (requires '==' operator)";
+        }
+        else if (!hasBase && !hasEqual)
+        {
+            msg += " (requires '" + std::string(Fern::format(baseToken)) + "' and '==' operators)";
+        }
+        else if (!hasBase)
+        {
+            msg += " (requires '" + std::string(Fern::format(baseToken)) + "' operator)";
         }
         else
         {
-            error("operator '" + std::string(Fern::format(opToken)) +
-                  "' cannot be applied to operands of type '" + leftName + "' and '" + rightName + "'", expr->span);
+            msg += " (requires '==' operator)";
         }
+
+        error(msg, expr->span);
+    }
+    else
+    {
+        std::string leftName = leftType ? leftType->name : "?";
+        std::string rightName = rightType ? rightType->name : "?";
+        error("operator '" + std::string(Fern::format(opToken)) +
+              "' cannot be applied to values of type '" + leftName + "' and '" + rightName + "'", expr->span);
     }
 
     store_type(expr, leftType);

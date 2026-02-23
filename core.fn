@@ -54,5 +54,8 @@ type Bool
 {
     value: bool
 
+    -- op !(value: bool) -> bool
     op ==(left: bool, right: bool) -> bool
+    op &&(left: bool, right: bool) -> bool
+    op ||(left: bool, right: bool) -> bool
 }

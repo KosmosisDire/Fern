@@ -753,9 +753,9 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
 
 BaseExprSyntax* Parser::parse_unary()
 {
-    if (walker.check(TokenKind::Minus) || walker.check(TokenKind::Plus))
+    auto unaryOp = to_unary_op(walker.current().kind);
+    if (unaryOp)
     {
-        UnaryOp op = walker.check(TokenKind::Minus) ? UnaryOp::Negative : UnaryOp::Positive;
         Span opSpan = walker.current().span;
         walker.advance();
         skip_terminators(walker);
@@ -763,7 +763,7 @@ BaseExprSyntax* Parser::parse_unary()
         auto* operand = parse_unary();
 
         auto* unary = arena.alloc<UnaryExprSyntax>();
-        unary->op = op;
+        unary->op = *unaryOp;
         unary->operand = operand;
 
         Span span = opSpan;

@@ -1,91 +1,10 @@
--- namespace Core
--- {
---     type Bool
---     {
---         value: bool
---     }
 
---     type I32
---     {
---         value: i32
---         op +(left: I32, right: I32) -> I32
---     }
 
---     type F32
---     {
---         value: f32
---     }
--- }
-
-namespace Test
+type Program
 {
-    type Vector2
+    fn Main
     {
-        x: f32
-        y: f32
-    }
-
-    ref type Player
-    {
-        position: Vector2
-        health: i32
-
-        fn GetHealth() -> i32
-        {
-            return this.health
-        }
+        var i = true || false && !false
+        var j = 5 == 6
     }
 }
-
-pub static type Program
-{
-    pub static fn Main
-    {
-        var v1 = Test.Vector2(1.0, 2.0)
-        var p = Test.Player(v1, 100)
-
-        if (p.position.x > 1.0)
-        {
-            p.position.x = 0.0
-        }
-        if (p.position.y > 1.0)
-        {
-            p.position.y = 0.0
-        }
-
-        while p.GetHealth() > 0
-        {
-            p.health -= 1
-
-            if (p.health < 0)
-            {
-                p.health = 0
-                if (p.position.x == 0.0)
-                {
-                    while p.position.y == 0.0
-                    {
-                        p.position.y -= 0.1
-                    }
-                }
-            }
-            else if p.health > 100
-            {
-                p.health = 100
-            }
-        }
-
-        var t = {var x = 0; x < 10}
-        var i = 0
-        while t
-        {
-            i += 1
-            if i == 5
-            {
-                t = false
-            }
-        }
-
-        return 42
-    }
-}
-

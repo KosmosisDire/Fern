@@ -205,6 +205,24 @@ Token Lexer::scan_token()
                 return make_token(TokenKind::Equal);
             }
             return make_token(TokenKind::Assign);
+        case '!':
+            if (walker.match('='))
+            {
+                return make_token(TokenKind::NotEqual);
+            }
+            return make_token(TokenKind::Not);
+        case '&':
+            if (walker.match('&'))
+            {
+                return make_token(TokenKind::And);
+            }
+            return make_error_token();
+        case '|':
+            if (walker.match('|'))
+            {
+                return make_token(TokenKind::Or);
+            }
+            return make_error_token();
         default:
             return make_error_token();
     }
