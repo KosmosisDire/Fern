@@ -109,8 +109,23 @@ static bool is_initializer_list_ahead(const TokenWalker& walker)
         ++offset;
     }
 
-    return walker.peek(offset).kind == TokenKind::Identifier &&
-           walker.peek(offset + 1).kind == TokenKind::Colon;
+    if (walker.peek(offset).kind != TokenKind::Identifier)
+    {
+        return false;
+    }
+    ++offset;
+
+    while (walker.peek(offset).kind == TokenKind::Dot)
+    {
+        ++offset;
+        if (walker.peek(offset).kind != TokenKind::Identifier)
+        {
+            return false;
+        }
+        ++offset;
+    }
+
+    return walker.peek(offset).kind == TokenKind::Colon;
 }
 
 static bool is_at_statement_boundary(const TokenWalker& walker)
@@ -823,6 +838,14 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
 
 InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
 {
+    if (!target->is<CallExprSyntax>())
+    {
+        auto* call = arena.alloc<CallExprSyntax>();
+        call->callee = target;
+        call->span = target->span;
+        target = call;
+    }
+
     auto* init = arena.alloc<InitializerExprSyntax>();
     init->target = target;
     Span span = target->span;
@@ -837,11 +860,8 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
         auto* fieldInit = arena.alloc<FieldInitSyntax>();
         Span fieldSpan = walker.current().span;
 
-        if (auto* name = expect(TokenKind::Identifier, "expected field name in initializer"))
-        {
-            fieldInit->name = *name;
-        }
-        else
+        fieldInit->target = parse_expression();
+        if (!fieldInit->target)
         {
             walker.synchronize_to(TokenKind::Comma);
             skip_terminators(walker);
@@ -849,7 +869,7 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
             continue;
         }
 
-        if (!expect(TokenKind::Colon, "expected ':' after field name"))
+        if (!expect(TokenKind::Colon, "expected ':' after field target"))
         {
             walker.synchronize_to(TokenKind::Comma);
             skip_terminators(walker);
@@ -862,6 +882,10 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
         if (fieldInit->value)
         {
             fieldSpan = fieldSpan.merge(fieldInit->value->span);
+        }
+        else if (fieldInit->target)
+        {
+            fieldSpan = fieldInit->target->span;
         }
 
         fieldInit->span = fieldSpan;
@@ -928,7 +952,7 @@ BaseExprSyntax* Parser::parse_postfix()
         {
             left = parse_call(left);
         }
-        else if (is_initializer_list_ahead(walker))
+        else if (walker.check(TokenKind::LeftBrace))
         {
             left = parse_initializer(left);
         }

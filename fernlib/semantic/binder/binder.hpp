@@ -83,6 +83,7 @@ private:
     TypeSymbol* bind_call(CallExprSyntax* expr);
     TypeSymbol* bind_member_access(MemberAccessExprSyntax* expr);
     TypeSymbol* bind_initializer(InitializerExprSyntax* expr);
+    TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
     TypeSymbol* bind_this(ThisExprSyntax* expr);
     TypeSymbol* bind_paren(ParenExprSyntax* expr);
     TypeSymbol* bind_block(BlockExprSyntax* expr);

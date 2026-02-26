@@ -861,6 +861,7 @@ TypeSymbol* Binder::bind_call(CallExprSyntax* expr)
                 }
                 else
                 {
+                    store_symbol(expr->callee, nullptr);
                     if (namedType->has_constructor_with_count(argTypes.size()))
                     {
                         error("no constructor for '" + namedType->name +
@@ -901,6 +902,7 @@ TypeSymbol* Binder::bind_call(CallExprSyntax* expr)
                 }
                 else
                 {
+                    store_symbol(expr->callee, nullptr);
                     if (namedType->has_constructor_with_count(argTypes.size()))
                     {
                         error("no constructor for '" + namedType->name +
@@ -1065,12 +1067,20 @@ TypeSymbol* Binder::bind_initializer(InitializerExprSyntax* expr)
     TypeSymbol* targetType = bind_expr(expr->target);
     NamedTypeSymbol* namedType = targetType ? targetType->as<NamedTypeSymbol>() : nullptr;
 
-    if (!namedType)
+    auto* call = expr->target->as<CallExprSyntax>();
+    if (call)
     {
-        Symbol* sym = context.bindings.get_symbol(expr->target);
-        if (sym && sym->kind == SymbolKind::Type)
+        Symbol* calleeSym = context.bindings.get_symbol(call->callee);
+        auto* method = calleeSym ? calleeSym->as<MethodSymbol>() : nullptr;
+        if (method && !method->isConstructor)
         {
-            namedType = sym->as<NamedTypeSymbol>();
+            error("initializer lists can only be applied to a type or constructor call", call->span);
+            namedType = nullptr;
+        }
+        else if (!calleeSym && !namedType)
+        {
+            error("initializer lists can only be applied to a type or constructor call", call->span);
+            namedType = nullptr;
         }
     }
 
@@ -1085,33 +1095,61 @@ TypeSymbol* Binder::bind_initializer(InitializerExprSyntax* expr)
         return nullptr;
     }
 
-    if (!expr->target->is<CallExprSyntax>())
-    {
-        std::vector<TypeSymbol*> emptyArgs;
-        MethodSymbol* ctor = namedType->resolve_constructor(emptyArgs);
-        if (!ctor)
-        {
-            error("'" + namedType->name + "' does not contain a parameterless constructor", expr->span);
-        }
-    }
-
     for (auto* fieldInit : expr->initializers)
     {
         bind_expr(fieldInit->value);
-
-        FieldSymbol* field = namedType->find_field(fieldInit->name.lexeme);
-        if (!field)
-        {
-            error("type '" + namedType->name + "' has no field named '" +
-                  std::string(fieldInit->name.lexeme) + "'", fieldInit->span);
-            continue;
-        }
-
-        context.bindings.set_decl(fieldInit, field);
+        bind_field_init_target(fieldInit->target, namedType);
     }
 
     store_type(expr, namedType);
     return namedType;
+}
+
+TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type)
+{
+    if (auto* id = target->as<IdentifierExprSyntax>())
+    {
+        FieldSymbol* field = type->find_field(id->name.lexeme);
+        if (!field)
+        {
+            error("type '" + type->name + "' has no field named '" +
+                  std::string(id->name.lexeme) + "'", target->span);
+            return nullptr;
+        }
+        store_symbol(id, field);
+        store_type(id, field->type);
+        return field->type;
+    }
+
+    if (auto* member = target->as<MemberAccessExprSyntax>())
+    {
+        TypeSymbol* leftType = bind_field_init_target(member->left, type);
+        if (!leftType)
+        {
+            return nullptr;
+        }
+
+        auto* nestedType = leftType->as<NamedTypeSymbol>();
+        if (!nestedType)
+        {
+            error("cannot access member on non-struct type", member->span);
+            return nullptr;
+        }
+
+        FieldSymbol* field = nestedType->find_field(member->right.lexeme);
+        if (!field)
+        {
+            error("type '" + nestedType->name + "' has no field named '" +
+                  std::string(member->right.lexeme) + "'", member->span);
+            return nullptr;
+        }
+        store_symbol(member, field);
+        store_type(member, field->type);
+        return field->type;
+    }
+
+    error("initializer target must be a field name or member access", target->span);
+    return nullptr;
 }
 
 TypeSymbol* Binder::bind_paren(ParenExprSyntax* expr)

@@ -448,10 +448,11 @@ public:
     void visit(FieldInitSyntax* node) override
     {
         write_indent();
-        out << "FieldInit \"" << node->name.lexeme << "\"\n";
+        out << "FieldInit\n";
         write_indent();
         out << "{\n";
         ++indent;
+        write_child("target", node->target);
         write_child("value", node->value);
         --indent;
         write_indent();

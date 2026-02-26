@@ -375,12 +375,12 @@ struct FieldDeclSyntax : BaseDeclSyntax
     ExprPtr initializer = nullptr;
 };
 
-// x: 3.0 (field initializer in initializer list)
-struct FieldInitSyntax : BaseDeclSyntax
+// x: 3.0, pos.x: 3.0 (field initializer in initializer list)
+struct FieldInitSyntax : BaseStmtSyntax
 {
-    SYNTAX_NODE(FieldInit, BaseDeclSyntax)
+    SYNTAX_NODE(FieldInit, BaseStmtSyntax)
 
-    Token name = Token::Invalid();
+    ExprPtr target = nullptr;
     ExprPtr value = nullptr;
 };
 
@@ -530,6 +530,7 @@ public:
 
     void visit(FieldInitSyntax* node) override
     {
+        if (node->target) node->target->accept(this);
         if (node->value) node->value->accept(this);
     }
 

@@ -1,10 +1,56 @@
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    op +(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2
+        {
+            x: left.x + right.x,
+            y: left.y + right.y,
+        }
+    }
+}
 
 
 type Program
 {
     fn Main
     {
-        var i = true || false && !false
-        var j = 5 == 6
+        var v1 = Vector2
+        {
+            x: 7.0,
+            y: 8.0
+        }
+        
+        var v2 = Vector2
+        {
+            5+2: 7.0,
+            y: 8.0
+        }
+
+        if v2 + Vector2 { x: 1.0, y: 2.0 }
+        {
+            
+        }
+
+        var v5 = Vector2
+        {
+            x: 7.0,
+            y: 8.0 
+        } + Vector2
+        {
+            x: 1.0,
+            y: 2.0,
+        }
     }
 }
+

@@ -403,11 +403,12 @@ public:
 
     void visit(FieldInitSyntax* node) override
     {
-        begin_node_with_name(node, node->name.lexeme);
+        begin_node(node);
         out << "\n";
         write_indent();
         out << "{\n";
         ++indent;
+        write_child("target", node->target);
         write_child("value", node->value);
         --indent;
         write_indent();
