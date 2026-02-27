@@ -22,17 +22,38 @@ const Token* Parser::expect(TokenKind kind, std::string_view message)
 
 #pragma region Helpers
 
-static bool is_terminator(TokenKind kind)
-{
-    return kind == TokenKind::Newline || kind == TokenKind::Semicolon;
-}
-
 static void skip_terminators(TokenWalker& walker)
 {
     while (is_terminator(walker.current().kind))
     {
         walker.advance();
     }
+}
+
+static void advance_past_field(TokenWalker& walker)
+{
+    skip_terminators(walker);
+    if (walker.check(TokenKind::Comma))
+    {
+        walker.advance();
+        skip_terminators(walker);
+    }
+}
+
+static bool has_space_before(const Span& left, const Span& op)
+{
+    return left.endLine != op.startLine || left.endColumn != op.startColumn;
+}
+
+static bool has_space_after(const Span& op, const TokenWalker& walker)
+{
+    size_t offset = 1;
+    while (is_terminator(walker.peek(offset).kind))
+    {
+        ++offset;
+    }
+    const Span& next = walker.peek(offset).span;
+    return op.endLine != next.startLine || op.endColumn != next.startColumn;
 }
 
 void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
@@ -76,13 +97,16 @@ Modifier Parser::parse_modifiers()
 
 void Parser::attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs)
 {
-    if (has_modifier(mods, Modifier::Ref) && !decl->is<TypeDeclSyntax>())
+    if (!decl->is<TypeDeclSyntax>())
     {
-        error("'ref' modifier can only be applied to type declarations", modSpan);
-    }
-    if (has_modifier(mods, Modifier::Attr) && !decl->is<TypeDeclSyntax>())
-    {
-        error("'attr' modifier can only be applied to type declarations", modSpan);
+        if (has_modifier(mods, Modifier::Ref))
+        {
+            error("'ref' modifier can only be applied to type declarations", modSpan);
+        }
+        if (has_modifier(mods, Modifier::Attr))
+        {
+            error("'attr' modifier can only be applied to type declarations", modSpan);
+        }
     }
     decl->modifiers = decl->modifiers | mods;
     decl->attributes = std::move(attrs);
@@ -109,29 +133,54 @@ static bool is_initializer_list_ahead(const TokenWalker& walker)
         ++offset;
     }
 
-    if (walker.peek(offset).kind != TokenKind::Identifier)
+    TokenKind firstKind = walker.peek(offset).kind;
+
+    if (firstKind == TokenKind::RightBrace)
     {
         return false;
     }
-    ++offset;
 
-    while (walker.peek(offset).kind == TokenKind::Dot)
+    if (firstKind == TokenKind::Identifier)
     {
-        ++offset;
-        if (walker.peek(offset).kind != TokenKind::Identifier)
+        size_t idOffset = offset + 1;
+        while (walker.peek(idOffset).kind == TokenKind::Dot)
+        {
+            ++idOffset;
+            if (walker.peek(idOffset).kind != TokenKind::Identifier)
+            {
+                break;
+            }
+            ++idOffset;
+        }
+        if (walker.peek(idOffset).kind == TokenKind::Colon)
+        {
+            return true;
+        }
+    }
+
+    if (is_statement_keyword(firstKind))
+    {
+        return false;
+    }
+
+    while (true)
+    {
+        TokenKind kind = walker.peek(offset).kind;
+        if (kind == TokenKind::Colon)
+        {
+            return true;
+        }
+        if (is_terminator(kind) || kind == TokenKind::RightBrace || kind == TokenKind::EndOfFile)
         {
             return false;
         }
         ++offset;
     }
-
-    return walker.peek(offset).kind == TokenKind::Colon;
 }
 
 static bool is_at_statement_boundary(const TokenWalker& walker)
 {
-    return walker.check(TokenKind::Newline) ||
-           walker.check(TokenKind::Semicolon) ||
+    return is_terminator(walker.current().kind) ||
            walker.check(TokenKind::RightBrace) ||
            walker.check(TokenKind::EndOfFile);
 }
@@ -398,11 +447,8 @@ FieldDeclSyntax* Parser::parse_field_decl()
     auto* field = arena.alloc<FieldDeclSyntax>();
     Span span = walker.current().span;
 
-    if (walker.check(TokenKind::Identifier))
-    {
-        field->name = walker.current();
-        walker.advance();
-    }
+    field->name = walker.current();
+    walker.advance();
 
     if (walker.check(TokenKind::Colon))
     {
@@ -443,10 +489,19 @@ void Parser::parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& 
 
     while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
     {
+        if (is_statement_keyword(walker.current().kind))
+        {
+            break;
+        }
+
         auto* param = parse_parameter_decl();
         if (param)
         {
             out.push_back(param);
+        }
+        else
+        {
+            break;
         }
         skip_terminators(walker);
 
@@ -657,6 +712,13 @@ BaseStmtSyntax* Parser::parse_statement()
         return stmt;
     }
 
+    if (!is_terminator(walker.current().kind) &&
+        !walker.check(TokenKind::RightBrace) &&
+        !walker.is_at_end())
+    {
+        error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+    }
+
     return nullptr;
 }
 
@@ -731,15 +793,44 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
 
     while (true)
     {
+        auto cp = walker.checkpoint();
+        bool crossedTerminator = is_terminator(walker.current().kind);
+        skip_terminators(walker);
+
         auto binaryOp = to_binary_op(walker.current().kind);
         if (!binaryOp)
         {
+            walker.restore(cp);
             break;
+        }
+
+        TokenKind opKind = walker.current().kind;
+        if (opKind == TokenKind::Plus || opKind == TokenKind::Minus)
+        {
+            bool spaceLeft = has_space_before(left->span, walker.current().span);
+            bool spaceRight = has_space_after(walker.current().span, walker);
+            if (spaceLeft && !spaceRight)
+            {
+                if (crossedTerminator)
+                {
+                    walker.restore(cp);
+                    break;
+                }
+                error("ambiguous operator spacing: '" +
+                      std::string(walker.current().lexeme) +
+                      "' has space on the left but not the right. Did you mean '... " +
+                      std::string(walker.current().lexeme) + " " +
+                      std::string(walker.peek(1).lexeme) + "'?",
+                      walker.current().span);
+                walker.restore(cp);
+                break;
+            }
         }
 
         Precedence prec = precedence_of(*binaryOp);
         if (prec < minPrec)
         {
+            walker.restore(cp);
             break;
         }
 
@@ -747,6 +838,11 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
         skip_terminators(walker);
 
         auto* right = parse_binary(static_cast<Precedence>(static_cast<int>(prec) + 1));
+        if (!right)
+        {
+            error("expected expression after '" + std::string(Fern::format(opKind)) + "'",
+                  walker.current().span);
+        }
 
         auto* binary = arena.alloc<BinaryExprSyntax>();
         binary->left = left;
@@ -771,6 +867,17 @@ BaseExprSyntax* Parser::parse_unary()
     auto unaryOp = to_unary_op(walker.current().kind);
     if (unaryOp)
     {
+        bool spaceRight = has_space_after(walker.current().span, walker);
+        TokenKind opKind = walker.current().kind;
+        if (spaceRight)
+        {
+            if (opKind == TokenKind::Plus || opKind == TokenKind::Minus)
+            {
+                return parse_postfix();
+            }
+            error("unary operator cannot be separated from its operand", walker.current().span);
+        }
+
         Span opSpan = walker.current().span;
         walker.advance();
         skip_terminators(walker);
@@ -799,15 +906,24 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     auto* call = arena.alloc<CallExprSyntax>();
     call->callee = callee;
 
-    walker.advance(); // consume '('
+    walker.advance();
     skip_terminators(walker);
 
     while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
     {
+        if (is_statement_keyword(walker.current().kind))
+        {
+            break;
+        }
+
         auto* arg = parse_expression();
         if (arg)
         {
             call->arguments.push_back(arg);
+        }
+        else
+        {
+            break;
         }
         skip_terminators(walker);
 
@@ -827,35 +943,44 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     {
         span = span.merge(token->span);
     }
-    else
-    {
-        walker.synchronize_to(TokenKind::RightParen);
-    }
     call->span = span;
 
     return call;
 }
 
-InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
+void Parser::parse_field_init_list(std::vector<FieldInitSyntax*>& out)
 {
-    if (!target->is<CallExprSyntax>())
-    {
-        auto* call = arena.alloc<CallExprSyntax>();
-        call->callee = target;
-        call->span = target->span;
-        target = call;
-    }
-
-    auto* init = arena.alloc<InitializerExprSyntax>();
-    init->target = target;
-    Span span = target->span;
-
-    walker.advance();
-    skip_terminators(walker);
-
     while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
     {
+        if (is_statement_keyword(walker.current().kind))
+        {
+            break;
+        }
+
         auto cp = walker.checkpoint();
+
+        if (walker.check(TokenKind::Comma))
+        {
+            error("expected field initializer", walker.current().span);
+            walker.advance();
+            advance_past_field(walker);
+            walker.check_progress(cp);
+            continue;
+        }
+
+        if (walker.check(TokenKind::Colon))
+        {
+            error("expected field name before ':'", walker.current().span);
+            walker.advance();
+            skip_terminators(walker);
+            if (!is_statement_keyword(walker.current().kind))
+            {
+                parse_expression();
+            }
+            advance_past_field(walker);
+            walker.check_progress(cp);
+            continue;
+        }
 
         auto* fieldInit = arena.alloc<FieldInitSyntax>();
         Span fieldSpan = walker.current().span;
@@ -863,20 +988,49 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
         fieldInit->target = parse_expression();
         if (!fieldInit->target)
         {
-            walker.synchronize_to(TokenKind::Comma);
-            skip_terminators(walker);
+            advance_past_field(walker);
+            walker.check_progress(cp);
+            continue;
+        }
+
+        if (!fieldInit->target->is<IdentifierExprSyntax>() &&
+            !fieldInit->target->is<MemberAccessExprSyntax>())
+        {
+            error("expected field name, got expression", fieldInit->target->span);
+            if (walker.check(TokenKind::Colon))
+            {
+                walker.advance();
+                skip_terminators(walker);
+                if (!is_statement_keyword(walker.current().kind))
+                {
+                    parse_expression();
+                }
+            }
+            advance_past_field(walker);
             walker.check_progress(cp);
             continue;
         }
 
         if (!expect(TokenKind::Colon, "expected ':' after field target"))
         {
-            walker.synchronize_to(TokenKind::Comma);
-            skip_terminators(walker);
+            advance_past_field(walker);
             walker.check_progress(cp);
             continue;
         }
         skip_terminators(walker);
+
+        if (walker.check(TokenKind::Comma) ||
+            walker.check(TokenKind::RightBrace) ||
+            is_terminator(walker.current().kind) ||
+            is_statement_keyword(walker.current().kind))
+        {
+            error("expected value after ':'", walker.current().span);
+            fieldInit->span = fieldInit->target->span;
+            out.push_back(fieldInit);
+            advance_past_field(walker);
+            walker.check_progress(cp);
+            continue;
+        }
 
         fieldInit->value = parse_expression();
         if (fieldInit->value)
@@ -889,7 +1043,7 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
         }
 
         fieldInit->span = fieldSpan;
-        init->initializers.push_back(fieldInit);
+        out.push_back(fieldInit);
         skip_terminators(walker);
 
         if (walker.check(TokenKind::Comma))
@@ -900,6 +1054,18 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
 
         walker.check_progress(cp);
     }
+}
+
+InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
+{
+    auto* init = arena.alloc<InitializerExprSyntax>();
+    init->target = target;
+    Span span = target ? target->span : walker.current().span;
+
+    walker.advance();
+    skip_terminators(walker);
+
+    parse_field_init_list(init->initializers);
 
     if (auto* token = expect(TokenKind::RightBrace, "expected '}' after initializer list"))
     {
@@ -944,6 +1110,13 @@ BaseExprSyntax* Parser::parse_postfix()
 
     while (true)
     {
+        auto cp = walker.checkpoint();
+        bool skippedTerminator = is_terminator(walker.current().kind);
+        if (skippedTerminator)
+        {
+            skip_terminators(walker);
+        }
+
         if (walker.check(TokenKind::Dot))
         {
             left = parse_member_access(left);
@@ -952,34 +1125,21 @@ BaseExprSyntax* Parser::parse_postfix()
         {
             left = parse_call(left);
         }
-        else if (walker.check(TokenKind::LeftBrace))
+        else if (is_initializer_list_ahead(walker))
+        {
+            if (inCondition)
+            {
+                error("initializer lists are not allowed in conditionals. Surround the constructor with parentheses", walker.current().span);
+            }
+            left = parse_initializer(left);
+        }
+        else if (walker.check(TokenKind::LeftBrace) && !inCondition && !skippedTerminator)
         {
             left = parse_initializer(left);
         }
-        else if (is_terminator(walker.current().kind))
-        {
-            auto cp = walker.checkpoint();
-            skip_terminators(walker);
-            if (is_initializer_list_ahead(walker))
-            {
-                left = parse_initializer(left);
-            }
-            else if (walker.check(TokenKind::Dot))
-            {
-                left = parse_member_access(left);
-            }
-            else if (walker.check(TokenKind::LeftParen))
-            {
-                left = parse_call(left);
-            }
-            else
-            {
-                walker.restore(cp);
-                break;
-            }
-        }
         else
         {
+            walker.restore(cp);
             break;
         }
     }
@@ -1015,7 +1175,10 @@ BaseExprSyntax* Parser::parse_primary()
         walker.advance();
         skip_terminators(walker);
 
+        bool wasInCondition = inCondition;
+        inCondition = false;
         paren->expression = parse_expression();
+        inCondition = wasInCondition;
         skip_terminators(walker);
 
         if (auto* token = expect(TokenKind::RightParen, "expected ')' after expression"))
@@ -1038,6 +1201,10 @@ BaseExprSyntax* Parser::parse_primary()
 
     if (walker.check(TokenKind::LeftBrace))
     {
+        if (is_initializer_list_ahead(walker))
+        {
+            return parse_initializer();
+        }
         return parse_block();
     }
 
@@ -1052,7 +1219,9 @@ IfStmtSyntax* Parser::parse_if()
     walker.advance();
     skip_terminators(walker);
 
+    inCondition = true;
     ifStmt->condition = parse_expression();
+    inCondition = false;
     skip_terminators(walker);
 
     if (walker.check(TokenKind::LeftBrace))
@@ -1100,7 +1269,9 @@ WhileStmtSyntax* Parser::parse_while()
     walker.advance();
     skip_terminators(walker);
 
+    inCondition = true;
     whileStmt->condition = parse_expression();
+    inCondition = false;
     skip_terminators(walker);
 
     if (walker.check(TokenKind::LeftBrace))

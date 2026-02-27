@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ast/ast.hpp"
+#include <ast/ast.hpp>
 #include <arena.hpp>
 #include <common/diagnostic.hpp>
 #include <token/walker.hpp>
@@ -48,7 +48,8 @@ private:
     BaseExprSyntax* parse_unary();
     BaseExprSyntax* parse_primary();
     CallExprSyntax* parse_call(BaseExprSyntax* callee);
-    InitializerExprSyntax* parse_initializer(BaseExprSyntax* target);
+    void parse_field_init_list(std::vector<FieldInitSyntax*>& out);
+    InitializerExprSyntax* parse_initializer(BaseExprSyntax* target = nullptr);
     BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
     BaseExprSyntax* parse_postfix();
     BlockExprSyntax* parse_block();
@@ -60,6 +61,7 @@ private:
 
     TokenWalker& walker;
     AllocArena& arena;
+    bool inCondition = false;
 };
 
 }

@@ -202,7 +202,7 @@ struct CallExprSyntax : BaseExprSyntax
     std::vector<ExprPtr> arguments;
 };
 
-// Vector2(1.0, 2.0) { y: 5.0 }
+// Vector2(1.0, 2.0) { y: 5.0 } or Vector2{ x: 1.0, y: 2.0 } or nested
 struct InitializerExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(InitializerExpr, BaseExprSyntax)

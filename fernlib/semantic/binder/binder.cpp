@@ -1,7 +1,9 @@
 #include "binder.hpp"
 
-#include <semantic/context.hpp>
+#include <algorithm>
+
 #include <ast/ast.hpp>
+#include <semantic/context.hpp>
 
 namespace Fern
 {
@@ -10,6 +12,22 @@ Binder::Binder(SemanticContext& context)
     : DiagnosticSystem("Binder")
     , context(context)
 {
+}
+
+static std::string format_field_path(BaseExprSyntax* expr)
+{
+    if (!expr) return "";
+    if (auto* id = expr->as<IdentifierExprSyntax>())
+    {
+        return std::string(id->name.lexeme);
+    }
+    if (auto* member = expr->as<MemberAccessExprSyntax>())
+    {
+        std::string left = format_field_path(member->left);
+        if (left.empty()) return "";
+        return left + "." + std::string(member->right.lexeme);
+    }
+    return "";
 }
 
 static bool extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path)
@@ -187,17 +205,9 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
         }
     }
 
-    bool hasInit = false;
-    for (auto* member : typeDecl->declarations)
-    {
-        if (member->is<InitDeclSyntax>())
-        {
-            hasInit = true;
-            break;
-        }
-    }
+    bool hasInit = std::any_of(typeDecl->declarations.begin(), typeDecl->declarations.end(),
+        [](auto* member) { return member->template is<InitDeclSyntax>(); });
 
-    // auto generated constructor
     if (!hasInit)
     {
         auto methodPtr = std::make_unique<MethodSymbol>();
@@ -246,26 +256,29 @@ void Binder::resolve_all_types()
         {
             std::vector<ParameterDeclSyntax*>* paramAsts = nullptr;
 
-            if (auto* funcAst = method->syntax ? method->syntax->as<FunctionDeclSyntax>() : nullptr)
+            if (method->syntax)
             {
-                if (funcAst->returnType)
+                if (auto* funcAst = method->syntax->as<FunctionDeclSyntax>())
                 {
-                    method->returnType = resolve_type_expr(funcAst->returnType);
+                    if (funcAst->returnType)
+                    {
+                        method->returnType = resolve_type_expr(funcAst->returnType);
+                    }
+                    paramAsts = &funcAst->parameters;
                 }
-                paramAsts = &funcAst->parameters;
-            }
-            else if (auto* opAst = method->syntax ? method->syntax->as<OperatorDeclSyntax>() : nullptr)
-            {
-                if (opAst->returnType)
+                else if (auto* opAst = method->syntax->as<OperatorDeclSyntax>())
                 {
-                    method->returnType = resolve_type_expr(opAst->returnType);
+                    if (opAst->returnType)
+                    {
+                        method->returnType = resolve_type_expr(opAst->returnType);
+                    }
+                    paramAsts = &opAst->parameters;
                 }
-                paramAsts = &opAst->parameters;
-            }
-            else if (auto* initAst = method->syntax ? method->syntax->as<InitDeclSyntax>() : nullptr)
-            {
-                method->returnType = type;
-                paramAsts = &initAst->parameters;
+                else if (auto* initAst = method->syntax->as<InitDeclSyntax>())
+                {
+                    method->returnType = type;
+                    paramAsts = &initAst->parameters;
+                }
             }
             else if (method->isConstructor)
             {
@@ -289,15 +302,9 @@ void Binder::resolve_all_types()
 
             if (method->is_operator())
             {
-                bool hasContainingType = false;
-                for (auto* param : method->parameters)
-                {
-                    if (param->type == type)
-                    {
-                        hasContainingType = true;
-                        break;
-                    }
-                }
+                bool hasContainingType = std::any_of(method->parameters.begin(), method->parameters.end(),
+                    [type](auto* param) { return param->type == type; });
+
                 if (!hasContainingType)
                 {
                     Span loc = method->syntax ? method->syntax->span : Span{};
@@ -319,15 +326,10 @@ void Binder::resolve_all_types()
                     continue;
                 }
 
-                bool sameSignature = true;
-                for (size_t p = 0; p < a->parameters.size(); ++p)
-                {
-                    if (a->parameters[p]->type != b->parameters[p]->type)
-                    {
-                        sameSignature = false;
-                        break;
-                    }
-                }
+                bool sameSignature = std::equal(
+                    a->parameters.begin(), a->parameters.end(),
+                    b->parameters.begin(),
+                    [](auto* pa, auto* pb) { return pa->type == pb->type; });
 
                 if (sameSignature)
                 {
@@ -484,20 +486,7 @@ void Binder::resolve_all_attributes()
                 continue;
             }
 
-            BaseDeclSyntax* decl = nullptr;
-            if (auto* funcDecl = method->syntax->as<FunctionDeclSyntax>())
-            {
-                decl = funcDecl;
-            }
-            else if (auto* initDecl = method->syntax->as<InitDeclSyntax>())
-            {
-                decl = initDecl;
-            }
-            else if (auto* opDecl = method->syntax->as<OperatorDeclSyntax>())
-            {
-                decl = opDecl;
-            }
-
+            auto* decl = dynamic_cast<BaseDeclSyntax*>(method->syntax);
             if (decl)
             {
                 resolve_attributes(decl, method->resolvedAttributes);
@@ -537,18 +526,20 @@ void Binder::bind_method(MethodSymbol* method)
     bindingMethods.insert(method);
 
     BlockExprSyntax* body = nullptr;
-
-    if (auto* funcAst = method->syntax ? method->syntax->as<FunctionDeclSyntax>() : nullptr)
+    if (method->syntax)
     {
-        body = funcAst->body;
-    }
-    else if (auto* opAst = method->syntax ? method->syntax->as<OperatorDeclSyntax>() : nullptr)
-    {
-        body = opAst->body;
-    }
-    else if (auto* initAst = method->syntax ? method->syntax->as<InitDeclSyntax>() : nullptr)
-    {
-        body = initAst->body;
+        if (auto* funcAst = method->syntax->as<FunctionDeclSyntax>())
+        {
+            body = funcAst->body;
+        }
+        else if (auto* opAst = method->syntax->as<OperatorDeclSyntax>())
+        {
+            body = opAst->body;
+        }
+        else if (auto* initAst = method->syntax->as<InitDeclSyntax>())
+        {
+            body = initAst->body;
+        }
     }
 
     if (body)
@@ -586,12 +577,7 @@ TypeSymbol* Binder::get_return_type(MethodSymbol* method)
         return method->returnType;
     }
 
-    if (boundMethods.contains(method))
-    {
-        return nullptr;
-    }
-
-    if (bindingMethods.contains(method))
+    if (boundMethods.contains(method) || bindingMethods.contains(method))
     {
         return nullptr;
     }
@@ -755,7 +741,7 @@ TypeSymbol* Binder::bind_binary(BinaryExprSyntax* expr)
         return method->returnType;
     }
 
-    // Derived operators: >= needs > and ==, <= needs < and ==, != needs ==
+    // Derived comparison operators are synthesized from base operators (e.g. >= from > and ==)
     TokenKind baseToken = TokenKind::Invalid;
     if (opToken == TokenKind::GreaterEqual)
     {
@@ -787,11 +773,7 @@ TypeSymbol* Binder::bind_binary(BinaryExprSyntax* expr)
         std::string msg = "operator '" + std::string(Fern::format(opToken)) +
               "' cannot be applied to values of type '" + leftName + "' and '" + rightName + "'";
 
-        if (baseToken == TokenKind::Equal)
-        {
-            msg += " (requires '==' operator)";
-        }
-        else if (!hasBase && !hasEqual)
+        if (!hasBase && !hasEqual)
         {
             msg += " (requires '" + std::string(Fern::format(baseToken)) + "' and '==' operators)";
         }
@@ -821,7 +803,7 @@ TypeSymbol* Binder::bind_binary(BinaryExprSyntax* expr)
 TypeSymbol* Binder::bind_assignment(AssignmentExprSyntax* expr)
 {
     TypeSymbol* targetType = bind_expr(expr->target);
-    TypeSymbol* valueType = bind_expr(expr->value);
+    bind_expr(expr->value);
 
     store_type(expr, targetType);
     return targetType;
@@ -837,88 +819,61 @@ TypeSymbol* Binder::bind_call(CallExprSyntax* expr)
         argTypes.push_back(bind_expr(arg));
     }
 
+    Symbol* calleeSym = context.bindings.get_symbol(expr->callee);
+
+    if (calleeSym && calleeSym->kind == SymbolKind::Type)
+    {
+        auto* namedType = calleeSym->as<NamedTypeSymbol>();
+        if (namedType)
+        {
+            MethodSymbol* ctor = namedType->resolve_constructor(argTypes);
+            if (ctor)
+            {
+                store_symbol(expr->callee, ctor);
+            }
+            else
+            {
+                store_symbol(expr->callee, nullptr);
+                if (namedType->has_constructor_with_count(argTypes.size()))
+                {
+                    error("no constructor for '" + namedType->name +
+                          "' matches argument types " + format_arg_types(argTypes), expr->span);
+                }
+                else
+                {
+                    error("'" + namedType->name + "' does not contain a constructor that takes " +
+                          std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+                }
+            }
+            store_type(expr, namedType);
+            return namedType;
+        }
+    }
+
     MethodSymbol* method = nullptr;
     NamedTypeSymbol* targetType = nullptr;
     std::string_view methodName;
 
     if (auto* idExpr = expr->callee->as<IdentifierExprSyntax>())
     {
-        Symbol* sym = context.bindings.get_symbol(idExpr);
-        if (sym && sym->kind == SymbolKind::Method)
+        if (calleeSym && calleeSym->kind == SymbolKind::Method)
         {
-            targetType = sym->parent ? sym->parent->as<NamedTypeSymbol>() : nullptr;
+            targetType = calleeSym->parent ? calleeSym->parent->as<NamedTypeSymbol>() : nullptr;
             methodName = idExpr->name.lexeme;
         }
-        else if (sym && sym->kind == SymbolKind::Type)
-        {
-            auto* namedType = sym->as<NamedTypeSymbol>();
-            if (namedType)
-            {
-                MethodSymbol* ctor = namedType->resolve_constructor(argTypes);
-                if (ctor)
-                {
-                    store_symbol(expr->callee, ctor);
-                }
-                else
-                {
-                    store_symbol(expr->callee, nullptr);
-                    if (namedType->has_constructor_with_count(argTypes.size()))
-                    {
-                        error("no constructor for '" + namedType->name +
-                              "' matches argument types " + format_arg_types(argTypes), expr->span);
-                    }
-                    else
-                    {
-                        error("'" + namedType->name + "' does not contain a constructor that takes " +
-                              std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-                    }
-                }
-                store_type(expr, namedType);
-                return namedType;
-            }
-        }
-        else if (sym)
+        else if (calleeSym)
         {
             error("'" + std::string(idExpr->name.lexeme) + "' cannot be called as a function", idExpr->span);
         }
     }
     else if (auto* memberExpr = expr->callee->as<MemberAccessExprSyntax>())
     {
-        Symbol* sym = context.bindings.get_symbol(memberExpr);
-        if (sym && sym->kind == SymbolKind::Method)
+        if (calleeSym && calleeSym->kind == SymbolKind::Method)
         {
-            targetType = sym->parent ? sym->parent->as<NamedTypeSymbol>() : nullptr;
+            targetType = calleeSym->parent ? calleeSym->parent->as<NamedTypeSymbol>() : nullptr;
             methodName = memberExpr->right.lexeme;
         }
-        else if (sym && sym->kind == SymbolKind::Type)
-        {
-            auto* namedType = sym->as<NamedTypeSymbol>();
-            if (namedType)
-            {
-                MethodSymbol* ctor = namedType->resolve_constructor(argTypes);
-                if (ctor)
-                {
-                    store_symbol(expr->callee, ctor);
-                }
-                else
-                {
-                    store_symbol(expr->callee, nullptr);
-                    if (namedType->has_constructor_with_count(argTypes.size()))
-                    {
-                        error("no constructor for '" + namedType->name +
-                              "' matches argument types " + format_arg_types(argTypes), expr->span);
-                    }
-                    else
-                    {
-                        error("'" + namedType->name + "' does not contain a constructor that takes " +
-                              std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-                    }
-                }
-                store_type(expr, namedType);
-                return namedType;
-            }
-        }
-        else if (sym)
+        else if (calleeSym)
         {
             error("'" + std::string(memberExpr->right.lexeme) + "' cannot be called as a function", memberExpr->span);
         }
@@ -975,7 +930,7 @@ TypeSymbol* Binder::bind_member_access(MemberAccessExprSyntax* expr)
             {
                 store_symbol(expr, member);
                 store_type(expr, nullptr);
-                return nullptr; // we store nullptr because type REFERENCES do not have their own type. They in fact do not have a type.
+                return nullptr; // type references have no value type
             }
 
             error("namespace '" + ns->name + "' has no member '" +
@@ -1064,24 +1019,73 @@ TypeSymbol* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 
 TypeSymbol* Binder::bind_initializer(InitializerExprSyntax* expr)
 {
-    TypeSymbol* targetType = bind_expr(expr->target);
-    NamedTypeSymbol* namedType = targetType ? targetType->as<NamedTypeSymbol>() : nullptr;
-
-    auto* call = expr->target->as<CallExprSyntax>();
-    if (call)
+    if (!expr->target)
     {
-        Symbol* calleeSym = context.bindings.get_symbol(call->callee);
-        auto* method = calleeSym ? calleeSym->as<MethodSymbol>() : nullptr;
-        if (method && !method->isConstructor)
+        error("cannot infer type for initializer list, use an explicit type name", expr->span);
+        for (auto* fieldInit : expr->initializers)
         {
-            error("initializer lists can only be applied to a type or constructor call", call->span);
-            namedType = nullptr;
+            bind_expr(fieldInit->value);
         }
-        else if (!calleeSym && !namedType)
+        store_type(expr, nullptr);
+        return nullptr;
+    }
+
+    NamedTypeSymbol* namedType = nullptr;
+
+    if (auto* idExpr = expr->target->as<IdentifierExprSyntax>())
+    {
+        Symbol* sym = resolve_name(idExpr->name.lexeme);
+        if (!sym)
         {
-            error("initializer lists can only be applied to a type or constructor call", call->span);
-            namedType = nullptr;
+            error("undefined name '" + std::string(idExpr->name.lexeme) + "'", idExpr->span);
+            store_type(expr, nullptr);
+            return nullptr;
         }
+
+        namedType = sym->as<NamedTypeSymbol>();
+        if (!namedType)
+        {
+            error("initializer lists can only be applied to a type or constructor call", idExpr->span);
+            store_type(expr, nullptr);
+            return nullptr;
+        }
+
+        MethodSymbol* defaultCtor = namedType->resolve_constructor({});
+        if (defaultCtor)
+        {
+            store_symbol(idExpr, defaultCtor);
+        }
+        else
+        {
+            store_symbol(idExpr, sym);
+            error("type '" + namedType->name + "' has no default constructor", idExpr->span);
+        }
+        store_type(idExpr, namedType);
+    }
+    else if (auto* callExpr = expr->target->as<CallExprSyntax>())
+    {
+        TypeSymbol* callType = bind_call(callExpr);
+        namedType = callType ? callType->as<NamedTypeSymbol>() : nullptr;
+
+        if (callExpr->callee)
+        {
+            Symbol* calleeSym = context.bindings.get_symbol(callExpr->callee);
+            if (calleeSym)
+            {
+                auto* method = calleeSym->as<MethodSymbol>();
+                if (method && !method->isConstructor)
+                {
+                    error("initializer lists can only be applied to a type or constructor call", callExpr->span);
+                    namedType = nullptr;
+                }
+            }
+        }
+    }
+    else
+    {
+        error("initializer lists can only be applied to a type or constructor call", expr->target->span);
+        store_type(expr, nullptr);
+        return nullptr;
     }
 
     if (!namedType)
@@ -1090,19 +1094,77 @@ TypeSymbol* Binder::bind_initializer(InitializerExprSyntax* expr)
         {
             bind_expr(fieldInit->value);
         }
-
         store_type(expr, nullptr);
         return nullptr;
     }
 
+    bind_initializer_fields(expr, namedType);
+    return namedType;
+}
+
+TypeSymbol* Binder::bind_anonymous_initializer(InitializerExprSyntax* expr, NamedTypeSymbol* contextType)
+{
+    bind_initializer_fields(expr, contextType);
+    return contextType;
+}
+
+void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType)
+{
+    std::vector<std::string> boundFieldPaths;
     for (auto* fieldInit : expr->initializers)
     {
-        bind_expr(fieldInit->value);
-        bind_field_init_target(fieldInit->target, namedType);
+        TypeSymbol* fieldType = nullptr;
+        if (fieldInit->target &&
+            (fieldInit->target->is<IdentifierExprSyntax>() ||
+             fieldInit->target->is<MemberAccessExprSyntax>()))
+        {
+            fieldType = bind_field_init_target(fieldInit->target, namedType);
+        }
+
+        if (fieldInit->value)
+        {
+            auto* anonInit = fieldInit->value->as<InitializerExprSyntax>();
+            if (anonInit && !anonInit->target)
+            {
+                auto* fieldNamedType = fieldType ? fieldType->as<NamedTypeSymbol>() : nullptr;
+                if (fieldNamedType)
+                {
+                    bind_anonymous_initializer(anonInit, fieldNamedType);
+                }
+                else if (fieldType)
+                {
+                    error("cannot use initializer list for non-struct type", anonInit->span);
+                    store_type(anonInit, nullptr);
+                }
+                else
+                {
+                    store_type(anonInit, nullptr);
+                }
+            }
+            else
+            {
+                bind_expr(fieldInit->value);
+            }
+        }
+    }
+
+    for (auto* fieldInit : expr->initializers)
+    {
+        std::string path = format_field_path(fieldInit->target);
+        if (path.empty()) continue;
+
+        auto it = std::find(boundFieldPaths.begin(), boundFieldPaths.end(), path);
+        if (it != boundFieldPaths.end())
+        {
+            error("duplicate field '" + path + "' in initializer", fieldInit->target->span);
+        }
+        else
+        {
+            boundFieldPaths.push_back(std::move(path));
+        }
     }
 
     store_type(expr, namedType);
-    return namedType;
 }
 
 TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type)
@@ -1217,7 +1279,11 @@ void Binder::bind_if(IfStmtSyntax* stmt)
     TypeSymbol* condType = bind_expr(stmt->condition);
 
     TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
-    if (condType && boolType && condType != boolType)
+    if (!condType)
+    {
+        error("if condition must be of type 'bool'", stmt->condition->span);
+    }
+    else if (boolType && condType != boolType)
     {
         error("if condition must be of type 'bool', got '" +
               condType->name + "'", stmt->condition->span);
@@ -1244,7 +1310,11 @@ void Binder::bind_while(WhileStmtSyntax* stmt)
     TypeSymbol* condType = bind_expr(stmt->condition);
 
     TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
-    if (condType && boolType && condType != boolType)
+    if (!condType)
+    {
+        error("expected condition of type 'bool'", stmt->condition->span);
+    }
+    else if (boolType && condType != boolType)
     {
         error("while condition must be of type 'bool', got '" +
               condType->name + "'", stmt->condition->span);
@@ -1377,19 +1447,10 @@ Symbol* Binder::resolve_name(std::string_view name)
         }
     }
 
-    Symbol* start = nullptr;
-    if (currentType)
-    {
-        start = currentType;
-    }
-    else if (currentNamespace)
-    {
-        start = currentNamespace;
-    }
-    else
-    {
-        start = context.symbols.globalNamespace;
-    }
+    Symbol* start = context.symbols.globalNamespace;
+    if (currentType) start = currentType;
+    else if (currentNamespace) start = currentNamespace;
+
     std::string_view path[] = {name};
     return context.symbols.lookup_from(start, path);
 }

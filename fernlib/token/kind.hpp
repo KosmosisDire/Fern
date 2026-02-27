@@ -205,6 +205,32 @@ constexpr bool is_operator_token(TokenKind k)
            k == TokenKind::Not;
 }
 
+constexpr bool is_terminator(TokenKind k)
+{
+    return k == TokenKind::Newline ||
+           k == TokenKind::Semicolon;
+}
+
+constexpr bool is_declaration_keyword(TokenKind k)
+{
+    return k == TokenKind::Type ||
+           k == TokenKind::Namespace ||
+           k == TokenKind::Fn ||
+           k == TokenKind::Init ||
+           k == TokenKind::Op;
+}
+
+constexpr bool is_statement_keyword(TokenKind k)
+{
+    return is_declaration_keyword(k) ||
+           is_modifier(k) ||
+           k == TokenKind::Var ||
+           k == TokenKind::Return ||
+           k == TokenKind::If ||
+           k == TokenKind::Else ||
+           k == TokenKind::While;
+}
+
 constexpr TokenKind binary_op_to_token(BinaryOp op)
 {
     switch (op)

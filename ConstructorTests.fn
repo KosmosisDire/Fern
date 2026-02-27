@@ -1,0 +1,153 @@
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    op +(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2
+        {
+            x: left.x + right.x,
+            y: left.y + right.y,
+        }
+    }
+}
+
+type Rect
+{
+    pos: Vector2
+    size: Vector2
+
+    init{}
+    init(pos: Vector2, size: Vector2)
+    {
+        this.pos = pos
+        this.size = size
+    }
+}
+
+type Program
+{
+    fn Main
+    {
+        
+        -- CASE 1: Bare type name + initializer (no parens)
+        -- Vector2 should resolve to Method(Vector2.init)
+        -- InitializerExpr should have type Vector2, no symbol
+        
+
+        var a = Vector2 { x: 1.0, y: 2.0 }
+
+        
+        -- CASE 2: Explicit constructor call + initializer
+        -- Vector2 in CallExpr callee should resolve to constructor
+        -- CallExpr should have type Vector2
+        -- InitializerExpr should have type Vector2, no symbol
+        
+
+        var b = Vector2(1.0, 2.0) { x: 3.0 }
+
+        
+        -- CASE 3: Bare type name + empty initializer
+        -- Should still resolve default constructor
+        
+
+        var c = Vector2 {}
+
+        
+        -- CASE 4: Explicit constructor call, no initializer
+        -- Standard call binding, type Vector2
+        
+
+        var d = Vector2(1.0, 2.0)
+
+        
+        -- CASE 5: Default constructor call, no initializer
+        -- Standard call binding, type Vector2
+        
+
+        var e = Vector2()
+
+        
+        -- CASE 6: Bare type name + cross-line initializer
+        -- Same as case 1 but cross-line
+        
+
+        var f = Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- CASE 7: Nested - outer bare type, inner inferred
+        -- Rect should resolve to Rect default constructor
+        -- pos field value is anonymous initializer typed Vector2
+        
+
+        var g = Rect
+        {
+            pos: { x: 1.0, y: 2.0 },
+            size: { x: 10.0, y: 20.0 }
+        }
+
+        
+        -- CASE 8: Nested - outer bare type, inner explicit
+        -- Inner Vector2 should resolve to its constructor
+        
+
+        var h = Rect
+        {
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2(3.0, 4.0) { x: 5.0 }
+        }
+
+        
+        -- CASE 9: Initializer in binary expression
+        -- Both sides should resolve constructors correctly
+        
+
+        var i = Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }
+
+        
+        -- CASE 10: Initializer in return
+        
+
+        return Vector2 { x: 1.0, y: 2.0 }
+
+        
+        -- ERROR: Non-type identifier with initializer
+        -- Should say "initializer lists can only be applied..."
+        
+
+        var j = Main { x: 1.0 }
+
+        
+        -- ERROR: Literal with initializer (no CallExpr wrapper)
+        -- Should say "initializer lists can only be applied..."
+        
+
+        var k = true { x: 1.0 }
+
+        
+        -- ERROR: Non-constructor call with initializer
+        -- Main() returns void, not a type
+        
+
+        var l = Main() { x: 1.0 }
+
+        
+        -- CASE 11: Bare type reference without initializer or call
+        -- Should have symbol Type(Vector2) but NO value type
+        
+
+        var m = Vector2
+    }
+}

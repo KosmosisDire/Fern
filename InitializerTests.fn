@@ -1,0 +1,635 @@
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    op +(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2
+        {
+            x: left.x + right.x,
+            y: left.y + right.y,
+        }
+    }
+}
+
+type Color
+{
+    r: f32
+    g: f32
+    b: f32
+    a: f32
+
+    init{}
+}
+
+type Style
+{
+    color: Color
+    fontSize: f32
+    padding: f32
+
+    init{}
+}
+
+type Rect
+{
+    pos: Vector2
+    size: Vector2
+    style: Style
+
+    init{}
+    init(pos: Vector2, size: Vector2)
+    {
+        this.pos = pos
+        this.size = size
+    }
+}
+
+type Deep
+{
+    rect: Rect
+    name: bool
+
+    init{}
+}
+
+type Program
+{
+    fn Main
+    {
+        
+        -- BASIC: same-line initializer
+        
+
+        var a1 = Vector2 { x: 1.0, y: 2.0 }
+
+        
+        -- BASIC: cross-line initializer
+        
+
+        var a2 = Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- BASIC: after constructor call with args
+        
+
+        var a3 = Vector2(1.0, 2.0) { x: 3.0 }
+
+        var a4 = Vector2(1.0, 2.0)
+        {
+            x: 3.0
+        }
+
+        
+        -- BASIC: trailing comma
+        
+
+        var a5 = Vector2 { x: 1.0, y: 2.0, }
+
+        var a6 = Vector2
+        {
+            x: 1.0,
+            y: 2.0,
+        }
+
+        
+        -- BASIC: newline-separated (no commas)
+        
+
+        var a7 = Vector2
+        {
+            x: 1.0
+            y: 2.0
+        }
+
+        
+        -- BASIC: empty initializer
+        
+
+        var a8 = Vector2 {}
+
+        var a9 = Vector2
+        {
+        }
+
+        
+        -- NESTED FIELD TARGETS: dot notation
+        
+
+        var b1 = Rect
+        {
+            pos.x: 1.0,
+            pos.y: 2.0,
+            size.x: 10.0,
+            size.y: 20.0
+        }
+
+        var b2 = Rect { pos.x: 1.0, size.y: 20.0 }
+
+        
+        -- NESTED FIELD TARGETS: deep dot notation
+        
+
+        var b3 = Rect
+        {
+            style.color.r: 1.0,
+            style.color.g: 0.5,
+            style.color.b: 0.0,
+            style.color.a: 1.0
+        }
+
+        
+        -- NESTED INFERRED INITIALIZERS: field: { ... }
+        
+
+        var c1 = Rect
+        {
+            pos: { x: 1.0, y: 2.0 },
+            size: { x: 10.0, y: 20.0 }
+        }
+
+        var c2 = Rect
+        {
+            pos:
+            {
+                x: 1.0,
+                y: 2.0
+            },
+            size:
+            {
+                x: 10.0,
+                y: 20.0
+            }
+        }
+
+        
+        -- NESTED INFERRED INITIALIZERS: deep nesting
+        
+
+        var c3 = Rect
+        {
+            style:
+            {
+                color: { r: 1.0, g: 0.5, b: 0.0, a: 1.0 },
+                fontSize: 14.0,
+                padding: 8.0
+            }
+        }
+
+        var c4 = Deep
+        {
+            rect:
+            {
+                pos: { x: 1.0, y: 2.0 },
+                size: { x: 10.0, y: 20.0 },
+                style:
+                {
+                    color: { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }
+                }
+            },
+            name: true
+        }
+
+        
+        -- NESTED INFERRED INITIALIZERS: mixed with dot notation
+        
+
+        var c5 = Rect
+        {
+            pos: { x: 1.0, y: 2.0 },
+            style.fontSize: 14.0,
+            style.color: { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }
+        }
+
+        
+        -- EXPRESSION CONTEXT: binary expressions
+        
+
+        var d1 = Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }
+
+        var d2 = Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        } + Vector2
+        {
+            x: 3.0,
+            y: 4.0
+        }
+
+        
+        -- EXPRESSION CONTEXT: value is a complex expression
+        
+
+        var d3 = Vector2
+        {
+            x: 1.0 + 2.0,
+            y: 3.0 * 4.0
+        }
+
+        
+        -- EXPRESSION CONTEXT: value is another initializer
+        
+
+        var d4 = Rect
+        {
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2(3.0, 4.0) { x: 5.0 }
+        }
+
+        
+        -- EXPRESSION CONTEXT: in return statement
+        
+
+        return Vector2 { x: 1.0, y: 2.0 }
+
+        
+        -- EXPRESSION CONTEXT: member access after initializer
+        
+
+        var d5 = Vector2 { x: 1.0, y: 2.0 }.x
+        var d6 = Rect { pos: { x: 1.0, y: 2.0 }, size: { x: 1.0, y: 1.0 } }.pos
+
+        
+        -- EXPRESSION CONTEXT: assigned to field from another initializer
+        
+
+        var d7 = Rect
+        {
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2 { x: 10.0, y: 20.0 }
+        }
+
+        
+        -- AMBIGUITY: if condition with initializer
+        -- (should { start the if-body or the initializer?)
+        
+
+        var cond = Vector2 { x: 1.0, y: 2.0 }
+        if cond
+        {
+            var inside = true
+        }
+
+        
+        -- AMBIGUITY: initializer in if condition (Rust-style problem)
+        -- Is this if(Vector2{...}) {body} or if(Vector2) {x: 1.0...}?
+        
+
+        if Vector2 { x: 1.0, y: 2.0 }
+        {
+            var inside = true
+        }
+
+        
+        -- AMBIGUITY: while condition
+        
+
+        while Vector2 { x: 1.0, y: 2.0 }
+        {
+            var inside = true
+        }
+
+        
+        -- AMBIGUITY: expression statement followed by block
+        -- Is this one expression or two statements?
+        
+
+        Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- AMBIGUITY: literal followed by brace on same line
+        -- Parser treats { as initializer, binder should reject
+        
+
+        var e1 = 42
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- AMBIGUITY: function call result with initializer
+        
+
+        var e2 = Main()
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- AMBIGUITY: binary result with initializer on next line
+        
+
+        var e3 = 1.0 + 2.0
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- ERROR: invalid field target (expression)
+        -- Should say something like "not a valid field target"
+        
+
+        var f1 = Vector2
+        {
+            5 + 2: 1.0,
+            y: 2.0
+        }
+
+        
+        -- ERROR: string literal as field target
+        
+
+        var f2 = Vector2 { "hello": 1.0 }
+
+        
+        -- ERROR: missing value after colon
+        
+
+        var f3 = Vector2 { x: , y: 2.0 }
+
+        
+        -- ERROR: missing colon
+        
+
+        var f4 = Vector2 { x 1.0 }
+
+        
+        -- ERROR: missing target (bare colon)
+        
+
+        var f5 = Vector2 { : 1.0 }
+
+        
+        -- ERROR: field doesn't exist on type
+        
+
+        var f6 = Vector2 { x: 1.0, z: 3.0 }
+
+        
+        -- ERROR: duplicate field
+        
+
+        var f7 = Vector2 { x: 1.0, x: 2.0 }
+
+        
+        -- ERROR: initializer on non-struct type
+        
+
+        var f8 = true { x: 1.0 }
+
+        
+        -- MIXED: everything together
+        
+
+        var g1 = Deep
+        {
+            rect:
+            {
+                pos: Vector2(1.0, 2.0) { x: 5.0 },
+                size:
+                {
+                    x: 10.0,
+                    y: 20.0
+                },
+                style:
+                {
+                    color:
+                    {
+                        r: 1.0
+                        g: 0.5
+                        b: 0.0
+                        a: 1.0
+                    }
+                    fontSize: 14.0
+                    padding: 8.0
+                }
+            }
+            name: true
+        }
+
+        
+        -- AMBIGUITY: if with invalid initializer-like content
+        -- The { starts an initializer on Vector2 but target is bad
+        
+
+        if Vector2 { 5 + 2: 1.0, y: 2.0 }
+        {
+            var inside = true
+        }
+
+        
+        -- AMBIGUITY: if with block that happens to have colon
+        -- Is { x: 1.0 } an initializer on myBool or the if-body?
+        
+
+        var myBool = true
+        if myBool { x: 1.0, y: 2.0 }
+        {
+            var inside = true
+        }
+
+        
+        -- AMBIGUITY: if cross-line, condition is type
+        -- Does the { start the if-body or an initializer?
+        
+
+        if Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- AMBIGUITY: while with cross-line brace
+        
+
+        while Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- AMBIGUITY: parenthesized to disambiguate
+        
+
+        if (Vector2 { x: 1.0, y: 2.0 })
+        {
+            var inside = true
+        }
+
+        
+        -- ERROR: assignment instead of colon
+        
+
+        var h1 = Vector2 { x = 1.0 }
+
+        
+        -- ERROR: nested invalid field target
+        
+
+        var h2 = Rect
+        {
+            pos: Vector2 { 5: 1.0 }
+        }
+
+        
+        -- ERROR: both fields wrong
+        
+
+        var h3 = Vector2 { z: 1.0, w: 2.0 }
+
+        
+        -- ERROR: invalid intermediate in dot notation
+        
+
+        var h4 = Rect { style.nonexistent.r: 1.0 }
+
+        
+        -- ERROR: empty nested inferred initializer
+        
+
+        var h5 = Rect { pos: {} }
+
+        var h6 = Rect
+        {
+            pos:
+            {
+            }
+        }
+
+        
+        -- CHAINING: initializer on result of initializer
+        
+
+        var h7 = Vector2 { x: 1.0 } { y: 2.0 }
+
+        
+        -- CHAINING: member access then initializer
+        
+
+        var h8 = Rect { pos: Vector2 { x: 1.0, y: 2.0 } }.pos.x
+
+        
+        -- CONTEXT: initializer inside return cross-line
+        
+
+        return Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        
+        -- CONTEXT: initializer as operand in binary
+        
+
+        var h9 = Vector2 { x: 1.0, y: 2.0 } + Vector2(3.0, 4.0) { y: 5.0 }
+
+        
+        -- CONTEXT: multiple initializers separated by operator cross-line
+        
+
+        var h10 = Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+        +
+        Vector2
+        {
+            x: 3.0,
+            y: 4.0
+        }
+
+        
+        -- ERROR: only commas, no fields
+        
+
+        var h11 = Vector2 { , , }
+
+        
+        -- ERROR: value is missing, multiple fields
+        
+
+        var h12 = Vector2 { x: , y: }
+
+        
+        -- NESTED: valid explicit type inside inferred
+        -- (value is typed initializer, not inferred)
+        
+
+        var h13 = Rect
+        {
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2
+            {
+                x: 10.0,
+                y: 20.0
+            }
+        }
+
+        
+        -- AMBIGUITY: variable then block on next line
+        -- Should be two separate statements
+        
+
+        var h14 = Vector2 { x: 1.0, y: 2.0 }
+        {
+            var blockLocal = true
+        }
+
+        
+        -- AMBIGUITY: function result then brace with non-init content
+        
+
+        var h15 = Main()
+        {
+            var blockLocal = true
+        }
+
+        
+        -- NESTED: inferred initializer with wrong fields
+        
+
+        var h16 = Rect
+        {
+            pos: { z: 1.0, w: 2.0 }
+        }
+
+        
+        -- NESTED: deeply nested, error at leaf level
+        
+
+        var h17 = Deep
+        {
+            rect:
+            {
+                style:
+                {
+                    color: { r: 1.0, g: 0.5, b: 0.0, nonexistent: 1.0 }
+                }
+            }
+        }
+    }
+}

@@ -10,35 +10,37 @@ namespace Fern
 {
 
 struct SemanticContext;
+struct ResolvedAttribute;
+
 struct RootSyntax;
-struct NamespaceDeclSyntax;
-struct TypeDeclSyntax;
 struct BaseDeclSyntax;
-struct NamespaceSymbol;
-struct MethodSymbol;
-struct NamedTypeSymbol;
-struct TypeSymbol;
 struct BaseExprSyntax;
 struct BaseStmtSyntax;
-struct IdentifierExprSyntax;
-struct LiteralExprSyntax;
-struct BinaryExprSyntax;
 struct AssignmentExprSyntax;
-struct CallExprSyntax;
-struct MemberAccessExprSyntax;
-struct ParenExprSyntax;
+struct BinaryExprSyntax;
 struct BlockExprSyntax;
-struct ReturnStmtSyntax;
-struct VariableDeclSyntax;
-struct UnaryExprSyntax;
+struct CallExprSyntax;
+struct IdentifierExprSyntax;
+struct IfStmtSyntax;
 struct InitializerExprSyntax;
+struct LiteralExprSyntax;
+struct MemberAccessExprSyntax;
+struct NamespaceDeclSyntax;
 struct OperatorDeclSyntax;
 struct ParameterDeclSyntax;
+struct ParenExprSyntax;
+struct ReturnStmtSyntax;
 struct ThisExprSyntax;
+struct TypeDeclSyntax;
 struct TypeExprSyntax;
-struct IfStmtSyntax;
+struct UnaryExprSyntax;
+struct VariableDeclSyntax;
 struct WhileStmtSyntax;
-struct ResolvedAttribute;
+
+struct MethodSymbol;
+struct NamedTypeSymbol;
+struct NamespaceSymbol;
+struct TypeSymbol;
 
 class Binder : public DiagnosticSystem
 {
@@ -83,6 +85,8 @@ private:
     TypeSymbol* bind_call(CallExprSyntax* expr);
     TypeSymbol* bind_member_access(MemberAccessExprSyntax* expr);
     TypeSymbol* bind_initializer(InitializerExprSyntax* expr);
+    TypeSymbol* bind_anonymous_initializer(InitializerExprSyntax* expr, NamedTypeSymbol* contextType);
+    void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType);
     TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
     TypeSymbol* bind_this(ThisExprSyntax* expr);
     TypeSymbol* bind_paren(ParenExprSyntax* expr);

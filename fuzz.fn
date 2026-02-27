@@ -1,0 +1,701 @@
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    op +(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2
+        {
+            x: left.x + right.x,
+            y: left.y + right.y,
+        }
+    }
+
+    op -(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2
+        {
+            x: left.x - right.x,
+            y: left.y - right.y,
+        }
+    }
+}
+
+type Color
+{
+    r: f32
+    g: f32
+    b: f32
+    a: f32
+
+    init{}
+}
+
+type Style
+{
+    color: Color
+    fontSize: f32
+    padding: f32
+
+    init{}
+}
+
+type Rect
+{
+    pos: Vector2
+    size: Vector2
+    style: Style
+
+    init{}
+}
+
+
+-- SECTION 1: Operator spacing disambiguation
+
+
+type OpSpacing
+{
+    fn test
+    {
+        -- Binary: space on both sides
+        var a1 = 5 + 4
+        var a2 = 5 - 4
+        var a3 = 5 * 4
+        var a4 = 5 > 4
+        var a5 = 5 == 4
+
+        -- Binary: no space on either side
+        var b1 = 5+4
+        var b2 = 5-4
+        var b3 = 5*4
+
+        -- Unary prefix: no space on right (adjacent)
+        var c1 = -4
+        var c2 = +4
+        var c3 = !true
+        var c4 = -4 + 5
+        var c5 = 5 + -4
+        var c6 = 5 * -4
+        var c7 = -4 + -4
+        var c8 = !true == !false
+
+        -- Ambiguous: space on left, not on right (should warn)
+        var d1 = 5 +4
+        var d2 = 5 -4
+        var d3 = 5 +4 + 3
+        var d4 = 10 -3 + 2
+
+        -- Unary with space (should error for !)
+        var e1 = ! true
+        var e2 = ! false == true
+
+        -- Cross-line binary (should continue expression)
+        var f1 = 5
+            + 4
+        var f2 = 5
+            - 4
+        var f3 = 5
+            + 4
+            + 3
+        var f4 = 5
+            +
+            4
+        var f5 = Vector2 { x: 1.0, y: 2.0 }
+            + Vector2 { x: 3.0, y: 4.0 }
+
+        -- Cross-line with unary on new line (prefix, new statement)
+        var g1 = 5
+        -4
+        var g2 = 5
+        +4
+
+        -- Nested unary
+        var h1 = --4
+        var h2 = -(-4)
+        var h3 = !!true
+
+        -- Mixed precedence with unary
+        var i1 = -4 * 3
+        var i2 = 3 * -4
+        var i3 = -4 + -3 * -2
+    }
+}
+
+
+-- SECTION 2: Initializer + operator interactions
+
+
+type InitOps
+{
+    fn test
+    {
+        -- Initializer followed by binary op, same line
+        var a1 = Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }
+
+        -- Initializer followed by binary op, cross-line
+        var a2 = Vector2 { x: 1.0, y: 2.0 }
+            + Vector2 { x: 3.0, y: 4.0 }
+
+        -- Multi-line initializers with binary op between
+        var a3 = Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+        + Vector2
+        {
+            x: 3.0,
+            y: 4.0
+        }
+
+        -- Initializer with unary inside field value
+        var a4 = Vector2 { x: -1.0, y: -2.0 }
+
+        -- Initializer with complex expressions as values
+        var a5 = Vector2 { x: 1.0 + 2.0, y: 3.0 * -4.0 }
+
+        -- Initializer with cross-line field values
+        var a6 = Vector2
+        {
+            x: 1.0
+                + 2.0,
+            y: 3.0
+                * 4.0
+        }
+
+        -- Chain: initializer + member access + binary
+        var a7 = Vector2 { x: 1.0, y: 2.0 }.x + Vector2 { x: 3.0, y: 4.0 }.y
+
+        -- Nested initializer with operator in inner value
+        var a8 = Rect
+        {
+            pos: { x: 1.0 + 2.0, y: -3.0 },
+            size: { x: 10.0 * 2.0, y: 20.0 }
+        }
+
+        -- Initializer where value is binary of two initializers
+        var a9 = Rect
+        {
+            pos: Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 0.5, y: 0.5 },
+            size: { x: 10.0, y: 20.0 }
+        }
+
+        -- Ambiguous spacing with initializer
+        var a10 = Vector2 { x: 5 +4, y: 2.0 }
+    }
+}
+
+
+-- SECTION 3: Initializers in condition contexts
+
+
+type CondInit
+{
+    fn test
+    {
+        -- Same-line initializer in if (should error)
+        if Vector2 { x: 1.0, y: 2.0 }
+        {
+            var a = true
+        }
+
+        -- Cross-line initializer in if (should error)
+        if Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        -- Same-line initializer in while (should error)
+        while Vector2 { x: 1.0, y: 2.0 }
+        {
+            var a = true
+        }
+
+        -- Cross-line initializer in while (should error)
+        while Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+
+        -- Parenthesized initializer in condition (should work, no error)
+        if (Vector2 { x: 1.0, y: 2.0 }).x > 0.0
+        {
+            var a = true
+        }
+
+        -- Parenthesized initializer in while (should work)
+        while (Vector2 { x: 1.0, y: 2.0 }).x > 0.0
+        {
+            var a = true
+        }
+
+        -- Non-initializer block after condition (should be body)
+        var cond = true
+        if cond
+        {
+            var a = true
+        }
+
+        -- Empty block after condition (body, not initializer)
+        if true
+        {
+        }
+
+        -- Nested if with initializer in inner condition
+        if true
+        {
+            if Vector2 { x: 1.0, y: 2.0 }
+            {
+                var a = true
+            }
+        }
+
+        -- Condition with binary expression, no initializer
+        if 5 > 4
+        {
+            var a = true
+        }
+
+        -- Condition with unary
+        if !false
+        {
+            var a = true
+        }
+
+        -- Condition with cross-line binary
+        if 5
+            > 4
+        {
+            var a = true
+        }
+    }
+}
+
+
+-- SECTION 4: Incomplete/broken operator expressions
+
+
+type BrokenOps
+{
+    fn test
+    {
+        -- Dangling binary operator at end of line
+        var a = 5 +
+
+        -- Dangling binary operator before closing brace
+        var b = 5 *
+    }
+}
+
+
+-- SECTION 5: Incomplete initializer lists (mid-typing)
+
+
+type IncompleteInit
+{
+    fn test
+    {
+        -- Just opened
+        var a = Vector2 {
+
+        -- One field, no close
+        var b = Vector2 { x: 1.0
+
+        -- Field name, no colon
+        var c = Vector2 { x
+
+        -- Field name and colon, no value
+        var d = Vector2 { x:
+
+        -- One field and comma
+        var e = Vector2 { x: 1.0,
+
+        -- Two field names, no values
+        var f = Vector2 { x: , y:
+
+        -- Nested: outer started, inner incomplete
+        var g = Rect { pos: {
+
+        -- Nested: inner has one field, not closed
+        var h = Rect { pos: { x: 1.0
+
+        -- Nested: inner complete, outer missing close
+        var i = Rect { pos: { x: 1.0, y: 2.0 }
+
+        -- Dot notation target, no value
+        var j = Rect { pos.x:
+
+        -- Value is partial expression
+        var k = Vector2 { x: 1.0 +
+
+        -- Value is partial binary, second operand missing
+        var l = Vector2 { x: 1.0 + , y: 2.0 }
+    }
+}
+
+
+-- SECTION 6: Garbage tokens inside initializers
+
+
+type GarbageInit
+{
+    fn test
+    {
+        -- Keyword inside initializer
+        var a = Vector2 { return 1.0 }
+
+        -- Declaration inside initializer
+        var b = Vector2 { var x = 1.0 }
+
+        -- Type inside initializer
+        var c = Vector2 { type Inner { } }
+
+        -- If inside initializer
+        var d = Vector2 { if true { } }
+
+        -- Assignment where colon should be
+        var e = Vector2 { x = 1.0, y = 2.0 }
+
+        -- Just values, no names
+        var f = Vector2 { 1.0, 2.0 }
+
+        -- Multiple colons
+        var g = Vector2 { x:: 1.0 }
+
+        -- Bare colons
+        var h = Vector2 { : , : }
+
+        -- Triple comma
+        var i = Vector2 { , , , }
+
+        -- Mix valid and garbage
+        var j = Vector2 { x: 1.0, return, y: 2.0 }
+
+        -- Deeply nested garbage
+        var k = Rect { pos: { x: 1.0, if true { } } }
+
+        -- Empty nested then valid
+        var l = Rect { pos: {}, size: { x: 1.0, y: 2.0 } }
+    }
+}
+
+
+-- SECTION 7: Operators + initializers + conditions combined
+
+
+type Combined
+{
+    fn test
+    {
+        -- Binary op result used as initializer target
+        var a = (Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }).x
+
+        -- Unary on initializer
+        var b = -Vector2 { x: 1.0, y: 2.0 }.x
+
+        -- Chained initializers with member access and binary
+        var c = Vector2 { x: 1.0, y: 2.0 }.x
+            + Vector2 { x: 3.0, y: 4.0 }.y
+
+        -- If condition with complex expression
+        if (Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }).x > 0.0
+        {
+            var d = true
+        }
+
+        -- While with negated condition
+        while !(Vector2 { x: 1.0, y: 2.0 }).x > 0.0
+        {
+            var e = true
+        }
+
+        -- Return with binary of initializers
+        return Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }
+
+        -- Nested initializer with operator spacing issues in value
+        var f = Vector2 { x: 5 +4, y: 3 -2 }
+
+        -- Cross-line everything
+        var g = Vector2
+        {
+            x: 1.0,
+            y: 2.0
+        }
+        + Vector2
+        {
+            x: 3.0,
+            y: 4.0
+        }
+
+        -- Initializer with cross-line binary in field value
+        var h = Vector2
+        {
+            x: 1.0
+                + 2.0
+                + 3.0,
+            y: 4.0
+        }
+    }
+}
+
+
+-- SECTION 8: Recovery after errors
+
+
+type Recovery
+{
+    fn broken
+    {
+        var a = Vector2 {
+        var b = Vector2 { x:
+        var c = Rect { pos: {
+        var d = 5 +
+        var e = ! true
+        if Vector2 { x: 1.0, y: 2.0 }
+        {
+            var f = true
+        }
+    }
+
+    fn valid
+    {
+        var a = Vector2 { x: 1.0, y: 2.0 }
+        var b = Rect
+        {
+            pos: { x: 1.0, y: 2.0 },
+            size: { x: 10.0, y: 20.0 }
+        }
+        var c = Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }
+        var d = Rect { pos: Vector2(1.0, 2.0) { x: 5.0 }, size: { x: 10.0, y: 20.0 } }
+        var e = 5 + 4
+        var f = -4 + 3
+        var g = 5 + -4
+        if true
+        {
+            var h = Vector2 { x: 1.0, y: 2.0 }
+        }
+    }
+}
+
+
+-- SECTION 9: Edge cases with empty / minimal constructs
+
+
+type EdgeCases
+{
+    fn test
+    {
+        -- Empty initializer (parsed as init, not block)
+        var a = Vector2 {}
+
+        -- Empty block (not initializer)
+        {
+        }
+
+        -- Single field, no comma
+        var b = Vector2 { x: 1.0 }
+
+        -- Single field with trailing comma
+        var c = Vector2 { x: 1.0, }
+
+        -- Deeply nested empty
+        var d = Rect { pos: {}, size: {} }
+
+        -- Initializer on result of call
+        var e = Vector2(1.0, 2.0) { x: 5.0 }
+
+        -- Initializer on result of initializer (chained)
+        var f = Vector2 { x: 1.0 } { y: 2.0 }
+
+        -- Member access on anonymous initializer
+        var g = Rect { pos: { x: 1.0, y: 2.0 } }.pos.x
+
+        -- Operator between initializer and literal
+        var h = Vector2 { x: 1.0, y: 2.0 }.x + 5.0
+
+        -- Not not
+        var j = !!true
+
+        -- Unary on parenthesized
+        var k = -(5 + 4)
+
+        -- Binary with all unary operands
+        var l = -4 + -3 * -2
+    }
+}
+
+
+-- SECTION 10: Incomplete declarations then valid code
+
+
+-- Namespace with no brace
+namespace Broken1
+
+-- Namespace with opening brace but no close
+namespace Broken2
+{
+
+-- Namespace with content but no close
+namespace Broken3
+{
+    type Inner
+    {
+        x: f32
+        init{}
+    }
+
+-- Type with no brace
+type Broken4
+
+-- Type with opening brace but no close
+type Broken5
+{
+
+-- Type with fields but no close
+type Broken6
+{
+    x: f32
+    y: f32
+
+-- Type with init but no close
+type Broken7
+{
+    x: f32
+    init{}
+
+-- Function with no brace
+type Broken8
+{
+    fn test
+
+    fn test2
+    {
+    }
+}
+
+-- Function with opening brace but no close
+type Broken9
+{
+    fn test
+    {
+
+    fn test2
+    {
+        var a = 5
+    }
+}
+
+-- Function with content but no close
+type Broken10
+{
+    fn test
+    {
+        var a = Vector2 { x: 1.0, y: 2.0 }
+
+    fn test2
+    {
+        var b = 5 + 4
+    }
+}
+
+-- Nested incomplete: namespace > type > function
+namespace Broken11
+{
+    type Inner
+    {
+        fn method
+        {
+
+        fn method2
+        {
+            var a = true
+        }
+    }
+}
+
+-- Init with no brace
+type Broken12
+{
+    x: f32
+    init(x: f32)
+
+    init{}
+}
+
+-- Init with opening brace but no close
+type Broken13
+{
+    x: f32
+    init(x: f32)
+    {
+        this.x = x
+
+    init{}
+}
+
+-- Operator with no brace
+type Broken14
+{
+    x: f32
+    init{}
+    op +(left: Broken14, right: Broken14) -> Broken14
+}
+
+-- Operator with opening brace but no close
+type Broken15
+{
+    x: f32
+    init{}
+    op +(left: Broken15, right: Broken15) -> Broken15
+    {
+}
+
+
+-- This MUST still parse correctly after all the broken stuff
+
+
+type FinalValid
+{
+    x: f32
+    y: f32
+
+    init{}
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    fn compute
+    {
+        var a = Vector2 { x: 1.0, y: 2.0 }
+        var b = Vector2 { x: 3.0, y: 4.0 }
+        var c = a + b
+        var d = Vector2 { x: -1.0, y: -2.0 }
+        var e = Rect
+        {
+            pos: { x: 1.0, y: 2.0 },
+            size: { x: 10.0, y: 20.0 }
+        }
+        var f = Vector2 { x: 1.0, y: 2.0 }.x + 5.0
+        if true
+        {
+            var g = Vector2 { x: 1.0, y: 2.0 }
+        }
+        while false
+        {
+            var h = !true
+        }
+        return Vector2 { x: 1.0, y: 2.0 }
+    }
+}

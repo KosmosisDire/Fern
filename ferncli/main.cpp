@@ -27,8 +27,8 @@ int main(int argc, char* argv[])
     for (const auto& unit : compilation.get_units())
     {
         Fern::TokenWalker walker(unit->tokens);
-        LOG(LogChannel::Debug) << walker.format() << "\n";
-        LOG(LogChannel::Debug) << Fern::AstDebugFormatter::format(unit->ast) << "\n";
+        // LOG(LogChannel::Debug) << walker.format() << "\n";
+        // LOG(LogChannel::Debug) << Fern::AstDebugFormatter::format(unit->ast) << "\n";
     }
 
     LOG(LogChannel::Debug) << "---- Annotated AST ----\n";
