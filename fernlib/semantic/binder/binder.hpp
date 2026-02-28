@@ -18,7 +18,7 @@ struct BaseExprSyntax;
 struct BaseStmtSyntax;
 struct AssignmentExprSyntax;
 struct BinaryExprSyntax;
-struct BlockExprSyntax;
+struct BlockSyntax;
 struct CallExprSyntax;
 struct IdentifierExprSyntax;
 struct IfStmtSyntax;
@@ -90,9 +90,10 @@ private:
     TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
     TypeSymbol* bind_this(ThisExprSyntax* expr);
     TypeSymbol* bind_paren(ParenExprSyntax* expr);
-    TypeSymbol* bind_block(BlockExprSyntax* expr);
 
 #pragma region Statement Binding
+
+    void bind_block(BlockSyntax* block);
 
     void bind_stmt(BaseStmtSyntax* stmt);
     void bind_return(ReturnStmtSyntax* stmt);

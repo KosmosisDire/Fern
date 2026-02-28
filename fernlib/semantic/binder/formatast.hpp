@@ -152,12 +152,10 @@ public:
         out << "}";
     }
 
-    void visit(BlockExprSyntax* node) override
+    void visit(BlockSyntax* node) override
     {
         write_indent();
-        out << "BlockExpr";
-        write_annotation(node);
-        out << "\n";
+        out << "Block\n";
         write_indent();
         out << "{\n";
         ++indent;

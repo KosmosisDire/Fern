@@ -126,7 +126,7 @@ public:
         out << "}";
     }
 
-    void visit(BlockExprSyntax* node) override
+    void visit(BlockSyntax* node) override
     {
         begin_node(node);
         out << "\n";

@@ -525,7 +525,7 @@ void Binder::bind_method(MethodSymbol* method)
 
     bindingMethods.insert(method);
 
-    BlockExprSyntax* body = nullptr;
+    BlockSyntax* body = nullptr;
     if (method->syntax)
     {
         if (auto* funcAst = method->syntax->as<FunctionDeclSyntax>())
@@ -631,10 +631,6 @@ TypeSymbol* Binder::bind_expr(BaseExprSyntax* expr)
     if (auto* paren = expr->as<ParenExprSyntax>())
     {
         return bind_paren(paren);
-    }
-    if (auto* block = expr->as<BlockExprSyntax>())
-    {
-        return bind_block(block);
     }
 
     return nullptr;
@@ -1221,29 +1217,16 @@ TypeSymbol* Binder::bind_paren(ParenExprSyntax* expr)
     return type;
 }
 
-TypeSymbol* Binder::bind_block(BlockExprSyntax* expr)
+void Binder::bind_block(BlockSyntax* block)
 {
     push_scope();
 
-    TypeSymbol* lastType = nullptr;
-    for (auto* stmt : expr->statements)
+    for (auto* stmt : block->statements)
     {
         bind_stmt(stmt);
-
-        if (auto* exprStmt = stmt->as<ExpressionStmtSyntax>())
-        {
-            lastType = context.bindings.get_type(exprStmt->expression);
-        }
-        else
-        {
-            lastType = nullptr;
-        }
     }
 
     pop_scope();
-
-    store_type(expr, lastType);
-    return lastType;
 }
 
 #pragma region Statement Binding

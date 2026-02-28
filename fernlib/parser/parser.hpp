@@ -35,7 +35,7 @@ private:
     // Shared parse helpers
     void parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& span);
     BaseExprSyntax* parse_return_type(Span& span);
-    BlockExprSyntax* parse_body(Span& span);
+    BlockSyntax* parse_body(Span& span);
 
     // Statements
     BaseStmtSyntax* parse_statement();
@@ -52,7 +52,7 @@ private:
     InitializerExprSyntax* parse_initializer(BaseExprSyntax* target = nullptr);
     BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
     BaseExprSyntax* parse_postfix();
-    BlockExprSyntax* parse_block();
+    BlockSyntax* parse_block();
     IfStmtSyntax* parse_if();
     WhileStmtSyntax* parse_while();
 

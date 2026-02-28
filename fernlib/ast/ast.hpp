@@ -16,12 +16,14 @@ class AstVisitor;
 // Base
 struct BaseSyntax;
 
+// Block
+struct BlockSyntax;
+
 // Expressions
 struct BaseExprSyntax;
 struct IdentifierExprSyntax;
 struct LiteralExprSyntax;
 struct ParenExprSyntax;
-struct BlockExprSyntax;
 struct CallExprSyntax;
 struct InitializerExprSyntax;
 struct UnaryExprSyntax;
@@ -71,11 +73,13 @@ class AstVisitor
 public:
     virtual ~AstVisitor() = default;
 
+    // Block
+    virtual void visit(BlockSyntax* node) = 0;
+
     // Expressions
     virtual void visit(IdentifierExprSyntax* node) = 0;
     virtual void visit(LiteralExprSyntax* node) = 0;
     virtual void visit(ParenExprSyntax* node) = 0;
-    virtual void visit(BlockExprSyntax* node) = 0;
     virtual void visit(CallExprSyntax* node) = 0;
     virtual void visit(InitializerExprSyntax* node) = 0;
     virtual void visit(UnaryExprSyntax* node) = 0;
@@ -157,7 +161,15 @@ struct BaseDeclSyntax : BaseStmtSyntax
     BaseDeclSyntax(int k) : BaseStmtSyntax(k) {}
 };
 
+#pragma region Block
 
+// { statements... }
+struct BlockSyntax : BaseSyntax
+{
+    SYNTAX_NODE(Block, BaseSyntax)
+
+    std::vector<StmtPtr> statements;
+};
 
 #pragma region Expressions
 
@@ -183,14 +195,6 @@ struct ParenExprSyntax : BaseExprSyntax
     SYNTAX_NODE(ParenExpr, BaseExprSyntax)
 
     ExprPtr expression = nullptr;
-};
-
-// { statements... }
-struct BlockExprSyntax : BaseExprSyntax
-{
-    SYNTAX_NODE(BlockExpr, BaseExprSyntax)
-
-    std::vector<StmtPtr> statements;
 };
 
 // identifier(args...)
@@ -291,9 +295,9 @@ struct IfStmtSyntax : BaseStmtSyntax
     SYNTAX_NODE(IfStmt, BaseStmtSyntax)
 
     ExprPtr condition = nullptr;
-    BlockExprSyntax* thenBody = nullptr;
+    BlockSyntax* thenBody = nullptr;
     IfStmtSyntax* elseIf = nullptr;
-    BlockExprSyntax* elseBlock = nullptr;
+    BlockSyntax* elseBlock = nullptr;
 };
 
 // while condition { ... }
@@ -302,7 +306,7 @@ struct WhileStmtSyntax : BaseStmtSyntax
     SYNTAX_NODE(WhileStmt, BaseStmtSyntax)
 
     ExprPtr condition = nullptr;
-    BlockExprSyntax* body = nullptr;
+    BlockSyntax* body = nullptr;
 };
 
 #pragma region Declarations
@@ -334,7 +338,7 @@ struct FunctionDeclSyntax : BaseDeclSyntax
     Token name = Token::Invalid();
     std::vector<ParameterDeclSyntax*> parameters;
     ExprPtr returnType = nullptr;
-    BlockExprSyntax* body = nullptr;
+    BlockSyntax* body = nullptr;
 };
 
 // init(params...) { body }
@@ -343,7 +347,7 @@ struct InitDeclSyntax : BaseDeclSyntax
     SYNTAX_NODE(InitDecl, BaseDeclSyntax)
 
     std::vector<ParameterDeclSyntax*> parameters;
-    BlockExprSyntax* body = nullptr;
+    BlockSyntax* body = nullptr;
 };
 
 // op +(params) -> Type { body }
@@ -354,7 +358,7 @@ struct OperatorDeclSyntax : BaseDeclSyntax
     Token op = Token::Invalid();
     std::vector<ParameterDeclSyntax*> parameters;
     ExprPtr returnType = nullptr;
-    BlockExprSyntax* body = nullptr;
+    BlockSyntax* body = nullptr;
 };
 
 // type name { ... }
@@ -409,18 +413,18 @@ struct RootSyntax : BaseSyntax
 class DefaultAstVisitor : public AstVisitor
 {
 public:
+    void visit(BlockSyntax* node) override
+    {
+        for (auto& stmt : node->statements)
+            if (stmt) stmt->accept(this);
+    }
+
     void visit(IdentifierExprSyntax* node) override {}
     void visit(LiteralExprSyntax* node) override {}
 
     void visit(ParenExprSyntax* node) override
     {
         if (node->expression) node->expression->accept(this);
-    }
-
-    void visit(BlockExprSyntax* node) override
-    {
-        for (auto& stmt : node->statements)
-            if (stmt) stmt->accept(this);
     }
 
     void visit(CallExprSyntax* node) override

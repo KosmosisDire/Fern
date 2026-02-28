@@ -540,7 +540,7 @@ BaseExprSyntax* Parser::parse_return_type(Span& span)
     return type;
 }
 
-BlockExprSyntax* Parser::parse_body(Span& span)
+BlockSyntax* Parser::parse_body(Span& span)
 {
     if (!walker.check(TokenKind::LeftBrace))
     {
@@ -1199,13 +1199,9 @@ BaseExprSyntax* Parser::parse_primary()
         return thisExpr;
     }
 
-    if (walker.check(TokenKind::LeftBrace))
+    if (walker.check(TokenKind::LeftBrace) && is_initializer_list_ahead(walker))
     {
-        if (is_initializer_list_ahead(walker))
-        {
-            return parse_initializer();
-        }
-        return parse_block();
+        return parse_initializer();
     }
 
     return nullptr;
@@ -1288,9 +1284,9 @@ WhileStmtSyntax* Parser::parse_while()
     return whileStmt;
 }
 
-BlockExprSyntax* Parser::parse_block()
+BlockSyntax* Parser::parse_block()
 {
-    auto* block = arena.alloc<BlockExprSyntax>();
+    auto* block = arena.alloc<BlockSyntax>();
     Span span = walker.current().span;
 
     walker.advance();
