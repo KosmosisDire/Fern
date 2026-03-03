@@ -12,6 +12,9 @@ set(FERNLIB_SOURCES
     semantic/symbol/table.cpp
     semantic/context.cpp
     semantic/binder/binder.cpp
+    semantic/fhir/fold.cpp
+    semantic/fhir/fmt.cpp
+    semantic/fhir/lower.cpp
 
     # source
     source/file.cpp

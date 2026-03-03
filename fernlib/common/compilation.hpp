@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,26 +27,20 @@ struct CompilationUnit
 class Compilation : public DiagnosticSystem
 {
 public:
-    Compilation()
-        : DiagnosticSystem("Compilation")
-    {
-    }
+    Compilation() : DiagnosticSystem("Compilation") {}
 
     void add_file(std::string_view path);
     void add_source(std::string source, std::string_view path);
     void compile();
 
-    SemanticContext & semantic() { return semanticContext; }
-    const SemanticContext & semantic() const { return semanticContext; }
+    SemanticContext& semantic() { return semanticContext; }
+    const SemanticContext& semantic() const { return semanticContext; }
 
-    const auto& get_units() const
-    {
-        return units;
-    }
+    const auto& get_units() const { return units; }
 
 private:
     std::vector<std::unique_ptr<CompilationUnit>> units;
-    SemanticContext  semanticContext;
+    SemanticContext semanticContext;
     AllocArena arena;
     bool compiled = false;
 };

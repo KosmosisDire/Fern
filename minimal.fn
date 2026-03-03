@@ -1,11 +1,25 @@
-type Program
+
+type Vector2
 {
-    fn Main
-    {
-        var x1 = 5 - 4
-        var x2 = 5 + -4
-        var x3 = 5 +4
-        var t = ! false
-    }
+    x: f32
+    y: f32
+
+    init{}
 }
 
+type Program
+{
+    fn Main()
+    {
+        var i = 0
+        i += 10
+
+        var v = Vector2
+        {
+            x: 1.0
+            y: 2.0
+        }
+
+        return i
+    }
+}

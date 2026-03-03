@@ -1,6 +1,7 @@
 #include <logger.hpp>
 
 #include <fern.hpp>
+#include <semantic/fhir/fmt.hpp>
 #include <crtdbg.h>
 
 int main(int argc, char* argv[])
@@ -38,6 +39,12 @@ int main(int argc, char* argv[])
     }
 
     LOG(LogChannel::Debug) << compilation.semantic().format() << "\n";
+
+    LOG(LogChannel::Debug) << "---- FHIR ----\n";
+    for (auto* method : compilation.semantic().methods)
+    {
+        LOG(LogChannel::Debug) << Fern::FhirFormatter::format(method) << "\n";
+    }
 
     for (const auto& diag : compilation.get_diagnostics())
     {
