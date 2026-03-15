@@ -23,11 +23,13 @@ struct StringEqual
 };
 
 struct BaseSyntax;
+class SymbolTable;
 
 struct Symbol;
 struct NamespaceSymbol;
 struct TypeSymbol;
 struct NamedTypeSymbol;
+struct TypeParamSymbol;
 struct FieldSymbol;
 struct MethodSymbol;
 struct ParameterSymbol;
@@ -43,6 +45,7 @@ enum class SymbolKind
 {
     Namespace,
     Type,
+    TypeParam,
     Field,
     Method,
     Parameter,
@@ -57,6 +60,7 @@ struct Symbol
     SymbolKind kind;
     Symbol* parent = nullptr;
     BaseSyntax* syntax = nullptr;
+    SymbolTable* table = nullptr;
 
     virtual ~Symbol() = default;
 
@@ -93,37 +97,32 @@ struct Symbol
 struct NamespaceSymbol : Symbol
 {
     static constexpr SymbolKind Kind = SymbolKind::Namespace;
-    std::unordered_map<std::string, Symbol*, StringHash, StringEqual> members;
+    std::unordered_map<std::string, NamespaceSymbol*, StringHash, StringEqual> namespaces;
+    std::vector<NamedTypeSymbol*> types;
 
     NamespaceSymbol() { kind = Kind; }
 
-    Symbol* find_member(std::string_view name)
+    NamespaceSymbol* find_namespace(std::string_view name)
     {
-        auto it = members.find(name);
-        return it != members.end() ? it->second : nullptr;
+        auto it = namespaces.find(name);
+        return it != namespaces.end() ? it->second : nullptr;
     }
 
-    void add_member(Symbol* symbol)
+    void add_namespace(NamespaceSymbol* ns)
     {
-        members[symbol->name] = symbol;
+        namespaces[ns->name] = ns;
     }
 
-    std::string format(int indent = 0) const override
+    NamedTypeSymbol* find_type(std::string_view name, size_t arity = 0);
+
+    void add_type(NamedTypeSymbol* type)
     {
-        std::ostringstream ss;
-        std::string pad(indent, ' ');
-        ss << pad << "namespace " << name;
-        if (!members.empty())
-        {
-            ss << "\n" << pad << "{\n";
-            for (const auto& [name, member] : members)
-            {
-                ss << member->format(indent + 4) << "\n";
-            }
-            ss << pad << "}";
-        }
-        return ss.str();
+        types.push_back(type);
     }
+
+    Symbol* find_member(std::string_view name);
+
+    std::string format(int indent = 0) const override;
 };
 
 #pragma region Type Symbols
@@ -137,11 +136,24 @@ struct TypeSymbol : Symbol
 struct NamedTypeSymbol : TypeSymbol
 {
     Modifier modifiers = Modifier::None;
-    bool isAttribute = false;
     std::vector<FieldSymbol*> fields;
     std::vector<MethodSymbol*> methods;
     std::vector<NamedTypeSymbol*> nestedTypes;
     std::vector<ResolvedAttribute> resolvedAttributes;
+
+    std::vector<std::string> typeParams;
+    std::vector<TypeParamSymbol*> typeParamSymbols;
+    NamedTypeSymbol* genericOrigin = nullptr;
+    std::vector<TypeSymbol*> typeArguments;
+    std::vector<NamedTypeSymbol*> instantiations;
+    bool membersPopulated = false;
+
+    bool is_attribute() const { return has_modifier(modifiers, Modifier::Attr); }
+    bool is_generic_definition() const { return !typeParams.empty(); }
+    bool is_generic_instantiation() const { return genericOrigin != nullptr; }
+    bool is_concrete_instantiation() const;
+    bool is_builtin() const;
+    NamedTypeSymbol* find_instantiation(const std::vector<TypeSymbol*>& args) const;
 
     FieldSymbol* find_field(std::string_view name);
     MethodSymbol* find_method(std::string_view name);
@@ -155,6 +167,20 @@ struct NamedTypeSymbol : TypeSymbol
     bool has_method_with_count(std::string_view name, size_t count) const;
 
     std::string format(int indent = 0) const override;
+};
+
+struct TypeParamSymbol : TypeSymbol
+{
+    static constexpr SymbolKind Kind = SymbolKind::TypeParam;
+    int index = 0;
+    NamedTypeSymbol* owningType = nullptr;
+
+    TypeParamSymbol() { kind = Kind; }
+
+    std::string format(int indent = 0) const override
+    {
+        return std::string(indent, ' ') + name;
+    }
 };
 
 #pragma region Member Symbols
@@ -179,15 +205,21 @@ struct MethodSymbol : Symbol
     TokenKind operatorKind = TokenKind::Invalid;
     bool isConstructor = false;
     std::vector<ParameterSymbol*> parameters;
-    TypeSymbol* returnType = nullptr;
     std::vector<ResolvedAttribute> resolvedAttributes;
 
     MethodSymbol() { kind = Kind; }
 
     bool is_operator() const { return operatorKind != TokenKind::Invalid; }
+    virtual TypeSymbol* get_return_type() const;
+    void set_return_type(TypeSymbol* type) { returnType = type; }
 
     std::string format(int indent = 0) const override;
+
+protected:
+    mutable TypeSymbol* returnType = nullptr;
 };
+
+std::string format_type_name(TypeSymbol* type);
 
 struct ParameterSymbol : Symbol
 {
@@ -199,8 +231,7 @@ struct ParameterSymbol : Symbol
 
     std::string format(int indent = 0) const override
     {
-        std::string typeName = type ? type->name : "?";
-        return std::string(indent, ' ') + name + ": " + typeName;
+        return std::string(indent, ' ') + name + ": " + format_type_name(type);
     }
 };
 
@@ -213,9 +244,30 @@ struct LocalSymbol : Symbol
 
     std::string format(int indent = 0) const override
     {
-        std::string typeName = type ? type->name : "?";
-        return std::string(indent, ' ') + name + ": " + typeName;
+        return std::string(indent, ' ') + name + ": " + format_type_name(type);
     }
+};
+
+#pragma region Substituted Symbols
+
+struct SubstitutedFieldSymbol : FieldSymbol
+{
+    FieldSymbol* originalField = nullptr;
+};
+
+class SymbolTable;
+
+struct SubstitutedMethodSymbol : MethodSymbol
+{
+    MethodSymbol* originalMethod = nullptr;
+    mutable bool returnTypeResolved = false;
+
+    TypeSymbol* get_return_type() const override;
+};
+
+struct SubstitutedParameterSymbol : ParameterSymbol
+{
+    ParameterSymbol* originalParameter = nullptr;
 };
 
 }

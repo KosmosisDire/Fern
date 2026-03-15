@@ -14,7 +14,6 @@ class FhirFormatter : public DefaultFhirVisitor
     void write_indent();
     void write_child(FhirNode* node);
     void write_args(const std::vector<FhirExpr*>& args);
-    std::string_view type_name(TypeSymbol* type);
     std::string method_label(MethodSymbol* method);
 
     static constexpr std::string_view op_symbol(IntrinsicOp op)

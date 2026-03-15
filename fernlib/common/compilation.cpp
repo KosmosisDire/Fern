@@ -9,7 +9,6 @@
 #include <parser/parser.hpp>
 #include <token/walker.hpp>
 #include <binder/binder.hpp>
-#include <semantic/fhir/lower.hpp>
 #include <semantic/fhir/fold.hpp>
 
 namespace Fern
@@ -72,7 +71,7 @@ void Compilation::compile()
     }
 
     // Phase 2: Bind symbols and method bodies
-    Binder binder(semanticContext);
+    Binder binder(semanticContext, arena);
     for (auto& unit : units)
     {
         binder.bind_ast(unit->ast);
@@ -80,15 +79,12 @@ void Compilation::compile()
     binder.resolve_all_types();
     binder.resolve_all_attributes();
     binder.bind_all_methods();
+    binder.validate_all_types();
 
     for (const auto& diag : binder.get_diagnostics())
     {
         report(diag);
     }
-
-    // Phase 3: Lower to FHIR
-    FhirLowerer lowerer(semanticContext, arena);
-    semanticContext.methods = lowerer.lower_all();
 
     // constant folding
     for (auto* method : semanticContext.methods)

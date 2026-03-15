@@ -1,0 +1,34 @@
+---
+Bug: Generic-of-type-param field types resolve to ? on instantiations.
+When a generic template has a field typed as AnotherGeneric<T>,
+the field type fails to resolve and stays ? even after instantiation.
+---
+
+type Inner<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+}
+
+type Outer<T>
+{
+    child: Inner<T>
+
+    init(child: Inner<T>)
+    {
+        this.child = child
+    }
+}
+
+type Program
+{
+    fn Main()
+    {
+        -- Outer<i32>.child should be Inner<i32>, not ?
+        var o = Outer<i32>(Inner<i32>(42))
+    }
+}

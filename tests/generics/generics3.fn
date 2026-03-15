@@ -1,0 +1,35 @@
+---
+Bug: Inferred initializers silently fail on generic-of-type-param fields.
+Because the field type is ?, the binder cannot determine the target type
+for anonymous initializers and silently drops them.
+---
+
+type Point<T>
+{
+    x: T
+    y: T
+
+    init{}
+}
+
+type Bounds<T>
+{
+    min: Point<T>
+    max: Point<T>
+
+    init{}
+}
+
+type Program
+{
+    fn Main()
+    {
+        -- The inferred initializers { x: ..., y: ... } should resolve
+        -- to Point<f32> via the field type, but they get dropped
+        var b = Bounds<f32>
+        {
+            min: { x: 1.0, y: 2.0 }
+            max: { x: 3.0, y: 4.0 }
+        }
+    }
+}

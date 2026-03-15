@@ -32,6 +32,7 @@ struct AssignmentExprSyntax;
 struct MemberAccessExprSyntax;
 struct ThisExprSyntax;
 struct TypeExprSyntax;
+struct GenericTypeExprSyntax;
 
 // Statements
 struct BaseStmtSyntax;
@@ -88,6 +89,7 @@ public:
     virtual void visit(MemberAccessExprSyntax* node) = 0;
     virtual void visit(ThisExprSyntax* node) = 0;
     virtual void visit(TypeExprSyntax* node) = 0;
+    virtual void visit(GenericTypeExprSyntax* node) = 0;
 
     // Statements
     virtual void visit(ReturnStmtSyntax* node) = 0;
@@ -269,6 +271,15 @@ struct TypeExprSyntax : BaseExprSyntax
     Token name = Token::Invalid();
 };
 
+// Pair<i32, f32> or Test.Pair<i32, f32>
+struct GenericTypeExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(GenericTypeExpr, BaseExprSyntax)
+
+    ExprPtr base = nullptr;
+    std::vector<ExprPtr> typeArgs;
+};
+
 
 
 #pragma region Statements
@@ -361,12 +372,13 @@ struct OperatorDeclSyntax : BaseDeclSyntax
     BlockSyntax* body = nullptr;
 };
 
-// type name { ... }
+// type name { ... } or type name<T, U> { ... }
 struct TypeDeclSyntax : BaseDeclSyntax
 {
     SYNTAX_NODE(TypeDecl, BaseDeclSyntax)
 
     Token name = Token::Invalid();
+    std::vector<Token> typeParams;
     std::vector<DeclPtr> declarations;
 };
 
@@ -466,6 +478,13 @@ public:
     void visit(ThisExprSyntax* node) override {}
 
     void visit(TypeExprSyntax* node) override {}
+
+    void visit(GenericTypeExprSyntax* node) override
+    {
+        if (node->base) node->base->accept(this);
+        for (auto& arg : node->typeArgs)
+            if (arg) arg->accept(this);
+    }
 
     void visit(ReturnStmtSyntax* node) override
     {

@@ -18,20 +18,145 @@ NamespaceSymbol* SymbolTable::get_or_create_namespace(NamespaceSymbol* parent, s
         return nullptr;
     }
 
-    if (Symbol* existing = parent->find_member(name))
+    if (auto* existing = parent->find_namespace(name))
     {
-        if (auto* ns = existing->as<NamespaceSymbol>())
-        {
-            return ns;
-        }
+        return existing;
     }
 
     auto nsPtr = std::make_unique<NamespaceSymbol>();
     nsPtr->name = std::string(name);
     nsPtr->parent = parent;
     auto* ns = own(std::move(nsPtr));
-    parent->add_member(ns);
+    parent->add_namespace(ns);
     return ns;
+}
+
+#pragma region Generic Instantiation
+
+NamedTypeSymbol* SymbolTable::get_or_create_instantiation(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs)
+{
+    if (auto* existing = templ->find_instantiation(typeArgs))
+    {
+        return existing;
+    }
+
+    auto typePtr = std::make_unique<NamedTypeSymbol>();
+    typePtr->name = templ->name;
+    typePtr->parent = templ->parent;
+    typePtr->modifiers = templ->modifiers;
+    typePtr->genericOrigin = templ;
+    typePtr->typeArguments = typeArgs;
+    auto* inst = own(std::move(typePtr));
+    templ->instantiations.push_back(inst);
+    return inst;
+}
+
+TypeSymbol* SymbolTable::substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs)
+{
+    if (!type) return nullptr;
+
+    if (type == origin)
+    {
+        return get_or_create_instantiation(origin, typeArgs);
+    }
+
+    if (auto* param = type->as<TypeParamSymbol>())
+    {
+        if (param->owningType == origin &&
+            param->index >= 0 &&
+            static_cast<size_t>(param->index) < typeArgs.size())
+        {
+            return typeArgs[param->index];
+        }
+    }
+
+    if (auto* named = type->as<NamedTypeSymbol>();
+        named && named->is_generic_instantiation() && named->genericOrigin)
+    {
+        std::vector<TypeSymbol*> newArgs;
+        bool changed = false;
+        for (auto* arg : named->typeArguments)
+        {
+            auto* sub = substitute_type(arg, origin, typeArgs);
+            newArgs.push_back(sub);
+            if (sub != arg) changed = true;
+        }
+        if (changed)
+        {
+            return get_or_create_instantiation(named->genericOrigin, newArgs);
+        }
+    }
+
+    return type;
+}
+
+void SymbolTable::ensure_members_populated(NamedTypeSymbol* type)
+{
+    if (type && type->is_generic_instantiation() && !type->membersPopulated)
+    {
+        populate_instantiation_members(type);
+    }
+}
+
+void SymbolTable::populate_instantiation_members(NamedTypeSymbol* inst)
+{
+    if (inst->membersPopulated) return;
+    inst->membersPopulated = true;
+
+    auto* templ = inst->genericOrigin;
+    if (!templ) return;
+
+    auto subst = [&](TypeSymbol* type) -> TypeSymbol*
+    {
+        if (type == templ) return inst;
+        return substitute_type(type, templ, inst->typeArguments);
+    };
+
+    for (auto* templateField : templ->fields)
+    {
+        auto fieldPtr = std::make_unique<SubstitutedFieldSymbol>();
+        fieldPtr->originalField = templateField;
+        fieldPtr->name = templateField->name;
+        fieldPtr->parent = inst;
+        fieldPtr->syntax = templateField->syntax;
+        fieldPtr->modifiers = templateField->modifiers;
+        fieldPtr->index = templateField->index;
+        fieldPtr->type = subst(templateField->type);
+        inst->fields.push_back(own(std::move(fieldPtr)));
+    }
+
+    for (auto* templateMethod : templ->methods)
+    {
+        auto methodPtr = std::make_unique<SubstitutedMethodSymbol>();
+        methodPtr->originalMethod = templateMethod;
+        methodPtr->name = templateMethod->name;
+        methodPtr->syntax = templateMethod->syntax;
+        methodPtr->parent = inst;
+        methodPtr->modifiers = templateMethod->modifiers;
+        methodPtr->isConstructor = templateMethod->isConstructor;
+        methodPtr->operatorKind = templateMethod->operatorKind;
+
+        if (templateMethod->isConstructor)
+        {
+            methodPtr->set_return_type(inst);
+            methodPtr->returnTypeResolved = true;
+        }
+
+        auto* method = own(std::move(methodPtr));
+
+        for (auto* templateParam : templateMethod->parameters)
+        {
+            auto paramPtr = std::make_unique<SubstitutedParameterSymbol>();
+            paramPtr->originalParameter = templateParam;
+            paramPtr->name = templateParam->name;
+            paramPtr->parent = method;
+            paramPtr->index = templateParam->index;
+            paramPtr->type = subst(templateParam->type);
+            method->parameters.push_back(own(std::move(paramPtr)));
+        }
+
+        inst->methods.push_back(method);
+    }
 }
 
 #pragma region Lookup

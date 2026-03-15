@@ -58,6 +58,7 @@ private:
 
     // Types
     BaseExprSyntax* parse_type();
+    GenericTypeExprSyntax* parse_generic_type_args(ExprPtr base);
 
     TokenWalker& walker;
     AllocArena& arena;

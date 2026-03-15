@@ -29,16 +29,11 @@ void FhirFormatter::write_args(const std::vector<FhirExpr*>& args)
     out << ")";
 }
 
-std::string_view FhirFormatter::type_name(TypeSymbol* type)
-{
-    return type ? type->name : std::string_view("?");
-}
-
 std::string FhirFormatter::method_label(MethodSymbol* method)
 {
     if (!method) return "?";
     auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
-    if (parent) return parent->name + "." + method->name;
+    if (parent) return format_type_name(parent) + "." + method->name;
     return method->name;
 }
 
@@ -96,30 +91,16 @@ void FhirFormatter::visit(FhirCallExpr* node)
 
 void FhirFormatter::visit(FhirMethodCallExpr* node)
 {
-    if (node->method && node->method->is_operator())
-    {
-        out << method_label(node->method) << "(";
-        write_child(node->receiver);
-        for (auto* arg : node->arguments)
-        {
-            out << ", ";
-            write_child(arg);
-        }
-        out << ")";
-    }
-    else
-    {
-        write_child(node->receiver);
-        out << "." << (node->method ? node->method->name : "?");
-        write_args(node->arguments);
-    }
+    write_child(node->receiver);
+    out << "." << (node->method ? node->method->name : "?");
+    write_args(node->arguments);
 }
 
 void FhirFormatter::visit(FhirObjectCreateExpr* node)
 {
     auto* ctor = node->constructor;
     auto* parent = ctor && ctor->parent ? ctor->parent->as<NamedTypeSymbol>() : nullptr;
-    out << "new " << (parent ? parent->name : "?");
+    out << "new " << (parent ? format_type_name(parent) : "?");
     write_args(node->arguments);
 }
 
@@ -153,7 +134,7 @@ void FhirFormatter::visit(FhirVarDeclStmt* node)
 {
     out << "var " << (node->local ? node->local->name : "?");
     if (node->local && node->local->type)
-        out << ": " << type_name(node->local->type);
+        out << ": " << format_type_name(node->local->type);
     if (node->initializer)
     {
         out << " = ";
@@ -221,11 +202,11 @@ std::string FhirFormatter::format(FhirMethod* method)
         {
             if (i > 0) fmt.out << ", ";
             auto* param = method->symbol->parameters[i];
-            fmt.out << param->name << ": " << fmt.type_name(param->type);
+            fmt.out << param->name << ": " << format_type_name(param->type);
         }
         fmt.out << ")";
-        if (method->symbol->returnType)
-            fmt.out << " -> " << fmt.type_name(method->symbol->returnType);
+        if (method->symbol->get_return_type())
+            fmt.out << " -> " << format_type_name(method->symbol->get_return_type());
     }
 
     if (method->body)

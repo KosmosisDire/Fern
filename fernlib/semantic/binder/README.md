@@ -1,3 +1,6 @@
 # Binder
 
-The binder walks the AST, builds symbols and infers types. The binder starts by creating symbols for all top level declarations, not not locals. It then binds the members of those top level declarations, like fields and the method signatures (not the bodies). After that it walks all method declaration bodies. As it walks it builds a scope stack which it uses for name resolution. Creating the scope stack also is where we allocate the symbols for locals. These symbols are created by the binder but owned by the symbol table.
+The binder walks the AST and converts it into the semantic representation: FHIR (Fern high-level intermediate representation). This is very similar to the binder in Rosyln conceptually. It is responsible for creating symbols for declarations, resolving names back to those symbols, inferring types, doing basica local type checking, and creating FHIR nodes with annotated types.
+
+It is so big I ended up splitting the single class across multiple organized files. And unfortunetely I cannot see a good way to decouple most of the login within this class. Removing them from eachother makes it so much more complicated because we have to pass a bunch of state around anyways between them. Roslyn also does it this way, so I think that design is backed up pretty well.
+

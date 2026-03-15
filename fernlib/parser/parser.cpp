@@ -137,7 +137,7 @@ static bool is_initializer_list_ahead(const TokenWalker& walker)
 
     if (firstKind == TokenKind::RightBrace)
     {
-        return false;
+        return true;
     }
 
     if (firstKind == TokenKind::Identifier)
@@ -176,6 +176,41 @@ static bool is_initializer_list_ahead(const TokenWalker& walker)
         }
         ++offset;
     }
+}
+
+static bool scan_type_arg_list(const TokenWalker& walker, size_t offset)
+{
+    int depth = 1;
+    while (depth > 0)
+    {
+        TokenKind kind = walker.peek(offset).kind;
+        ++offset;
+        if (kind == TokenKind::Less)
+        {
+            ++depth;
+        }
+        else if (kind == TokenKind::Greater)
+        {
+            --depth;
+        }
+        else if (kind == TokenKind::Identifier || is_type_keyword(kind) || kind == TokenKind::Comma || kind == TokenKind::Dot)
+        {
+            // valid inside type args
+        }
+        else
+        {
+            return false;
+        }
+    }
+    TokenKind following = walker.peek(offset).kind;
+    return following == TokenKind::LeftParen  ||
+           following == TokenKind::LeftBrace  ||
+           following == TokenKind::Greater    ||
+           following == TokenKind::Comma      ||
+           following == TokenKind::RightParen ||
+           following == TokenKind::Dot        ||
+           is_terminator(following)           ||
+           following == TokenKind::EndOfFile;
 }
 
 static bool is_at_statement_boundary(const TokenWalker& walker)
@@ -380,6 +415,37 @@ TypeDeclSyntax* Parser::parse_type_decl()
     }
 
     skip_terminators(walker);
+
+    if (walker.check(TokenKind::Less))
+    {
+        walker.advance();
+        skip_terminators(walker);
+
+        while (!walker.check(TokenKind::Greater) && !walker.is_at_end())
+        {
+            if (auto* param = expect(TokenKind::Identifier, "expected type parameter name"))
+            {
+                typeDecl->typeParams.push_back(*param);
+            }
+            skip_terminators(walker);
+
+            if (walker.check(TokenKind::Comma))
+            {
+                walker.advance();
+                skip_terminators(walker);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (auto* token = expect(TokenKind::Greater, "expected '>' after type parameters"))
+        {
+            span = span.merge(token->span);
+        }
+        skip_terminators(walker);
+    }
 
     if (walker.check(TokenKind::LeftBrace))
     {
@@ -1137,6 +1203,14 @@ BaseExprSyntax* Parser::parse_postfix()
         {
             left = parse_initializer(left);
         }
+        else if (!skippedTerminator &&
+                 walker.check(TokenKind::Less) &&
+                 (left->is<IdentifierExprSyntax>() || left->is<MemberAccessExprSyntax>()) &&
+                 (scan_type_arg_list(walker, 1) ||
+                  !has_space_before(left->span, walker.current().span)))
+        {
+            left = parse_generic_type_args(left);
+        }
         else
         {
             walker.restore(cp);
@@ -1317,11 +1391,51 @@ BlockSyntax* Parser::parse_block()
 
 #pragma region Types
 
+GenericTypeExprSyntax* Parser::parse_generic_type_args(ExprPtr base)
+{
+    auto* generic = arena.alloc<GenericTypeExprSyntax>();
+    generic->base = base;
+    Span span = base->span;
+
+    walker.advance(); // consume '<'
+    skip_terminators(walker);
+
+    while (!walker.check(TokenKind::Greater) && !walker.is_at_end())
+    {
+        auto* typeArg = parse_type();
+        if (typeArg)
+        {
+            generic->typeArgs.push_back(typeArg);
+            span = span.merge(typeArg->span);
+        }
+        skip_terminators(walker);
+
+        if (walker.check(TokenKind::Comma))
+        {
+            walker.advance();
+            skip_terminators(walker);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (auto* token = expect(TokenKind::Greater, "expected '>' after type arguments"))
+    {
+        span = span.merge(token->span);
+    }
+
+    generic->span = span;
+    return generic;
+}
+
 BaseExprSyntax* Parser::parse_type()
 {
     BaseExprSyntax* type = nullptr;
+    bool startsAsIdentifier = walker.check(TokenKind::Identifier);
 
-    if (is_type_keyword(walker.current().kind) || walker.check(TokenKind::Identifier))
+    if (is_type_keyword(walker.current().kind) || startsAsIdentifier)
     {
         auto* t = arena.alloc<TypeExprSyntax>();
         t->name = walker.current();
@@ -1333,6 +1447,11 @@ BaseExprSyntax* Parser::parse_type()
     while (type && walker.check(TokenKind::Dot))
     {
         type = parse_member_access(type);
+    }
+
+    if (type && startsAsIdentifier && walker.check(TokenKind::Less))
+    {
+        type = parse_generic_type_args(type);
     }
 
     return type;

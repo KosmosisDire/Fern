@@ -1,10 +1,11 @@
 #pragma once
 
-#include <unordered_set>
 #include <vector>
 
 #include "scope.hpp"
+#include "fhir_builder.hpp"
 #include <common/diagnostic.hpp>
+#include <token/kind.hpp>
 
 namespace Fern
 {
@@ -33,27 +34,43 @@ struct ReturnStmtSyntax;
 struct ThisExprSyntax;
 struct TypeDeclSyntax;
 struct TypeExprSyntax;
+struct GenericTypeExprSyntax;
 struct UnaryExprSyntax;
 struct VariableDeclSyntax;
 struct WhileStmtSyntax;
 
+struct Symbol;
 struct MethodSymbol;
 struct NamedTypeSymbol;
 struct NamespaceSymbol;
 struct TypeSymbol;
 
+struct FhirExpr;
+struct FhirBlock;
+struct FhirStmt;
+struct FhirMethod;
+
+// The binder runs in phases, each must be called in order:
+//   1. bind_ast              - Create type/method/field symbols from the AST
+//   2. resolve_all_types     - Resolve type references on fields, parameters, return types
+//   3. resolve_all_attributes - Resolve attribute annotations to their types
+//   4. bind_all_methods      - Produce FHIR for all method bodies
+//   5. validate_all_types    - Cross-method checks (duplicate signatures, operator rules)
 class Binder : public DiagnosticSystem
 {
 public:
-    Binder(SemanticContext& context);
+    Binder(SemanticContext& context, AllocArena& arena);
 
     void bind_ast(RootSyntax* ast);
     void resolve_all_types();
+    void validate_all_types();
     void resolve_all_attributes();
     void bind_all_methods();
 
 private:
     SemanticContext& context;
+    AllocArena& arena;
+    FhirBuilder fhir;
 
     MethodSymbol* currentMethod = nullptr;
     NamedTypeSymbol* currentType = nullptr;
@@ -61,8 +78,11 @@ private:
     std::vector<Scope> scopes;
     std::vector<NamedTypeSymbol*> allTypes;
     std::vector<MethodSymbol*> allMethods;
-    std::unordered_set<MethodSymbol*> boundMethods;
-    std::unordered_set<MethodSymbol*> bindingMethods;
+    std::unordered_map<std::string, TypeSymbol*> typeParamSubstitutions;
+    // Points to the current block's statement list so that initializer lowering
+    // can inject setup statements (temp locals, field assignments) before the expression
+    std::vector<FhirStmt*>* pendingStmts = nullptr;
+    int tempCounter = 0;
 
 #pragma region Symbol Creation
 
@@ -72,34 +92,39 @@ private:
 #pragma region Method Binding
 
     void bind_method(MethodSymbol* method);
-    TypeSymbol* get_return_type(MethodSymbol* method);
+    void lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* parentType);
+    void check_duplicate_methods(NamedTypeSymbol* type);
 
 #pragma region Expression Binding
 
-    TypeSymbol* bind_expr(BaseExprSyntax* expr);
-    TypeSymbol* bind_identifier(IdentifierExprSyntax* expr);
-    TypeSymbol* bind_literal(LiteralExprSyntax* expr);
-    TypeSymbol* bind_binary(BinaryExprSyntax* expr);
-    TypeSymbol* bind_unary(UnaryExprSyntax* expr);
-    TypeSymbol* bind_assignment(AssignmentExprSyntax* expr);
-    TypeSymbol* bind_call(CallExprSyntax* expr);
-    TypeSymbol* bind_member_access(MemberAccessExprSyntax* expr);
-    TypeSymbol* bind_initializer(InitializerExprSyntax* expr);
-    TypeSymbol* bind_anonymous_initializer(InitializerExprSyntax* expr, NamedTypeSymbol* contextType);
-    void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType);
+    FhirExpr* bind_expr(BaseExprSyntax* expr);
+    FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
+    FhirExpr* bind_literal(LiteralExprSyntax* expr);
+    FhirExpr* bind_binary(BinaryExprSyntax* expr);
+    FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
+    FhirExpr* try_synthesize_compound_comparison(BinaryOp op, TokenKind opToken, NamedTypeSymbol* namedType, TypeSymbol* leftType, TypeSymbol* rightType, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
+    FhirExpr* bind_unary(UnaryExprSyntax* expr);
+    FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
+    FhirExpr* bind_call(CallExprSyntax* expr);
+    FhirExpr* bind_member_access(MemberAccessExprSyntax* expr);
+    FhirExpr* bind_initializer(InitializerExprSyntax* expr);
+    FhirExpr* bind_initializer_target(InitializerExprSyntax* expr);
+    FhirExpr* build_field_access_chain(FhirExpr* receiver, BaseExprSyntax* target);
+    void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver);
     TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
-    TypeSymbol* bind_this(ThisExprSyntax* expr);
-    TypeSymbol* bind_paren(ParenExprSyntax* expr);
+    FhirExpr* bind_this(ThisExprSyntax* expr);
+    FhirExpr* bind_paren(ParenExprSyntax* expr);
+    FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
 
 #pragma region Statement Binding
 
-    void bind_block(BlockSyntax* block);
+    FhirBlock* bind_block(BlockSyntax* block);
 
-    void bind_stmt(BaseStmtSyntax* stmt);
-    void bind_return(ReturnStmtSyntax* stmt);
-    void bind_var_decl(VariableDeclSyntax* decl);
-    void bind_if(IfStmtSyntax* stmt);
-    void bind_while(WhileStmtSyntax* stmt);
+    void bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out);
+    void bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out);
+    void bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out);
+    void bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out);
+    void bind_while(WhileStmtSyntax* stmt, std::vector<FhirStmt*>& out);
 
 #pragma region Attribute Resolution
 
@@ -108,7 +133,7 @@ private:
 #pragma region Type Resolution
 
     TypeSymbol* resolve_type_expr(BaseExprSyntax* expr);
-
+    TypeSymbol* resolve_generic_type(GenericTypeExprSyntax* expr);
 #pragma region Helpers
 
     void push_scope();
@@ -116,10 +141,9 @@ private:
     Scope& current_scope();
 
     Symbol* resolve_name(std::string_view name);
+    Symbol* resolve_expr_symbol(BaseExprSyntax* expr);
 
     void create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params);
-    void store_type(BaseExprSyntax* expr, TypeSymbol* type);
-    void store_symbol(BaseExprSyntax* expr, Symbol* symbol);
 };
 
 }

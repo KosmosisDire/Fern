@@ -1,10 +1,77 @@
 #include "symbol.hpp"
+#include "table.hpp"
 
 namespace Fern
 {
 
+NamedTypeSymbol* NamedTypeSymbol::find_instantiation(const std::vector<TypeSymbol*>& args) const
+{
+    for (auto* inst : instantiations)
+    {
+        if (inst->typeArguments == args) return inst;
+    }
+    return nullptr;
+}
+
+TypeSymbol* MethodSymbol::get_return_type() const
+{
+    return returnType;
+}
+
+TypeSymbol* SubstitutedMethodSymbol::get_return_type() const
+{
+    if (!returnTypeResolved)
+    {
+        returnTypeResolved = true;
+        if (!isConstructor && originalMethod && parent && table)
+        {
+            auto* inst = parent->as<NamedTypeSymbol>();
+            if (inst && inst->genericOrigin)
+            {
+                auto* templ = inst->genericOrigin;
+                TypeSymbol* origReturn = originalMethod->get_return_type();
+                if (origReturn == templ)
+                {
+                    returnType = inst;
+                }
+                else
+                {
+                    returnType = table->substitute_type(origReturn, templ, inst->typeArguments);
+                }
+            }
+        }
+    }
+    return returnType;
+}
+
+bool NamedTypeSymbol::is_concrete_instantiation() const
+{
+    if (!genericOrigin) return false;
+    for (auto* arg : typeArguments)
+    {
+        if (arg->is<TypeParamSymbol>()) return false;
+        if (auto* named = arg->as<NamedTypeSymbol>())
+        {
+            if (named->is_generic_definition()) return false;
+            if (named->is_generic_instantiation() && !named->is_concrete_instantiation()) return false;
+        }
+    }
+    return true;
+}
+
+bool NamedTypeSymbol::is_builtin() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.BuiltinType")
+            return true;
+    }
+    return false;
+}
+
 FieldSymbol* NamedTypeSymbol::find_field(std::string_view name)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* field : fields)
     {
         if (field->name == name)
@@ -17,6 +84,7 @@ FieldSymbol* NamedTypeSymbol::find_field(std::string_view name)
 
 MethodSymbol* NamedTypeSymbol::find_method(std::string_view name)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
         if (method->name == name)
@@ -57,6 +125,7 @@ static bool match_parameters(const std::vector<ParameterSymbol*>& params, const 
 
 MethodSymbol* NamedTypeSymbol::resolve_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
         if (method->name == name && match_parameters(method->parameters, argTypes))
@@ -69,6 +138,7 @@ MethodSymbol* NamedTypeSymbol::resolve_method(std::string_view name, const std::
 
 MethodSymbol* NamedTypeSymbol::resolve_constructor(const std::vector<TypeSymbol*>& argTypes)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
         if (method->isConstructor && match_parameters(method->parameters, argTypes))
@@ -81,6 +151,7 @@ MethodSymbol* NamedTypeSymbol::resolve_constructor(const std::vector<TypeSymbol*
 
 MethodSymbol* NamedTypeSymbol::find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 2)
@@ -98,6 +169,7 @@ MethodSymbol* NamedTypeSymbol::find_binary_operator(TokenKind opKind, TypeSymbol
 
 MethodSymbol* NamedTypeSymbol::find_unary_operator(TokenKind opKind, TypeSymbol* operandType)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 1)
@@ -148,6 +220,48 @@ NamespaceSymbol* Symbol::find_enclosing_namespace()
     return nullptr;
 }
 
+NamedTypeSymbol* NamespaceSymbol::find_type(std::string_view name, size_t arity)
+{
+    for (auto* type : types)
+    {
+        if (type->name == name && type->typeParams.size() == arity)
+        {
+            return type;
+        }
+    }
+    return nullptr;
+}
+
+Symbol* NamespaceSymbol::find_member(std::string_view name)
+{
+    if (auto* ns = find_namespace(name))
+    {
+        return ns;
+    }
+    return find_type(name);
+}
+
+std::string NamespaceSymbol::format(int indent) const
+{
+    std::ostringstream ss;
+    std::string pad(indent, ' ');
+    ss << pad << "namespace " << name;
+    if (!namespaces.empty() || !types.empty())
+    {
+        ss << "\n" << pad << "{\n";
+        for (const auto& [name, ns] : namespaces)
+        {
+            ss << ns->format(indent + 4) << "\n";
+        }
+        for (const auto* type : types)
+        {
+            ss << type->format(indent + 4) << "\n";
+        }
+        ss << pad << "}";
+    }
+    return ss.str();
+}
+
 static void format_attributes(std::ostringstream& ss, const std::vector<ResolvedAttribute>& attrs, std::string_view pad)
 {
     for (const auto& attr : attrs)
@@ -159,13 +273,41 @@ static void format_attributes(std::ostringstream& ss, const std::vector<Resolved
     }
 }
 
+std::string format_type_name(TypeSymbol* type)
+{
+    if (!type) return "?";
+    auto* named = type->as<NamedTypeSymbol>();
+    if (named && !named->typeArguments.empty())
+    {
+        std::string result = named->name + "<";
+        for (size_t i = 0; i < named->typeArguments.size(); ++i)
+        {
+            if (i > 0) result += ", ";
+            result += format_type_name(named->typeArguments[i]);
+        }
+        result += ">";
+        return result;
+    }
+    if (named && !named->typeParams.empty())
+    {
+        std::string result = named->name + "<";
+        for (size_t i = 0; i < named->typeParams.size(); ++i)
+        {
+            if (i > 0) result += ", ";
+            result += named->typeParams[i];
+        }
+        result += ">";
+        return result;
+    }
+    return type->name;
+}
+
 std::string FieldSymbol::format(int indent) const
 {
     std::ostringstream ss;
     std::string pad(indent, ' ');
     format_attributes(ss, resolvedAttributes, pad);
-    std::string typeName = type ? type->name : "?";
-    ss << pad << name << ": " << typeName;
+    ss << pad << name << ": " << format_type_name(type);
     return ss.str();
 }
 
@@ -180,6 +322,26 @@ std::string NamedTypeSymbol::format(int indent) const
         ss << " ";
     }
     ss << "type " << name;
+    if (!typeParams.empty())
+    {
+        ss << "<";
+        for (size_t i = 0; i < typeParams.size(); ++i)
+        {
+            if (i > 0) ss << ", ";
+            ss << typeParams[i];
+        }
+        ss << ">";
+    }
+    else if (!typeArguments.empty())
+    {
+        ss << "<";
+        for (size_t i = 0; i < typeArguments.size(); ++i)
+        {
+            if (i > 0) ss << ", ";
+            ss << format_type_name(typeArguments[i]);
+        }
+        ss << ">";
+    }
     if (!fields.empty() || !methods.empty() || !nestedTypes.empty())
     {
         ss << "\n" << pad << "{\n";
@@ -197,6 +359,10 @@ std::string NamedTypeSymbol::format(int indent) const
         }
         ss << pad << "}";
     }
+    for (size_t i = 0; i < instantiations.size(); ++i)
+    {
+        ss << "\n" << instantiations[i]->format(indent);
+    }
     return ss.str();
 }
 
@@ -204,7 +370,7 @@ std::string MethodSymbol::format(int indent) const
 {
     std::ostringstream ss;
     std::string pad(indent, ' ');
-    std::string retName = returnType ? returnType->name : "void";
+    std::string retName = get_return_type() ? format_type_name(get_return_type()) : "void";
 
     format_attributes(ss, resolvedAttributes, pad);
     ss << pad << Fern::format(modifiers);
@@ -230,8 +396,7 @@ std::string MethodSymbol::format(int indent) const
     for (size_t i = 0; i < parameters.size(); ++i)
     {
         if (i > 0) ss << ", ";
-        std::string typeName = parameters[i]->type ? parameters[i]->type->name : "?";
-        ss << parameters[i]->name << ": " << typeName;
+        ss << parameters[i]->name << ": " << format_type_name(parameters[i]->type);
     }
     ss << ") -> " << retName;
 

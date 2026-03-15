@@ -9,6 +9,7 @@
 namespace Fern
 {
 
+struct BaseSyntax;
 struct Symbol;
 struct TypeSymbol;
 struct MethodSymbol;
@@ -176,6 +177,7 @@ private:
 
 public:
     Span span;
+    BaseSyntax* syntax = nullptr;
 
     FhirNode(int k) : kind(k) {}
     virtual ~FhirNode() = default;

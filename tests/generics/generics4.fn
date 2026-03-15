@@ -1,0 +1,36 @@
+---
+Bug: Constructor parameter types are ? when derived from
+generic-of-type-param fields.
+---
+
+type Node<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+}
+
+type Edge<T>
+{
+    from: Node<T>
+    to: Node<T>
+
+    init(from: Node<T>, to: Node<T>)
+    {
+        this.from = from
+        this.to = to
+    }
+}
+
+type Program
+{
+    fn Main()
+    {
+        -- Edge<i32>.init should have params (from: Node<i32>, to: Node<i32>)
+        -- but both show as ?
+        var e = Edge<i32>(Node<i32>(1), Node<i32>(2))
+    }
+}

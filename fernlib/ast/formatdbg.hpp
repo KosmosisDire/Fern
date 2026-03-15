@@ -231,6 +231,20 @@ public:
         begin_node_with_name(node, node->name.lexeme);
     }
 
+    void visit(GenericTypeExprSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("base", node->base, true);
+        write_children("typeArgs", node->typeArgs);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
 #pragma region Statement Visitors
 
     void visit(ReturnStmtSyntax* node) override
@@ -375,7 +389,18 @@ public:
         write_indent();
         write_attributes(node->attributes);
         write_modifiers(node->modifiers);
-        out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
+        out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\"";
+        if (!node->typeParams.empty())
+        {
+            out << ", params: <";
+            for (size_t i = 0; i < node->typeParams.size(); ++i)
+            {
+                if (i > 0) out << ", ";
+                out << node->typeParams[i].lexeme;
+            }
+            out << ">";
+        }
+        out << ", span: " << node->span.format() << ")\n";
         write_indent();
         out << "{\n";
         ++indent;

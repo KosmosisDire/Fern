@@ -1,0 +1,856 @@
+---
+Generics stress test
+Exercises every combination of generics with other language features
+---
+
+
+-- ============================================================
+-- SECTION 1: Basic generic type definitions
+-- ============================================================
+
+
+-- Single type parameter
+type Box<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+-- Two type parameters
+type Pair<A, B>
+{
+    first: A
+    second: B
+
+    init(first: A, second: B)
+    {
+        this.first = first
+        this.second = second
+    }
+
+    fn First() -> A
+    {
+        return first
+    }
+
+    fn Second() -> B
+    {
+        return second
+    }
+}
+
+-- Three type parameters
+type Triple<X, Y, Z>
+{
+    a: X
+    b: Y
+    c: Z
+
+    init(a: X, b: Y, c: Z)
+    {
+        this.a = a
+        this.b = b
+        this.c = c
+    }
+}
+
+
+-- ============================================================
+-- SECTION 2: Generic methods - return types, parameters, locals
+-- ============================================================
+
+
+type Wrapper<T>
+{
+    inner: T
+
+    init(inner: T)
+    {
+        this.inner = inner
+    }
+
+    -- Method returning the type parameter
+    fn Unwrap() -> T
+    {
+        return inner
+    }
+
+    -- Method taking the type parameter as argument
+    fn Replace(newValue: T) -> Wrapper<T>
+    {
+        return Wrapper<T>(newValue)
+    }
+
+    -- Method using type parameter in local variable
+    fn SwapWith(other: Wrapper<T>) -> Wrapper<T>
+    {
+        var temp: T = other.inner
+        return Wrapper<T>(temp)
+    }
+}
+
+
+-- ============================================================
+-- SECTION 3: Generic types with operators
+-- ============================================================
+
+
+type Vec2<T>
+{
+    x: T
+    y: T
+
+    init(x: T, y: T)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    init{}
+}
+
+
+-- ============================================================
+-- SECTION 4: Generic types with initializer lists
+-- ============================================================
+
+
+type Point<T>
+{
+    x: T
+    y: T
+
+    init{}
+    init(x: T, y: T)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Bounds<T>
+{
+    min: Point<T>
+    max: Point<T>
+
+    init{}
+    init(min: Point<T>, max: Point<T>)
+    {
+        this.min = min
+        this.max = max
+    }
+}
+
+
+-- ============================================================
+-- SECTION 5: Nested generic types as fields
+-- ============================================================
+
+
+type Node<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+
+    fn Value() -> T
+    {
+        return value
+    }
+}
+
+type Edge<T>
+{
+    from: Node<T>
+    to: Node<T>
+    weight: f32
+
+    init(from: Node<T>, to: Node<T>, weight: f32)
+    {
+        this.from = from
+        this.to = to
+        this.weight = weight
+    }
+
+    fn From() -> Node<T>
+    {
+        return from
+    }
+
+    fn To() -> Node<T>
+    {
+        return to
+    }
+}
+
+
+-- ============================================================
+-- SECTION 6: Generic types in namespaces
+-- ============================================================
+
+
+namespace Collections
+{
+
+type Stack<T>
+{
+    items: Core.Array<T>
+    count: i32
+
+    init(capacity: i32)
+    {
+        items = Core.Array<T>(capacity)
+        count = 0
+    }
+
+    fn Count() -> i32
+    {
+        return count
+    }
+}
+
+type KeyValue<K, V>
+{
+    key: K
+    val: V
+
+    init(key: K, val: V)
+    {
+        this.key = key
+        this.val = val
+    }
+
+    fn Key() -> K
+    {
+        return key
+    }
+
+    fn Val() -> V
+    {
+        return val
+    }
+}
+
+}
+
+
+-- ============================================================
+-- SECTION 7: Non-generic types with generic fields
+-- ============================================================
+
+
+type GameState
+{
+    positions: Core.Array<Point<f32>>
+    scores: Core.Array<Pair<i32, f32>>
+    active: Box<bool>
+
+    init(size: i32)
+    {
+        positions = Core.Array<Point<f32>>(size)
+        scores = Core.Array<Pair<i32, f32>>(size)
+        active = Box<bool>(true)
+    }
+}
+
+
+-- ============================================================
+-- SECTION 8: Deeply nested generics
+-- ============================================================
+
+
+type DeepNest
+{
+    -- Pair of Boxes
+    pairOfBoxes: Pair<Box<i32>, Box<f32>>
+
+    -- Box of Pair
+    boxOfPair: Box<Pair<i32, f32>>
+
+    -- Box of Box
+    boxOfBox: Box<Box<i32>>
+
+    -- Triple nested
+    deep: Box<Pair<Box<i32>, Box<f32>>>
+
+    -- Array of generic
+    arrayOfPairs: Core.Array<Pair<i32, f32>>
+
+    -- Generic of Array
+    pairOfArrays: Pair<Core.Array<i32>, Core.Array<f32>>
+
+    init{}
+}
+
+
+-- ============================================================
+-- SECTION 9: Generics with Swap pattern (cross-type-param usage)
+-- ============================================================
+
+
+type Duo<L, R>
+{
+    left: L
+    right: R
+
+    init(left: L, right: R)
+    {
+        this.left = left
+        this.right = right
+    }
+
+    fn Swap() -> Duo<R, L>
+    {
+        return Duo<R, L>(right, left)
+    }
+
+    fn Left() -> L
+    {
+        return left
+    }
+
+    fn Right() -> R
+    {
+        return right
+    }
+}
+
+
+-- ============================================================
+-- SECTION 10: Shadowing - same name, different arities
+-- ============================================================
+
+
+type Tag
+{
+    id: i32
+
+    init(id: i32)
+    {
+        this.id = id
+    }
+}
+
+type Tag<T>
+{
+    id: i32
+    data: T
+
+    init(id: i32, data: T)
+    {
+        this.id = id
+        this.data = data
+    }
+
+    fn Data() -> T
+    {
+        return data
+    }
+}
+
+type Tag<T, U>
+{
+    id: i32
+    data: T
+    meta: U
+
+    init(id: i32, data: T, meta: U)
+    {
+        this.id = id
+        this.data = data
+        this.meta = meta
+    }
+}
+
+
+-- ============================================================
+-- SECTION 11: Generics inside namespaces with qualified access
+-- ============================================================
+
+
+namespace Geo
+{
+
+type Coord<T>
+{
+    lat: T
+    lon: T
+
+    init(lat: T, lon: T)
+    {
+        this.lat = lat
+        this.lon = lon
+    }
+
+    fn Lat() -> T
+    {
+        return lat
+    }
+}
+
+type Region<T>
+{
+    origin: Coord<T>
+    size: Coord<T>
+
+    init(origin: Coord<T>, size: Coord<T>)
+    {
+        this.origin = origin
+        this.size = size
+    }
+}
+
+namespace Sub
+{
+    type Inner<T>
+    {
+        value: T
+        init(value: T)
+        {
+            this.value = value
+        }
+    }
+}
+
+}
+
+
+-- ============================================================
+-- SECTION 12: Generic return from method that wraps in another generic
+-- ============================================================
+
+
+type Factory<T>
+{
+    defaultValue: T
+
+    init(defaultValue: T)
+    {
+        this.defaultValue = defaultValue
+    }
+
+    fn MakeBox() -> Box<T>
+    {
+        return Box<T>(defaultValue)
+    }
+
+    fn MakePair(other: T) -> Pair<T, T>
+    {
+        return Pair<T, T>(defaultValue, other)
+    }
+}
+
+
+-- ============================================================
+-- MAIN: Exercise all permutations
+-- ============================================================
+
+
+type Program
+{
+    fn Main -> i32
+    {
+        -- --------------------------------------------------------
+        -- Basic instantiation with explicit type annotations
+        -- --------------------------------------------------------
+
+        var b1: Box<i32> = Box<i32>(42)
+        var b2: Box<f32> = Box<f32>(3.14)
+        var b3: Box<bool> = Box<bool>(true)
+
+        -- --------------------------------------------------------
+        -- Inference from constructor (no annotation)
+        -- --------------------------------------------------------
+
+        var b4 = Box<i32>(100)
+        var b5 = Box<f32>(2.718)
+        var b6 = Box<bool>(false)
+
+        -- --------------------------------------------------------
+        -- Pairs with different type combos
+        -- --------------------------------------------------------
+
+        var p1 = Pair<i32, f32>(1, 2.0)
+        var p2 = Pair<f32, i32>(1.0, 2)
+        var p3 = Pair<bool, i32>(true, 42)
+        var p4 = Pair<i32, bool>(99, false)
+        var p5 = Pair<f32, f32>(1.0, 2.0)
+        var p6 = Pair<i32, i32>(10, 20)
+        var p7 = Pair<bool, bool>(true, false)
+
+        -- --------------------------------------------------------
+        -- Triple
+        -- --------------------------------------------------------
+
+        var t1 = Triple<i32, f32, bool>(1, 2.0, true)
+        var t2 = Triple<f32, f32, f32>(1.0, 2.0, 3.0)
+        var t3 = Triple<bool, bool, bool>(true, false, true)
+
+        -- --------------------------------------------------------
+        -- Method calls on generic instances
+        -- --------------------------------------------------------
+
+        var val1 = b1.Get()
+        var val2 = b2.Get()
+        var val3 = b3.Get()
+        var first = p1.First()
+        var second = p1.Second()
+
+        -- --------------------------------------------------------
+        -- Wrapper methods
+        -- --------------------------------------------------------
+
+        var w1 = Wrapper<i32>(10)
+        var unwrapped = w1.Unwrap()
+        var replaced = w1.Replace(20)
+        var w2 = Wrapper<i32>(30)
+        var swapped = w1.SwapWith(w2)
+
+        -- --------------------------------------------------------
+        -- Duo swap (cross type parameter)
+        -- --------------------------------------------------------
+
+        var d1 = Duo<i32, f32>(1, 2.0)
+        var d2 = d1.Swap()
+        var leftVal = d1.Left()
+        var rightVal = d1.Right()
+
+        -- Swap a pair of generics
+        var d3 = Duo<Box<i32>, Box<f32>>(Box<i32>(1), Box<f32>(2.0))
+        var d4 = d3.Swap()
+
+        -- --------------------------------------------------------
+        -- Generic fields: Point + Bounds with initializer lists
+        -- --------------------------------------------------------
+
+        var pt1 = Point<f32>(1.0, 2.0)
+        var pt2 = Point<i32>(3, 4)
+
+        -- Initializer list on generic type
+        var pt3 = Point<f32> { x: 5.0, y: 6.0 }
+
+        -- Cross-line initializer on generic type
+        var pt4 = Point<f32>
+        {
+            x: 7.0
+            y: 8.0
+        }
+
+        -- Constructor then override with initializer
+        var pt5 = Point<f32>(1.0, 2.0) { x: 99.0 }
+
+        -- Empty initializer on generic type
+        var pt6 = Point<f32> {}
+
+        -- Bounds with nested generic constructor
+        var bounds1 = Bounds<f32>(Point<f32>(0.0, 0.0), Point<f32>(10.0, 10.0))
+
+        -- Bounds with nested initializer lists
+        var bounds2 = Bounds<f32>
+        {
+            min: Point<f32> { x: 0.0, y: 0.0 }
+            max: Point<f32> { x: 100.0, y: 100.0 }
+        }
+
+        -- Bounds with inferred nested initializers
+        var bounds3 = Bounds<f32>
+        {
+            min: { x: -1.0, y: -1.0 }
+            max: { x: 1.0, y: 1.0 }
+        }
+
+        -- Bounds with mixed: one explicit, one inferred
+        var bounds4 = Bounds<f32>
+        {
+            min: Point<f32>(0.0, 0.0)
+            max: { x: 50.0, y: 50.0 }
+        }
+
+        -- --------------------------------------------------------
+        -- Nested generic types as fields
+        -- --------------------------------------------------------
+
+        var n1 = Node<i32>(42)
+        var n2 = Node<i32>(99)
+        var e1 = Edge<i32>(n1, n2, 1.5)
+        var fromNode = e1.From()
+        var toNode = e1.To()
+        var nodeVal = fromNode.Value()
+
+        -- Chained member access through generic
+        var chainVal = e1.From().Value()
+
+        -- Edge with float nodes
+        var n3 = Node<f32>(1.0)
+        var n4 = Node<f32>(2.0)
+        var e2 = Edge<f32>(n3, n4, 0.5)
+
+        -- --------------------------------------------------------
+        -- Namespaced generics
+        -- --------------------------------------------------------
+
+        var s1 = Collections.Stack<i32>(10)
+        var count = s1.Count()
+        var kv1 = Collections.KeyValue<i32, f32>(1, 2.0)
+        var kv2 = Collections.KeyValue<bool, i32>(true, 42)
+        var key = kv1.Key()
+        var kval = kv1.Val()
+
+        -- --------------------------------------------------------
+        -- Nested namespace generics
+        -- --------------------------------------------------------
+
+        var geo1 = Geo.Coord<f32>(45.0, 90.0)
+        var lat = geo1.Lat()
+        var geo2 = Geo.Region<f32>(Geo.Coord<f32>(0.0, 0.0), Geo.Coord<f32>(10.0, 10.0))
+        var inner1 = Geo.Sub.Inner<i32>(42)
+
+        -- --------------------------------------------------------
+        -- Generic of generic (nested type arguments)
+        -- --------------------------------------------------------
+
+        var boxOfBox = Box<Box<i32>>(Box<i32>(42))
+        var innerBox = boxOfBox.Get()
+        var innerVal = innerBox.Get()
+
+        var boxOfPair = Box<Pair<i32, f32>>(Pair<i32, f32>(1, 2.0))
+        var pairFromBox = boxOfPair.Get()
+        var pairFirst = pairFromBox.First()
+
+        var pairOfBoxes = Pair<Box<i32>, Box<f32>>(Box<i32>(10), Box<f32>(20.0))
+        var boxFirst = pairOfBoxes.First()
+        var boxSecond = pairOfBoxes.Second()
+        var unboxedFirst = boxFirst.Get()
+        var unboxedSecond = boxSecond.Get()
+
+        -- --------------------------------------------------------
+        -- Triple nesting
+        -- --------------------------------------------------------
+
+        var tripleNested = Box<Box<Box<i32>>>(Box<Box<i32>>(Box<i32>(7)))
+        var l1 = tripleNested.Get()
+        var l2 = l1.Get()
+        var l3 = l2.Get()
+
+        -- --------------------------------------------------------
+        -- Core.Array with generic type arguments
+        -- --------------------------------------------------------
+
+        var arr1 = Core.Array<i32>(10)
+        var arr2 = Core.Array<f32>(20)
+        var arr3 = Core.Array<bool>(5)
+
+        -- Array of generic type
+        var arr4 = Core.Array<Box<i32>>(10)
+        var arr5 = Core.Array<Pair<i32, f32>>(10)
+
+        -- Array of namespaced generic
+        var arr6 = Core.Array<Collections.KeyValue<i32, f32>>(10)
+        var arr7 = Core.Array<Geo.Coord<f32>>(10)
+
+        -- Static Create with generic
+        var arr8 = Core.Array<Pair<i32, f32>>.Create(10)
+        var arr9 = Core.Array<Box<i32>>.Create(5)
+
+        -- Deeply nested arrays
+        var arr10 = Core.Array<Core.Array<i32>>(5)
+        var arr11 = Core.Array<Pair<Core.Array<i32>, f32>>(5)
+        var arr12 = Core.Array<Core.Array<Pair<i32, f32>>>.Create(3)
+
+        -- --------------------------------------------------------
+        -- Spacing variations in generic type arguments
+        -- --------------------------------------------------------
+
+        var sp1 = Pair<i32,f32>(1, 2.0)
+        var sp2 = Pair< i32, f32 >(1, 2.0)
+        var sp3 = Pair<  i32 ,  f32  >(1, 2.0)
+        var sp4 = Core.Array< Pair< i32, f32 > >(5)
+        var sp5 = Core.Array<Pair<i32,f32>>(5)
+
+        -- --------------------------------------------------------
+        -- Type shadowing by arity
+        -- --------------------------------------------------------
+
+        var tag0 = Tag(1)
+        var tag1 = Tag<i32>(2, 42)
+        var tag1Data = tag1.Data()
+        var tag2 = Tag<f32, bool>(3, 1.5, true)
+
+        -- --------------------------------------------------------
+        -- Member access on generic field
+        -- --------------------------------------------------------
+
+        var pair = Pair<Point<f32>, Point<f32>>(Point<f32>(1.0, 2.0), Point<f32>(3.0, 4.0))
+        var firstPoint = pair.First()
+        var xVal = firstPoint.x
+
+        -- --------------------------------------------------------
+        -- Generics with member access chains
+        -- --------------------------------------------------------
+
+        var edge = Edge<f32>(Node<f32>(1.0), Node<f32>(2.0), 0.5)
+        var edgeFromVal = edge.From().Value()
+        var edgeWeight = edge.weight
+
+        -- --------------------------------------------------------
+        -- Factory pattern - method returning different generic type
+        -- --------------------------------------------------------
+
+        var factory = Factory<i32>(42)
+        var factoryBox = factory.MakeBox()
+        var factoryPair = factory.MakePair(99)
+        var factoryBoxVal = factoryBox.Get()
+        var factoryPairFirst = factoryPair.First()
+
+        -- Factory with float
+        var factoryF = Factory<f32>(3.14)
+        var factoryFBox = factoryF.MakeBox()
+        var factoryFPair = factoryF.MakePair(2.718)
+
+        -- --------------------------------------------------------
+        -- GameState: non-generic type with generic fields
+        -- --------------------------------------------------------
+
+        var gs = GameState(100)
+
+        -- --------------------------------------------------------
+        -- Generic in control flow
+        -- --------------------------------------------------------
+
+        var flag = Box<bool>(true)
+        if flag.Get()
+        {
+            var inside = Box<i32>(1)
+            var insideVal = inside.Get()
+        }
+
+        var counter = Box<i32>(5)
+        while counter.Get() > 0
+        {
+            counter = Box<i32>(counter.Get() - 1)
+        }
+
+        -- --------------------------------------------------------
+        -- If/else with generics
+        -- --------------------------------------------------------
+
+        var check = Box<bool>(false)
+        if check.Get()
+        {
+            var branch1 = Pair<i32, f32>(1, 1.0)
+        }
+        else
+        {
+            var branch2 = Pair<f32, i32>(2.0, 2)
+        }
+
+        -- --------------------------------------------------------
+        -- Nested if with generic conditions
+        -- --------------------------------------------------------
+
+        if Box<bool>(true).Get()
+        {
+            if Box<bool>(false).Get()
+            {
+                var deepIf = true
+            }
+        }
+
+        -- --------------------------------------------------------
+        -- Generic in compound assignment context
+        -- --------------------------------------------------------
+
+        var acc = Box<i32>(0).Get()
+        acc += Box<i32>(10).Get()
+        acc -= Box<i32>(3).Get()
+        acc *= Box<i32>(2).Get()
+
+        -- --------------------------------------------------------
+        -- Arithmetic on generic results
+        -- --------------------------------------------------------
+
+        var sum = Box<i32>(10).Get() + Box<i32>(20).Get()
+        var diff = Box<f32>(5.0).Get() - Box<f32>(2.0).Get()
+        var prod = Pair<i32, i32>(3, 4).First() * Pair<i32, i32>(3, 4).Second()
+
+        -- --------------------------------------------------------
+        -- Comparison on generic results
+        -- --------------------------------------------------------
+
+        var gt = Box<i32>(10).Get() > Box<i32>(5).Get()
+        var lt = Box<f32>(1.0).Get() < Box<f32>(2.0).Get()
+        var eq = Box<i32>(42).Get() == Box<i32>(42).Get()
+
+        -- --------------------------------------------------------
+        -- Boolean operators on generic results
+        -- --------------------------------------------------------
+
+        var and = Box<bool>(true).Get() && Box<bool>(false).Get()
+        var or = Box<bool>(false).Get() || Box<bool>(true).Get()
+        var not = !Box<bool>(true).Get()
+
+        -- --------------------------------------------------------
+        -- Unary on generic result
+        -- --------------------------------------------------------
+
+        var neg = -Box<i32>(5).Get()
+        var pos = +Box<i32>(5).Get()
+        var negFloat = -Box<f32>(3.14).Get()
+
+        -- --------------------------------------------------------
+        -- Parenthesized generic expressions
+        -- --------------------------------------------------------
+
+        var paren1 = (Box<i32>(5).Get()) + (Box<i32>(3).Get())
+        var paren2 = (Pair<i32, f32>(1, 2.0)).First()
+        var paren3 = (Box<Box<i32>>(Box<i32>(42))).Get().Get()
+
+        -- --------------------------------------------------------
+        -- Cross-line method calls on generics
+        -- --------------------------------------------------------
+
+        var cross1 = Box<i32>(42)
+            .Get()
+
+        var cross2 = Pair<i32, f32>(1, 2.0)
+            .First()
+
+        var cross3 = Edge<i32>(Node<i32>(1), Node<i32>(2), 0.5)
+            .From()
+            .Value()
+
+        -- --------------------------------------------------------
+        -- Semicolons with generics
+        -- --------------------------------------------------------
+
+        var s1 = Box<i32>(1); var s2 = Box<i32>(2); var s3 = s1.Get() + s2.Get()
+
+        -- --------------------------------------------------------
+        -- Variable with explicit generic annotation and different initializer
+        -- --------------------------------------------------------
+
+        var typed1: Box<i32> = Box<i32>(42)
+        var typed2: Pair<i32, f32> = Pair<i32, f32>(1, 2.0)
+        var typed3: Core.Array<i32> = Core.Array<i32>(10)
+        var typed4: Core.Array<Pair<i32, f32>> = Core.Array<Pair<i32, f32>>(5)
+        var typed5: Box<Box<i32>> = Box<Box<i32>>(Box<i32>(7))
+
+        -- --------------------------------------------------------
+        -- Return generic value
+        -- --------------------------------------------------------
+
+        return Box<i32>(0).Get()
+    }
+}

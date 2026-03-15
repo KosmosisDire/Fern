@@ -59,3 +59,16 @@ type Bool
     op &&(left: bool, right: bool) -> bool
     op ||(left: bool, right: bool) -> bool
 }
+
+@BuiltinType
+type Array<T>
+{
+    length: i32
+
+    pub fn Get(index: i32) -> T {}
+    pub fn Set(index: i32, value: T) {}
+    pub fn Length() -> i32 { return length }
+    pub fn CopyTo(dest: Array<T>, destIndex: i32, srcIndex: i32, count: i32) {}
+
+    static fn Create(length: i32) -> Array<T> {}
+}

@@ -29,13 +29,7 @@ int main(int argc, char* argv[])
     {
         Fern::TokenWalker walker(unit->tokens);
         // LOG(LogChannel::Debug) << walker.format() << "\n";
-        // LOG(LogChannel::Debug) << Fern::AstDebugFormatter::format(unit->ast) << "\n";
-    }
-
-    LOG(LogChannel::Debug) << "---- Annotated AST ----\n";
-    for (const auto& unit : compilation.get_units())
-    {
-        LOG(LogChannel::Debug) << Fern::AnnotatedAstFormatter::format(unit->ast, compilation.semantic().bindings) << "\n";
+        LOG(LogChannel::Debug) << Fern::AstDebugFormatter::format(unit->ast) << "\n";
     }
 
     LOG(LogChannel::Debug) << compilation.semantic().format() << "\n";

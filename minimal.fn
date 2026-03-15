@@ -1,25 +1,18 @@
 
-type Vector2
+type Settings
 {
-    x: f32
-    y: f32
-
+    x: i32
     init{}
 }
 
-type Program
+attr type MyAttr
 {
-    fn Main()
-    {
-        var i = 0
-        i += 10
+    data: Settings
+    init(data: Settings)
+}
 
-        var v = Vector2
-        {
-            x: 1.0
-            y: 2.0
-        }
-
-        return i
-    }
+@MyAttr(Settings { x: 42 })
+type Foo
+{
+    value: i32
 }

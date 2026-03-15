@@ -1,0 +1,106 @@
+
+namespace Test
+{
+type Pair<T, U>
+{
+    first: T
+    second: U
+
+    init(first: T, second: U) {}
+
+    fn Swap() -> Pair<U, T>
+    {
+        return Pair<U, T>(second, first)
+    }
+}
+}
+
+type Container<T>
+{
+    value: T
+
+    init(value: T) {}
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+type Shadow<Container>
+{
+    value: Container
+
+    init(value: Container) {}
+
+    fn Get() -> Container
+    {
+        return value
+    }
+}
+
+type Shadow
+{
+    value: i32
+
+    init(value: i32) {}
+
+    fn Get() -> i32
+    {
+        return value
+    }
+}
+
+namespace Test2
+{
+    type Shadow<T, U>
+    {
+        value: T
+        value2: U
+
+        init(value: T) {}
+
+        fn Get() -> T
+        {
+            return value
+        }
+    }
+
+    namespace Shadow
+    {
+        type Nested
+        {
+            value: i32
+
+            init(value: i32) {}
+
+            fn Get() -> i32
+            {
+                return value
+            }
+        }
+    }
+}
+
+
+type Program
+{
+    fn Main()
+    {
+        var p: Test.Pair<i32, f32> = Test.Pair<i32, f32>(1, 2.0)
+        var p2 = p.Swap()
+        var c: Container<bool> = Container<bool>(true)
+        var arr = Core.Array<i32>(3)
+        var arr2 = Core.Array<Test.Pair<i32, f32>>.Create(10)
+        var arr3 = Core.Array < Test.Pair< Core.Array < Core.Array< Test.Pair< i32, f32 > > >, f32 > >.Create(10)
+        var nested: Container<Test.Pair<i32, i32>> = Container<Test.Pair<i32, i32>>(Test.Pair<i32, i32>(1, 2))
+        var shadow: Shadow<Container<bool>> = Shadow<Container<bool>>(c)
+        var shadow2: Shadow = Shadow(42)
+        var shadow3: Test2.Shadow<i32, f32> = Test2.Shadow<i32, f32>(42)
+        var shadowNested: Test2.Shadow.Nested = Test2.Shadow.Nested(99)
+
+        var dict = Core.Array<Test.Pair<i32, f32>>(10)
+        
+    }
+}
+
