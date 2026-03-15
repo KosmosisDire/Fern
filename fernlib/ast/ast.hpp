@@ -45,9 +45,7 @@ struct WhileStmtSyntax;
 struct BaseDeclSyntax;
 struct ParameterDeclSyntax;
 struct VariableDeclSyntax;
-struct FunctionDeclSyntax;
-struct InitDeclSyntax;
-struct OperatorDeclSyntax;
+struct CallableDeclSyntax;
 struct TypeDeclSyntax;
 struct FieldDeclSyntax;
 struct FieldInitSyntax;
@@ -100,9 +98,7 @@ public:
     // Declarations
     virtual void visit(ParameterDeclSyntax* node) = 0;
     virtual void visit(VariableDeclSyntax* node) = 0;
-    virtual void visit(FunctionDeclSyntax* node) = 0;
-    virtual void visit(InitDeclSyntax* node) = 0;
-    virtual void visit(OperatorDeclSyntax* node) = 0;
+    virtual void visit(CallableDeclSyntax* node) = 0;
     virtual void visit(TypeDeclSyntax* node) = 0;
     virtual void visit(FieldDeclSyntax* node) = 0;
     virtual void visit(FieldInitSyntax* node) = 0;
@@ -162,6 +158,7 @@ struct BaseDeclSyntax : BaseStmtSyntax
     std::vector<AttributeSyntax*> attributes;
     BaseDeclSyntax(int k) : BaseStmtSyntax(k) {}
 };
+
 
 #pragma region Block
 
@@ -341,32 +338,15 @@ struct VariableDeclSyntax : BaseDeclSyntax
     ExprPtr initializer = nullptr;
 };
 
-// fn name(params...)-> returnType { body }
-struct FunctionDeclSyntax : BaseDeclSyntax
-{
-    SYNTAX_NODE(FunctionDecl, BaseDeclSyntax)
-
-    Token name = Token::Invalid();
-    std::vector<ParameterDeclSyntax*> parameters;
-    ExprPtr returnType = nullptr;
-    BlockSyntax* body = nullptr;
-};
-
+// fn name(params...) -> returnType { body }
 // init(params...) { body }
-struct InitDeclSyntax : BaseDeclSyntax
-{
-    SYNTAX_NODE(InitDecl, BaseDeclSyntax)
-
-    std::vector<ParameterDeclSyntax*> parameters;
-    BlockSyntax* body = nullptr;
-};
-
 // op +(params) -> Type { body }
-struct OperatorDeclSyntax : BaseDeclSyntax
+struct CallableDeclSyntax : BaseDeclSyntax
 {
-    SYNTAX_NODE(OperatorDecl, BaseDeclSyntax)
+    SYNTAX_NODE(CallableDecl, BaseDeclSyntax)
 
-    Token op = Token::Invalid();
+    CallableKind callableKind = CallableKind::Function;
+    Token name = Token::Invalid();
     std::vector<ParameterDeclSyntax*> parameters;
     ExprPtr returnType = nullptr;
     BlockSyntax* body = nullptr;
@@ -521,22 +501,7 @@ public:
         if (node->initializer) node->initializer->accept(this);
     }
 
-    void visit(FunctionDeclSyntax* node) override
-    {
-        for (auto& param : node->parameters)
-            if (param) param->accept(this);
-        if (node->returnType) node->returnType->accept(this);
-        if (node->body) node->body->accept(this);
-    }
-
-    void visit(InitDeclSyntax* node) override
-    {
-        for (auto& param : node->parameters)
-            if (param) param->accept(this);
-        if (node->body) node->body->accept(this);
-    }
-
-    void visit(OperatorDeclSyntax* node) override
+    void visit(CallableDeclSyntax* node) override
     {
         for (auto& param : node->parameters)
             if (param) param->accept(this);

@@ -512,7 +512,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 
     TypeSymbol* returnType = method ? method->get_return_type() : nullptr;
 
-    if (method && method->isConstructor)
+    if (method && method->is_constructor())
     {
         return fhir.object_create(expr, returnType, method, std::move(argExprs));
     }
@@ -617,7 +617,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             if (calleeSym)
             {
                 auto* method = calleeSym->as<MethodSymbol>();
-                if (method && !method->isConstructor)
+                if (method && !method->is_constructor())
                 {
                     error("initializer lists can only be applied to a type or constructor call", callExpr->span);
                     namedType = nullptr;

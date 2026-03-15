@@ -23,7 +23,7 @@ TypeSymbol* SubstitutedMethodSymbol::get_return_type() const
     if (!returnTypeResolved)
     {
         returnTypeResolved = true;
-        if (!isConstructor && originalMethod && parent && table)
+        if (!is_constructor() && originalMethod && parent && table)
         {
             auto* inst = parent->as<NamedTypeSymbol>();
             if (inst && inst->genericOrigin)
@@ -141,7 +141,7 @@ MethodSymbol* NamedTypeSymbol::resolve_constructor(const std::vector<TypeSymbol*
     if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
-        if (method->isConstructor && match_parameters(method->parameters, argTypes))
+        if (method->is_constructor() && match_parameters(method->parameters, argTypes))
         {
             return method;
         }
@@ -188,7 +188,7 @@ bool NamedTypeSymbol::has_constructor_with_count(size_t count) const
 {
     for (auto* method : methods)
     {
-        if (method->isConstructor && method->parameters.size() == count)
+        if (method->is_constructor() && method->parameters.size() == count)
         {
             return true;
         }
@@ -379,17 +379,17 @@ std::string MethodSymbol::format(int indent) const
         ss << " ";
     }
 
-    if (isConstructor)
+    switch (callableKind)
     {
-        ss << "init";
-    }
-    else if (is_operator())
-    {
-        ss << "op " << Fern::format(operatorKind);
-    }
-    else
-    {
-        ss << "fn " << name;
+        case CallableKind::Constructor:
+            ss << "init";
+            break;
+        case CallableKind::Operator:
+            ss << "op " << Fern::format(operatorKind);
+            break;
+        case CallableKind::Function:
+            ss << "fn " << name;
+            break;
     }
 
     ss << "(";

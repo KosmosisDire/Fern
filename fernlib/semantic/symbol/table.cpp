@@ -133,10 +133,10 @@ void SymbolTable::populate_instantiation_members(NamedTypeSymbol* inst)
         methodPtr->syntax = templateMethod->syntax;
         methodPtr->parent = inst;
         methodPtr->modifiers = templateMethod->modifiers;
-        methodPtr->isConstructor = templateMethod->isConstructor;
+        methodPtr->callableKind = templateMethod->callableKind;
         methodPtr->operatorKind = templateMethod->operatorKind;
 
-        if (templateMethod->isConstructor)
+        if (templateMethod->is_constructor())
         {
             methodPtr->set_return_type(inst);
             methodPtr->returnTypeResolved = true;

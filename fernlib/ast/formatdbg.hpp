@@ -334,50 +334,28 @@ public:
         out << "}";
     }
 
-    void visit(FunctionDeclSyntax* node) override
+    void visit(CallableDeclSyntax* node) override
     {
         write_indent();
         write_attributes(node->attributes);
         write_modifiers(node->modifiers);
-        out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
+        switch (node->callableKind)
+        {
+            case CallableKind::Function:
+                out << "FunctionDecl (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
+                break;
+            case CallableKind::Operator:
+                out << "OperatorDecl (op: " << Fern::format(node->name.kind) << ", span: " << node->span.format() << ")\n";
+                break;
+            case CallableKind::Constructor:
+                out << "InitDecl (span: " << node->span.format() << ")\n";
+                break;
+        }
         write_indent();
         out << "{\n";
         ++indent;
         write_children("parameters", node->parameters, true);
-        write_child("returnType", node->returnType, true);
-        write_child("body", node->body);
-        --indent;
-        write_indent();
-        out << "}";
-    }
-
-    void visit(OperatorDeclSyntax* node) override
-    {
-        write_indent();
-        write_attributes(node->attributes);
-        write_modifiers(node->modifiers);
-        out << node->syntax_node_name() << " (op: " << Fern::format(node->op.kind) << ", span: " << node->span.format() << ")\n";
-        write_indent();
-        out << "{\n";
-        ++indent;
-        write_children("parameters", node->parameters, true);
-        write_child("returnType", node->returnType, true);
-        write_child("body", node->body);
-        --indent;
-        write_indent();
-        out << "}";
-    }
-
-    void visit(InitDeclSyntax* node) override
-    {
-        write_indent();
-        write_attributes(node->attributes);
-        write_modifiers(node->modifiers);
-        out << node->syntax_node_name() << " (span: " << node->span.format() << ")\n";
-        write_indent();
-        out << "{\n";
-        ++indent;
-        write_children("parameters", node->parameters, true);
+        if (node->returnType) write_child("returnType", node->returnType, true);
         write_child("body", node->body);
         --indent;
         write_indent();

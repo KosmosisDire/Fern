@@ -128,6 +128,13 @@ enum class AssignOp
     Div,
 };
 
+enum class CallableKind
+{
+    Function,
+    Constructor,
+    Operator,
+};
+
 enum class Modifier : uint16_t
 {
     None   = 0,

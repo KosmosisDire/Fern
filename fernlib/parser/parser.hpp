@@ -23,13 +23,13 @@ private:
 
     // Declarations
     BaseDeclSyntax* parse_declaration();
-    FunctionDeclSyntax* parse_function_decl();
+    CallableDeclSyntax* parse_function_decl();
     VariableDeclSyntax* parse_variable_decl();
     ParameterDeclSyntax* parse_parameter_decl();
     TypeDeclSyntax* parse_type_decl();
     FieldDeclSyntax* parse_field_decl();
-    InitDeclSyntax* parse_init_decl();
-    OperatorDeclSyntax* parse_operator_decl();
+    CallableDeclSyntax* parse_init_decl();
+    CallableDeclSyntax* parse_operator_decl();
     NamespaceDeclSyntax* parse_namespace_decl();
 
     // Shared parse helpers

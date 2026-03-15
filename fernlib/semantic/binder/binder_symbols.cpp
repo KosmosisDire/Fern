@@ -63,53 +63,40 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
 
             type->fields.push_back(context.symbols.own(std::move(fieldPtr)));
         }
-        else if (auto* methodAst = member->as<FunctionDeclSyntax>())
+        else if (auto* callableAst = member->as<CallableDeclSyntax>())
         {
             auto methodPtr = std::make_unique<MethodSymbol>();
-            methodPtr->name = std::string(methodAst->name.lexeme);
-            methodPtr->syntax = methodAst;
+            methodPtr->syntax = callableAst;
             methodPtr->parent = type;
-            methodPtr->modifiers = methodAst->modifiers;
+            methodPtr->callableKind = callableAst->callableKind;
 
-            auto* method = context.symbols.own(std::move(methodPtr));
-            create_parameters(method, methodAst->parameters);
-
-            type->methods.push_back(method);
-            allMethods.push_back(method);
-        }
-        else if (auto* opAst = member->as<OperatorDeclSyntax>())
-        {
-            auto methodPtr = std::make_unique<MethodSymbol>();
-            methodPtr->name = std::string(opAst->op.lexeme);
-            methodPtr->syntax = opAst;
-            methodPtr->parent = type;
-            methodPtr->operatorKind = opAst->op.kind;
-            methodPtr->modifiers = Modifier::Public | Modifier::Static;
-
-            auto* method = context.symbols.own(std::move(methodPtr));
-            create_parameters(method, opAst->parameters);
-
-            if (method->parameters.size() < 1 || method->parameters.size() > 2)
+            switch (callableAst->callableKind)
             {
-                error("operator '" + std::string(Fern::format(opAst->op.kind)) +
-                      "' must have 1 parameter (unary) or 2 parameters (binary), but has " +
-                      std::to_string(method->parameters.size()), opAst->span);
+                case CallableKind::Function:
+                    methodPtr->name = std::string(callableAst->name.lexeme);
+                    methodPtr->modifiers = callableAst->modifiers;
+                    break;
+                case CallableKind::Constructor:
+                    methodPtr->name = "init";
+                    methodPtr->modifiers = callableAst->modifiers;
+                    break;
+                case CallableKind::Operator:
+                    methodPtr->name = std::string(callableAst->name.lexeme);
+                    methodPtr->operatorKind = callableAst->name.kind;
+                    methodPtr->modifiers = Modifier::Public | Modifier::Static;
+                    break;
             }
 
-            type->methods.push_back(method);
-            allMethods.push_back(method);
-        }
-        else if (auto* initAst = member->as<InitDeclSyntax>())
-        {
-            auto methodPtr = std::make_unique<MethodSymbol>();
-            methodPtr->name = "init";
-            methodPtr->syntax = initAst;
-            methodPtr->parent = type;
-            methodPtr->isConstructor = true;
-            methodPtr->modifiers = initAst->modifiers;
-
             auto* method = context.symbols.own(std::move(methodPtr));
-            create_parameters(method, initAst->parameters);
+            create_parameters(method, callableAst->parameters);
+
+            if (callableAst->callableKind == CallableKind::Operator &&
+                (method->parameters.size() < 1 || method->parameters.size() > 2))
+            {
+                error("operator '" + std::string(Fern::format(callableAst->name.kind)) +
+                      "' must have 1 parameter (unary) or 2 parameters (binary), but has " +
+                      std::to_string(method->parameters.size()), callableAst->span);
+            }
 
             type->methods.push_back(method);
             allMethods.push_back(method);
@@ -120,17 +107,19 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
         }
     }
 
-    // If no explicit init was declared, synthesize a default constructor
-    // with one parameter per field (memberwise initializer)
     bool hasInit = std::any_of(typeDecl->declarations.begin(), typeDecl->declarations.end(),
-        [](auto* member) { return member->template is<InitDeclSyntax>(); });
+        [](auto* member)
+        {
+            auto* callable = member->template as<CallableDeclSyntax>();
+            return callable && callable->callableKind == CallableKind::Constructor;
+        });
 
     if (!hasInit)
     {
         auto methodPtr = std::make_unique<MethodSymbol>();
         methodPtr->name = "init";
         methodPtr->parent = type;
-        methodPtr->isConstructor = true;
+        methodPtr->callableKind = CallableKind::Constructor;
         methodPtr->modifiers = Modifier::Public;
 
         auto* method = context.symbols.own(std::move(methodPtr));
@@ -197,49 +186,33 @@ void Binder::resolve_all_types()
 
         for (auto* method : type->methods)
         {
-            std::vector<ParameterDeclSyntax*>* paramAsts = nullptr;
+            auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
 
-            if (method->syntax)
+            if (callable)
             {
-                if (auto* funcAst = method->syntax->as<FunctionDeclSyntax>())
+                if (callable->returnType)
                 {
-                    if (funcAst->returnType)
-                    {
-                        method->set_return_type(resolve_type_expr(funcAst->returnType));
-                    }
-                    paramAsts = &funcAst->parameters;
+                    method->set_return_type(resolve_type_expr(callable->returnType));
                 }
-                else if (auto* opAst = method->syntax->as<OperatorDeclSyntax>())
-                {
-                    if (opAst->returnType)
-                    {
-                        method->set_return_type(resolve_type_expr(opAst->returnType));
-                    }
-                    paramAsts = &opAst->parameters;
-                }
-                else if (auto* initAst = method->syntax->as<InitDeclSyntax>())
+                else if (method->is_constructor())
                 {
                     method->set_return_type(type);
-                    paramAsts = &initAst->parameters;
+                }
+
+                for (size_t i = 0; i < method->parameters.size() && i < callable->parameters.size(); ++i)
+                {
+                    if (callable->parameters[i]->type)
+                    {
+                        method->parameters[i]->type = resolve_type_expr(callable->parameters[i]->type);
+                    }
                 }
             }
-            else if (method->isConstructor)
+            else if (method->is_constructor())
             {
                 method->set_return_type(type);
                 for (size_t i = 0; i < method->parameters.size() && i < type->fields.size(); ++i)
                 {
                     method->parameters[i]->type = type->fields[i]->type;
-                }
-            }
-
-            if (paramAsts)
-            {
-                for (size_t i = 0; i < method->parameters.size() && i < paramAsts->size(); ++i)
-                {
-                    if ((*paramAsts)[i]->type)
-                    {
-                        method->parameters[i]->type = resolve_type_expr((*paramAsts)[i]->type);
-                    }
                 }
             }
         }
@@ -277,17 +250,17 @@ void Binder::check_duplicate_methods(NamedTypeSymbol* type)
             if (sameSignature)
             {
                 Span loc = b->syntax ? b->syntax->span : Span{};
-                if (b->isConstructor)
+                switch (b->callableKind)
                 {
-                    error("duplicate constructor on type '" + format_type_name(type) + "'", loc);
-                }
-                else if (b->is_operator())
-                {
-                    error("duplicate operator '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
-                }
-                else
-                {
-                    error("duplicate method '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                    case CallableKind::Constructor:
+                        error("duplicate constructor on type '" + format_type_name(type) + "'", loc);
+                        break;
+                    case CallableKind::Operator:
+                        error("duplicate operator '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        break;
+                    case CallableKind::Function:
+                        error("duplicate method '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        break;
                 }
             }
         }
@@ -451,10 +424,10 @@ void Binder::resolve_all_attributes()
                 continue;
             }
 
-            auto* memberDecl = dynamic_cast<BaseDeclSyntax*>(method->syntax);
-            if (memberDecl)
+            auto* callableDecl = method->syntax->as<CallableDeclSyntax>();
+            if (callableDecl)
             {
-                resolve_attributes(memberDecl, method->resolvedAttributes);
+                resolve_attributes(callableDecl, method->resolvedAttributes);
             }
         }
     }

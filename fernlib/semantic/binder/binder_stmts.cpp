@@ -47,7 +47,7 @@ void Binder::bind_method(MethodSymbol* method)
 
     auto* parentType = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
 
-    if (!method->syntax && method->isConstructor && parentType)
+    if (!method->syntax && method->is_constructor() && parentType)
     {
         lower_synthetic_constructor(method, parentType);
         return;
@@ -72,29 +72,19 @@ void Binder::bind_method(MethodSymbol* method)
 
     FhirBlock* body = nullptr;
 
-    if (method->syntax)
+    auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
+    if (callable && callable->body)
     {
-        BlockSyntax* astBody = nullptr;
-        if (auto* funcAst = method->syntax->as<FunctionDeclSyntax>())
-            astBody = funcAst->body;
-        else if (auto* opAst = method->syntax->as<OperatorDeclSyntax>())
-            astBody = opAst->body;
-        else if (auto* initAst = method->syntax->as<InitDeclSyntax>())
-            astBody = initAst->body;
+        push_scope();
 
-        if (astBody)
+        for (auto* param : method->parameters)
         {
-            push_scope();
-
-            for (auto* param : method->parameters)
-            {
-                current_scope().add(param->name, param);
-            }
-
-            body = bind_block(astBody);
-
-            pop_scope();
+            current_scope().add(param->name, param);
         }
+
+        body = bind_block(callable->body);
+
+        pop_scope();
     }
 
     context.methods.push_back(fhir.method(method, body));

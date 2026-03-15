@@ -302,9 +302,10 @@ BaseDeclSyntax* Parser::parse_declaration()
     return decl;
 }
 
-FunctionDeclSyntax* Parser::parse_function_decl()
+CallableDeclSyntax* Parser::parse_function_decl()
 {
-    auto* func = arena.alloc<FunctionDeclSyntax>();
+    auto* func = arena.alloc<CallableDeclSyntax>();
+    func->callableKind = CallableKind::Function;
     Span span = walker.current().span;
 
     walker.advance();
@@ -618,9 +619,10 @@ BlockSyntax* Parser::parse_body(Span& span)
     return body;
 }
 
-InitDeclSyntax* Parser::parse_init_decl()
+CallableDeclSyntax* Parser::parse_init_decl()
 {
-    auto* initDecl = arena.alloc<InitDeclSyntax>();
+    auto* initDecl = arena.alloc<CallableDeclSyntax>();
+    initDecl->callableKind = CallableKind::Constructor;
     Span span = walker.current().span;
 
     walker.advance();
@@ -635,9 +637,10 @@ InitDeclSyntax* Parser::parse_init_decl()
     return initDecl;
 }
 
-OperatorDeclSyntax* Parser::parse_operator_decl()
+CallableDeclSyntax* Parser::parse_operator_decl()
 {
-    auto* opDecl = arena.alloc<OperatorDeclSyntax>();
+    auto* opDecl = arena.alloc<CallableDeclSyntax>();
+    opDecl->callableKind = CallableKind::Operator;
     Span span = walker.current().span;
 
     walker.advance();
@@ -645,7 +648,7 @@ OperatorDeclSyntax* Parser::parse_operator_decl()
 
     if (is_operator_token(walker.current().kind))
     {
-        opDecl->op = walker.current();
+        opDecl->name = walker.current();
         span = span.merge(walker.current().span);
         walker.advance();
     }

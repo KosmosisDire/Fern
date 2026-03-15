@@ -202,14 +202,15 @@ struct MethodSymbol : Symbol
 {
     static constexpr SymbolKind Kind = SymbolKind::Method;
     Modifier modifiers = Modifier::None;
+    CallableKind callableKind = CallableKind::Function;
     TokenKind operatorKind = TokenKind::Invalid;
-    bool isConstructor = false;
     std::vector<ParameterSymbol*> parameters;
     std::vector<ResolvedAttribute> resolvedAttributes;
 
     MethodSymbol() { kind = Kind; }
 
-    bool is_operator() const { return operatorKind != TokenKind::Invalid; }
+    bool is_constructor() const { return callableKind == CallableKind::Constructor; }
+    bool is_operator() const { return callableKind == CallableKind::Operator; }
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 

@@ -27,7 +27,7 @@ struct InitializerExprSyntax;
 struct LiteralExprSyntax;
 struct MemberAccessExprSyntax;
 struct NamespaceDeclSyntax;
-struct OperatorDeclSyntax;
+struct CallableDeclSyntax;
 struct ParameterDeclSyntax;
 struct ParenExprSyntax;
 struct ReturnStmtSyntax;
