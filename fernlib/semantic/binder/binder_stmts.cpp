@@ -206,7 +206,6 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
             type = initType;
         }
     }
-
     auto localPtr = std::make_unique<LocalSymbol>();
     localPtr->name = std::string(decl->name.lexeme);
     localPtr->type = type;

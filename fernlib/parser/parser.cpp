@@ -359,8 +359,11 @@ VariableDeclSyntax* Parser::parse_variable_decl()
 
     skip_terminators(walker);
 
+    bool hasAssign = false;
     if (walker.check(TokenKind::Assign))
     {
+        hasAssign = true;
+        Span assignSpan = walker.current().span;
         walker.advance();
         skip_terminators(walker);
         var->initializer = parse_expression();
@@ -368,6 +371,15 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         {
             span = span.merge(var->initializer->span);
         }
+        else
+        {
+            error("expected expression after '='", assignSpan);
+        }
+    }
+
+    if (!var->type && !hasAssign)
+    {
+        error("variable declaration requires a type annotation or initializer", var->name.span);
     }
 
     var->span = span;
@@ -654,7 +666,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     }
     else
     {
-        error("expected operator symbol after 'op'", walker.current().span);
+        error("expected operator symbol after 'op'", span);
     }
     skip_terminators(walker);
 
@@ -1080,7 +1092,8 @@ void Parser::parse_field_init_list(std::vector<FieldInitSyntax*>& out)
             continue;
         }
 
-        if (!expect(TokenKind::Colon, "expected ':' after field target"))
+        auto* colon = expect(TokenKind::Colon, "expected ':' after field target");
+        if (!colon)
         {
             advance_past_field(walker);
             walker.check_progress(cp);
@@ -1093,7 +1106,7 @@ void Parser::parse_field_init_list(std::vector<FieldInitSyntax*>& out)
             is_terminator(walker.current().kind) ||
             is_statement_keyword(walker.current().kind))
         {
-            error("expected value after ':'", walker.current().span);
+            error("expected value after ':'", colon->span);
             fieldInit->span = fieldInit->target->span;
             out.push_back(fieldInit);
             advance_past_field(walker);
@@ -1304,13 +1317,14 @@ IfStmtSyntax* Parser::parse_if()
     }
     else
     {
-        error("expected '{' after if condition", walker.current().span);
+        error("expected '{' after if condition", ifStmt->condition ? ifStmt->condition->span : span);
     }
 
     skip_terminators(walker);
 
     if (walker.check(TokenKind::Else))
     {
+        Span elseSpan = walker.current().span;
         walker.advance();
         skip_terminators(walker);
 
@@ -1326,7 +1340,7 @@ IfStmtSyntax* Parser::parse_if()
         }
         else
         {
-            error("expected '{' or 'if' after 'else'", walker.current().span);
+            error("expected '{' or 'if' after 'else'", elseSpan);
         }
     }
 
@@ -1354,7 +1368,7 @@ WhileStmtSyntax* Parser::parse_while()
     }
     else
     {
-        error("expected '{' after while condition", walker.current().span);
+        error("expected '{' after while condition", whileStmt->condition ? whileStmt->condition->span : span);
     }
 
     whileStmt->span = span;

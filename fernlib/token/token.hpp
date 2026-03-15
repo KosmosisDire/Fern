@@ -13,6 +13,8 @@ struct Token
     Span span;
     std::string_view lexeme;
 
+    bool is_valid() const { return kind != TokenKind::Invalid; }
+
     static Token Invalid()
     {
         static Token instance{TokenKind::Invalid, Span(), ""};
