@@ -604,7 +604,24 @@ CallableDeclSyntax* Parser::parse_init_decl()
     parse_parameter_list(initDecl->parameters, span);
     skip_newlines(walker);
 
-    initDecl->body = parse_body(span);
+    if (walker.check(TokenKind::ThinArrow))
+    {
+        error("constructors cannot have a return type annotation", walker.current().span);
+        walker.advance();
+        skip_newlines(walker);
+        parse_type();
+        skip_newlines(walker);
+    }
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        initDecl->body = parse_block();
+        span = span.merge(initDecl->body->span);
+    }
+    else
+    {
+        error("expected '{' after constructor declaration", walker.current().span);
+    }
     initDecl->span = span;
 
     return initDecl;
