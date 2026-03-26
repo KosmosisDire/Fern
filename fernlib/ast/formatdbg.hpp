@@ -245,6 +245,20 @@ public:
         out << "}";
     }
 
+    void visit(IndexExprSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("object", node->object, true);
+        write_child("index", node->index);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
 #pragma region Statement Visitors
 
     void visit(ReturnStmtSyntax* node) override

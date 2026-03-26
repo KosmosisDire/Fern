@@ -636,7 +636,29 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     walker.advance();
     skip_newlines(walker);
 
-    if (is_operator_token(walker.current().kind))
+    if (walker.check(TokenKind::LeftBracket))
+    {
+        Span bracketSpan = walker.current().span;
+        walker.advance();
+
+        if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after '['"))
+        {
+            bracketSpan = bracketSpan.merge(rb->span);
+        }
+
+        if (walker.check(TokenKind::Assign))
+        {
+            bracketSpan = bracketSpan.merge(walker.current().span);
+            walker.advance();
+            opDecl->name = Token{TokenKind::IndexSetOp, bracketSpan, "[]="};
+        }
+        else
+        {
+            opDecl->name = Token{TokenKind::IndexOp, bracketSpan, "[]"};
+        }
+        span = span.merge(bracketSpan);
+    }
+    else if (is_operator_token(walker.current().kind))
     {
         opDecl->name = walker.current();
         span = span.merge(walker.current().span);
@@ -1161,6 +1183,25 @@ BaseExprSyntax* Parser::parse_postfix()
         else if (walker.check(TokenKind::LeftParen))
         {
             left = parse_call(left);
+        }
+        else if (walker.check(TokenKind::LeftBracket))
+        {
+            auto* indexExpr = arena.alloc<IndexExprSyntax>();
+            indexExpr->object = left;
+            Span indexSpan = left->span;
+
+            walker.advance();
+            skip_newlines(walker);
+
+            indexExpr->index = parse_expression();
+            skip_newlines(walker);
+
+            if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after index expression"))
+            {
+                indexSpan = indexSpan.merge(rb->span);
+            }
+            indexExpr->span = indexSpan;
+            left = indexExpr;
         }
         else if (walker.check(TokenKind::LeftBrace) && !inCondition)
         {

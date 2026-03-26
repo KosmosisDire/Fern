@@ -70,6 +70,10 @@ enum class TokenKind
     Or,
     Not,
 
+    // Index operators (never lexed, synthesized by parser)
+    IndexOp,
+    IndexSetOp,
+
     // Other symbols
     At,
     Colon,
@@ -78,6 +82,8 @@ enum class TokenKind
     RightParen,
     LeftBrace,
     RightBrace,
+    LeftBracket,
+    RightBracket,
     Semicolon,
     Comma,
     Dot,
@@ -209,7 +215,9 @@ constexpr bool is_operator_token(TokenKind k)
            k == TokenKind::NotEqual ||
            k == TokenKind::And ||
            k == TokenKind::Or ||
-           k == TokenKind::Not;
+           k == TokenKind::Not ||
+           k == TokenKind::IndexOp ||
+           k == TokenKind::IndexSetOp;
 }
 
 constexpr bool is_terminator(TokenKind k)
@@ -420,6 +428,9 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Or:           return "||";
         case TokenKind::Not:          return "!";
 
+        case TokenKind::IndexOp:      return "[]";
+        case TokenKind::IndexSetOp:   return "[]=";
+
         case TokenKind::At:           return "@";
         case TokenKind::Colon:        return ":";
         case TokenKind::ThinArrow:    return "->";
@@ -427,6 +438,8 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::RightParen:   return ")";
         case TokenKind::LeftBrace:    return "{";
         case TokenKind::RightBrace:   return "}";
+        case TokenKind::LeftBracket:  return "[";
+        case TokenKind::RightBracket: return "]";
         case TokenKind::Semicolon:    return ";";
         case TokenKind::Comma:        return ",";
         case TokenKind::Dot:          return ".";

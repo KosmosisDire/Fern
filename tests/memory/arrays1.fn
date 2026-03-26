@@ -1,0 +1,21 @@
+
+type Program
+{
+    fn Main()
+    {
+        var arr = Core.Array<i32>(5)
+        arr[0] = 1
+        arr[1] = 2
+        arr[2] = 3
+
+        var three = arr[0] + arr[1]
+        var two = arr[arr[0]]
+
+        var arr2 = Core.Array<f32>(5)
+        arr2[0] = 1.0
+        arr2[1] = 2.0
+        arr2[2] = 3.0
+
+        var three2 = arr2[arr[arr[1]]]
+    }
+}

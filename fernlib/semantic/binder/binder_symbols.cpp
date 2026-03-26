@@ -90,12 +90,28 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
             auto* method = context.symbols.own(std::move(methodPtr));
             create_parameters(method, callableAst->parameters);
 
-            if (callableAst->callableKind == CallableKind::Operator &&
-                (method->parameters.size() < 1 || method->parameters.size() > 2))
+            if (callableAst->callableKind == CallableKind::Operator)
             {
-                error("operator '" + std::string(Fern::format(callableAst->name.kind)) +
-                      "' must have 1 parameter (unary) or 2 parameters (binary), but has " +
-                      std::to_string(method->parameters.size()), callableAst->span);
+                bool isIndexGet = callableAst->name.kind == TokenKind::IndexOp;
+                bool isIndexSet = callableAst->name.kind == TokenKind::IndexSetOp;
+
+                if (isIndexGet && method->parameters.size() != 2)
+                {
+                    error("operator '[]' must have 2 parameters (self, index), but has " +
+                          std::to_string(method->parameters.size()), callableAst->span);
+                }
+                else if (isIndexSet && method->parameters.size() != 3)
+                {
+                    error("operator '[]=' must have 3 parameters (self, index, value), but has " +
+                          std::to_string(method->parameters.size()), callableAst->span);
+                }
+                else if (!isIndexGet && !isIndexSet &&
+                         (method->parameters.size() < 1 || method->parameters.size() > 2))
+                {
+                    error("operator '" + std::string(Fern::format(callableAst->name.kind)) +
+                          "' must have 1 parameter (unary) or 2 parameters (binary), but has " +
+                          std::to_string(method->parameters.size()), callableAst->span);
+                }
             }
 
             type->methods.push_back(method);
@@ -397,7 +413,6 @@ void Binder::resolve_all_attributes()
 {
     for (auto* type : allTypes)
     {
-        if (type->is_generic_definition()) continue;
 
         currentType = type;
         currentNamespace = type->find_enclosing_namespace();

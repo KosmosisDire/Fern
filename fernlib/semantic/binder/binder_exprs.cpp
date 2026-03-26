@@ -98,6 +98,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr)
         return bind_paren(paren);
     if (auto* generic = expr->as<GenericTypeExprSyntax>())
         return bind_generic_type_expr(generic);
+    if (auto* indexExpr = expr->as<IndexExprSyntax>())
+        return bind_index(indexExpr);
 
     return nullptr;
 }
@@ -303,6 +305,50 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
 
 FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
 {
+    if (auto* indexExpr = expr->target->as<IndexExprSyntax>())
+    {
+        FhirExpr* object = bind_expr(indexExpr->object);
+        FhirExpr* index = bind_expr(indexExpr->index);
+        FhirExpr* value = bind_expr(expr->value);
+
+        if (expr->op != AssignOp::Simple)
+        {
+            FhirExpr* readTarget = bind_index(indexExpr);
+            BinaryOp binOp = BinaryOp::Add;
+            switch (expr->op)
+            {
+                case AssignOp::Add: binOp = BinaryOp::Add; break;
+                case AssignOp::Sub: binOp = BinaryOp::Sub; break;
+                case AssignOp::Mul: binOp = BinaryOp::Mul; break;
+                case AssignOp::Div: binOp = BinaryOp::Div; break;
+                default: break;
+            }
+            value = bind_binary_op(binOp, readTarget, value, expr);
+        }
+
+        TypeSymbol* objectType = object ? object->type : nullptr;
+        TypeSymbol* indexType = index ? index->type : nullptr;
+        TypeSymbol* valueType = value ? value->type : nullptr;
+
+        auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
+        if (!namedType)
+        {
+            error("cannot index a value of type '" + format_type_name(objectType) + "'", expr->span);
+            return nullptr;
+        }
+
+        auto* method = namedType->find_index_setter(indexType, valueType);
+        if (!method)
+        {
+            error("type '" + format_type_name(namedType) +
+                  "' has no 'op []=' for index type '" + format_type_name(indexType) +
+                  "' and value type '" + format_type_name(valueType) + "'", expr->span);
+            return nullptr;
+        }
+
+        return fhir.call(expr, method->get_return_type(), method, {object, index, value});
+    }
+
     FhirExpr* value = bind_expr(expr->value);
     FhirExpr* writeTarget = bind_expr(expr->target);
 
@@ -799,6 +845,32 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
 
     error("initializer target must be a field name or member access", target->span);
     return nullptr;
+}
+
+FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
+{
+    FhirExpr* object = bind_expr(expr->object);
+    FhirExpr* index = bind_expr(expr->index);
+
+    TypeSymbol* objectType = object ? object->type : nullptr;
+    TypeSymbol* indexType = index ? index->type : nullptr;
+
+    auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
+    if (!namedType)
+    {
+        error("cannot index a value of type '" + format_type_name(objectType) + "'", expr->span);
+        return nullptr;
+    }
+
+    auto* method = namedType->find_index_getter(indexType);
+    if (!method)
+    {
+        error("type '" + format_type_name(namedType) +
+              "' has no 'op []' for index type '" + format_type_name(indexType) + "'", expr->span);
+        return nullptr;
+    }
+
+    return fhir.call(expr, method->get_return_type(), method, {object, index});
 }
 
 }

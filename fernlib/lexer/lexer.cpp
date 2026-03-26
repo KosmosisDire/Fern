@@ -149,6 +149,10 @@ Token Lexer::scan_token()
             return make_token(TokenKind::LeftBrace);
         case '}':
             return make_token(TokenKind::RightBrace);
+        case '[':
+            return make_token(TokenKind::LeftBracket);
+        case ']':
+            return make_token(TokenKind::RightBracket);
         case ':':
             return make_token(TokenKind::Colon);
         case ';':

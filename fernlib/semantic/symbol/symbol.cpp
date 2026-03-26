@@ -188,6 +188,41 @@ MethodSymbol* NamedTypeSymbol::find_unary_operator(TokenKind opKind, TypeSymbol*
     return nullptr;
 }
 
+MethodSymbol* NamedTypeSymbol::find_index_getter(TypeSymbol* indexType)
+{
+    if (table) table->ensure_members_populated(this);
+    for (auto* method : methods)
+    {
+        if (!method->is_operator() || method->operatorKind != TokenKind::IndexOp || method->parameters.size() != 2)
+        {
+            continue;
+        }
+        if (!indexType || method->parameters[1]->type == indexType)
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
+MethodSymbol* NamedTypeSymbol::find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType)
+{
+    if (table) table->ensure_members_populated(this);
+    for (auto* method : methods)
+    {
+        if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 3)
+        {
+            continue;
+        }
+        if ((!indexType || method->parameters[1]->type == indexType) &&
+            (!valueType || method->parameters[2]->type == valueType))
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
 bool NamedTypeSymbol::has_constructor_with_count(size_t count) const
 {
     for (auto* method : methods)
