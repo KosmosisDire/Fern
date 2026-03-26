@@ -17,6 +17,7 @@ public:
 
 private:
     const Token* expect(TokenKind kind, std::string_view message);
+    void expect_progress(TokenWalker::Checkpoint cp);
     Modifier parse_modifiers();
     void parse_attributes(std::vector<AttributeSyntax*>& out);
     void attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs);
@@ -48,7 +49,7 @@ private:
     BaseExprSyntax* parse_unary();
     BaseExprSyntax* parse_primary();
     CallExprSyntax* parse_call(BaseExprSyntax* callee);
-    void parse_field_init_list(std::vector<FieldInitSyntax*>& out);
+    void parse_initializer_members(std::vector<StmtPtr>& out);
     InitializerExprSyntax* parse_initializer(BaseExprSyntax* target = nullptr);
     BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
     BaseExprSyntax* parse_postfix();

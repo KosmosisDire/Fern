@@ -1,0 +1,197 @@
+type Color
+{
+    r: f32
+    g: f32
+    b: f32
+    a: f32
+    init{}
+    init(r: f32, g: f32, b: f32, a: f32)
+    {
+        this.r = r
+        this.g = g
+        this.b = b
+        this.a = a
+    }
+}
+
+type Text
+{
+    fontSize: f32
+    fontWeight: i32
+    color: Color
+
+    init{}
+}
+
+type Spacer
+{
+    size: f32
+    init{}
+    init(size: f32)
+    {
+        this.size = size
+    }
+}
+
+type SearchBar
+{
+}
+
+type Toggle
+{
+    isOn: bool
+    init{}
+}
+
+type TextInput
+{
+}
+
+type Button
+{
+    enabled: bool
+    background: Color
+    init{}
+}
+
+type LabeledField
+{
+}
+
+type Row
+{
+    spacing: f32
+    init{}
+}
+
+type Column
+{
+    spacing: f32
+    padding: f32
+    maxWidth: i32
+    init{}
+}
+
+type Card
+{
+    background: Color
+    init{}
+}
+
+type Slider
+{
+    min: f32
+    max: f32
+    init{}
+    init(min: f32, max: f32)
+    {
+        this.min = min
+        this.max = max
+    }
+}
+
+type Link
+{
+}
+
+type Topbar
+{
+}
+
+type ScrollView
+{
+}
+
+type Layout
+{
+}
+
+type Page
+{
+}
+
+
+type Program
+{
+    fn BuildSettingsPage() -> Page
+    {
+        return Page
+        {
+            Layout
+            {
+                Topbar
+                {
+                    Text() { fontSize: 20.0, fontWeight: 700 }
+                    Spacer(0.0)
+                    SearchBar()
+                    Toggle()
+                }
+
+                ScrollView
+                {
+                    Column
+                    {
+                        spacing: 16.0,
+                        padding: 24.0,
+                        maxWidth: 600
+
+                        Card
+                        {
+                            background: Color(1.0, 1.0, 1.0, 1.0)
+
+                            LabeledField()
+                            {
+                                TextInput()
+                            }
+                            LabeledField()
+                            {
+                                TextInput()
+                            }
+                            Button()
+                            {
+                                enabled: true,
+                                background: Color(0.2, 0.5, 1.0, 1.0)
+                            }
+                        }
+
+                        Card()
+                        {
+                            background: Color(1.0, 1.0, 1.0, 1.0)
+
+                            Row
+                            {
+                                spacing: 12.0
+
+                                Text()
+                                Spacer(0.0)
+                                Toggle()
+                            }
+                            Row
+                            {
+                                spacing: 12.0
+
+                                Text()
+                                Spacer(0.0)
+                                Slider(0.0, 100.0)
+                                Text()
+                            }
+                        }
+
+                        Card()
+                        {
+                            background: Color(1.0, 1.0, 1.0, 1.0)
+
+                            Text()
+                            Link()
+                            Text()
+                            {
+                                fontSize: 12.0,
+                                color: Color(0.5, 0.5, 0.5, 1.0)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

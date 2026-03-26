@@ -143,7 +143,7 @@ type Color
     g: f32 = 0.0
     b: f32 = 0.0
     a: f32 = 1.0
-     
+
     -- Allow parameterless construction
     init{}
 

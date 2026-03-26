@@ -564,18 +564,18 @@ type Program
             max: Point<f32> { x: 100.0, y: 100.0 }
         }
 
-        -- Bounds with inferred nested initializers
+        -- Bounds with nested initializers
         var bounds3 = Bounds<f32>
         {
-            min: { x: -1.0, y: -1.0 }
-            max: { x: 1.0, y: 1.0 }
+            min: Point<f32> { x: -1.0, y: -1.0 }
+            max: Point<f32> { x: 1.0, y: 1.0 }
         }
 
-        -- Bounds with mixed: one explicit, one inferred
+        -- Bounds with mixed: one constructor, one initializer
         var bounds4 = Bounds<f32>
         {
             min: Point<f32>(0.0, 0.0)
-            max: { x: 50.0, y: 50.0 }
+            max: Point<f32> { x: 50.0, y: 50.0 }
         }
 
         -- --------------------------------------------------------

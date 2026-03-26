@@ -153,6 +153,14 @@ void Binder::bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     {
         bind_while(whileStmt, out);
     }
+    else if (auto* block = stmt->as<BlockSyntax>())
+    {
+        auto* bound = bind_block(block);
+        for (auto* inner : bound->statements)
+        {
+            out.push_back(inner);
+        }
+    }
     else if (auto* exprStmt = stmt->as<ExpressionStmtSyntax>())
     {
         out.push_back(fhir.expr_stmt(exprStmt, bind_expr(exprStmt->expression)));

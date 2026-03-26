@@ -575,9 +575,16 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     if (!expr->target)
     {
         error("cannot infer type for initializer list, use an explicit type name", expr->span);
-        for (auto* fieldInit : expr->initializers)
+        for (auto* member : expr->members)
         {
-            bind_expr(fieldInit->value);
+            if (auto* fieldInit = member->as<FieldInitSyntax>())
+            {
+                bind_expr(fieldInit->value);
+            }
+            else if (auto* childStmt = member->as<ExpressionStmtSyntax>())
+            {
+                bind_expr(childStmt->expression);
+            }
         }
         return nullptr;
     }
@@ -647,14 +654,21 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
     if (!namedType)
     {
-        for (auto* fieldInit : expr->initializers)
+        for (auto* member : expr->members)
         {
-            bind_expr(fieldInit->value);
+            if (auto* fieldInit = member->as<FieldInitSyntax>())
+            {
+                bind_expr(fieldInit->value);
+            }
+            else if (auto* childStmt = member->as<ExpressionStmtSyntax>())
+            {
+                bind_expr(childStmt->expression);
+            }
         }
         return nullptr;
     }
 
-    if (expr->initializers.empty())
+    if (expr->members.empty())
     {
         return bind_initializer_target(expr);
     }
@@ -685,8 +699,18 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver)
 {
     std::vector<std::string> boundFieldPaths;
-    for (auto* fieldInit : expr->initializers)
+    for (auto* member : expr->members)
     {
+        auto* fieldInit = member->as<FieldInitSyntax>();
+        if (!fieldInit)
+        {
+            if (auto* childStmt = member->as<ExpressionStmtSyntax>())
+            {
+                bind_expr(childStmt->expression);
+            }
+            continue;
+        }
+
         TypeSymbol* fieldType = nullptr;
         if (fieldInit->target &&
             (fieldInit->target->is<IdentifierExprSyntax>() ||
@@ -697,21 +721,7 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
 
         if (fieldInit->value)
         {
-            auto* anonInit = fieldInit->value->as<InitializerExprSyntax>();
-            if (anonInit && !anonInit->target)
-            {
-                auto* fieldNamedType = fieldType ? fieldType->as<NamedTypeSymbol>() : nullptr;
-                if (fieldNamedType && receiver)
-                {
-                    FhirExpr* fieldTarget = build_field_access_chain(receiver, fieldInit->target);
-                    bind_initializer_fields(anonInit, fieldNamedType, out, fieldTarget);
-                }
-                else if (fieldType && !fieldType->as<NamedTypeSymbol>())
-                {
-                    error("cannot use initializer list for non-struct type", anonInit->span);
-                }
-            }
-            else if (receiver)
+            if (receiver)
             {
                 FhirExpr* fieldTarget = build_field_access_chain(receiver, fieldInit->target);
                 out.push_back(fhir.expr_stmt(fieldInit, fhir.assign(fieldInit, fieldTarget, bind_expr(fieldInit->value))));
@@ -723,8 +733,11 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
         }
     }
 
-    for (auto* fieldInit : expr->initializers)
+    for (auto* member : expr->members)
     {
+        auto* fieldInit = member->as<FieldInitSyntax>();
+        if (!fieldInit) continue;
+
         std::string path = format_field_path(fieldInit->target);
         if (path.empty()) continue;
 

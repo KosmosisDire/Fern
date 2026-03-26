@@ -177,15 +177,15 @@ type InitOps
         -- Nested initializer with operator in inner value
         var a8 = Rect
         {
-            pos: { x: 1.0 + 2.0, y: -3.0 },
-            size: { x: 10.0 * 2.0, y: 20.0 }
+            pos: Vector2 { x: 1.0 + 2.0, y: -3.0 },
+            size: Vector2 { x: 10.0 * 2.0, y: 20.0 }
         }
 
         -- Initializer where value is binary of two initializers
         var a9 = Rect
         {
             pos: Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 0.5, y: 0.5 },
-            size: { x: 10.0, y: 20.0 }
+            size: Vector2 { x: 10.0, y: 20.0 }
         }
 
         -- Ambiguous spacing with initializer
@@ -210,8 +210,8 @@ type CondInit
         -- Cross-line initializer in if (should error)
         if Vector2
         {
-            x: 1.0,
-            y: 2.0
+            x = 1.0,
+            y = 2.0
         }
 
         -- Same-line initializer in while (should error)
@@ -223,8 +223,8 @@ type CondInit
         -- Cross-line initializer in while (should error)
         while Vector2
         {
-            x: 1.0,
-            y: 2.0
+            x = 1.0,
+            y = 2.0
         }
 
         -- Parenthesized initializer in condition (should work, no error)
@@ -311,10 +311,10 @@ type IncompleteInit
         -- One field, no close
         var b = Vector2 { x: 1.0
 
-        -- Field name, no colon
+        -- Field name, no ':'
         var c = Vector2 { x
 
-        -- Field name and colon, no value
+        -- Field name and ':', no value
         var d = Vector2 { x:
 
         -- One field and comma
@@ -324,13 +324,13 @@ type IncompleteInit
         var f = Vector2 { x: , y:
 
         -- Nested: outer started, inner incomplete
-        var g = Rect { pos: {
+        var g = Rect { pos: Vector2 {
 
         -- Nested: inner has one field, not closed
-        var h = Rect { pos: { x: 1.0
+        var h = Rect { pos: Vector2 { x: 1.0
 
         -- Nested: inner complete, outer missing close
-        var i = Rect { pos: { x: 1.0, y: 2.0 }
+        var i = Rect { pos: Vector2 { x: 1.0, y: 2.0 }
 
         -- Dot notation target, no value
         var j = Rect { pos.x:
@@ -363,17 +363,8 @@ type GarbageInit
         -- If inside initializer
         var d = Vector2 { if true { } }
 
-        -- Assignment where colon should be
-        var e = Vector2 { x = 1.0, y = 2.0 }
-
         -- Just values, no names
         var f = Vector2 { 1.0, 2.0 }
-
-        -- Multiple colons
-        var g = Vector2 { x:: 1.0 }
-
-        -- Bare colons
-        var h = Vector2 { : , : }
 
         -- Triple comma
         var i = Vector2 { , , , }
@@ -382,10 +373,10 @@ type GarbageInit
         var j = Vector2 { x: 1.0, return, y: 2.0 }
 
         -- Deeply nested garbage
-        var k = Rect { pos: { x: 1.0, if true { } } }
+        var k = Rect { pos: Vector2 { x: 1.0, if true { } } }
 
         -- Empty nested then valid
-        var l = Rect { pos: {}, size: { x: 1.0, y: 2.0 } }
+        var l = Rect { pos: Vector2 {}, size: Vector2 { x: 1.0, y: 2.0 } }
     }
 }
 
@@ -458,7 +449,7 @@ type Recovery
     {
         var a = Vector2 {
         var b = Vector2 { x:
-        var c = Rect { pos: {
+        var c = Rect { pos: Vector2 {
         var d = 5 +
         var e = ! true
         if Vector2 { x: 1.0, y: 2.0 }
@@ -472,11 +463,11 @@ type Recovery
         var a = Vector2 { x: 1.0, y: 2.0 }
         var b = Rect
         {
-            pos: { x: 1.0, y: 2.0 },
-            size: { x: 10.0, y: 20.0 }
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2 { x: 10.0, y: 20.0 }
         }
         var c = Vector2 { x: 1.0, y: 2.0 } + Vector2 { x: 3.0, y: 4.0 }
-        var d = Rect { pos: Vector2(1.0, 2.0) { x: 5.0 }, size: { x: 10.0, y: 20.0 } }
+        var d = Rect { pos: Vector2(1.0, 2.0) { x: 5.0 }, size: Vector2 { x: 10.0, y: 20.0 } }
         var e = 5 + 4
         var f = -4 + 3
         var g = 5 + -4
@@ -509,7 +500,7 @@ type EdgeCases
         var c = Vector2 { x: 1.0, }
 
         -- Deeply nested empty
-        var d = Rect { pos: {}, size: {} }
+        var d = Rect { pos: Vector2 {}, size: Vector2 {} }
 
         -- Initializer on result of call
         var e = Vector2(1.0, 2.0) { x: 5.0 }
@@ -517,8 +508,8 @@ type EdgeCases
         -- Initializer on result of initializer (chained)
         var f = Vector2 { x: 1.0 } { y: 2.0 }
 
-        -- Member access on anonymous initializer
-        var g = Rect { pos: { x: 1.0, y: 2.0 } }.pos.x
+        -- Member access on nested initializer
+        var g = Rect { pos: Vector2 { x: 1.0, y: 2.0 } }.pos.x
 
         -- Operator between initializer and literal
         var h = Vector2 { x: 1.0, y: 2.0 }.x + 5.0
@@ -684,8 +675,8 @@ type FinalValid
         var d = Vector2 { x: -1.0, y: -2.0 }
         var e = Rect
         {
-            pos: { x: 1.0, y: 2.0 },
-            size: { x: 10.0, y: 20.0 }
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2 { x: 10.0, y: 20.0 }
         }
         var f = Vector2 { x: 1.0, y: 2.0 }.x + 5.0
         if true

@@ -1,18 +1,21 @@
-
-type Settings
+type Widget
 {
-    x: i32
+    fontSize: f32
+    x: f32
+    y: f32
     init{}
 }
 
-attr type MyAttr
+type Program
 {
-    data: Settings
-    init(data: Settings)
-}
+    fn Main()
+    {
+        var fontSize = 10.0
+        var c1 = Widget{
+            fontSize: 20.0
+            x: 100.0
+            y: 200.0
+        }
 
-@MyAttr(Settings { x: 42 })
-type Foo
-{
-    value: i32
+    }
 }

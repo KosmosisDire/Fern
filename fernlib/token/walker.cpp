@@ -82,12 +82,7 @@ void TokenWalker::restore(Checkpoint cp)
 
 bool TokenWalker::check_progress(Checkpoint cp)
 {
-    if (tokenIndex == cp.position)
-    {
-        advance();
-        return false;
-    }
-    return true;
+    return tokenIndex != cp.position;
 }
 
 bool TokenWalker::synchronize_to(TokenKind target)

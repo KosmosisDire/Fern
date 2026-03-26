@@ -163,9 +163,9 @@ struct BaseDeclSyntax : BaseStmtSyntax
 #pragma region Block
 
 // { statements... }
-struct BlockSyntax : BaseSyntax
+struct BlockSyntax : BaseStmtSyntax
 {
-    SYNTAX_NODE(Block, BaseSyntax)
+    SYNTAX_NODE(Block, BaseStmtSyntax)
 
     std::vector<StmtPtr> statements;
 };
@@ -205,13 +205,13 @@ struct CallExprSyntax : BaseExprSyntax
     std::vector<ExprPtr> arguments;
 };
 
-// Vector2(1.0, 2.0) { y: 5.0 } or Vector2{ x: 1.0, y: 2.0 } or nested
+// Vector2(1.0, 2.0) { y = 5.0 } or Vector2{ x = 1.0, y = 2.0 } or nested
 struct InitializerExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(InitializerExpr, BaseExprSyntax)
 
     ExprPtr target = nullptr;
-    std::vector<FieldInitSyntax*> initializers;
+    std::vector<StmtPtr> members;
 };
 
 // -operand, +operand
@@ -429,8 +429,8 @@ public:
     void visit(InitializerExprSyntax* node) override
     {
         if (node->target) node->target->accept(this);
-        for (auto& init : node->initializers)
-            if (init) init->accept(this);
+        for (auto& member : node->members)
+            if (member) member->accept(this);
     }
 
     void visit(UnaryExprSyntax* node) override

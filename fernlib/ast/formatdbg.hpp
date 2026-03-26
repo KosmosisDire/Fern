@@ -161,7 +161,7 @@ public:
         out << "{\n";
         ++indent;
         write_child("target", node->target, true);
-        write_children("initializers", node->initializers);
+        write_children("members", node->members);
         --indent;
         write_indent();
         out << "}";
