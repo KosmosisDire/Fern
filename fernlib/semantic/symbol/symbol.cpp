@@ -66,6 +66,10 @@ bool NamedTypeSymbol::is_builtin() const
         if (attr.type && attr.type->qualified_name() == "Core.BuiltinType")
             return true;
     }
+    if (genericOrigin)
+    {
+        return genericOrigin->is_builtin();
+    }
     return false;
 }
 
