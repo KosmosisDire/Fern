@@ -87,6 +87,13 @@ void Binder::bind_method(MethodSymbol* method)
         pop_scope();
     }
 
+    if (method->is_constructor() && parentType && body)
+    {
+        std::vector<FhirStmt*> defaults;
+        emit_field_defaults(parentType, defaults);
+        body->statements.insert(body->statements.begin(), defaults.begin(), defaults.end());
+    }
+
     context.methods.push_back(fhir.method(method, body));
 
     currentMethod = nullptr;
@@ -96,7 +103,13 @@ void Binder::bind_method(MethodSymbol* method)
 
 void Binder::lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* parentType)
 {
+    currentMethod = method;
+    currentType = parentType;
+    currentNamespace = currentType ? currentType->find_enclosing_namespace() : nullptr;
+
     auto* ctorBlock = fhir.block(nullptr);
+
+    emit_field_defaults(parentType, ctorBlock->statements);
 
     for (auto* param : method->parameters)
     {
@@ -109,6 +122,26 @@ void Binder::lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* 
     }
 
     context.methods.push_back(fhir.method(method, ctorBlock));
+
+    currentMethod = nullptr;
+    currentType = nullptr;
+    currentNamespace = nullptr;
+}
+
+void Binder::emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out)
+{
+    for (auto* field : type->fields)
+    {
+        auto* fieldDecl = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
+        if (!fieldDecl || !fieldDecl->initializer) continue;
+
+        auto* value = bind_expr(fieldDecl->initializer);
+        if (!value) continue;
+
+        auto* fieldAccess = fhir.field_access(nullptr, fhir.this_expr(nullptr, type), field);
+        auto* assignExpr = fhir.assign(nullptr, fieldAccess, value);
+        out.push_back(fhir.expr_stmt(nullptr, assignExpr));
+    }
 }
 
 #pragma region Statement Binding

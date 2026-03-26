@@ -1,6 +1,6 @@
 type Widget
 {
-    fontSize: f32
+    fontSize: f32 = 100.0 + 15.0
     x: f32
     y: f32
     init{}
@@ -11,11 +11,7 @@ type Program
     fn Main()
     {
         var fontSize = 10.0
-        var c1 = Widget{
-            fontSize: 20.0
-            x: 100.0
-            y: 200.0
-        }
+        var c1 = Widget() {x: 10.0, y: 20.0 }
 
     }
 }

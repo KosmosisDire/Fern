@@ -36,6 +36,7 @@ struct TypeDeclSyntax;
 struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
 struct UnaryExprSyntax;
+struct FieldDeclSyntax;
 struct VariableDeclSyntax;
 struct WhileStmtSyntax;
 
@@ -93,6 +94,7 @@ private:
 
     void bind_method(MethodSymbol* method);
     void lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* parentType);
+    void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
     void check_duplicate_methods(NamedTypeSymbol* type);
 
 #pragma region Expression Binding
