@@ -148,8 +148,13 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
             return fhir.field_access(expr, fhir.this_expr(expr, thisType), fieldSym);
         }
         case SymbolKind::Type:
+            error("'" + std::string(expr->name.lexeme) + "' is a type, not a value", expr->span);
+            return nullptr;
         case SymbolKind::Namespace:
+            error("'" + std::string(expr->name.lexeme) + "' is a namespace, not a value", expr->span);
+            return nullptr;
         case SymbolKind::Method:
+            error("'" + std::string(expr->name.lexeme) + "' is a method, not a value", expr->span);
             return nullptr;
         default:
             return nullptr;
