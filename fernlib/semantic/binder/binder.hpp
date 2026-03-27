@@ -36,6 +36,7 @@ struct TypeDeclSyntax;
 struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
 struct IndexExprSyntax;
+struct ArrayLiteralExprSyntax;
 struct UnaryExprSyntax;
 struct FieldDeclSyntax;
 struct VariableDeclSyntax;
@@ -119,6 +120,7 @@ private:
     FhirExpr* bind_paren(ParenExprSyntax* expr);
     FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
     FhirExpr* bind_index(IndexExprSyntax* expr);
+    FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr);
 
 #pragma region Statement Binding
 

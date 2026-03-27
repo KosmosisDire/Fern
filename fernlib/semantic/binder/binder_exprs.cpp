@@ -100,6 +100,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr)
         return bind_generic_type_expr(generic);
     if (auto* indexExpr = expr->as<IndexExprSyntax>())
         return bind_index(indexExpr);
+    if (auto* arrayLit = expr->as<ArrayLiteralExprSyntax>())
+        return bind_array_literal(arrayLit);
 
     return nullptr;
 }
@@ -845,6 +847,103 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
 
     error("initializer target must be a field name or member access", target->span);
     return nullptr;
+}
+
+FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr)
+{
+    if (expr->elements.empty())
+    {
+        error("empty array literal requires a type annotation", expr->span);
+        return nullptr;
+    }
+
+    if (!pendingStmts)
+    {
+        error("array literals are not supported outside of method bodies", expr->span);
+        return nullptr;
+    }
+
+    std::vector<FhirExpr*> elements;
+    for (auto* elem : expr->elements)
+    {
+        elements.push_back(bind_expr(elem));
+    }
+
+    TypeSymbol* elementType = nullptr;
+    for (auto* elem : elements)
+    {
+        if (!elem || !elem->type) continue;
+        if (!elementType)
+        {
+            elementType = elem->type;
+        }
+        else if (elem->type != elementType)
+        {
+            error("array literal has mixed element types: '" +
+                  format_type_name(elementType) + "' and '" +
+                  format_type_name(elem->type) + "'", expr->span);
+        }
+    }
+
+    if (!elementType)
+    {
+        error("cannot infer element type for array literal", expr->span);
+        return nullptr;
+    }
+
+    auto* coreNs = context.symbols.globalNamespace->find_namespace("Core");
+    auto* arrayTemplate = coreNs ? coreNs->find_type("Array", 1) : nullptr;
+    if (!arrayTemplate)
+    {
+        error("Core.Array type not found", expr->span);
+        return nullptr;
+    }
+
+    auto* arrayType = context.symbols.get_or_create_instantiation(arrayTemplate, {elementType});
+    context.symbols.ensure_members_populated(arrayType);
+
+    TypeSymbol* i32Type = context.resolve_type_name(TokenKind::I32Keyword);
+    int count = static_cast<int>(elements.size());
+
+    auto* countLit = fhir.literal(expr, i32Type);
+    countLit->value = LiteralValue::make_int(count);
+
+    std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
+    auto* ctor = arrayType->resolve_constructor(ctorArgTypes);
+    if (!ctor)
+    {
+        error("Core.Array has no constructor taking i32", expr->span);
+        return nullptr;
+    }
+
+    auto* createExpr = fhir.object_create(expr, arrayType, ctor, {countLit});
+
+    auto tempPtr = std::make_unique<LocalSymbol>();
+    tempPtr->name = "__arr_" + std::to_string(tempCounter++);
+    tempPtr->type = arrayType;
+    auto* tempLocal = context.symbols.own(std::move(tempPtr));
+
+    pendingStmts->push_back(fhir.var_decl(expr, tempLocal, createExpr));
+
+    auto* setter = arrayType->find_index_setter(i32Type, elementType);
+    if (!setter)
+    {
+        error("Core.Array has no 'op []=' for element type '" +
+              format_type_name(elementType) + "'", expr->span);
+        return nullptr;
+    }
+
+    for (int i = 0; i < count; ++i)
+    {
+        auto* indexLit = fhir.literal(expr, i32Type);
+        indexLit->value = LiteralValue::make_int(i);
+
+        auto* setCall = fhir.call(expr, setter->get_return_type(), setter,
+                                  {fhir.local_ref(expr, tempLocal), indexLit, elements[i]});
+        pendingStmts->push_back(fhir.expr_stmt(expr, setCall));
+    }
+
+    return fhir.local_ref(expr, tempLocal);
 }
 
 FhirExpr* Binder::bind_index(IndexExprSyntax* expr)

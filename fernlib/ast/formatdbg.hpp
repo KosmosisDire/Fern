@@ -259,6 +259,19 @@ public:
         out << "}";
     }
 
+    void visit(ArrayLiteralExprSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_children("elements", node->elements);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
 #pragma region Statement Visitors
 
     void visit(ReturnStmtSyntax* node) override

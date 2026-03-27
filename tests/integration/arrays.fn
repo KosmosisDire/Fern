@@ -1,0 +1,104 @@
+ref type Vec2
+{
+    x: f32
+    y: f32
+}
+
+type Program
+{
+    static fn Sum(arr: Core.Array<i32>) -> i32
+    {
+        var total = 0
+        var i = 0
+        while i < arr.Length()
+        {
+            total = total + arr[i]
+            i = i + 1
+        }
+        return total
+    }
+
+    fn Main -> i32
+    {
+        -- basic literal and indexing
+        var nums = [1, 2, 3]
+        var first = nums[0]
+        var last = nums[2]
+
+        -- index set
+        nums[0] = 10
+        nums[2] = 30
+
+        -- compound assignment on indexed element
+        nums[1] += 5
+
+        -- computed index
+        var idx = 1
+        var mid = nums[idx]
+
+        -- nested array literal
+        var grid = [[1, 2], [3, 4]]
+        var topLeft = grid[0][0]
+        var bottomRight = grid[1][1]
+
+        -- index expression as index
+        var indices = [1, 0]
+        var picked = grid[indices[0]][indices[1]]
+
+        -- float array
+        var floats = [1.0, 2.5, 3.5]
+        var fsum = floats[0] + floats[1] + floats[2]
+
+        -- bool array
+        var flags = [true, false, true]
+
+        -- array in control flow
+        if flags[0]
+        {
+            nums[0] = 100
+        }
+
+        if flags[1]
+        {
+            nums[0] = 999
+        }
+
+        -- array in while loop
+        var arr = [10, 20, 30, 40, 50]
+        var loopSum = 0
+        var j = 0
+        while j < 5
+        {
+            loopSum = loopSum + arr[j]
+            j = j + 1
+        }
+
+        -- array as function argument
+        var argArr = [3, 7, 11]
+        var fnSum = Sum(argArr)
+
+        -- array literal directly as function argument
+        var directSum = Sum([100, 200, 300])
+
+        -- array of structs
+        var points = [Vec2(1.0, 2.0), Vec2(3.0, 4.0)]
+        var px = points[0].x
+        var py = points[1].y
+
+        -- single element array
+        var single = [42]
+        var onlyVal = single[0]
+
+        -- array with expressions as elements
+        var a = 5
+        var b = 10
+        var computed = [a + b, a * b, a - b]
+
+        -- nested indexing on write
+        grid[0][0] = 99
+        grid[1][1] = 88
+
+        -- return value from array
+        return nums[0] + loopSum + fnSum
+    }
+}

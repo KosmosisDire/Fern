@@ -1,19 +1,17 @@
 
 type Program
 {
-    fn Main()
+    fn Main -> i32
     {
-        var arr = Core.Array<Core.Array<i32>>(2)
-        arr[0] = Core.Array<i32>(3)
-        arr[0][0] = 1
-        arr[0][1] = 2
-        arr[0][2] = 3
-        arr[1] = Core.Array<i32>(2)
-        arr[1][0] = 4
-        arr[1][1] = 5
+        var x = []
+        var a: Core.Array<i32> = []
 
-        var three = arr[0][0] + arr[0][1]
-        var two = arr[arr[0][0]][arr[0][1]]
-        var four = arr[1][0]
+        var y = 5
+        var z = y[2]
+
+        var arr = [1, 2, 3]
+        var firstFalse = arr[false]
+
+        arr[1] = 10.0
     }
 }

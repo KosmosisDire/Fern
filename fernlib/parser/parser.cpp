@@ -1277,6 +1277,43 @@ BaseExprSyntax* Parser::parse_primary()
         return thisExpr;
     }
 
+    if (walker.check(TokenKind::LeftBracket))
+    {
+        auto* arrayLit = arena.alloc<ArrayLiteralExprSyntax>();
+        Span span = walker.current().span;
+
+        walker.advance();
+        skip_newlines(walker);
+
+        while (!walker.check(TokenKind::RightBracket) && !walker.is_at_end())
+        {
+            auto* elem = parse_expression();
+            if (elem)
+            {
+                arrayLit->elements.push_back(elem);
+            }
+            else
+            {
+                break;
+            }
+            skip_newlines(walker);
+
+            if (walker.check(TokenKind::Comma))
+            {
+                walker.advance();
+                skip_newlines(walker);
+            }
+        }
+
+        if (auto* token = expect(TokenKind::RightBracket, "expected ']' after array literal"))
+        {
+            span = span.merge(token->span);
+        }
+        arrayLit->span = span;
+
+        return arrayLit;
+    }
+
     return nullptr;
 }
 

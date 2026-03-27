@@ -34,6 +34,7 @@ struct ThisExprSyntax;
 struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
 struct IndexExprSyntax;
+struct ArrayLiteralExprSyntax;
 
 // Statements
 struct BaseStmtSyntax;
@@ -90,6 +91,7 @@ public:
     virtual void visit(TypeExprSyntax* node) = 0;
     virtual void visit(GenericTypeExprSyntax* node) = 0;
     virtual void visit(IndexExprSyntax* node) = 0;
+    virtual void visit(ArrayLiteralExprSyntax* node) = 0;
 
     // Statements
     virtual void visit(ReturnStmtSyntax* node) = 0;
@@ -288,6 +290,14 @@ struct IndexExprSyntax : BaseExprSyntax
     ExprPtr index = nullptr;
 };
 
+// [expr, expr, ...]
+struct ArrayLiteralExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(ArrayLiteralExpr, BaseExprSyntax)
+
+    std::vector<ExprPtr> elements;
+};
+
 
 
 #pragma region Statements
@@ -481,6 +491,12 @@ public:
     {
         if (node->object) node->object->accept(this);
         if (node->index) node->index->accept(this);
+    }
+
+    void visit(ArrayLiteralExprSyntax* node) override
+    {
+        for (auto& elem : node->elements)
+            if (elem) elem->accept(this);
     }
 
     void visit(ReturnStmtSyntax* node) override

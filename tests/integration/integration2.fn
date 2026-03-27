@@ -31,7 +31,7 @@ type Vector2
     }
 
     -- Function with no parameters and no return type
-    fn IsZero
+    fn IsZero -> bool
     {
         return x == 0.0
     }
@@ -210,7 +210,7 @@ Tests many expression forms and spacing variations.
 ---
 type Program
 {
-    fn Main
+    fn Main -> i32
     {
         -- Basic variable declarations with type inference
         var x = 10

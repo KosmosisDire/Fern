@@ -1,0 +1,11 @@
+
+type Program
+{
+    fn Main -> i32
+    {
+        var nums = [1, 2, 3]
+        var sum = nums[0] + nums[1] + nums[2]
+
+        return sum + nums[1]
+    }
+}
