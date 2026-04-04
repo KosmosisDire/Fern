@@ -52,7 +52,7 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         auto it = typeParamSubstitutions.find(std::string(typeExpr->name.lexeme));
         if (it != typeParamSubstitutions.end()) return it->second;
 
-        TypeSymbol* builtin = context.resolve_type_name(typeExpr->name.kind);
+        TypeSymbol* builtin = context.resolve_type_name(typeExpr->name.lexeme);
         if (builtin) return builtin;
 
         Symbol* sym = resolve_name(typeExpr->name.lexeme);
@@ -214,7 +214,17 @@ Symbol* Binder::resolve_name(std::string_view name)
     else if (currentNamespace) start = currentNamespace;
 
     std::string_view path[] = {name};
-    return context.symbols.lookup_from(start, path);
+    if (Symbol* sym = context.symbols.lookup_from(start, path))
+    {
+        return sym;
+    }
+
+    if (TypeSymbol* aliased = context.resolve_type_name(name))
+    {
+        return aliased;
+    }
+
+    return nullptr;
 }
 
 Symbol* Binder::resolve_expr_symbol(BaseExprSyntax* expr)

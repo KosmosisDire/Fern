@@ -22,11 +22,6 @@ enum class TokenKind
     LiteralI32,
     LiteralBool,
 
-    // Type keywords
-    F32Keyword,
-    I32Keyword,
-    BoolKeyword,
-
     // Keywords
     Pub,
     Static,
@@ -194,13 +189,6 @@ constexpr bool is_literal(TokenKind k)
            k == TokenKind::LiteralBool;
 }
 
-constexpr bool is_type_keyword(TokenKind k)
-{
-    return k == TokenKind::F32Keyword ||
-           k == TokenKind::I32Keyword ||
-           k == TokenKind::BoolKeyword;
-}
-
 constexpr bool is_operator_token(TokenKind k)
 {
     return k == TokenKind::Plus ||
@@ -272,17 +260,6 @@ constexpr TokenKind unary_op_to_token(UnaryOp op)
         case UnaryOp::Negative: return TokenKind::Minus;
         case UnaryOp::Positive: return TokenKind::Plus;
         case UnaryOp::Not:      return TokenKind::Not;
-    }
-}
-
-constexpr std::optional<TokenKind> literal_to_type_keyword(TokenKind k)
-{
-    switch (k)
-    {
-        case TokenKind::LiteralF32:  return TokenKind::F32Keyword;
-        case TokenKind::LiteralI32:  return TokenKind::I32Keyword;
-        case TokenKind::LiteralBool: return TokenKind::BoolKeyword;
-        default:                     return std::nullopt;
     }
 }
 
@@ -389,9 +366,6 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::LiteralF32:   return "LiteralF32";
         case TokenKind::LiteralI32:   return "LiteralI32";
         case TokenKind::LiteralBool:  return "LiteralBool";
-        case TokenKind::F32Keyword:   return "F32Keyword";
-        case TokenKind::I32Keyword:   return "I32Keyword";
-        case TokenKind::BoolKeyword:  return "BoolKeyword";
 
         case TokenKind::Pub:          return "Pub";
         case TokenKind::Static:       return "Static";

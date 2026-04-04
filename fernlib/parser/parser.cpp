@@ -154,7 +154,7 @@ static bool scan_type_arg_list(const TokenWalker& walker, size_t offset)
         {
             --depth;
         }
-        else if (kind == TokenKind::Identifier || is_type_keyword(kind) || kind == TokenKind::Comma || kind == TokenKind::Dot)
+        else if (kind == TokenKind::Identifier || kind == TokenKind::Comma || kind == TokenKind::Dot)
         {
             // valid inside type args
         }
@@ -1469,24 +1469,24 @@ GenericTypeExprSyntax* Parser::parse_generic_type_args(ExprPtr base)
 
 BaseExprSyntax* Parser::parse_type()
 {
-    BaseExprSyntax* type = nullptr;
-    bool startsAsIdentifier = walker.check(TokenKind::Identifier);
-
-    if (is_type_keyword(walker.current().kind) || startsAsIdentifier)
+    if (!walker.check(TokenKind::Identifier))
     {
-        auto* t = arena.alloc<TypeExprSyntax>();
-        t->name = walker.current();
-        t->span = walker.current().span;
-        walker.advance();
-        type = t;
+        return nullptr;
     }
 
-    while (type && walker.check(TokenKind::Dot))
+    auto* t = arena.alloc<TypeExprSyntax>();
+    t->name = walker.current();
+    t->span = walker.current().span;
+    walker.advance();
+
+    BaseExprSyntax* type = t;
+
+    while (walker.check(TokenKind::Dot))
     {
         type = parse_member_access(type);
     }
 
-    if (type && startsAsIdentifier && walker.check(TokenKind::Less))
+    if (walker.check(TokenKind::Less))
     {
         type = parse_generic_type_args(type);
     }

@@ -272,7 +272,7 @@ void Binder::bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     FhirExpr* condition = bind_expr(stmt->condition);
     TypeSymbol* condType = condition ? condition->type : nullptr;
 
-    TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
+    TypeSymbol* boolType = context.resolve_type_name("bool");
     if (!condType)
     {
         error("if condition must be of type 'bool'", stmt->condition->span);
@@ -306,7 +306,7 @@ void Binder::bind_while(WhileStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     FhirExpr* condition = bind_expr(stmt->condition);
     TypeSymbol* condType = condition ? condition->type : nullptr;
 
-    TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
+    TypeSymbol* boolType = context.resolve_type_name("bool");
     if (!condType)
     {
         error("expected condition of type 'bool'", stmt->condition->span);

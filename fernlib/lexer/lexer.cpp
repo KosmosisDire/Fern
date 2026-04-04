@@ -247,18 +247,6 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::LiteralBool;
     }
-    else if (lexeme == "f32")
-    {
-        kind = TokenKind::F32Keyword;
-    }
-    else if (lexeme == "i32")
-    {
-        kind = TokenKind::I32Keyword;
-    }
-    else if (lexeme == "bool")
-    {
-        kind = TokenKind::BoolKeyword;
-    }
     else if (lexeme == "pub")
     {
         kind = TokenKind::Pub;

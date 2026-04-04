@@ -116,8 +116,14 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
 FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 {
-    auto typeKeyword = literal_to_type_keyword(expr->token.kind);
-    TypeSymbol* type = typeKeyword ? context.resolve_type_name(*typeKeyword) : nullptr;
+    TypeSymbol* type = nullptr;
+    switch (expr->token.kind)
+    {
+        case TokenKind::LiteralI32:  type = context.resolve_type_name("i32");  break;
+        case TokenKind::LiteralF32:  type = context.resolve_type_name("f32");  break;
+        case TokenKind::LiteralBool: type = context.resolve_type_name("bool"); break;
+        default: break;
+    }
 
     auto* node = fhir.literal(expr, type);
 
@@ -255,7 +261,7 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
 
         if (hasBase && hasEqual)
         {
-            TypeSymbol* boolType = context.resolve_type_name(TokenKind::BoolKeyword);
+            TypeSymbol* boolType = context.resolve_type_name("bool");
             return fhir.intrinsic(syntax, boolType, to_intrinsic_op(op), {lhs, rhs});
         }
 
@@ -518,13 +524,13 @@ void Binder::report_call_errors(NamedTypeSymbol* type, std::string_view name, bo
                 continue;
             if (!argTypes[i])
             {
-                error("argument '" + closest->parameters[i]->name + "': expected '" +
-                      format_type_name(closest->parameters[i]->type) + "'", expr->arguments[i]->span);
+                error("expected '" + format_type_name(closest->parameters[i]->type) + 
+                      "' for arg '" + closest->parameters[i]->name + "'", expr->arguments[i]->span);
             }
             else if (argTypes[i] != closest->parameters[i]->type)
             {
-                error("argument '" + closest->parameters[i]->name + "': expected '" +
-                      format_type_name(closest->parameters[i]->type) + "', got '" +
+                error("expected '" + format_type_name(closest->parameters[i]->type) + 
+                      "' for arg '" + closest->parameters[i]->name + "', got '" +
                       format_type_name(argTypes[i]) + "'", expr->arguments[i]->span);
             }
         }
@@ -933,7 +939,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             !expectedNamed->typeArguments.empty())
         {
             TypeSymbol* elementType = expectedNamed->typeArguments[0];
-            TypeSymbol* i32Type = context.resolve_type_name(TokenKind::I32Keyword);
+            TypeSymbol* i32Type = context.resolve_type_name("i32");
 
             auto* countLit = fhir.literal(expr, i32Type);
             countLit->value = LiteralValue::make_int(0);
@@ -1009,7 +1015,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto* arrayType = context.symbols.get_or_create_instantiation(arrayTemplate, {elementType});
     context.symbols.ensure_members_populated(arrayType);
 
-    TypeSymbol* i32Type = context.resolve_type_name(TokenKind::I32Keyword);
+    TypeSymbol* i32Type = context.resolve_type_name("i32");
     int count = static_cast<int>(elements.size());
 
     auto* countLit = fhir.literal(expr, i32Type);

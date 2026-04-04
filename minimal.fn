@@ -1,17 +1,13 @@
 
 type Program
 {
+    fn Test(i: i32, f: f32, b: bool) -> i32
+    {
+        return 0
+    }
+
     fn Main -> i32
     {
-        var x = []
-        var a: Core.Array<i32> = []
-
-        var y = 5
-        var z = y[2]
-
-        var arr = [1, 2, 3]
-        var firstFalse = arr[false]
-
-        arr[1] = 10.0
+        Test(1, 2.0, bool(true))
     }
 }

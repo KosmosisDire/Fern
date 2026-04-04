@@ -1,39 +1,31 @@
 #include <semantic/context.hpp>
+#include <unordered_map>
 
 namespace Fern
 {
 
-TypeSymbol* SemanticContext::resolve_type_name(TokenKind kind)
+static const std::unordered_map<std::string_view, std::pair<std::string_view, std::string_view>> typeAliases =
 {
-    switch (kind)
+    {"i32",  {"Core", "I32"}},
+    {"f32",  {"Core", "F32"}},
+    {"bool", {"Core", "Bool"}},
+};
+
+TypeSymbol* SemanticContext::resolve_type_name(std::string_view alias)
+{
+    auto it = typeAliases.find(alias);
+    if (it != typeAliases.end())
     {
-        case TokenKind::F32Keyword:
-        {
-            Symbol* sym = symbols.lookup({"Core", "F32"});
-            if (sym) return sym->as<TypeSymbol>();
-            return nullptr;
-        }
-        case TokenKind::I32Keyword:
-        {
-            Symbol* sym = symbols.lookup({"Core", "I32"});
-            if (sym) return sym->as<TypeSymbol>();
-            return nullptr;
-        }
-        case TokenKind::BoolKeyword:
-        {
-            Symbol* sym = symbols.lookup({"Core", "Bool"});
-            if (sym) return sym->as<TypeSymbol>();
-            return nullptr;
-        }
-        default:
-            return nullptr;
+        Symbol* sym = symbols.lookup({it->second.first, it->second.second});
+        if (sym) return sym->as<TypeSymbol>();
     }
+    return nullptr;
 }
 
 TypeSymbol* SemanticContext::resolve_type_name(Token name)
 {
-    TypeSymbol* builtin = resolve_type_name(name.kind);
-    if (builtin) return builtin;
+    TypeSymbol* aliased = resolve_type_name(name.lexeme);
+    if (aliased) return aliased;
 
     Symbol* sym = symbols.lookup({name.lexeme});
     if (sym) return sym->as<TypeSymbol>();
