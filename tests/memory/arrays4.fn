@@ -1,0 +1,49 @@
+-- Tests for T[] array type syntax (shorthand for Core.Array<T>)
+
+type Program
+{
+    -- Single-dimension array type in parameter and return type
+    static fn Sum(arr: i32[]) -> i32
+    {
+        var total = 0
+        var i = 0
+        while i < arr.Length()
+        {
+            total = total + arr[i]
+            i = i + 1
+        }
+        return total
+    }
+
+    -- Nested array type in parameter
+    static fn FirstElement(grid: i32[][]) -> i32
+    {
+        return grid[0][0]
+    }
+
+    -- Array type in variable declaration
+    fn Main -> i32
+    {
+        -- var with explicit array type
+        var nums: i32[] = [1, 2, 3]
+
+        -- nested array type
+        var grid: i32[][] = [[10, 20], [30, 40]]
+
+        -- bool array type
+        var flags: bool[] = [true, false, true]
+
+        -- f32 array type
+        var floats: f32[] = [1.0, 2.5, 3.5]
+
+        -- array type in function calls
+        var total = Sum(nums)
+        var corner = FirstElement(grid)
+
+        -- indexing works the same
+        var first = nums[0]
+        var nested = grid[1][1]
+
+        return total + corner + first + nested
+    }
+}

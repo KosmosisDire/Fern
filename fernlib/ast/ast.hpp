@@ -33,6 +33,7 @@ struct MemberAccessExprSyntax;
 struct ThisExprSyntax;
 struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
+struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
 
@@ -90,6 +91,7 @@ public:
     virtual void visit(ThisExprSyntax* node) = 0;
     virtual void visit(TypeExprSyntax* node) = 0;
     virtual void visit(GenericTypeExprSyntax* node) = 0;
+    virtual void visit(ArrayTypeExprSyntax* node) = 0;
     virtual void visit(IndexExprSyntax* node) = 0;
     virtual void visit(ArrayLiteralExprSyntax* node) = 0;
 
@@ -279,6 +281,14 @@ struct GenericTypeExprSyntax : BaseExprSyntax
 
     ExprPtr base = nullptr;
     std::vector<ExprPtr> typeArgs;
+};
+
+// i32[] (array type shorthand for Core.Array<i32>)
+struct ArrayTypeExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(ArrayTypeExpr, BaseExprSyntax)
+
+    ExprPtr elementType = nullptr;
 };
 
 // object[index]
@@ -485,6 +495,11 @@ public:
         if (node->base) node->base->accept(this);
         for (auto& arg : node->typeArgs)
             if (arg) arg->accept(this);
+    }
+
+    void visit(ArrayTypeExprSyntax* node) override
+    {
+        if (node->elementType) node->elementType->accept(this);
     }
 
     void visit(IndexExprSyntax* node) override

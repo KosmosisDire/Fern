@@ -1,0 +1,21 @@
+-- array typop syntax errors
+
+type Program
+{
+    fn Main -> i32
+    {
+        -- Undefined element type
+        var a: Foo[] = [1]
+
+        -- Type mismatch: i32[] assigned bool values
+        var b: i32[] = [true, false]
+
+        -- Nesting mismatch: i32[][] assigned flat array
+        var c: i32[][] = [1, 2]
+
+        -- Mismatch: i32[] assigned nested array
+        var d: i32[] = [[1, 2], [3, 4]]
+
+        return 0
+    }
+}

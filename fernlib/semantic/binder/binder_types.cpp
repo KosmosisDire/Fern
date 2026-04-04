@@ -67,6 +67,22 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         return resolve_generic_type(genericExpr);
     }
 
+    if (auto* arrayExpr = expr->as<ArrayTypeExprSyntax>())
+    {
+        TypeSymbol* elementType = resolve_type_expr(arrayExpr->elementType);
+        if (!elementType) return nullptr;
+
+        auto* coreNs = context.symbols.globalNamespace->find_namespace("Core");
+        auto* arrayTemplate = coreNs ? coreNs->find_type("Array", 1) : nullptr;
+        if (!arrayTemplate)
+        {
+            error("Core.Array type not found", expr->span);
+            return nullptr;
+        }
+
+        return context.symbols.get_or_create_instantiation(arrayTemplate, {elementType});
+    }
+
     if (auto* memberExpr = expr->as<MemberAccessExprSyntax>())
     {
         std::vector<std::string_view> path;

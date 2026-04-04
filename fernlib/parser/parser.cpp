@@ -1491,6 +1491,18 @@ BaseExprSyntax* Parser::parse_type()
         type = parse_generic_type_args(type);
     }
 
+    while (walker.check(TokenKind::LeftBracket) && walker.peek(1).kind == TokenKind::RightBracket)
+    {
+        walker.advance();
+        Span closingSpan = walker.current().span;
+        walker.advance();
+
+        auto* arrType = arena.alloc<ArrayTypeExprSyntax>();
+        arrType->elementType = type;
+        arrType->span = type->span.merge(closingSpan);
+        type = arrType;
+    }
+
     return type;
 }
 

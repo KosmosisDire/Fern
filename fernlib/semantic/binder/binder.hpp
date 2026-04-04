@@ -35,6 +35,7 @@ struct ThisExprSyntax;
 struct TypeDeclSyntax;
 struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
+struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
 struct UnaryExprSyntax;

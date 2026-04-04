@@ -245,6 +245,19 @@ public:
         out << "}";
     }
 
+    void visit(ArrayTypeExprSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("elementType", node->elementType);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
     void visit(IndexExprSyntax* node) override
     {
         begin_node(node);
