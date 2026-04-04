@@ -1,0 +1,42 @@
+type Program
+{
+    static fn TakesArray(a: Core.Array<i32>) {}
+    static fn TakesInt(a: i32) {}
+
+    fn Main -> i32
+    {
+        -- Mixed element types
+        var mixed = [1, 2.0, 3]
+
+        -- Empty array with no context
+        var noType = []
+
+        -- Indexing a non-array
+        var x = 5
+        var bad = x[0]
+
+        -- Wrong index type
+        var arr = [1, 2, 3]
+        var bad2 = arr[true]
+        var bad3 = arr[1.0]
+
+        -- Assigning wrong type through index
+        arr[0] = 1.0
+
+        -- Wrong element type with annotation
+        var wrongElem: Core.Array<i32> = [1.0, 2.0]
+
+        -- Array assigned to non-array type
+        var notArray: i32 = [1, 2, 3]
+        var notArray2: f32 = [1.0]
+        var notArray3: bool = [true, false]
+
+        -- Overload mismatch (closest match reporting)
+        TakesInt(1.0)
+
+        -- Empty array as arg with no unique overload
+        TakesArray([])
+
+        return 0
+    }
+}

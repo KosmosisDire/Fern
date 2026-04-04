@@ -205,7 +205,7 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     FhirExpr* value = nullptr;
     if (stmt->value)
     {
-        value = bind_expr(stmt->value);
+        value = bind_expr(stmt->value, currentMethod ? currentMethod->get_return_type() : nullptr);
     }
 
     TypeSymbol* retType = value ? value->type : nullptr;
@@ -240,11 +240,19 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
     FhirExpr* initExpr = nullptr;
     if (decl->initializer)
     {
-        initExpr = bind_expr(decl->initializer);
+        initExpr = bind_expr(decl->initializer, type);
         TypeSymbol* initType = initExpr ? initExpr->type : nullptr;
         if (!type)
         {
             type = initType;
+        }
+        if (!type && decl->initializer)
+        {
+            auto* arrLit = decl->initializer->as<ArrayLiteralExprSyntax>();
+            if (arrLit && arrLit->elements.empty())
+            {
+                error("type cannot be inferred for empty array, consider adding a type annotation or explicit constructor", decl->initializer->span);
+            }
         }
     }
     auto localPtr = std::make_unique<LocalSymbol>();

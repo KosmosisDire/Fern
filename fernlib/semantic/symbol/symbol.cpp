@@ -119,7 +119,7 @@ static bool match_parameters(const std::vector<ParameterSymbol*>& params, const 
     }
     for (size_t i = 0; i < argTypes.size(); ++i)
     {
-        if (argTypes[i] && params[i]->type && argTypes[i] != params[i]->type)
+        if (!argTypes[i] || !params[i]->type || argTypes[i] != params[i]->type)
         {
             return false;
         }

@@ -72,38 +72,46 @@ constexpr IntrinsicOp to_intrinsic_op(UnaryOp op)
 
 #pragma region Expression Binding
 
-FhirExpr* Binder::bind_expr(BaseExprSyntax* expr)
+FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 {
     if (!expr) return nullptr;
 
-    if (auto* lit = expr->as<LiteralExprSyntax>())
-        return bind_literal(lit);
-    if (auto* id = expr->as<IdentifierExprSyntax>())
-        return bind_identifier(id);
-    if (auto* thisExpr = expr->as<ThisExprSyntax>())
-        return bind_this(thisExpr);
-    if (auto* unary = expr->as<UnaryExprSyntax>())
-        return bind_unary(unary);
-    if (auto* bin = expr->as<BinaryExprSyntax>())
-        return bind_binary(bin);
-    if (auto* assign = expr->as<AssignmentExprSyntax>())
-        return bind_assignment(assign);
-    if (auto* call = expr->as<CallExprSyntax>())
-        return bind_call(call);
-    if (auto* member = expr->as<MemberAccessExprSyntax>())
-        return bind_member_access(member);
-    if (auto* initializer = expr->as<InitializerExprSyntax>())
-        return bind_initializer(initializer);
-    if (auto* paren = expr->as<ParenExprSyntax>())
-        return bind_paren(paren);
-    if (auto* generic = expr->as<GenericTypeExprSyntax>())
-        return bind_generic_type_expr(generic);
-    if (auto* indexExpr = expr->as<IndexExprSyntax>())
-        return bind_index(indexExpr);
-    if (auto* arrayLit = expr->as<ArrayLiteralExprSyntax>())
-        return bind_array_literal(arrayLit);
+    FhirExpr* result = nullptr;
 
-    return nullptr;
+    if (auto* lit = expr->as<LiteralExprSyntax>())
+        result = bind_literal(lit);
+    else if (auto* id = expr->as<IdentifierExprSyntax>())
+        result = bind_identifier(id);
+    else if (auto* thisExpr = expr->as<ThisExprSyntax>())
+        result = bind_this(thisExpr);
+    else if (auto* unary = expr->as<UnaryExprSyntax>())
+        result = bind_unary(unary);
+    else if (auto* bin = expr->as<BinaryExprSyntax>())
+        result = bind_binary(bin);
+    else if (auto* assign = expr->as<AssignmentExprSyntax>())
+        result = bind_assignment(assign);
+    else if (auto* call = expr->as<CallExprSyntax>())
+        result = bind_call(call);
+    else if (auto* member = expr->as<MemberAccessExprSyntax>())
+        result = bind_member_access(member);
+    else if (auto* initializer = expr->as<InitializerExprSyntax>())
+        result = bind_initializer(initializer);
+    else if (auto* paren = expr->as<ParenExprSyntax>())
+        result = bind_paren(paren);
+    else if (auto* generic = expr->as<GenericTypeExprSyntax>())
+        result = bind_generic_type_expr(generic);
+    else if (auto* indexExpr = expr->as<IndexExprSyntax>())
+        result = bind_index(indexExpr);
+    else if (auto* arrayLit = expr->as<ArrayLiteralExprSyntax>())
+        result = bind_array_literal(arrayLit, expected);
+
+    if (expected && result && result->type && result->type != expected)
+    {
+        error("expected '" + format_type_name(expected) +
+              "', got '" + format_type_name(result->type) + "'", expr->span);
+    }
+
+    return result;
 }
 
 FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
@@ -351,8 +359,9 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         return fhir.call(expr, method->get_return_type(), method, {object, index, value});
     }
 
-    FhirExpr* value = bind_expr(expr->value);
     FhirExpr* writeTarget = bind_expr(expr->target);
+    TypeSymbol* targetType = writeTarget ? writeTarget->type : nullptr;
+    FhirExpr* value = bind_expr(expr->value, targetType);
 
     // Compound assignments (+=, -=, etc.) desugar to target = target op value,
     // binding the target twice: once for reading the current value, once for the write
@@ -465,8 +474,94 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
     return nullptr;
 }
 
+MethodSymbol* Binder::find_closest_overload(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
+                                             const std::vector<TypeSymbol*>& argTypes)
+{
+    MethodSymbol* closest = nullptr;
+    size_t bestMatchCount = 0;
+
+    for (auto* method : type->methods)
+    {
+        bool nameMatch = isConstructor ? method->is_constructor() : (method->name == name);
+        if (!nameMatch || method->parameters.size() != argTypes.size())
+            continue;
+
+        size_t matchCount = 0;
+        for (size_t i = 0; i < argTypes.size(); ++i)
+        {
+            if (argTypes[i] && method->parameters[i]->type && argTypes[i] == method->parameters[i]->type)
+                ++matchCount;
+        }
+
+        if (!closest || matchCount > bestMatchCount)
+        {
+            closest = method;
+            bestMatchCount = matchCount;
+        }
+    }
+
+    if (bestMatchCount == argTypes.size())
+        return nullptr;
+
+    return closest;
+}
+
+void Binder::report_call_errors(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
+                                 const std::vector<TypeSymbol*>& argTypes, CallExprSyntax* expr)
+{
+    auto* closest = find_closest_overload(type, name, isConstructor, argTypes);
+    if (closest)
+    {
+        for (size_t i = 0; i < argTypes.size(); ++i)
+        {
+            if (!closest->parameters[i]->type)
+                continue;
+            if (!argTypes[i])
+            {
+                error("argument '" + closest->parameters[i]->name + "': expected '" +
+                      format_type_name(closest->parameters[i]->type) + "'", expr->arguments[i]->span);
+            }
+            else if (argTypes[i] != closest->parameters[i]->type)
+            {
+                error("argument '" + closest->parameters[i]->name + "': expected '" +
+                      format_type_name(closest->parameters[i]->type) + "', got '" +
+                      format_type_name(argTypes[i]) + "'", expr->arguments[i]->span);
+            }
+        }
+    }
+    else if (isConstructor)
+    {
+        if (type->has_constructor_with_count(argTypes.size()))
+        {
+            error("no constructor for '" + format_type_name(type) +
+                  "' matches argument types " + format_arg_types(argTypes), expr->span);
+        }
+        else
+        {
+            error("'" + format_type_name(type) + "' does not contain a constructor that takes " +
+                  std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+        }
+    }
+    else
+    {
+        if (type->has_method_with_count(name, argTypes.size()))
+        {
+            error("no overload of '" + std::string(name) + "' on '" + format_type_name(type) +
+                  "' matches argument types " + format_arg_types(argTypes), expr->span);
+        }
+        else
+        {
+            error("'" + format_type_name(type) + "' does not contain a method '" + std::string(name) +
+                  "' that takes " + std::to_string(argTypes.size()) +
+                  (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+        }
+    }
+}
+
 FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 {
+    Symbol* calleeSym = resolve_expr_symbol(expr->callee);
+
     std::vector<FhirExpr*> argExprs;
     std::vector<TypeSymbol*> argTypes;
     for (auto* arg : expr->arguments)
@@ -476,8 +571,6 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         argTypes.push_back(bound ? bound->type : nullptr);
     }
 
-    Symbol* calleeSym = resolve_expr_symbol(expr->callee);
-
     if (calleeSym && calleeSym->kind == SymbolKind::Type)
     {
         auto* namedType = calleeSym->as<NamedTypeSymbol>();
@@ -486,16 +579,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             MethodSymbol* ctor = namedType->resolve_constructor(argTypes);
             if (!ctor)
             {
-                if (namedType->has_constructor_with_count(argTypes.size()))
-                {
-                    error("no constructor for '" + format_type_name(namedType) +
-                          "' matches argument types " + format_arg_types(argTypes), expr->span);
-                }
-                else
-                {
-                    error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
-                          std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-                }
+                report_call_errors(namedType, "", true, argTypes, expr);
             }
 
             return fhir.object_create(expr, namedType, ctor, std::move(argExprs));
@@ -549,17 +633,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         method = targetType->resolve_method(methodName, argTypes);
         if (!method)
         {
-            if (targetType->has_method_with_count(methodName, argTypes.size()))
-            {
-                error("no overload of '" + std::string(methodName) + "' on '" + format_type_name(targetType) +
-                      "' matches argument types " + format_arg_types(argTypes), expr->span);
-            }
-            else
-            {
-                error("'" + format_type_name(targetType) + "' does not contain a method '" + std::string(methodName) +
-                      "' that takes " + std::to_string(argTypes.size()) +
-                      (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-            }
+            report_call_errors(targetType, methodName, false, argTypes, expr);
         }
     }
 
@@ -849,11 +923,32 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
     return nullptr;
 }
 
-FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr)
+FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected)
 {
     if (expr->elements.empty())
     {
-        error("empty array literal requires a type annotation", expr->span);
+        auto* expectedNamed = expected ? expected->as<NamedTypeSymbol>() : nullptr;
+        if (expectedNamed && expectedNamed->genericOrigin &&
+            expectedNamed->genericOrigin->name == "Array" &&
+            !expectedNamed->typeArguments.empty())
+        {
+            TypeSymbol* elementType = expectedNamed->typeArguments[0];
+            TypeSymbol* i32Type = context.resolve_type_name(TokenKind::I32Keyword);
+
+            auto* countLit = fhir.literal(expr, i32Type);
+            countLit->value = LiteralValue::make_int(0);
+
+            std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
+            auto* ctor = expectedNamed->resolve_constructor(ctorArgTypes);
+            if (!ctor)
+            {
+                error("Core.Array has no constructor taking i32", expr->span);
+                return nullptr;
+            }
+
+            return fhir.object_create(expr, expectedNamed, ctor, {countLit});
+        }
+
         return nullptr;
     }
 
@@ -863,25 +958,37 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr)
         return nullptr;
     }
 
+    TypeSymbol* expectedElementType = nullptr;
+    auto* expectedNamed = expected ? expected->as<NamedTypeSymbol>() : nullptr;
+    if (expectedNamed && expectedNamed->genericOrigin &&
+        expectedNamed->genericOrigin->name == "Array" &&
+        !expectedNamed->typeArguments.empty())
+    {
+        expectedElementType = expectedNamed->typeArguments[0];
+    }
+
     std::vector<FhirExpr*> elements;
     for (auto* elem : expr->elements)
     {
-        elements.push_back(bind_expr(elem));
+        elements.push_back(bind_expr(elem, expectedElementType));
     }
 
-    TypeSymbol* elementType = nullptr;
-    for (auto* elem : elements)
+    TypeSymbol* elementType = expectedElementType;
+    if (!elementType)
     {
-        if (!elem || !elem->type) continue;
-        if (!elementType)
+        for (auto* elem : elements)
         {
-            elementType = elem->type;
-        }
-        else if (elem->type != elementType)
-        {
-            error("array literal has mixed element types: '" +
-                  format_type_name(elementType) + "' and '" +
-                  format_type_name(elem->type) + "'", expr->span);
+            if (!elem || !elem->type) continue;
+            if (!elementType)
+            {
+                elementType = elem->type;
+            }
+            else if (elem->type != elementType)
+            {
+                error("array literal has mixed element types: '" +
+                      format_type_name(elementType) + "' and '" +
+                      format_type_name(elem->type) + "'", expr->span);
+            }
         }
     }
 

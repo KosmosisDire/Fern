@@ -101,7 +101,7 @@ private:
 
 #pragma region Expression Binding
 
-    FhirExpr* bind_expr(BaseExprSyntax* expr);
+    FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_literal(LiteralExprSyntax* expr);
     FhirExpr* bind_binary(BinaryExprSyntax* expr);
@@ -120,7 +120,11 @@ private:
     FhirExpr* bind_paren(ParenExprSyntax* expr);
     FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
     FhirExpr* bind_index(IndexExprSyntax* expr);
-    FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr);
+    FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected = nullptr);
+    MethodSymbol* find_closest_overload(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
+                                        const std::vector<TypeSymbol*>& argTypes);
+    void report_call_errors(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
+                             const std::vector<TypeSymbol*>& argTypes, CallExprSyntax* expr);
 
 #pragma region Statement Binding
 
