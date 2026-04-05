@@ -36,6 +36,7 @@ struct GenericTypeExprSyntax;
 struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
+struct LiteralSuffixExprSyntax;
 
 // Statements
 struct BaseStmtSyntax;
@@ -94,6 +95,7 @@ public:
     virtual void visit(ArrayTypeExprSyntax* node) = 0;
     virtual void visit(IndexExprSyntax* node) = 0;
     virtual void visit(ArrayLiteralExprSyntax* node) = 0;
+    virtual void visit(LiteralSuffixExprSyntax* node) = 0;
 
     // Statements
     virtual void visit(ReturnStmtSyntax* node) = 0;
@@ -308,6 +310,15 @@ struct ArrayLiteralExprSyntax : BaseExprSyntax
     std::vector<ExprPtr> elements;
 };
 
+// expr suffix (e.g. 10px, -10.0%, "hello"l)
+struct LiteralSuffixExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(LiteralSuffixExpr, BaseExprSyntax)
+
+    ExprPtr operand = nullptr;
+    Token suffix = Token::Invalid();
+};
+
 
 
 #pragma region Statements
@@ -512,6 +523,11 @@ public:
     {
         for (auto& elem : node->elements)
             if (elem) elem->accept(this);
+    }
+
+    void visit(LiteralSuffixExprSyntax* node) override
+    {
+        if (node->operand) node->operand->accept(this);
     }
 
     void visit(ReturnStmtSyntax* node) override

@@ -205,7 +205,7 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     FhirExpr* value = nullptr;
     if (stmt->value)
     {
-        value = bind_expr(stmt->value, currentMethod ? currentMethod->get_return_type() : nullptr);
+        value = bind_expr(stmt->value);
     }
 
     TypeSymbol* retType = value ? value->type : nullptr;

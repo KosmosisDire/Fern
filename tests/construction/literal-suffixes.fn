@@ -1,0 +1,66 @@
+
+type Measure
+{
+    value: f32
+    isPercent: bool
+
+    init{}
+
+    literal px(value: f32)
+    {
+        return Measure { value: value, isPercent: false }
+    }
+
+    literal px(value: i32)
+    {
+        return Measure { value: 10, isPercent: false }
+    }
+
+    literal %(value: f32)
+    {
+        return Measure { value: value, isPercent: true }
+    }
+
+    literal %(value: i32)
+    {
+        return Measure { value: value, isPercent: true }
+    }
+}
+
+type Label
+{
+    text: string
+
+    init(text: string)
+    {
+        this.text = text
+    }
+
+    literal l(text: string)
+    {
+        return Label(text)
+    }
+}
+
+type Program
+{
+    fn Main
+    {
+        -- Basic numeric suffixes (i32 and f32 overloads)
+        var p = 10px
+        var p2 = 50%
+        var p3 = 3.14px
+        var p4 = 3.14%
+
+        -- String suffix
+        var s = "Hello"l
+
+        -- Suffix with type annotation
+        var m: Measure = 10px
+
+        -- Suffix in variable declarations with usage
+        var width: Measure = 50px
+        var height: Measure = 100px
+        var label = "World"l
+    }
+}

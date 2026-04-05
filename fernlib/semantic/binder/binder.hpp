@@ -82,6 +82,7 @@ private:
     std::vector<Scope> scopes;
     std::vector<NamedTypeSymbol*> allTypes;
     std::vector<MethodSymbol*> allMethods;
+    std::unordered_map<std::string, std::vector<MethodSymbol*>> literalSuffixMap;
     std::unordered_map<std::string, TypeSymbol*> typeParamSubstitutions;
     // Points to the current block's statement list so that initializer lowering
     // can inject setup statements (temp locals, field assignments) before the expression
@@ -105,6 +106,8 @@ private:
     FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_literal(LiteralExprSyntax* expr);
+    FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
+    MethodSymbol* resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span);
     std::string process_escape_sequences(std::string_view raw, const Span& span);
     FhirExpr* bind_binary(BinaryExprSyntax* expr);
     FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);

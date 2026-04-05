@@ -2,11 +2,15 @@
 namespace Core
 
 attr type BuiltinType{}
+attr type AllowCustomLiterals{}
 
-@BuiltinType
+@BuiltinType @AllowCustomLiterals
 type F32
 {
     value: f32
+
+    literal f32(value: i32) {}
+    literal f32(value: f32) {}
 
     op -(value: f32) -> f32
     op +(value: f32) -> f32
@@ -26,10 +30,12 @@ type F32
     op <(left: f32, right: i32) -> bool
 }
 
-@BuiltinType
+@BuiltinType @AllowCustomLiterals
 type I32
 {
     value: i32
+
+    literal i32(value: i32) {}
 
     op -(value: i32) -> i32
     op +(value: i32) -> i32
@@ -78,10 +84,12 @@ type Array<T>
     op []=(self: Array<T>, index: i32, value: T) {}
 }
 
-@BuiltinType
+@BuiltinType @AllowCustomLiterals
 type U8
 {
     value: u8
+
+    literal u8(value: i32) {}
 
     op +(left: u8, right: u8) -> u8
     op -(left: u8, right: u8) -> u8
@@ -92,7 +100,7 @@ type U8
     op <(left: u8, right: u8) -> bool
 }
 
-@BuiltinType
+@BuiltinType @AllowCustomLiterals
 type Char
 {
     value: char
@@ -102,7 +110,7 @@ type Char
     op <(left: char, right: char) -> bool
 }
 
-@BuiltinType
+@BuiltinType @AllowCustomLiterals
 type String
 {
     length: i32

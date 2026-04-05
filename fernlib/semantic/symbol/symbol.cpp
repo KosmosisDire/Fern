@@ -73,6 +73,20 @@ bool NamedTypeSymbol::is_builtin() const
     return false;
 }
 
+bool NamedTypeSymbol::allows_custom_literals() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.AllowCustomLiterals")
+            return true;
+    }
+    if (genericOrigin)
+    {
+        return genericOrigin->allows_custom_literals();
+    }
+    return false;
+}
+
 FieldSymbol* NamedTypeSymbol::find_field(std::string_view name)
 {
     if (table) table->ensure_members_populated(this);
@@ -428,6 +442,9 @@ std::string MethodSymbol::format(int indent) const
             break;
         case CallableKind::Function:
             ss << "fn " << name;
+            break;
+        case CallableKind::Literal:
+            ss << "literal " << name;
             break;
     }
 

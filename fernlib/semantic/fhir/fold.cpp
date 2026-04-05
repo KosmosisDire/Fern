@@ -238,4 +238,48 @@ void FhirConstantFolder::fold(FhirMethod* method, AllocArena& arena)
     folder.fold_block(method->body);
 }
 
+std::optional<int64_t> FhirConstantFolder::try_evaluate_constant_int(FhirExpr* expr)
+{
+    if (!expr) return std::nullopt;
+
+    if (auto* lit = expr->as<FhirLiteralExpr>())
+    {
+        if (lit->value.kind == LiteralValue::Kind::Int)
+            return lit->value.intValue;
+        if (lit->value.kind == LiteralValue::Kind::UInt)
+            return static_cast<int64_t>(lit->value.uintValue);
+    }
+
+    if (auto* intrinsic = expr->as<FhirIntrinsicExpr>())
+    {
+        if (intrinsic->args.size() == 1 && intrinsic->op == IntrinsicOp::Negative)
+        {
+            if (auto inner = try_evaluate_constant_int(intrinsic->args[0]))
+                return -*inner;
+        }
+        if (intrinsic->args.size() == 1 && intrinsic->op == IntrinsicOp::Positive)
+        {
+            return try_evaluate_constant_int(intrinsic->args[0]);
+        }
+        if (intrinsic->args.size() == 2)
+        {
+            auto lhs = try_evaluate_constant_int(intrinsic->args[0]);
+            auto rhs = try_evaluate_constant_int(intrinsic->args[1]);
+            if (lhs && rhs)
+            {
+                switch (intrinsic->op)
+                {
+                    case IntrinsicOp::Add: return *lhs + *rhs;
+                    case IntrinsicOp::Sub: return *lhs - *rhs;
+                    case IntrinsicOp::Mul: return *lhs * *rhs;
+                    case IntrinsicOp::Div: return *rhs != 0 ? std::optional(*lhs / *rhs) : std::nullopt;
+                    default: break;
+                }
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
 }

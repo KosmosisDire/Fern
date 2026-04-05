@@ -444,6 +444,10 @@ TypeDeclSyntax* Parser::parse_type_decl()
             {
                 member = parse_operator_decl();
             }
+            else if (walker.check(TokenKind::Literal))
+            {
+                member = parse_literal_decl();
+            }
             else if (auto* field = parse_field_decl())
             {
                 member = field;
@@ -625,6 +629,49 @@ CallableDeclSyntax* Parser::parse_init_decl()
     initDecl->span = span;
 
     return initDecl;
+}
+
+CallableDeclSyntax* Parser::parse_literal_decl()
+{
+    auto* decl = arena.alloc<CallableDeclSyntax>();
+    decl->callableKind = CallableKind::Literal;
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::Identifier) ||
+        walker.check(TokenKind::Percent) ||
+        walker.check(TokenKind::Dollar))
+    {
+        decl->name = walker.current();
+        span = span.merge(walker.current().span);
+        walker.advance();
+    }
+    else
+    {
+        error("expected literal suffix name", walker.current().span);
+    }
+    skip_newlines(walker);
+
+    parse_parameter_list(decl->parameters, span);
+    skip_newlines(walker);
+
+    decl->returnType = parse_return_type(span);
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        decl->body = parse_block();
+        span = span.merge(decl->body->span);
+    }
+    else
+    {
+        error("expected '{' after literal declaration", walker.current().span);
+    }
+    decl->span = span;
+
+    return decl;
 }
 
 CallableDeclSyntax* Parser::parse_operator_decl()
@@ -876,6 +923,16 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
     if (!left)
     {
         return nullptr;
+    }
+
+    if (walker.check(TokenKind::LiteralSuffix))
+    {
+        auto* suffixExpr = arena.alloc<LiteralSuffixExprSyntax>();
+        suffixExpr->operand = left;
+        suffixExpr->suffix = walker.current();
+        suffixExpr->span = left->span.merge(walker.current().span);
+        walker.advance();
+        left = suffixExpr;
     }
 
     while (true)

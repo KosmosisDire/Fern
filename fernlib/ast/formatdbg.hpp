@@ -110,7 +110,21 @@ public:
     void visit(LiteralExprSyntax* node) override
     {
         write_indent();
-        out << node->syntax_node_name() << " (value: " << node->token.lexeme << ", span: " << node->span.format() << ")";
+        out << node->syntax_node_name() << " (value: " << node->token.lexeme;
+        out << ", span: " << node->span.format() << ")";
+    }
+
+    void visit(LiteralSuffixExprSyntax* node) override
+    {
+        begin_node(node);
+        out << "\n";
+        ++indent;
+        write_child("operand", node->operand);
+        write_indent();
+        out << "suffix: " << node->suffix.lexeme << "\n";
+        --indent;
+        write_indent();
+        out << "}";
     }
 
     void visit(ParenExprSyntax* node) override
@@ -389,6 +403,9 @@ public:
                 break;
             case CallableKind::Constructor:
                 out << "InitDecl (span: " << node->span.format() << ")\n";
+                break;
+            case CallableKind::Literal:
+                out << "LiteralDecl (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
                 break;
         }
         write_indent();

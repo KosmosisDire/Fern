@@ -1,0 +1,76 @@
+
+type Measure
+{
+    value: f32
+    isPercent: bool
+
+    init{}
+
+    literal px(value: f32)
+    {
+        return Measure { value: value, isPercent: false }
+    }
+
+    literal px(value: i32)
+    {
+        return Measure { value: 10, isPercent: false }
+    }
+
+    literal %(value: f32)
+    {
+        return Measure { value: value, isPercent: true }
+    }
+
+    literal %(value: i32)
+    {
+        return Measure { value: value, isPercent: true }
+    }
+}
+
+type Label
+{
+    text: string
+
+    init(text: string)
+    {
+        this.text = text
+    }
+
+    literal l(text: string)
+    {
+        return Label(text)
+    }
+}
+
+type Program
+{
+    fn Main
+    {
+        -- Custom literal suffixes
+        var p = 10px
+        var p2 = 50%
+        var p3 = 3.14px
+        var p4 = 3.14%
+        var s = "Hello"l
+
+        -- Builtin type suffixes
+        var a = 10i32
+        var b = 10f32
+        var c = 3.14f32
+        var d = 255u8
+        var e = 0u8
+
+        -- Builtin suffix with boundary values
+        var maxU8 = 255u8
+        var minU8 = 0u8
+
+        -- Int to float conversion via suffix
+        var floatFromInt = 42f32
+
+        -- Mixed usage
+        var width: Measure = 50px
+        var height: Measure = 100px
+        var label = "World"l
+        var byteVal = 128u8
+    }
+}

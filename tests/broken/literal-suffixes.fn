@@ -1,0 +1,76 @@
+
+type Measure
+{
+    value: f32
+    isPercent: bool
+
+    init{}
+
+    literal px(value: f32)
+    {
+        return Measure { value: value, isPercent: false }
+    }
+
+    literal %(value: f32)
+    {
+        return Measure { value: value, isPercent: true }
+    }
+}
+
+type OtherMeasure
+{
+    value: f32
+
+    init{}
+
+    literal px(value: f32)
+    {
+        return OtherMeasure { value: value }
+    }
+}
+
+type BadLiteral
+{
+    value: i32
+
+    init{}
+
+    -- ERROR: literal returning wrong type
+    literal bad(value: i32)
+    {
+        return value
+    }
+
+    -- ERROR: literal with non-allowed parameter type (bool)
+    literal nope(value: bool) {}
+
+    -- ERROR: literal with non-allowed parameter type (Measure)
+    literal also_nope(value: Measure) {}
+
+    -- ERROR: literal with wrong parameter count
+    literal toomany(a: i32, b: i32) {}
+
+    -- ERROR: literal with wrong type annotation
+    literal wrongtype(value: i32) -> i32 {}
+}
+
+type Program
+{
+    fn Main
+    {
+        -- ERROR: u8 overflow
+        var overflow = 256u8
+
+        -- ERROR: u8 negative (unary minus on U8)
+        var negative = -1u8
+
+        -- ERROR: ambiguous suffix (Measure.px and OtherMeasure.px both take f32)
+        var ambiguous = 10.0px
+
+        -- ERROR: wrong input type for suffix
+        var badStr = "hello"px
+
+        -- ERROR: unknown suffix
+        var unknown = 10xyz
+    }
+}

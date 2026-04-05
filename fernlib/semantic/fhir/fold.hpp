@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fhir.hpp"
+#include <optional>
 
 namespace Fern
 {
@@ -26,6 +27,7 @@ class FhirConstantFolder
 
 public:
     static void fold(FhirMethod* method, AllocArena& arena);
+    static std::optional<int64_t> try_evaluate_constant_int(FhirExpr* expr);
 };
 
 }

@@ -26,6 +26,7 @@ enum class TokenKind
     LiteralRawString,
     LiteralRawMultilineString,
     LiteralChar,
+    LiteralSuffix,
 
     // Keywords
     Pub,
@@ -35,6 +36,7 @@ enum class TokenKind
     Fn,
     Init,
     Op,
+    Literal,
     Var,
     Type,
     Namespace,
@@ -56,6 +58,8 @@ enum class TokenKind
     Minus,
     Star,
     Slash,
+    Percent,
+    Dollar,
 
     // Comparison operators
     Greater,
@@ -139,6 +143,7 @@ enum class CallableKind
     Function,
     Constructor,
     Operator,
+    Literal,
 };
 
 enum class Modifier : uint16_t
@@ -381,6 +386,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::LiteralRawString: return "LiteralRawString";
         case TokenKind::LiteralRawMultilineString: return "LiteralRawMultilineString";
         case TokenKind::LiteralChar: return "LiteralChar";
+        case TokenKind::LiteralSuffix: return "LiteralSuffix";
 
         case TokenKind::Pub:          return "Pub";
         case TokenKind::Static:       return "Static";
@@ -389,6 +395,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Fn:           return "Fn";
         case TokenKind::Init:         return "Init";
         case TokenKind::Op:           return "Op";
+        case TokenKind::Literal:      return "Literal";
         case TokenKind::Var:          return "Var";
         case TokenKind::Type:         return "Type";
         case TokenKind::Namespace:    return "Namespace";
@@ -407,6 +414,8 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Minus:        return "-";
         case TokenKind::Star:         return "*";
         case TokenKind::Slash:        return "/";
+        case TokenKind::Percent:      return "%";
+        case TokenKind::Dollar:       return "$";
         case TokenKind::Greater:      return ">";
         case TokenKind::Less:         return "<";
         case TokenKind::GreaterEqual: return ">=";

@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <stdexcept>
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/fhir/fold.hpp>
 
 namespace Fern
 {
@@ -105,6 +107,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         result = bind_index(indexExpr);
     else if (auto* arrayLit = expr->as<ArrayLiteralExprSyntax>())
         result = bind_array_literal(arrayLit, expected);
+    else if (auto* suffixExpr = expr->as<LiteralSuffixExprSyntax>())
+        result = bind_suffixed_literal(suffixExpr, expected);
 
     if (expected && result && result->type && result->type != expected)
     {
@@ -147,6 +151,90 @@ std::string Binder::process_escape_sequences(std::string_view raw, const Span& s
     }
 
     return result;
+}
+
+MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span)
+{
+    auto it = literalSuffixMap.find(std::string(suffixName));
+    if (it == literalSuffixMap.end() || it->second.empty())
+    {
+        error("unknown literal suffix '" + std::string(suffixName) + "'", span);
+        return nullptr;
+    }
+
+    std::vector<MethodSymbol*> candidates;
+    for (auto* method : it->second)
+    {
+        if (method->parameters.size() == 1 && method->parameters[0]->type == argType)
+            candidates.push_back(method);
+    }
+
+    if (candidates.empty())
+    {
+        error("no literal '" + std::string(suffixName) + "' accepting '"
+              + (argType ? format_type_name(argType) : "?") + "'", span);
+        return nullptr;
+    }
+
+    if (candidates.size() == 1)
+        return candidates[0];
+
+    if (expected)
+    {
+        for (auto* method : candidates)
+        {
+            if (method->get_return_type() == expected)
+                return method;
+        }
+    }
+
+    std::string msg = "ambiguous literal suffix '" + std::string(suffixName) + "', candidates:";
+    for (auto* method : candidates)
+    {
+        auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
+        msg += "\n  " + (parent ? format_type_name(parent) : "?") + "." + method->name;
+    }
+    error(msg, span);
+    return candidates[0];
+}
+
+FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected)
+{
+    auto* operand = bind_expr(expr->operand);
+    if (!operand) return nullptr;
+
+    auto* method = resolve_literal_suffix(expr->suffix.lexeme, operand->type, expected, expr->suffix.span);
+    if (!method)
+        return operand;
+
+    auto* returnType = method->get_return_type();
+    auto* namedReturnType = returnType ? returnType->as<NamedTypeSymbol>() : nullptr;
+
+    if (namedReturnType && namedReturnType->is_builtin())
+    {
+        auto constVal = FhirConstantFolder::try_evaluate_constant_int(operand);
+
+        if (constVal)
+        {
+            int64_t val = *constVal;
+
+            if (returnType == context.resolve_type_name("u8"))
+            {
+                if (val < 0 || val > 255)
+                    error("value " + std::to_string(val) + " is out of range for u8 (0-255)", expr->span);
+            }
+            else if (returnType == context.resolve_type_name("i32"))
+            {
+                if (val < INT32_MIN || val > INT32_MAX)
+                    error("value " + std::to_string(val) + " is out of range for i32", expr->span);
+            }
+        }
+
+        operand->type = returnType;
+        return operand;
+    }
+
+    return fhir.call(expr, returnType, method, {operand});
 }
 
 FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)

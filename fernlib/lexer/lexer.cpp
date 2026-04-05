@@ -18,6 +18,21 @@ std::vector<Token> Lexer::tokenize()
     {
         Token token = scan_token();
         tokens.push_back(token);
+
+        if (is_literal(token.kind) && token.kind != TokenKind::LiteralBool)
+        {
+            char next = walker.peek();
+            if (is_alpha(next) || next == '%' || next == '$')
+            {
+                walker.mark_start();
+                if (next == '%' || next == '$')
+                    walker.advance();
+                else
+                    while (is_alphanumeric(walker.peek()))
+                        walker.advance();
+                tokens.push_back(make_token(TokenKind::LiteralSuffix));
+            }
+        }
     }
 
     if (tokens.empty() || tokens.back().kind != TokenKind::EndOfFile)
@@ -226,6 +241,10 @@ Token Lexer::scan_token()
                 return make_token(TokenKind::NotEqual);
             }
             return make_token(TokenKind::Not);
+        case '%':
+            return make_token(TokenKind::Percent);
+        case '$':
+            return make_token(TokenKind::Dollar);
         case '&':
             if (walker.match('&'))
             {
@@ -285,6 +304,10 @@ Token Lexer::scan_identifier()
     else if (lexeme == "op")
     {
         kind = TokenKind::Op;
+    }
+    else if (lexeme == "literal")
+    {
+        kind = TokenKind::Literal;
     }
     else if (lexeme == "var")
     {

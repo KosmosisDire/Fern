@@ -5,8 +5,8 @@ type Program
     fn Main -> i32
     {
         -- u8 basics
-        var byte: u8 = 255
-        var zero: u8 = 0
+        var byte: u8 = 255u8
+        var zero: u8 = 0u8
 
         -- u8 arithmetic
         var sum = byte + zero * byte
@@ -17,8 +17,8 @@ type Program
         var lt = byte < zero
 
         -- arrays of u8
-        var bytes: u8[] = [1, 2, 3]
+        var bytes: u8[] = [1u8, 2u8, 3u8]
         var b0 = bytes[0]
-        bytes[1] = 255
+        bytes[1] = 255u8
     }
 }

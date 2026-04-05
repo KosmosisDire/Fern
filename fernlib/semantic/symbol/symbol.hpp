@@ -153,6 +153,7 @@ struct NamedTypeSymbol : TypeSymbol
     bool is_generic_instantiation() const { return genericOrigin != nullptr; }
     bool is_concrete_instantiation() const;
     bool is_builtin() const;
+    bool allows_custom_literals() const;
     NamedTypeSymbol* find_instantiation(const std::vector<TypeSymbol*>& args) const;
 
     FieldSymbol* find_field(std::string_view name);
@@ -213,6 +214,7 @@ struct MethodSymbol : Symbol
 
     bool is_constructor() const { return callableKind == CallableKind::Constructor; }
     bool is_operator() const { return callableKind == CallableKind::Operator; }
+    bool is_literal() const { return callableKind == CallableKind::Literal; }
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 
