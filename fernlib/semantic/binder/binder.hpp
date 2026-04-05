@@ -105,6 +105,7 @@ private:
     FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_literal(LiteralExprSyntax* expr);
+    std::string process_escape_sequences(std::string_view raw, const Span& span);
     FhirExpr* bind_binary(BinaryExprSyntax* expr);
     FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
     FhirExpr* try_synthesize_compound_comparison(BinaryOp op, TokenKind opToken, NamedTypeSymbol* namedType, TypeSymbol* leftType, TypeSymbol* rightType, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);

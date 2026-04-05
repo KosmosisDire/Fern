@@ -21,6 +21,10 @@ enum class TokenKind
     LiteralF32,
     LiteralI32,
     LiteralBool,
+    LiteralString,
+    LiteralMultilineString,
+    LiteralRawString,
+    LiteralRawMultilineString,
 
     // Keywords
     Pub,
@@ -186,7 +190,11 @@ constexpr bool is_literal(TokenKind k)
 {
     return k == TokenKind::LiteralF32 ||
            k == TokenKind::LiteralI32 ||
-           k == TokenKind::LiteralBool;
+           k == TokenKind::LiteralBool ||
+           k == TokenKind::LiteralString ||
+           k == TokenKind::LiteralMultilineString ||
+           k == TokenKind::LiteralRawString ||
+           k == TokenKind::LiteralRawMultilineString;
 }
 
 constexpr bool is_operator_token(TokenKind k)
@@ -366,6 +374,10 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::LiteralF32:   return "LiteralF32";
         case TokenKind::LiteralI32:   return "LiteralI32";
         case TokenKind::LiteralBool:  return "LiteralBool";
+        case TokenKind::LiteralString: return "LiteralString";
+        case TokenKind::LiteralMultilineString: return "LiteralMultilineString";
+        case TokenKind::LiteralRawString: return "LiteralRawString";
+        case TokenKind::LiteralRawMultilineString: return "LiteralRawMultilineString";
 
         case TokenKind::Pub:          return "Pub";
         case TokenKind::Static:       return "Static";

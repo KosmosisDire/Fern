@@ -9,6 +9,7 @@ static const std::unordered_map<std::string_view, std::pair<std::string_view, st
     {"i32",  {"Core", "I32"}},
     {"f32",  {"Core", "F32"}},
     {"bool", {"Core", "Bool"}},
+    {"string", {"Core", "String"}},
 };
 
 TypeSymbol* SemanticContext::resolve_type_name(std::string_view alias)

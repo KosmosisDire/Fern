@@ -2,6 +2,7 @@
 
 #include "token/token.hpp"
 #include "source/walker.hpp"
+#include <common/diagnostic.hpp>
 #include <vector>
 
 namespace Fern
@@ -9,7 +10,7 @@ namespace Fern
 
 class SourceFile;
 
-class Lexer
+class Lexer : public DiagnosticSystem
 {
 public:
     explicit Lexer(const SourceFile& file);
@@ -31,6 +32,7 @@ private:
     Token scan_token();
     Token scan_identifier();
     Token scan_number();
+    Token scan_string(char delimiter);
 
     #pragma region Character Classification
 

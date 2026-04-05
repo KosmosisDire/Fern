@@ -60,6 +60,11 @@ void Compilation::compile()
         Lexer lexer(*unit->sourceFile);
         unit->tokens = lexer.tokenize();
 
+        for (const auto& diag : lexer.get_diagnostics())
+        {
+            report(diag);
+        }
+
         TokenWalker walker(unit->tokens);
         Parser parser(walker, arena);
         unit->ast = parser.parse();

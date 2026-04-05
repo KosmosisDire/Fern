@@ -1,5 +1,6 @@
 #include "binder.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <stdexcept>
 
@@ -114,14 +115,52 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     return result;
 }
 
+std::string Binder::process_escape_sequences(std::string_view raw, const Span& span)
+{
+    std::string result;
+    result.reserve(raw.size());
+
+    for (size_t i = 0; i < raw.size(); ++i)
+    {
+        if (raw[i] == '\\' && i + 1 < raw.size())
+        {
+            switch (raw[i + 1])
+            {
+                case 'n':  result += '\n'; ++i; break;
+                case 'r':  result += '\r'; ++i; break;
+                case 't':  result += '\t'; ++i; break;
+                case '\\': result += '\\'; ++i; break;
+                case '"':  result += '"';  ++i; break;
+                case '`':  result += '`';  ++i; break;
+                case '0':  result += '\0'; ++i; break;
+                default:
+                    error("unknown escape sequence '\\" + std::string(1, raw[i + 1]) + "'", span);
+                    result += raw[i + 1];
+                    ++i;
+                    break;
+            }
+        }
+        else
+        {
+            result += raw[i];
+        }
+    }
+
+    return result;
+}
+
 FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 {
     TypeSymbol* type = nullptr;
     switch (expr->token.kind)
     {
-        case TokenKind::LiteralI32:  type = context.resolve_type_name("i32");  break;
-        case TokenKind::LiteralF32:  type = context.resolve_type_name("f32");  break;
-        case TokenKind::LiteralBool: type = context.resolve_type_name("bool"); break;
+        case TokenKind::LiteralI32:    type = context.resolve_type_name("i32");    break;
+        case TokenKind::LiteralF32:    type = context.resolve_type_name("f32");    break;
+        case TokenKind::LiteralBool:   type = context.resolve_type_name("bool");   break;
+        case TokenKind::LiteralString:
+        case TokenKind::LiteralMultilineString:
+        case TokenKind::LiteralRawString:
+        case TokenKind::LiteralRawMultilineString: type = context.resolve_type_name("string"); break;
         default: break;
     }
 
@@ -135,6 +174,72 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
             node->value = LiteralValue::make_float(std::stof(std::string(expr->token.lexeme)));
         else if (expr->token.kind == TokenKind::LiteralBool)
             node->value = LiteralValue::make_bool(expr->token.lexeme == "true");
+        else if (expr->token.kind == TokenKind::LiteralString)
+        {
+            auto raw = expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2);
+            if (raw.find('\\') == std::string_view::npos)
+                node->value = LiteralValue::make_string(raw);
+            else
+                node->value = LiteralValue::make_string(arena.alloc_string(process_escape_sequences(raw, expr->span)));
+        }
+        else if (expr->token.kind == TokenKind::LiteralMultilineString)
+        {
+            auto raw = expr->token.lexeme.substr(3, expr->token.lexeme.size() - 6);
+
+            if (!raw.empty() && raw[0] == '\n')
+                raw = raw.substr(1);
+            else if (raw.size() >= 2 && raw[0] == '\r' && raw[1] == '\n')
+                raw = raw.substr(2);
+
+            if (!raw.empty() && raw.back() == '\n')
+                raw = raw.substr(0, raw.size() - 1);
+            if (!raw.empty() && raw.back() == '\r')
+                raw = raw.substr(0, raw.size() - 1);
+
+            size_t minIndent = std::string_view::npos;
+            size_t lineStart = 0;
+            for (size_t i = 0; i <= raw.size(); ++i)
+            {
+                if (i == raw.size() || raw[i] == '\n')
+                {
+                    auto line = raw.substr(lineStart, i - lineStart);
+                    if (!line.empty())
+                    {
+                        size_t indent = 0;
+                        while (indent < line.size() && line[indent] == ' ')
+                            ++indent;
+                        if (indent < line.size())
+                            minIndent = std::min(minIndent, indent);
+                    }
+                    lineStart = i + 1;
+                }
+            }
+
+            if (minIndent == std::string_view::npos)
+                minIndent = 0;
+
+            std::string result;
+            lineStart = 0;
+            for (size_t i = 0; i <= raw.size(); ++i)
+            {
+                if (i == raw.size() || raw[i] == '\n')
+                {
+                    auto line = raw.substr(lineStart, i - lineStart);
+                    if (!result.empty())
+                        result += '\n';
+                    if (line.size() > minIndent)
+                        result += line.substr(minIndent);
+                    lineStart = i + 1;
+                }
+            }
+
+            auto processed = process_escape_sequences(result, expr->span);
+            node->value = LiteralValue::make_string(arena.alloc_string(processed));
+        }
+        else if (expr->token.kind == TokenKind::LiteralRawString)
+            node->value = LiteralValue::make_string(expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2));
+        else if (expr->token.kind == TokenKind::LiteralRawMultilineString)
+            node->value = LiteralValue::make_string(expr->token.lexeme.substr(3, expr->token.lexeme.size() - 6));
     }
     catch (const std::out_of_range&)
     {

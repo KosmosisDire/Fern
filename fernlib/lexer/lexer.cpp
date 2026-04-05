@@ -5,7 +5,8 @@ namespace Fern
 {
 
 Lexer::Lexer(const SourceFile& file)
-    : walker(file)
+    : DiagnosticSystem("Lexer")
+    , walker(file)
 {
 }
 
@@ -137,6 +138,11 @@ Token Lexer::scan_token()
     if (is_digit(c))
     {
         return scan_number();
+    }
+
+    if (c == '"' || c == '`')
+    {
+        return scan_string(c);
     }
 
     switch (c)
@@ -329,6 +335,63 @@ Token Lexer::scan_number()
     }
 
     return make_token(TokenKind::LiteralI32);
+}
+
+Token Lexer::scan_string(char delimiter)
+{
+    bool multiline = false;
+    if (walker.peek() == delimiter && walker.peek_next() == delimiter)
+    {
+        walker.advance();
+        walker.advance();
+        multiline = true;
+    }
+
+    while (!walker.is_at_end())
+    {
+        if (multiline)
+        {
+            if (walker.peek() == delimiter && walker.peek_next() == delimiter)
+            {
+                walker.advance();
+                walker.advance();
+                if (!walker.is_at_end() && walker.peek() == delimiter)
+                {
+                    walker.advance();
+                    return make_token(delimiter == '`' ? TokenKind::LiteralRawMultilineString : TokenKind::LiteralMultilineString);
+                }
+            }
+            else
+            {
+                if (delimiter != '`' && walker.peek() == '\\')
+                {
+                    walker.advance();
+                }
+                walker.advance();
+            }
+        }
+        else
+        {
+            if (walker.peek() == delimiter)
+            {
+                walker.advance();
+                return make_token(delimiter == '`' ? TokenKind::LiteralRawString : TokenKind::LiteralString);
+            }
+            if (walker.peek() == '\n')
+            {
+                error("unterminated string literal", walker.make_span());
+                return make_error_token();
+            }
+            if (delimiter != '`' && walker.peek() == '\\')
+            {
+                walker.advance();
+            }
+            walker.advance();
+        }
+    }
+
+    error("unterminated string literal", walker.make_span());
+    return make_error_token();
 }
 
 

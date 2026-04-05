@@ -2,6 +2,9 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <memory>
 #include <type_traits>
@@ -47,6 +50,14 @@ public:
         if (count == 0) return nullptr;
         void* mem = allocate(sizeof(T) * count, alignof(T));
         return static_cast<T*>(mem);
+    }
+
+    std::string_view alloc_string(const std::string& str)
+    {
+        if (str.empty()) return {};
+        char* mem = alloc_array<char>(str.size());
+        std::memcpy(mem, str.data(), str.size());
+        return {mem, str.size()};
     }
 
     void reset()

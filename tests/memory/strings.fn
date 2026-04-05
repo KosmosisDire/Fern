@@ -1,0 +1,106 @@
+-- String literal tests
+-- Exercises string syntax with all existing language features
+
+type Program
+{
+    static fn Main
+    {
+        -- Basic string literals
+        var hello = "Hello, World!"
+        var backtick = `Hello, World!`
+        var empty = ""
+
+        -- Multiline strings
+        var multi = 
+        """
+            This is a
+            multiline string
+                With indentation
+                Wow
+            Hello
+        """
+        var multiBacktick = ```
+            Also multiline
+            with backticks
+                This one is not deintended and is raw \t so no escapes!
+            Wow
+        ```
+
+        -- String variables and type annotations
+        var typed: string = "typed string"
+        var inferred = "inferred string"
+
+        -- String equality
+        var same = "abc" == "abc"
+        var diff = "abc" != "xyz"
+
+        -- String concatenation
+        var greeting = "Hello" + " " + "World"
+        var built = "foo" + "bar"
+
+        -- String in variable reassignment
+        var msg = "first"
+        msg = "second"
+
+        -- String compound concat
+        var buf = "start"
+        buf += " end"
+
+        -- String length
+        var s = "hello"
+        var len = s.length
+
+        -- Strings in arrays
+        var names: string[] = ["Alice" + s + multi, "Bob", "Charlie"]
+        var first = names[0]
+        names[1] = "Robert"
+
+        -- Strings in expressions with control flow
+        if greeting == "Hello World"
+        {
+            var x = "matched"
+        }
+
+        var i = 0
+        while i < 3
+        {
+            var name = names[i]
+            var someString = "name: " + name
+            i += 1
+        }
+
+        -- Strings as function arguments
+        var result = Echo("test")
+        var combined = Concat("left", "right")
+
+        -- Strings with other types in scope
+        var num = 42
+        var flag = true
+        var text = "value"
+
+        -- String comparison operators
+        var eq = "a" == "a"
+        var neq = "a" != "b"
+
+        -- Nested string operations
+        var nested = Echo(Concat("a", "b"))
+
+        -- Multiline with escapes
+        var escaped = "hello \"world\""
+        var tab = "col1\tcol2"
+        var newline = "line1\nline2"
+
+        -- Raw strings with backticks should not process escape sequences
+        var raw = `raw "string" with \t no escapes \n just text`
+    }
+
+    static fn Echo(s: string) -> string
+    {
+        return s
+    }
+
+    static fn Concat(a: string, b: string) -> string
+    {
+        return a + b
+    }
+}
