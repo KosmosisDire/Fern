@@ -14,7 +14,7 @@ T* FhirConstantFolder::make()
 
 #pragma region Fold Helpers
 
-bool FhirConstantFolder::try_fold_int_arithmetic(IntrinsicOp op, int32_t lhs, int32_t rhs, int32_t& out)
+bool FhirConstantFolder::try_fold_int_arithmetic(IntrinsicOp op, int64_t lhs, int64_t rhs, int64_t& out)
 {
     switch (op)
     {
@@ -29,7 +29,7 @@ bool FhirConstantFolder::try_fold_int_arithmetic(IntrinsicOp op, int32_t lhs, in
     }
 }
 
-bool FhirConstantFolder::try_fold_int_comparison(IntrinsicOp op, int32_t lhs, int32_t rhs, bool& out)
+bool FhirConstantFolder::try_fold_int_comparison(IntrinsicOp op, int64_t lhs, int64_t rhs, bool& out)
 {
     switch (op)
     {
@@ -62,10 +62,10 @@ FhirExpr* FhirConstantFolder::try_fold_intrinsic(FhirIntrinsicExpr* node)
         auto* lhs = node->args[0] ? node->args[0]->as<FhirLiteralExpr>() : nullptr;
         auto* rhs = node->args[1] ? node->args[1]->as<FhirLiteralExpr>() : nullptr;
         if (lhs && rhs &&
-            lhs->value.kind == LiteralValue::Kind::Int32 &&
-            rhs->value.kind == LiteralValue::Kind::Int32)
+            lhs->value.kind == LiteralValue::Kind::Int &&
+            rhs->value.kind == LiteralValue::Kind::Int)
         {
-            int32_t intResult;
+            int64_t intResult;
             if (try_fold_int_arithmetic(node->op, lhs->value.intValue, rhs->value.intValue, intResult))
             {
                 auto* lit = make<FhirLiteralExpr>();
@@ -105,7 +105,7 @@ FhirExpr* FhirConstantFolder::try_fold_intrinsic(FhirIntrinsicExpr* node)
     if (node->args.size() == 1)
     {
         auto* operand = node->args[0] ? node->args[0]->as<FhirLiteralExpr>() : nullptr;
-        if (operand && operand->value.kind == LiteralValue::Kind::Int32)
+        if (operand && operand->value.kind == LiteralValue::Kind::Int)
         {
             if (node->op == IntrinsicOp::Negative)
             {

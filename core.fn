@@ -79,6 +79,30 @@ type Array<T>
 }
 
 @BuiltinType
+type U8
+{
+    value: u8
+
+    op +(left: u8, right: u8) -> u8
+    op -(left: u8, right: u8) -> u8
+    op *(left: u8, right: u8) -> u8
+    op /(left: u8, right: u8) -> u8
+    op ==(left: u8, right: u8) -> bool
+    op >(left: u8, right: u8) -> bool
+    op <(left: u8, right: u8) -> bool
+}
+
+@BuiltinType
+type Char
+{
+    value: char
+
+    op ==(left: char, right: char) -> bool
+    op >(left: char, right: char) -> bool
+    op <(left: char, right: char) -> bool
+}
+
+@BuiltinType
 type String
 {
     length: i32
@@ -90,4 +114,5 @@ type String
 
     op ==(left: String, right: String) -> bool {}
     op +(left: String, right: String) -> String {}
+    op [](self: String, index: i32) -> char {}
 }

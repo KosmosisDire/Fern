@@ -145,6 +145,11 @@ Token Lexer::scan_token()
         return scan_string(c);
     }
 
+    if (c == '\'')
+    {
+        return scan_char();
+    }
+
     switch (c)
     {
         case '(':
@@ -392,6 +397,32 @@ Token Lexer::scan_string(char delimiter)
 
     error("unterminated string literal", walker.make_span());
     return make_error_token();
+}
+
+Token Lexer::scan_char()
+{
+    while (!walker.is_at_end() && walker.peek() != '\'')
+    {
+        if (walker.peek() == '\n')
+        {
+            error("unterminated character literal", walker.make_span());
+            return make_error_token();
+        }
+        if (walker.peek() == '\\')
+        {
+            walker.advance();
+        }
+        walker.advance();
+    }
+
+    if (walker.is_at_end())
+    {
+        error("unterminated character literal", walker.make_span());
+        return make_error_token();
+    }
+
+    walker.advance();
+    return make_token(TokenKind::LiteralChar);
 }
 
 

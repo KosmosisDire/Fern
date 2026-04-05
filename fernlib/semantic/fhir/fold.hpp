@@ -14,8 +14,8 @@ class FhirConstantFolder
     template<typename T>
     T* make();
 
-    bool try_fold_int_arithmetic(IntrinsicOp op, int32_t lhs, int32_t rhs, int32_t& out);
-    bool try_fold_int_comparison(IntrinsicOp op, int32_t lhs, int32_t rhs, bool& out);
+    bool try_fold_int_arithmetic(IntrinsicOp op, int64_t lhs, int64_t rhs, int64_t& out);
+    bool try_fold_int_comparison(IntrinsicOp op, int64_t lhs, int64_t rhs, bool& out);
     bool try_fold_bool_logic(IntrinsicOp op, bool lhs, bool rhs, bool& out);
     FhirExpr* try_fold_intrinsic(FhirIntrinsicExpr* node);
     FhirExpr* fold_expr(FhirExpr* expr);

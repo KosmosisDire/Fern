@@ -1,0 +1,69 @@
+type Program
+{
+    static fn Main
+    {
+        -- char literals
+        var letter = 'A'
+        var digit = '0'
+        var space = ' '
+
+        -- char escape sequences
+        var newline = '\n'
+        var tab = '\t'
+        var cr = '\r'
+        var backslash = '\\'
+        var quote = '\''
+        var null = '\0'
+
+        -- char comparisons
+        var same = 'a' == 'a'
+        var ordered = 'a' < 'z'
+        var bigger = 'z' > 'a'
+
+        -- char with type annotation
+        var typed: char = 'x'
+
+        -- string indexing returns char
+        var greeting = "Hello"
+        var first = greeting[0]
+        var second = greeting[1]
+
+        -- char from string index in expressions
+        var isH = greeting[0] == 'H'
+
+        -- arrays of chars
+        var chars: char[] = ['a', 'b', 'c']
+        var picked = chars[1]
+        chars[2] = 'z'
+
+        -- mixing with strings
+        var name = "World"
+        var msg = "Hello" + " " + name
+        var len = msg.length
+        var ch = msg[0]
+
+        -- string with char comparison
+        if msg[0] == 'H'
+        {
+            var matched = true
+        }
+
+        -- looping over string by index
+        var i = 0
+        while i < name.length
+        {
+            var c = name[i]
+            i += 1
+        }
+
+        -- multiline strings still work
+        var multi = """
+            line one
+            line two
+        """
+
+        -- raw strings still work
+        var raw = `no \escapes here`
+        var n = raw[0]
+    }
+}

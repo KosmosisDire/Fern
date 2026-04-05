@@ -1,0 +1,26 @@
+
+namespace Math
+{
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    init{}
+}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v1 = Math.Vector2(1.0, 2.0)
+        var v2 = Math.Vector2 { x: 3.0, y: 4.0 }
+    }
+}

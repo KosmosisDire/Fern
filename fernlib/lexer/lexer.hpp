@@ -33,6 +33,7 @@ private:
     Token scan_identifier();
     Token scan_number();
     Token scan_string(char delimiter);
+    Token scan_char();
 
     #pragma region Character Classification
 

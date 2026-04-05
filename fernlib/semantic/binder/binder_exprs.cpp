@@ -161,6 +161,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
         case TokenKind::LiteralMultilineString:
         case TokenKind::LiteralRawString:
         case TokenKind::LiteralRawMultilineString: type = context.resolve_type_name("string"); break;
+        case TokenKind::LiteralChar: type = context.resolve_type_name("char"); break;
         default: break;
     }
 
@@ -169,7 +170,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
     try
     {
         if (expr->token.kind == TokenKind::LiteralI32)
-            node->value = LiteralValue::make_int(std::stoi(std::string(expr->token.lexeme)));
+            node->value = LiteralValue::make_int(std::stoll(std::string(expr->token.lexeme)));
         else if (expr->token.kind == TokenKind::LiteralF32)
             node->value = LiteralValue::make_float(std::stof(std::string(expr->token.lexeme)));
         else if (expr->token.kind == TokenKind::LiteralBool)
@@ -240,6 +241,18 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
             node->value = LiteralValue::make_string(expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2));
         else if (expr->token.kind == TokenKind::LiteralRawMultilineString)
             node->value = LiteralValue::make_string(expr->token.lexeme.substr(3, expr->token.lexeme.size() - 6));
+        else if (expr->token.kind == TokenKind::LiteralChar)
+        {
+            auto inner = expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2);
+            auto processed = process_escape_sequences(inner, expr->span);
+            if (processed.size() == 1)
+                node->value = LiteralValue::make_uint(static_cast<uint8_t>(processed[0]));
+            else
+            {
+                error("character literal must contain exactly one character", expr->span);
+                node->value = LiteralValue::make_uint(0);
+            }
+        }
     }
     catch (const std::out_of_range&)
     {

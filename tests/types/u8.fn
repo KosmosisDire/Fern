@@ -1,0 +1,24 @@
+
+type Program
+{
+
+    fn Main -> i32
+    {
+        -- u8 basics
+        var byte: u8 = 255
+        var zero: u8 = 0
+
+        -- u8 arithmetic
+        var sum = byte + zero * byte
+        var diff = byte - zero
+        var prod = byte * zero
+        var eq = byte == zero
+        var gt = byte > zero
+        var lt = byte < zero
+
+        -- arrays of u8
+        var bytes: u8[] = [1, 2, 3]
+        var b0 = bytes[0]
+        bytes[1] = 255
+    }
+}

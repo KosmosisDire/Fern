@@ -25,6 +25,7 @@ enum class TokenKind
     LiteralMultilineString,
     LiteralRawString,
     LiteralRawMultilineString,
+    LiteralChar,
 
     // Keywords
     Pub,
@@ -194,7 +195,8 @@ constexpr bool is_literal(TokenKind k)
            k == TokenKind::LiteralString ||
            k == TokenKind::LiteralMultilineString ||
            k == TokenKind::LiteralRawString ||
-           k == TokenKind::LiteralRawMultilineString;
+           k == TokenKind::LiteralRawMultilineString ||
+           k == TokenKind::LiteralChar;
 }
 
 constexpr bool is_operator_token(TokenKind k)
@@ -378,6 +380,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::LiteralMultilineString: return "LiteralMultilineString";
         case TokenKind::LiteralRawString: return "LiteralRawString";
         case TokenKind::LiteralRawMultilineString: return "LiteralRawMultilineString";
+        case TokenKind::LiteralChar: return "LiteralChar";
 
         case TokenKind::Pub:          return "Pub";
         case TokenKind::Static:       return "Static";
