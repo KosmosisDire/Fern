@@ -1,0 +1,415 @@
+-- Return checking and unreachable code
+
+
+---
+SECTION 1: Basic return checking
+---
+
+
+type BasicReturn
+{
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: no return statement at all
+    fn MissingReturn() -> i32
+    {
+        var x = 10
+    }
+
+    -- EXPECT: no error
+    -- Reason: unconditional return
+    fn HasReturn() -> i32
+    {
+        return 10
+    }
+
+    -- EXPECT: no error
+    -- Reason: void function, no return needed
+    fn VoidFunction
+    {
+        var x = 10
+    }
+
+    -- EXPECT: no error
+    -- Reason: constructor, no return needed
+    init{}
+}
+
+
+---
+SECTION 2: If/else return checking (non-constant conditions)
+---
+
+
+type IfElseReturn
+{
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: if without else, so the non-if path has no return
+    fn IfOnly(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: both if and else return
+    fn IfElseBothReturn(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+        else
+        {
+            return 0
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: then returns but else does not
+    fn IfReturnsElseDoesnt(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+        else
+        {
+            var x = 0
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: else returns but then does not
+    fn ElseReturnsIfDoesnt(cond: bool) -> i32
+    {
+        if cond
+        {
+            var x = 1
+        }
+        else
+        {
+            return 0
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: return after the if covers the non-returning path
+    fn ReturnAfterIf(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+        return 0
+    }
+
+    init{}
+}
+
+
+---
+SECTION 3: Else-if chains
+---
+
+
+type ElseIfReturn
+{
+    -- EXPECT: no error
+    -- Reason: all branches return (if, else-if, else)
+    fn AllBranchesReturn(a: bool, b: bool) -> i32
+    {
+        if a
+        {
+            return 1
+        }
+        else if b
+        {
+            return 2
+        }
+        else
+        {
+            return 3
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: else-if branch does not return
+    fn MiddleBranchMissing(a: bool, b: bool) -> i32
+    {
+        if a
+        {
+            return 1
+        }
+        else if b
+        {
+            var x = 2
+        }
+        else
+        {
+            return 3
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: no final else, so if a and b are both false, no return
+    fn NoFinalElse(a: bool, b: bool) -> i32
+    {
+        if a
+        {
+            return 1
+        }
+        else if b
+        {
+            return 2
+        }
+    }
+
+    init{}
+}
+
+
+---
+SECTION 4: While loops
+---
+
+
+type WhileReturn
+{
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: while with non-constant condition, loop may not execute
+    fn WhileNonConstant(cond: bool) -> i32
+    {
+        while cond
+        {
+            return 1
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: while(true) with return in body
+    fn WhileTrueReturns() -> i32
+    {
+        while true
+        {
+            return 1
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: while(false) never executes
+    fn WhileFalse() -> i32
+    {
+        while false
+        {
+            return 1
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: while(true) but body doesn't return (just has a var decl)
+    fn WhileTrueNoReturn() -> i32
+    {
+        while true
+        {
+            var x = 1
+        }
+    }
+
+    init{}
+}
+
+
+---
+SECTION 5: Constant condition if
+---
+
+
+type ConstantIf
+{
+    -- EXPECT: no error
+    -- Reason: if(true) then-block returns, guaranteed path
+    fn IfTrueReturns() -> i32
+    {
+        if true
+        {
+            return 1
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: if(false) then-block never runs, no else
+    fn IfFalseNoElse() -> i32
+    {
+        if false
+        {
+            return 1
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: if(false), else returns
+    fn IfFalseElseReturns() -> i32
+    {
+        if false
+        {
+            var x = 1
+        }
+        else
+        {
+            return 2
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: if(true), then returns; else branch irrelevant
+    fn IfTrueElseDoesntReturn() -> i32
+    {
+        if true
+        {
+            return 1
+        }
+        else
+        {
+            var x = 2
+        }
+    }
+
+    init{}
+}
+
+
+---
+SECTION 6: Nested control flow
+---
+
+
+type NestedFlow
+{
+    -- EXPECT: no error
+    -- Reason: while(true) body has if/else both returning
+    fn WhileTrueNestedIf(cond: bool) -> i32
+    {
+        while true
+        {
+            if cond
+            {
+                return 1
+            }
+            else
+            {
+                return 0
+            }
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: nested if/else, all leaf paths return
+    fn NestedIfAllReturn(a: bool, b: bool) -> i32
+    {
+        if a
+        {
+            if b
+            {
+                return 1
+            }
+            else
+            {
+                return 2
+            }
+        }
+        else
+        {
+            return 3
+        }
+    }
+
+    -- EXPECT: error "not all code paths return a value"
+    -- Reason: inner if has no else, so outer then-path may not return
+    fn NestedIfInnerMissingElse(a: bool, b: bool) -> i32
+    {
+        if a
+        {
+            if b
+            {
+                return 1
+            }
+        }
+        else
+        {
+            return 3
+        }
+    }
+
+    -- EXPECT: no error
+    -- Reason: if(true) → if(true) → return, all guaranteed
+    fn NestedConstantTrue() -> i32
+    {
+        if true
+        {
+            if true
+            {
+                return 1
+            }
+        }
+    }
+
+    init{}
+}
+
+
+---
+SECTION 7: Unreachable code
+---
+
+
+type Unreachable
+{
+    -- EXPECT: warning "unreachable code" on the var x line
+    -- Reason: return before var decl
+    fn AfterReturn() -> i32
+    {
+        return 1
+        var x = 10
+    }
+
+    -- EXPECT: warning "unreachable code" on the var y line
+    -- Reason: if/else both return, then var y can't be reached
+    fn AfterIfElseReturn(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+        else
+        {
+            return 2
+        }
+        var y = 10
+    }
+
+    -- EXPECT: no warning
+    -- Reason: if without else, code after is reachable
+    fn AfterIfNoElse(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+        return 0
+    }
+
+    -- EXPECT: warning "unreachable code"
+    -- Reason: while(true) with return, code after can't be reached
+    fn AfterWhileTrue() -> i32
+    {
+        while true
+        {
+            return 1
+        }
+        var z = 10
+    }
+
+    init{}
+}

@@ -1,5 +1,6 @@
 #include "fold.hpp"
 #include <arena.hpp>
+#include <symbol/symbol.hpp>
 
 namespace Fern
 {
@@ -17,6 +18,20 @@ T* FhirConstantFolder::make()
 FhirExpr* FhirConstantFolder::fold_expr(FhirExpr* expr)
 {
     if (!expr) return nullptr;
+
+    if (auto* node = expr->as<FhirLocalRefExpr>())
+    {
+        auto it = constants.find(node->local);
+        if (it != constants.end())
+        {
+            auto* lit = make<FhirLiteralExpr>();
+            lit->span = node->span;
+            lit->type = node->type;
+            lit->value = it->second;
+            return lit;
+        }
+        return node;
+    }
 
     if (auto* node = expr->as<FhirIntrinsicExpr>())
     {
@@ -81,12 +96,72 @@ FhirExpr* FhirConstantFolder::fold_expr(FhirExpr* expr)
 
     if (auto* node = expr->as<FhirAssignExpr>())
     {
-        node->target = fold_expr(node->target);
         node->value = fold_expr(node->value);
         return node;
     }
 
     return expr;
+}
+
+#pragma region If/While Folding
+
+void FhirConstantFolder::fold_if(FhirIfStmt* stmt)
+{
+    stmt->condition = fold_expr(stmt->condition);
+
+    bool condTrue = false;
+    bool condFalse = false;
+    if (auto* lit = stmt->condition->as<FhirLiteralExpr>())
+    {
+        if (lit->value.kind == LiteralValue::Kind::Bool)
+        {
+            condTrue = lit->value.boolValue;
+            condFalse = !lit->value.boolValue;
+        }
+    }
+
+    if (condTrue)
+    {
+        fold_block(stmt->thenBlock);
+        auto afterThen = constants;
+
+        constants.clear();
+        if (stmt->elseIf) fold_if(stmt->elseIf);
+        if (stmt->elseBlock) fold_block(stmt->elseBlock);
+
+        constants = afterThen;
+    }
+    else if (condFalse)
+    {
+        auto saved = constants;
+
+        constants.clear();
+        fold_block(stmt->thenBlock);
+
+        constants = saved;
+        if (stmt->elseIf) fold_if(stmt->elseIf);
+        else if (stmt->elseBlock) fold_block(stmt->elseBlock);
+    }
+    else
+    {
+        constants.clear();
+        fold_block(stmt->thenBlock);
+
+        constants.clear();
+        if (stmt->elseIf) fold_if(stmt->elseIf);
+        if (stmt->elseBlock) fold_block(stmt->elseBlock);
+
+        constants.clear();
+    }
+}
+
+void FhirConstantFolder::fold_while(FhirWhileStmt* stmt)
+{
+    stmt->condition = fold_expr(stmt->condition);
+
+    constants.clear();
+    fold_block(stmt->body);
+    constants.clear();
 }
 
 #pragma region Statement Folding
@@ -98,10 +173,31 @@ void FhirConstantFolder::fold_stmt(FhirStmt* stmt)
     if (auto* node = stmt->as<FhirVarDeclStmt>())
     {
         node->initializer = fold_expr(node->initializer);
+        if (node->local && node->initializer)
+        {
+            if (auto* lit = node->initializer->as<FhirLiteralExpr>())
+            {
+                constants[node->local] = lit->value;
+            }
+        }
     }
     else if (auto* node = stmt->as<FhirExprStmt>())
     {
         node->expression = fold_expr(node->expression);
+        if (auto* assign = node->expression ? node->expression->as<FhirAssignExpr>() : nullptr)
+        {
+            if (auto* localRef = assign->target->as<FhirLocalRefExpr>())
+            {
+                if (auto* lit = assign->value->as<FhirLiteralExpr>())
+                {
+                    constants[localRef->local] = lit->value;
+                }
+                else
+                {
+                    constants.erase(localRef->local);
+                }
+            }
+        }
     }
     else if (auto* node = stmt->as<FhirReturnStmt>())
     {
@@ -109,15 +205,11 @@ void FhirConstantFolder::fold_stmt(FhirStmt* stmt)
     }
     else if (auto* node = stmt->as<FhirIfStmt>())
     {
-        node->condition = fold_expr(node->condition);
-        if (node->thenBlock) fold_block(node->thenBlock);
-        if (node->elseIf) fold_stmt(node->elseIf);
-        if (node->elseBlock) fold_block(node->elseBlock);
+        fold_if(node);
     }
     else if (auto* node = stmt->as<FhirWhileStmt>())
     {
-        node->condition = fold_expr(node->condition);
-        if (node->body) fold_block(node->body);
+        fold_while(node);
     }
 }
 
@@ -136,6 +228,8 @@ void FhirConstantFolder::fold(FhirMethod* method, AllocArena& arena)
     FhirConstantFolder folder(arena);
     folder.fold_block(method->body);
 }
+
+#pragma region Static Evaluators
 
 std::optional<int64_t> FhirConstantFolder::try_evaluate_constant_int(FhirExpr* expr)
 {

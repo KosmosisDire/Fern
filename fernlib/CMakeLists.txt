@@ -16,6 +16,7 @@ set(FERNLIB_SOURCES
     semantic/binder/binder_types.cpp
     semantic/binder/binder_exprs.cpp
     semantic/binder/binder_stmts.cpp
+    semantic/fhir/flow.cpp
     semantic/fhir/fold.cpp
     semantic/fhir/fmt.cpp
 

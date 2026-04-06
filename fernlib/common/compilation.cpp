@@ -9,6 +9,7 @@
 #include <parser/parser.hpp>
 #include <token/walker.hpp>
 #include <binder/binder.hpp>
+#include <semantic/fhir/flow.hpp>
 #include <semantic/fhir/fold.hpp>
 
 namespace Fern
@@ -95,6 +96,16 @@ void Compilation::compile()
     for (auto* method : semanticContext.methods)
     {
         FhirConstantFolder::fold(method, arena);
+    }
+
+    // flow analysis (return checking, unreachable code)
+    for (auto* method : semanticContext.methods)
+    {
+        auto flow = FlowAnalyzer::analyze(method);
+        for (const auto& diag : flow.get_diagnostics())
+        {
+            report(diag);
+        }
     }
 
     compiled = true;
