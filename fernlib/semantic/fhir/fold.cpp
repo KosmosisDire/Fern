@@ -12,129 +12,6 @@ T* FhirConstantFolder::make()
     return arena.alloc<T>();
 }
 
-#pragma region Fold Helpers
-
-bool FhirConstantFolder::try_fold_int_arithmetic(IntrinsicOp op, int64_t lhs, int64_t rhs, int64_t& out)
-{
-    switch (op)
-    {
-        case IntrinsicOp::Add: out = lhs + rhs; return true;
-        case IntrinsicOp::Sub: out = lhs - rhs; return true;
-        case IntrinsicOp::Mul: out = lhs * rhs; return true;
-        case IntrinsicOp::Div:
-            if (rhs == 0) return false;
-            out = lhs / rhs;
-            return true;
-        default: return false;
-    }
-}
-
-bool FhirConstantFolder::try_fold_int_comparison(IntrinsicOp op, int64_t lhs, int64_t rhs, bool& out)
-{
-    switch (op)
-    {
-        case IntrinsicOp::Greater:      out = lhs > rhs; return true;
-        case IntrinsicOp::Less:         out = lhs < rhs; return true;
-        case IntrinsicOp::GreaterEqual: out = lhs >= rhs; return true;
-        case IntrinsicOp::LessEqual:    out = lhs <= rhs; return true;
-        case IntrinsicOp::Equal:        out = lhs == rhs; return true;
-        case IntrinsicOp::NotEqual:     out = lhs != rhs; return true;
-        default: return false;
-    }
-}
-
-bool FhirConstantFolder::try_fold_bool_logic(IntrinsicOp op, bool lhs, bool rhs, bool& out)
-{
-    switch (op)
-    {
-        case IntrinsicOp::And:      out = lhs && rhs; return true;
-        case IntrinsicOp::Or:       out = lhs || rhs; return true;
-        case IntrinsicOp::Equal:    out = lhs == rhs; return true;
-        case IntrinsicOp::NotEqual: out = lhs != rhs; return true;
-        default: return false;
-    }
-}
-
-FhirExpr* FhirConstantFolder::try_fold_intrinsic(FhirIntrinsicExpr* node)
-{
-    if (node->args.size() == 2)
-    {
-        auto* lhs = node->args[0] ? node->args[0]->as<FhirLiteralExpr>() : nullptr;
-        auto* rhs = node->args[1] ? node->args[1]->as<FhirLiteralExpr>() : nullptr;
-        if (lhs && rhs &&
-            lhs->value.kind == LiteralValue::Kind::Int &&
-            rhs->value.kind == LiteralValue::Kind::Int)
-        {
-            int64_t intResult;
-            if (try_fold_int_arithmetic(node->op, lhs->value.intValue, rhs->value.intValue, intResult))
-            {
-                auto* lit = make<FhirLiteralExpr>();
-                lit->span = node->span;
-                lit->type = node->type;
-                lit->value = LiteralValue::make_int(intResult);
-                return lit;
-            }
-
-            bool boolResult;
-            if (try_fold_int_comparison(node->op, lhs->value.intValue, rhs->value.intValue, boolResult))
-            {
-                auto* lit = make<FhirLiteralExpr>();
-                lit->span = node->span;
-                lit->type = node->type;
-                lit->value = LiteralValue::make_bool(boolResult);
-                return lit;
-            }
-        }
-
-        if (lhs && rhs &&
-            lhs->value.kind == LiteralValue::Kind::Bool &&
-            rhs->value.kind == LiteralValue::Kind::Bool)
-        {
-            bool boolResult;
-            if (try_fold_bool_logic(node->op, lhs->value.boolValue, rhs->value.boolValue, boolResult))
-            {
-                auto* lit = make<FhirLiteralExpr>();
-                lit->span = node->span;
-                lit->type = node->type;
-                lit->value = LiteralValue::make_bool(boolResult);
-                return lit;
-            }
-        }
-    }
-
-    if (node->args.size() == 1)
-    {
-        auto* operand = node->args[0] ? node->args[0]->as<FhirLiteralExpr>() : nullptr;
-        if (operand && operand->value.kind == LiteralValue::Kind::Int)
-        {
-            if (node->op == IntrinsicOp::Negative)
-            {
-                auto* lit = make<FhirLiteralExpr>();
-                lit->span = node->span;
-                lit->type = node->type;
-                lit->value = LiteralValue::make_int(-operand->value.intValue);
-                return lit;
-            }
-
-            if (node->op == IntrinsicOp::Positive)
-                return operand;
-        }
-        else if (operand && operand->value.kind == LiteralValue::Kind::Bool)
-        {
-            if (node->op == IntrinsicOp::Not)
-            {
-                auto* lit = make<FhirLiteralExpr>();
-                lit->span = node->span;
-                lit->type = node->type;
-                lit->value = LiteralValue::make_bool(!operand->value.boolValue);
-                return lit;
-            }
-        }
-    }
-
-    return nullptr;
-}
-
 #pragma region Expression Folding
 
 FhirExpr* FhirConstantFolder::fold_expr(FhirExpr* expr)
@@ -146,8 +23,30 @@ FhirExpr* FhirConstantFolder::fold_expr(FhirExpr* expr)
         for (auto*& arg : node->args)
             arg = fold_expr(arg);
 
-        if (auto* folded = try_fold_intrinsic(node))
-            return folded;
+        if (auto result = try_evaluate_constant_int(node))
+        {
+            auto* lit = make<FhirLiteralExpr>();
+            lit->span = node->span;
+            lit->type = node->type;
+            lit->value = LiteralValue::make_int(*result);
+            return lit;
+        }
+        if (auto result = try_evaluate_constant_float(node))
+        {
+            auto* lit = make<FhirLiteralExpr>();
+            lit->span = node->span;
+            lit->type = node->type;
+            lit->value = LiteralValue::make_float(*result);
+            return lit;
+        }
+        if (auto result = try_evaluate_constant_bool(node))
+        {
+            auto* lit = make<FhirLiteralExpr>();
+            lit->span = node->span;
+            lit->type = node->type;
+            lit->value = LiteralValue::make_bool(*result);
+            return lit;
+        }
 
         return node;
     }
@@ -274,6 +173,121 @@ std::optional<int64_t> FhirConstantFolder::try_evaluate_constant_int(FhirExpr* e
                     case IntrinsicOp::Mul: return *lhs * *rhs;
                     case IntrinsicOp::Div: return *rhs != 0 ? std::optional(*lhs / *rhs) : std::nullopt;
                     default: break;
+                }
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::optional<float> FhirConstantFolder::try_evaluate_constant_float(FhirExpr* expr)
+{
+    if (!expr) return std::nullopt;
+
+    if (auto* lit = expr->as<FhirLiteralExpr>())
+    {
+        if (lit->value.kind == LiteralValue::Kind::Float32)
+            return lit->value.floatValue;
+    }
+
+    if (auto* intrinsic = expr->as<FhirIntrinsicExpr>())
+    {
+        if (intrinsic->args.size() == 1 && intrinsic->op == IntrinsicOp::Negative)
+        {
+            if (auto inner = try_evaluate_constant_float(intrinsic->args[0]))
+                return -*inner;
+        }
+        if (intrinsic->args.size() == 1 && intrinsic->op == IntrinsicOp::Positive)
+        {
+            return try_evaluate_constant_float(intrinsic->args[0]);
+        }
+        if (intrinsic->args.size() == 2)
+        {
+            auto lhs = try_evaluate_constant_float(intrinsic->args[0]);
+            auto rhs = try_evaluate_constant_float(intrinsic->args[1]);
+            if (lhs && rhs)
+            {
+                switch (intrinsic->op)
+                {
+                    case IntrinsicOp::Add: return *lhs + *rhs;
+                    case IntrinsicOp::Sub: return *lhs - *rhs;
+                    case IntrinsicOp::Mul: return *lhs * *rhs;
+                    case IntrinsicOp::Div: return *rhs != 0.0f ? std::optional(*lhs / *rhs) : std::nullopt;
+                    default: break;
+                }
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::optional<bool> FhirConstantFolder::try_evaluate_constant_bool(FhirExpr* expr)
+{
+    if (!expr) return std::nullopt;
+
+    if (auto* lit = expr->as<FhirLiteralExpr>())
+    {
+        if (lit->value.kind == LiteralValue::Kind::Bool)
+            return lit->value.boolValue;
+    }
+
+    if (auto* intrinsic = expr->as<FhirIntrinsicExpr>())
+    {
+        if (intrinsic->args.size() == 1 && intrinsic->op == IntrinsicOp::Not)
+        {
+            if (auto inner = try_evaluate_constant_bool(intrinsic->args[0]))
+                return !*inner;
+        }
+        if (intrinsic->args.size() == 2)
+        {
+            if (auto lhsInt = try_evaluate_constant_int(intrinsic->args[0]))
+            {
+                if (auto rhsInt = try_evaluate_constant_int(intrinsic->args[1]))
+                {
+                    switch (intrinsic->op)
+                    {
+                        case IntrinsicOp::Greater:      return *lhsInt > *rhsInt;
+                        case IntrinsicOp::Less:         return *lhsInt < *rhsInt;
+                        case IntrinsicOp::GreaterEqual:  return *lhsInt >= *rhsInt;
+                        case IntrinsicOp::LessEqual:    return *lhsInt <= *rhsInt;
+                        case IntrinsicOp::Equal:        return *lhsInt == *rhsInt;
+                        case IntrinsicOp::NotEqual:     return *lhsInt != *rhsInt;
+                        default: break;
+                    }
+                }
+            }
+
+            if (auto lhsFloat = try_evaluate_constant_float(intrinsic->args[0]))
+            {
+                if (auto rhsFloat = try_evaluate_constant_float(intrinsic->args[1]))
+                {
+                    switch (intrinsic->op)
+                    {
+                        case IntrinsicOp::Greater:      return *lhsFloat > *rhsFloat;
+                        case IntrinsicOp::Less:         return *lhsFloat < *rhsFloat;
+                        case IntrinsicOp::GreaterEqual:  return *lhsFloat >= *rhsFloat;
+                        case IntrinsicOp::LessEqual:    return *lhsFloat <= *rhsFloat;
+                        case IntrinsicOp::Equal:        return *lhsFloat == *rhsFloat;
+                        case IntrinsicOp::NotEqual:     return *lhsFloat != *rhsFloat;
+                        default: break;
+                    }
+                }
+            }
+
+            if (auto lhsBool = try_evaluate_constant_bool(intrinsic->args[0]))
+            {
+                if (auto rhsBool = try_evaluate_constant_bool(intrinsic->args[1]))
+                {
+                    switch (intrinsic->op)
+                    {
+                        case IntrinsicOp::And:      return *lhsBool && *rhsBool;
+                        case IntrinsicOp::Or:       return *lhsBool || *rhsBool;
+                        case IntrinsicOp::Equal:    return *lhsBool == *rhsBool;
+                        case IntrinsicOp::NotEqual: return *lhsBool != *rhsBool;
+                        default: break;
+                    }
                 }
             }
         }
