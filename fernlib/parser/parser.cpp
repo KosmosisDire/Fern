@@ -806,7 +806,8 @@ BaseStmtSyntax* Parser::parse_statement()
         return parse_while();
     }
 
-    if (walker.check(TokenKind::At) || is_modifier(walker.current().kind))
+    if (walker.check(TokenKind::At) || is_modifier(walker.current().kind) ||
+        is_declaration_keyword(walker.current().kind))
     {
         Span modSpan = walker.current().span;
         auto* decl = parse_declaration();
