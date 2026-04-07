@@ -7,6 +7,7 @@
 
 #include <lexer/lexer.hpp>
 #include <parser/parser.hpp>
+#include <ast/validate.hpp>
 #include <token/walker.hpp>
 #include <binder/binder.hpp>
 #include <semantic/fhir/flow.hpp>
@@ -76,7 +77,19 @@ void Compilation::compile()
         }
     }
 
-    // Phase 2: Bind symbols and method bodies
+    // Phase 2: Validate AST structure
+    for (auto& unit : units)
+    {
+        AstValidator validator;
+        validator.validate(unit->ast);
+
+        for (const auto& diag : validator.get_diagnostics())
+        {
+            report(diag);
+        }
+    }
+
+    // Phase 3: Bind symbols and method bodies
     Binder binder(semanticContext, arena);
     for (auto& unit : units)
     {

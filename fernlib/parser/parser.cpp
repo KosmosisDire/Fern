@@ -115,17 +115,6 @@ Modifier Parser::parse_modifiers()
 
 void Parser::attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs)
 {
-    if (!decl->is<TypeDeclSyntax>())
-    {
-        if (has_modifier(mods, Modifier::Ref))
-        {
-            error("'ref' modifier can only be applied to type declarations", modSpan);
-        }
-        if (has_modifier(mods, Modifier::Attr))
-        {
-            error("'attr' modifier can only be applied to type declarations", modSpan);
-        }
-    }
     decl->modifiers = decl->modifiers | mods;
     decl->attributes = std::move(attrs);
     if (mods != Modifier::None)
@@ -241,6 +230,22 @@ BaseDeclSyntax* Parser::parse_declaration()
     else if (walker.check(TokenKind::Namespace))
     {
         decl = parse_namespace_decl();
+    }
+    else if (walker.check(TokenKind::Init))
+    {
+        decl = parse_init_decl();
+    }
+    else if (walker.check(TokenKind::Op))
+    {
+        decl = parse_operator_decl();
+    }
+    else if (walker.check(TokenKind::Literal))
+    {
+        decl = parse_literal_decl();
+    }
+    else if (auto* field = parse_field_decl())
+    {
+        decl = field;
     }
     else
     {
@@ -428,43 +433,10 @@ TypeDeclSyntax* Parser::parse_type_decl()
 
         while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
         {
-            std::vector<AttributeSyntax*> memberAttrs;
-            parse_attributes(memberAttrs);
-
-            Span modSpan = walker.current().span;
-            Modifier mods = parse_modifiers();
-
-            BaseDeclSyntax* member = nullptr;
-
-            if (walker.check(TokenKind::Init))
-            {
-                member = parse_init_decl();
-            }
-            else if (walker.check(TokenKind::Op))
-            {
-                member = parse_operator_decl();
-            }
-            else if (walker.check(TokenKind::Literal))
-            {
-                member = parse_literal_decl();
-            }
-            else if (auto* field = parse_field_decl())
-            {
-                member = field;
-            }
-            else
-            {
-                member = parse_declaration();
-            }
-
+            auto* member = parse_declaration();
             if (member)
             {
-                attach_declaration_metadata(member, mods, modSpan, memberAttrs);
                 typeDecl->declarations.push_back(member);
-            }
-            else if (!memberAttrs.empty())
-            {
-                error("expected a declaration", walker.current().span);
             }
             skip_statement_terminators(walker);
         }
@@ -809,22 +781,7 @@ BaseStmtSyntax* Parser::parse_statement()
     if (walker.check(TokenKind::At) || is_modifier(walker.current().kind) ||
         is_declaration_keyword(walker.current().kind))
     {
-        Span modSpan = walker.current().span;
-        auto* decl = parse_declaration();
-        if (decl && decl->is<VariableDeclSyntax>())
-        {
-            if (!decl->attributes.empty())
-            {
-                error("attributes are not allowed on local variable declarations", decl->attributes.front()->span);
-                decl->attributes.clear();
-            }
-            if (decl->modifiers != Modifier::None)
-            {
-                error("modifiers are not allowed on local variable declarations", modSpan);
-                decl->modifiers = Modifier::None;
-            }
-        }
-        return decl;
+        return parse_declaration();
     }
 
     if (walker.check(TokenKind::Var))

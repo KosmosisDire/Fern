@@ -1,0 +1,272 @@
+-- Valid: top-level type with fields, methods, constructors, operators, literals
+type Vec2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+    }
+
+    init{}
+
+    fn Length() -> f32
+    {
+        return 0.0
+    }
+
+    op +(a: Vec2, b: Vec2) -> Vec2
+    {
+        return Vec2(0.0, 0.0)
+    }
+
+    literal v2(value: i32) -> Vec2
+    {
+        return Vec2(0.0, 0.0)
+    }
+}
+
+-- Valid: top-level namespace with function
+namespace Utils
+{
+    fn Helper() -> i32
+    {
+        return 1
+    }
+}
+
+-- Valid: nested namespace
+namespace Outer
+{
+    namespace Inner
+    {
+        fn Foo() -> i32
+        {
+            return 2
+        }
+    }
+}
+
+-- Valid: nested type inside type
+type Container
+{
+    type Inner
+    {
+        value: i32
+    }
+}
+
+-- Valid: function with local variables, if, while, blocks, initializer lists
+type Program
+{
+    fn Main
+    {
+        var x: i32 = 5
+        var y = 10
+
+        if x > 0
+        {
+            var z = x + y
+        }
+
+        while x > 0
+        {
+            x = x - 1
+        }
+
+        var v = Vec2 { x: 1.0, y: 2.0 }
+        var v2 = Vec2
+        { 
+            x: 1.0,
+            y: 2.0,
+            type Inner
+            {
+                value: i32
+            },
+            op +(a: i32, b: i32) -> i32
+            {
+                return a + b
+            }
+        }
+        var w = Vec2(1.0, 2.0)
+    }
+}
+
+-- Error: constructor at top level
+init()
+{
+}
+
+-- Error: operator at top level
+op +(a: i32, b: i32) -> i32
+{
+    return a + b
+}
+
+-- Error: literal at top level
+literal px(value: i32) -> i32
+{
+    return value
+}
+
+-- Error: field at top level
+topField: i32
+
+-- Error: namespace inside a type
+type BadType1
+{
+    namespace Oops
+    {
+    }
+}
+
+-- Error: constructor inside namespace
+namespace BadNs1
+{
+    init()
+    {
+    }
+}
+
+-- Error: operator inside namespace
+namespace BadNs2
+{
+    op +(a: i32, b: i32) -> i32
+    {
+        return a + b
+    }
+}
+
+-- Error: literal inside namespace
+namespace BadNs3
+{
+    literal px(value: i32) -> i32
+    {
+        return value
+    }
+}
+
+-- Error: field inside namespace
+namespace BadNs4
+{
+    orphanField: i32
+}
+
+-- Error: nested function inside function body
+type NestTest
+{
+    fn Outer
+    {
+        fn Inner() -> i32
+        {
+            return 1
+        }
+    }
+}
+
+-- Error: type inside function body
+type NestTest2
+{
+    fn Outer
+    {
+        type Illegal
+        {
+            value: i32
+        }
+    }
+}
+
+-- Error: constructor inside function body
+type NestTest3
+{
+    fn Outer
+    {
+        init()
+        {
+        }
+    }
+}
+
+-- Error: operator inside function body
+type NestTest4
+{
+    fn Outer
+    {
+        op +(a: i32, b: i32) -> i32
+        {
+            return a + b
+        }
+    }
+}
+
+-- Error: literal inside function body
+type NestTest5
+{
+    fn Outer
+    {
+        literal px(value: i32) -> i32
+        {
+            return value
+        }
+    }
+}
+
+-- Error: field inside function body
+type NestTest6
+{
+    fn Outer
+    {
+        orphan: i32
+    }
+}
+
+-- Error: namespace inside function body
+type NestTest7
+{
+    fn Outer
+    {
+        namespace Nope
+        {
+        }
+    }
+}
+
+-- Error: deeply nested function
+type NestTest8
+{
+    fn Outer
+    {
+        fn Mid() -> i32
+        {
+            fn Deep() -> i32
+            {
+                return 1
+            }
+            return 2
+        }
+    }
+}
+
+-- Error: ref modifier on a function
+ref fn BadModFn() -> i32
+{
+    return 0
+}
+
+-- Error: attr modifier on a function
+attr fn BadModFn2() -> i32
+{
+    return 0
+}
+
+-- Valid: ref modifier on a type
+ref type RefType
+{
+    value: i32
+}
+
+-- Valid: attr modifier on a type
+attr type AttrType
+{
+    value: i32
+}

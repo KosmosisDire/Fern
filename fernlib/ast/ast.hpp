@@ -573,7 +573,11 @@ public:
         if (node->body) node->body->accept(this);
     }
 
-    void visit(TypeDeclSyntax* node) override {}
+    void visit(TypeDeclSyntax* node) override
+    {
+        for (auto& decl : node->declarations)
+            if (decl) decl->accept(this);
+    }
 
     void visit(FieldDeclSyntax* node) override
     {

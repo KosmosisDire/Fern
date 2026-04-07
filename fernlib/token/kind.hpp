@@ -235,7 +235,8 @@ constexpr bool is_declaration_keyword(TokenKind k)
            k == TokenKind::Namespace ||
            k == TokenKind::Fn ||
            k == TokenKind::Init ||
-           k == TokenKind::Op;
+           k == TokenKind::Op ||
+           k == TokenKind::Literal;
 }
 
 constexpr bool is_statement_keyword(TokenKind k)
