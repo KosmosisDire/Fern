@@ -274,7 +274,7 @@ void Binder::check_duplicate_methods(NamedTypeSymbol* type)
         for (size_t j = i + 1; j < type->methods.size(); ++j)
         {
             auto* b = type->methods[j];
-            if (a->name != b->name || a->parameters.size() != b->parameters.size())
+            if (a->callableKind != b->callableKind || a->name != b->name || a->parameters.size() != b->parameters.size())
             {
                 continue;
             }
@@ -414,7 +414,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
                 auto* fhir = bind_value_expr(arg);
                 argTypes.push_back(fhir ? fhir->type : nullptr);
             }
-            ctor = attrType->resolve_constructor(argTypes);
+            ctor = attrType->find_constructor(argTypes);
         }
         else if (auto* initExpr = attr->value->as<InitializerExprSyntax>())
         {
@@ -435,13 +435,13 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             else
             {
                 std::vector<TypeSymbol*> emptyArgs;
-                ctor = attrType->resolve_constructor(emptyArgs);
+                ctor = attrType->find_constructor(emptyArgs);
             }
         }
         else
         {
             std::vector<TypeSymbol*> emptyArgs;
-            ctor = attrType->resolve_constructor(emptyArgs);
+            ctor = attrType->find_constructor(emptyArgs);
             if (!ctor)
             {
                 error("'" + attrType->name + "' must contain a parameterless constructor to construct with only an initializer list", attr->span);

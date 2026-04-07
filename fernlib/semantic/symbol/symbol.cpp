@@ -100,12 +100,54 @@ FieldSymbol* NamedTypeSymbol::find_field(std::string_view name)
     return nullptr;
 }
 
+static bool match_parameters(const std::vector<ParameterSymbol*>& params, const std::vector<TypeSymbol*>& argTypes)
+{
+    if (params.size() != argTypes.size())
+    {
+        return false;
+    }
+    for (size_t i = 0; i < argTypes.size(); ++i)
+    {
+        if (!argTypes[i] || !params[i]->type || argTypes[i] != params[i]->type)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 MethodSymbol* NamedTypeSymbol::find_method(std::string_view name)
 {
     if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
-        if (method->name == name)
+        if (method->callableKind == CallableKind::Function && method->name == name)
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
+MethodSymbol* NamedTypeSymbol::find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
+{
+    if (table) table->ensure_members_populated(this);
+    for (auto* method : methods)
+    {
+        if (method->callableKind == CallableKind::Function && method->name == name && match_parameters(method->parameters, argTypes))
+        {
+            return method;
+        }
+    }
+    return nullptr;
+}
+
+MethodSymbol* NamedTypeSymbol::find_constructor(const std::vector<TypeSymbol*>& argTypes)
+{
+    if (table) table->ensure_members_populated(this);
+    for (auto* method : methods)
+    {
+        if (method->is_constructor() && match_parameters(method->parameters, argTypes))
         {
             return method;
         }
@@ -125,47 +167,7 @@ NamedTypeSymbol* NamedTypeSymbol::find_nested_type(std::string_view name)
     return nullptr;
 }
 
-static bool match_parameters(const std::vector<ParameterSymbol*>& params, const std::vector<TypeSymbol*>& argTypes)
-{
-    if (params.size() != argTypes.size())
-    {
-        return false;
-    }
-    for (size_t i = 0; i < argTypes.size(); ++i)
-    {
-        if (!argTypes[i] || !params[i]->type || argTypes[i] != params[i]->type)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
-MethodSymbol* NamedTypeSymbol::resolve_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
-{
-    if (table) table->ensure_members_populated(this);
-    for (auto* method : methods)
-    {
-        if (method->name == name && match_parameters(method->parameters, argTypes))
-        {
-            return method;
-        }
-    }
-    return nullptr;
-}
-
-MethodSymbol* NamedTypeSymbol::resolve_constructor(const std::vector<TypeSymbol*>& argTypes)
-{
-    if (table) table->ensure_members_populated(this);
-    for (auto* method : methods)
-    {
-        if (method->is_constructor() && match_parameters(method->parameters, argTypes))
-        {
-            return method;
-        }
-    }
-    return nullptr;
-}
 
 MethodSymbol* NamedTypeSymbol::find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType)
 {
@@ -253,7 +255,7 @@ bool NamedTypeSymbol::has_method_with_count(std::string_view name, size_t count)
 {
     for (auto* method : methods)
     {
-        if (method->name == name && method->parameters.size() == count)
+        if (method->callableKind == CallableKind::Function && method->name == name && method->parameters.size() == count)
         {
             return true;
         }

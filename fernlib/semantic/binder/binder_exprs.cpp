@@ -742,7 +742,8 @@ MethodSymbol* Binder::find_closest_overload(NamedTypeSymbol* type, std::string_v
 
     for (auto* method : type->methods)
     {
-        bool nameMatch = isConstructor ? method->is_constructor() : (method->name == name);
+        bool nameMatch = isConstructor ? method->is_constructor()
+            : (method->callableKind == CallableKind::Function && method->name == name);
         if (!nameMatch || method->parameters.size() != argTypes.size())
             continue;
 
@@ -845,7 +846,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto* namedType = calleeSym->as<NamedTypeSymbol>();
         if (namedType)
         {
-            MethodSymbol* ctor = namedType->resolve_constructor(argTypes);
+            MethodSymbol* ctor = namedType->find_constructor(argTypes);
             if (!ctor && !hasErrorArg)
             {
                 report_call_errors(namedType, "", true, argTypes, expr);
@@ -905,7 +906,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 
     if (targetType && !methodName.empty())
     {
-        method = targetType->resolve_method(methodName, argTypes);
+        method = targetType->find_method(methodName, argTypes);
         if (!method)
         {
             if (!hasErrorArg)
@@ -957,7 +958,7 @@ FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
     auto* namedType = sym ? sym->as<NamedTypeSymbol>() : nullptr;
     if (namedType)
     {
-        MethodSymbol* ctor = namedType->resolve_constructor({});
+        MethodSymbol* ctor = namedType->find_constructor({});
         if (ctor)
         {
             return fhir.object_create(expr->target, namedType, ctor, {});
@@ -1026,7 +1027,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        if (!namedType->resolve_constructor({}))
+        if (!namedType->find_constructor({}))
         {
             error("type '" + format_type_name(namedType) + "' has no default constructor", idExpr->span);
         }
@@ -1071,7 +1072,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        if (!namedType->resolve_constructor({}))
+        if (!namedType->find_constructor({}))
         {
             error("type '" + format_type_name(namedType) + "' has no default constructor", memberExpr->span);
         }
@@ -1085,7 +1086,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        if (!namedType->resolve_constructor({}))
+        if (!namedType->find_constructor({}))
         {
             error("type '" + format_type_name(namedType) + "' has no default constructor", genericExpr->span);
         }
@@ -1256,7 +1257,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             countLit->value = LiteralValue::make_int(0);
 
             std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
-            auto* ctor = expectedNamed->resolve_constructor(ctorArgTypes);
+            auto* ctor = expectedNamed->find_constructor(ctorArgTypes);
             if (!ctor)
             {
                 error("Core.Array has no constructor taking i32", expr->span);
@@ -1340,7 +1341,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     countLit->value = LiteralValue::make_int(count);
 
     std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
-    auto* ctor = arrayType->resolve_constructor(ctorArgTypes);
+    auto* ctor = arrayType->find_constructor(ctorArgTypes);
     if (!ctor)
     {
         error("Core.Array has no constructor taking i32", expr->span);

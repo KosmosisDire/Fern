@@ -158,10 +158,9 @@ struct NamedTypeSymbol : TypeSymbol
 
     FieldSymbol* find_field(std::string_view name);
     MethodSymbol* find_method(std::string_view name);
+    MethodSymbol* find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
+    MethodSymbol* find_constructor(const std::vector<TypeSymbol*>& argTypes);
     NamedTypeSymbol* find_nested_type(std::string_view name);
-
-    MethodSymbol* resolve_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
-    MethodSymbol* resolve_constructor(const std::vector<TypeSymbol*>& argTypes);
     MethodSymbol* find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
     MethodSymbol* find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
     MethodSymbol* find_index_getter(TypeSymbol* indexType);
