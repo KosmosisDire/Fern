@@ -411,7 +411,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             std::vector<TypeSymbol*> argTypes;
             for (auto* arg : callExpr->arguments)
             {
-                auto* fhir = bind_expr(arg);
+                auto* fhir = bind_value_expr(arg);
                 argTypes.push_back(fhir ? fhir->type : nullptr);
             }
             ctor = attrType->resolve_constructor(argTypes);

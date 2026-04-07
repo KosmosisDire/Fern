@@ -1,0 +1,321 @@
+
+namespace Math
+{
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    init{}
+
+    fn Length() -> f32
+    {
+        return 1.0
+    }
+
+    fn Add(other: Vector2) -> Vector2
+    {
+        return Vector2(this.x + other.x, this.y + other.y)
+    }
+}
+}
+
+type Helpers
+{
+    fn TakesTwo(a: i32, b: i32) -> i32
+    {
+        return a + b
+    }
+
+    fn TakesBool(b: bool) -> bool
+    {
+        return b
+    }
+}
+
+type Program
+{
+    -- ================================================================
+    -- CATEGORY 1: Resolution errors
+    -- ================================================================
+
+    -- 1a: Undefined name (standalone)
+    fn Test_UndefinedName
+    {
+        var x = totally_undefined
+    }
+
+    -- 1b: Undefined name in namespace member access
+    fn Test_NamespaceNoMember
+    {
+        var x = Math.NonExistent
+    }
+
+    -- 1c: Type has no member
+    fn Test_TypeNoMember
+    {
+        var v = Math.Vector2(1.0, 2.0)
+        var x = v.nonexistent_field
+    }
+
+    -- 1d: Undefined type annotation
+    fn Test_UndefinedType
+    {
+        var x: NonExistentType = 1
+    }
+
+    -- ================================================================
+    -- CATEGORY 2: Wrong symbol kind
+    -- ================================================================
+
+    -- 2a: Type used as value (standalone)
+    fn Test_TypeAsValue
+    {
+        var x = Helpers
+    }
+
+    -- 2b: Namespace used as value (standalone)
+    fn Test_NamespaceAsValue
+    {
+        var x = Math
+    }
+
+    -- 2c: 'this' outside type
+    -- (cannot test easily - would need top-level code)
+
+    -- ================================================================
+    -- CATEGORY 3: Type mismatches
+    -- ================================================================
+
+    -- 3a: If condition not bool
+    fn Test_IfNotBool
+    {
+        if (1)
+        {
+            var y = 1
+        }
+    }
+
+    -- 3b: While condition not bool
+    fn Test_WhileNotBool
+    {
+        while (1)
+        {
+            var y = 1
+        }
+    }
+
+    -- 3c: Return type mismatch
+    fn Test_ReturnMismatch -> i32
+    {
+        return 1.0
+    }
+
+    -- ================================================================
+    -- CATEGORY 4: Operator errors
+    -- ================================================================
+
+    -- 4a: Binary operator not found
+    fn Test_BinaryOpNotFound
+    {
+        var v = Math.Vector2(1.0, 2.0)
+        var x = v + v
+    }
+
+    -- 4b: Unary operator not found
+    fn Test_UnaryOpNotFound
+    {
+        var b = true
+        var x = -b
+    }
+
+    -- ================================================================
+    -- CATEGORY 5: Call errors
+    -- ================================================================
+
+    -- 5a: Wrong number of args to constructor
+    fn Test_CtorWrongArgCount
+    {
+        var v = Math.Vector2(1.0, 2.0, 3.0)
+    }
+
+    -- 5b: Wrong type of args to method
+    fn Test_MethodWrongArgType
+    {
+        var x = Helpers.TakesTwo(1.0, 2)
+    }
+
+    -- 5c: Cannot call non-function
+    fn Test_CallNonFunction
+    {
+        var x = 5
+        var y = x(1, 2)
+    }
+
+    -- 5d: Namespace function doesn't exist (call)
+    fn Test_CallNonExistentNamespaceMember
+    {
+        var x = Math.Foo(1, 2)
+    }
+
+    -- ================================================================
+    -- CATEGORY 6: Index errors
+    -- ================================================================
+
+    -- 6a: Cannot index a non-indexable type
+    fn Test_IndexNonIndexable
+    {
+        var v = Math.Vector2(1.0, 2.0)
+        var x = v[0]
+    }
+
+    -- ================================================================
+    -- CATEGORY 7: Initializer errors
+    -- ================================================================
+
+    -- 7a: Initializer on non-type
+    fn Test_InitializerNonType
+    {
+        var x = 5
+        var y = x { }
+    }
+
+    -- 7b: Initializer with wrong field name
+    fn Test_InitializerWrongField
+    {
+        var v = Math.Vector2 { z: 1.0 }
+    }
+
+    -- 7c: Duplicate field in initializer
+    fn Test_InitializerDuplicateField
+    {
+        var v = Math.Vector2 { x: 1.0, x: 2.0 }
+    }
+
+    -- ================================================================
+    -- CATEGORY 8: Cascade suppression tests
+    -- Each should produce EXACTLY ONE error (the root cause)
+    -- ================================================================
+
+    -- 8a: Undefined + binary (no "operator cannot be applied")
+    fn Test_Cascade_Binary
+    {
+        var a = undefined_a + undefined_b
+    }
+
+    -- 8b: Undefined in if condition (no "must be bool")
+    fn Test_Cascade_If
+    {
+        if (undefined_cond)
+        {
+            var y = 1
+        }
+    }
+
+    -- 8c: Undefined in while condition (no "must be bool")
+    fn Test_Cascade_While
+    {
+        while (undefined_cond2)
+        {
+            var y = 1
+        }
+    }
+
+    -- 8d: Undefined arg in call (no overload noise)
+    fn Test_Cascade_CallArg
+    {
+        var v = Math.Vector2(1.0, undefined_arg)
+    }
+
+    -- 8e: Method call on undefined receiver (no "has no member")
+    fn Test_Cascade_MemberAccess
+    {
+        var x = undefined_obj.Length()
+    }
+
+    -- 8f: Unary on undefined (no "operator cannot be applied")
+    fn Test_Cascade_Unary
+    {
+        var x = -undefined_val
+    }
+
+    -- 8g: Index on undefined (no "cannot index")
+    fn Test_Cascade_Index
+    {
+        var x = undefined_arr[0]
+    }
+
+    -- 8h: Chained error - undefined used in binary, then in if
+    fn Test_Cascade_Chain
+    {
+        var a = undefined_chain + 1
+        if (a)
+        {
+            var y = 1
+        }
+    }
+
+    -- 8i: Two independent errors on same line
+    fn Test_Cascade_TwoIndependent
+    {
+        var x = Helpers.TakesTwo(undefined_1, undefined_2)
+    }
+
+    -- ================================================================
+    -- CATEGORY 9: Valid code (should produce no errors)
+    -- ================================================================
+
+    fn Test_Valid_Constructor
+    {
+        var v = Math.Vector2(1.0, 2.0)
+    }
+
+    fn Test_Valid_InitializerList
+    {
+        var v = Math.Vector2 { x: 1.0, y: 2.0 }
+    }
+
+    fn Test_Valid_MethodCall
+    {
+        var v = Math.Vector2(1.0, 2.0)
+        var len = v.Length()
+    }
+
+    fn Test_Valid_Arithmetic
+    {
+        var x = 1 + 2 * 3
+        var y = 1.0 - 2.0
+    }
+
+    fn Test_Valid_If
+    {
+        if (true)
+        {
+            var x = 1
+        }
+    }
+
+    fn Test_Valid_While
+    {
+        while (false)
+        {
+            var x = 1
+        }
+    }
+
+    fn Test_Valid_ArrayLiteral
+    {
+        var arr: i32[] = [1, 2, 3]
+    }
+
+    fn Test_Valid_Return -> i32
+    {
+        return 42
+    }
+}

@@ -1,14 +1,27 @@
 
+namespace Math
+{
+    type Vector2
+    {
+        x: f32
+        y: f32
+
+        init(x: f32, y: f32)
+        {
+            this.x = x
+            this.y = y
+        }
+
+        init{}
+    }
+}
+
 type Program
 {
-
     fn Main
     {
-        var s = "Hello, World!"
-        var c = s[3]
-        var c2 = '\t'
-
-        var chars: char[] = ['a', '\t', 'c']
-        var picked = chars[1]
+        var v1 = Math.Vector2(1.0, 2.0)
+        var v2 = Math.Vector2 { x: 3.0, y: 4.0 }
+        var v3 = Math.Vector2(1.0, 2.0) { x: 3.0, y: 4.0 }
     }
 }

@@ -34,6 +34,7 @@ struct FhirCallExpr;
 struct FhirMethodCallExpr;
 struct FhirObjectCreateExpr;
 struct FhirAssignExpr;
+struct FhirErrorExpr;
 
 struct FhirBlock;
 
@@ -173,6 +174,7 @@ public:
     virtual void visit(FhirMethodCallExpr* node) = 0;
     virtual void visit(FhirObjectCreateExpr* node) = 0;
     virtual void visit(FhirAssignExpr* node) = 0;
+    virtual void visit(FhirErrorExpr* node) = 0;
 
     virtual void visit(FhirBlock* node) = 0;
     virtual void visit(FhirVarDeclStmt* node) = 0;
@@ -219,6 +221,7 @@ struct FhirExpr : FhirNode
 {
     TypeSymbol* type = nullptr;
     FhirExpr(int k) : FhirNode(k) {}
+    bool is_error() const { return is<FhirErrorExpr>(); }
 };
 
 struct FhirStmt : FhirNode
@@ -339,6 +342,11 @@ struct FhirAssignExpr : FhirExpr
     }
 };
 
+struct FhirErrorExpr : FhirExpr
+{
+    FHIR_NODE(FhirErrorExpr, FhirExpr)
+};
+
 #pragma region Block
 
 struct FhirBlock : FhirNode
@@ -448,6 +456,7 @@ public:
     void visit(FhirMethodCallExpr* node) override { node->visit_children(this); }
     void visit(FhirObjectCreateExpr* node) override { node->visit_children(this); }
     void visit(FhirAssignExpr* node) override { node->visit_children(this); }
+    void visit(FhirErrorExpr* node) override {}
 
     void visit(FhirBlock* node) override { node->visit_children(this); }
     void visit(FhirVarDeclStmt* node) override { node->visit_children(this); }

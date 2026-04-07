@@ -111,6 +111,11 @@ void FhirFormatter::visit(FhirAssignExpr* node)
     write_child(node->value);
 }
 
+void FhirFormatter::visit(FhirErrorExpr* node)
+{
+    out << "<error>";
+}
+
 void FhirFormatter::visit(FhirBlock* node)
 {
     out << "\n";

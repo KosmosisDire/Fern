@@ -110,6 +110,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     else if (auto* suffixExpr = expr->as<LiteralSuffixExprSyntax>())
         result = bind_suffixed_literal(suffixExpr, expected);
 
+    if (result && result->is_error()) return result;
+
     if (expected && result && result->type && result->type != expected)
     {
         error("expected '" + format_type_name(expected) +
@@ -117,6 +119,30 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     }
 
     return result;
+}
+
+FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
+{
+    FhirExpr* result = bind_expr(expr, expected);
+    if (result) return result;
+    if (!expr) return nullptr;
+
+    if (auto* id = expr->as<IdentifierExprSyntax>())
+    {
+        Symbol* sym = resolve_name(id->name.lexeme);
+        if (sym)
+        {
+            if (sym->kind == SymbolKind::Type)
+                error("'" + std::string(id->name.lexeme) + "' is a type, not a value", expr->span);
+            else if (sym->kind == SymbolKind::Namespace)
+                error("'" + std::string(id->name.lexeme) + "' is a namespace, not a value", expr->span);
+            else if (sym->kind == SymbolKind::Method)
+                error("'" + std::string(id->name.lexeme) + "' is a method, not a value", expr->span);
+            return fhir.error_expr(expr);
+        }
+    }
+
+    return nullptr;
 }
 
 std::string Binder::process_escape_sequences(std::string_view raw, const Span& span)
@@ -200,7 +226,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
 
 FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected)
 {
-    auto* operand = bind_expr(expr->operand);
+    auto* operand = bind_value_expr(expr->operand);
     if (!operand) return nullptr;
 
     auto* method = resolve_literal_suffix(expr->suffix.lexeme, operand->type, expected, expr->suffix.span);
@@ -356,30 +382,36 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
     if (!symbol)
     {
         error("undefined name '" + std::string(expr->name.lexeme) + "'", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
+    // A null type on a value symbol means its type failed to resolve upstream
+    // (e.g. unresolved type annotation, or inferred from an error expression).
+    // That error was already reported, so we propagate poison to prevent cascades.
     switch (symbol->kind)
     {
         case SymbolKind::Local:
-            return fhir.local_ref(expr, symbol->as<LocalSymbol>());
+        {
+            auto* local = symbol->as<LocalSymbol>();
+            if (!local->type) return fhir.error_expr(expr);
+            return fhir.local_ref(expr, local);
+        }
         case SymbolKind::Parameter:
-            return fhir.param_ref(expr, symbol->as<ParameterSymbol>());
+        {
+            auto* param = symbol->as<ParameterSymbol>();
+            if (!param->type) return fhir.error_expr(expr);
+            return fhir.param_ref(expr, param);
+        }
         case SymbolKind::Field:
         {
             auto* fieldSym = symbol->as<FieldSymbol>();
+            if (!fieldSym->type) return fhir.error_expr(expr);
             auto* thisType = symbol->parent ? symbol->parent->as<TypeSymbol>() : nullptr;
             return fhir.field_access(expr, fhir.this_expr(expr, thisType), fieldSym);
         }
         case SymbolKind::Type:
-            error("'" + std::string(expr->name.lexeme) + "' is a type, not a value", expr->span);
-            return nullptr;
         case SymbolKind::Namespace:
-            error("'" + std::string(expr->name.lexeme) + "' is a namespace, not a value", expr->span);
-            return nullptr;
         case SymbolKind::Method:
-            error("'" + std::string(expr->name.lexeme) + "' is a method, not a value", expr->span);
-            return nullptr;
         default:
             return nullptr;
     }
@@ -390,7 +422,7 @@ FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
     if (!currentType)
     {
         error("'this' can only be used inside a type", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     return fhir.this_expr(expr, currentType);
@@ -398,7 +430,7 @@ FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
 
 FhirExpr* Binder::bind_paren(ParenExprSyntax* expr)
 {
-    return bind_expr(expr->expression);
+    return bind_value_expr(expr->expression);
 }
 
 FhirExpr* Binder::bind_generic_type_expr(GenericTypeExprSyntax* expr)
@@ -409,7 +441,9 @@ FhirExpr* Binder::bind_generic_type_expr(GenericTypeExprSyntax* expr)
 
 FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 {
-    FhirExpr* operand = bind_expr(expr->operand);
+    FhirExpr* operand = bind_value_expr(expr->operand);
+    if (operand && operand->is_error()) return fhir.error_expr(expr);
+
     TypeSymbol* operandType = operand ? operand->type : nullptr;
 
     auto* namedType = operandType ? operandType->as<NamedTypeSymbol>() : nullptr;
@@ -427,6 +461,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 
         error("operator '" + std::string(Fern::format(opToken)) +
               "' cannot be applied to value of type '" + format_type_name(namedType) + "'", expr->span);
+        return fhir.error_expr(expr);
     }
 
     return fhir.intrinsic(expr, operandType, to_intrinsic_op(expr->op), {operand});
@@ -434,8 +469,8 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 
 FhirExpr* Binder::bind_binary(BinaryExprSyntax* expr)
 {
-    FhirExpr* lhs = bind_expr(expr->left);
-    FhirExpr* rhs = bind_expr(expr->right);
+    FhirExpr* lhs = bind_value_expr(expr->left);
+    FhirExpr* rhs = bind_value_expr(expr->right);
     return bind_binary_op(expr->op, lhs, rhs, expr);
 }
 
@@ -490,18 +525,22 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
         }
 
         error(msg, syntax->span);
-        return nullptr;
+        return fhir.error_expr(syntax);
     }
 
     std::string leftName = format_type_name(leftType);
     std::string rightName = format_type_name(rightType);
     error("operator '" + std::string(Fern::format(opToken)) +
           "' cannot be applied to values of type '" + leftName + "' and '" + rightName + "'", syntax->span);
-    return nullptr;
+    return fhir.error_expr(syntax);
 }
 
 FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax)
 {
+    bool lhsError = lhs && lhs->is_error();
+    bool rhsError = rhs && rhs->is_error();
+    if (lhsError || rhsError) return fhir.error_expr(syntax);
+
     TypeSymbol* leftType = lhs ? lhs->type : nullptr;
     TypeSymbol* rightType = rhs ? rhs->type : nullptr;
 
@@ -529,9 +568,14 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
 {
     if (auto* indexExpr = expr->target->as<IndexExprSyntax>())
     {
-        FhirExpr* object = bind_expr(indexExpr->object);
-        FhirExpr* index = bind_expr(indexExpr->index);
-        FhirExpr* value = bind_expr(expr->value);
+        FhirExpr* object = bind_value_expr(indexExpr->object);
+        FhirExpr* index = bind_value_expr(indexExpr->index);
+        FhirExpr* value = bind_value_expr(expr->value);
+
+        if ((object && object->is_error()) || (index && index->is_error()) || (value && value->is_error()))
+        {
+            return fhir.error_expr(expr);
+        }
 
         if (expr->op != AssignOp::Simple)
         {
@@ -556,7 +600,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         if (!namedType)
         {
             error("cannot index a value of type '" + format_type_name(objectType) + "'", expr->span);
-            return nullptr;
+            return fhir.error_expr(expr);
         }
 
         auto* method = namedType->find_index_setter(indexType, valueType);
@@ -565,21 +609,21 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
             error("type '" + format_type_name(namedType) +
                   "' has no 'op []=' for index type '" + format_type_name(indexType) +
                   "' and value type '" + format_type_name(valueType) + "'", expr->span);
-            return nullptr;
+            return fhir.error_expr(expr);
         }
 
         return fhir.call(expr, method->get_return_type(), method, {object, index, value});
     }
 
-    FhirExpr* writeTarget = bind_expr(expr->target);
+    FhirExpr* writeTarget = bind_value_expr(expr->target);
     TypeSymbol* targetType = writeTarget ? writeTarget->type : nullptr;
-    FhirExpr* value = bind_expr(expr->value, targetType);
+    FhirExpr* value = bind_value_expr(expr->value, targetType);
 
     // Compound assignments (+=, -=, etc.) desugar to target = target op value,
     // binding the target twice: once for reading the current value, once for the write
     if (expr->op != AssignOp::Simple)
     {
-        FhirExpr* readTarget = bind_expr(expr->target);
+        FhirExpr* readTarget = bind_value_expr(expr->target);
 
         BinaryOp binOp = BinaryOp::Add;
         switch (expr->op)
@@ -598,77 +642,81 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
 
 FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 {
-    FhirExpr* left = bind_expr(expr->left);
-    TypeSymbol* leftType = left ? left->type : nullptr;
-
     std::string_view memberName = expr->right.lexeme;
     if (memberName.empty())
     {
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
+    Symbol* leftSym = resolve_expr_symbol(expr->left);
+
+    if (auto* ns = leftSym ? leftSym->as<NamespaceSymbol>() : nullptr)
+    {
+        Symbol* member = ns->find_member(memberName);
+        if (member)
+        {
+            return nullptr;
+        }
+
+        error("namespace '" + ns->name + "' has no member '" +
+              std::string(memberName) + "'", expr->span);
+        return fhir.error_expr(expr);
+    }
+
+    if (auto* typeRef = leftSym ? leftSym->as<NamedTypeSymbol>() : nullptr)
+    {
+        if (auto* nested = typeRef->find_nested_type(memberName))
+        {
+            return nullptr;
+        }
+
+        if (auto* field = typeRef->find_field(memberName))
+        {
+            if (!has_modifier(field->modifiers, Modifier::Static))
+            {
+                error("cannot access instance field '" + std::string(memberName) +
+                      "' on type '" + format_type_name(typeRef) + "'", expr->span);
+                return fhir.error_expr(expr, field->type);
+            }
+            return fhir.field_access(expr, nullptr, field);
+        }
+
+        if (auto* method = typeRef->find_method(memberName))
+        {
+            if (!has_modifier(method->modifiers, Modifier::Static))
+            {
+                error("cannot access instance method '" + std::string(memberName) +
+                      "' on type '" + format_type_name(typeRef) + "'", expr->span);
+                return fhir.error_expr(expr);
+            }
+            return nullptr;
+        }
+
+        error("type '" + format_type_name(typeRef) + "' has no member '" +
+              std::string(memberName) + "'", expr->span);
+        return fhir.error_expr(expr);
+    }
+
+    FhirExpr* left = bind_expr(expr->left);
+    if (left && left->is_error())
+    {
+        return fhir.error_expr(expr);
+    }
+
+    TypeSymbol* leftType = left ? left->type : nullptr;
     if (!leftType)
     {
-        Symbol* leftSym = resolve_expr_symbol(expr->left);
-
-        if (auto* ns = leftSym ? leftSym->as<NamespaceSymbol>() : nullptr)
-        {
-            Symbol* member = ns->find_member(memberName);
-            if (member)
-            {
-                return nullptr;
-            }
-
-            error("namespace '" + ns->name + "' has no member '" +
-                  std::string(memberName) + "'", expr->span);
-            return nullptr;
-        }
-
-        if (auto* typeRef = leftSym ? leftSym->as<NamedTypeSymbol>() : nullptr)
-        {
-            if (auto* nested = typeRef->find_nested_type(memberName))
-            {
-                return nullptr;
-            }
-
-            if (auto* field = typeRef->find_field(memberName))
-            {
-                if (!has_modifier(field->modifiers, Modifier::Static))
-                {
-                    error("cannot access instance field '" + std::string(memberName) +
-                          "' on type '" + format_type_name(typeRef) + "'", expr->span);
-                    return nullptr;
-                }
-                return fhir.field_access(expr, nullptr, field);
-            }
-
-            if (auto* method = typeRef->find_method(memberName))
-            {
-                if (!has_modifier(method->modifiers, Modifier::Static))
-                {
-                    error("cannot access instance method '" + std::string(memberName) +
-                          "' on type '" + format_type_name(typeRef) + "'", expr->span);
-                    return nullptr;
-                }
-                return nullptr;
-            }
-
-            error("type '" + format_type_name(typeRef) + "' has no member '" +
-                  std::string(memberName) + "'", expr->span);
-            return nullptr;
-        }
-
         if (leftSym)
         {
             error("'" + leftSym->name + "' is not a namespace or type", expr->span);
         }
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     auto* namedType = leftType->as<NamedTypeSymbol>();
     if (!namedType)
     {
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     if (auto* field = namedType->find_field(memberName))
@@ -683,7 +731,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 
     error("type '" + format_type_name(namedType) + "' has no member '" +
           std::string(memberName) + "'", expr->span);
-    return nullptr;
+    return fhir.error_expr(expr);
 }
 
 MethodSymbol* Binder::find_closest_overload(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
@@ -776,11 +824,20 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 
     std::vector<FhirExpr*> argExprs;
     std::vector<TypeSymbol*> argTypes;
+    bool hasErrorArg = false;
     for (auto* arg : expr->arguments)
     {
-        FhirExpr* bound = bind_expr(arg);
+        FhirExpr* bound = bind_value_expr(arg);
         argExprs.push_back(bound);
-        argTypes.push_back(bound ? bound->type : nullptr);
+        if (bound && bound->is_error())
+        {
+            hasErrorArg = true;
+            argTypes.push_back(nullptr);
+        }
+        else
+        {
+            argTypes.push_back(bound ? bound->type : nullptr);
+        }
     }
 
     if (calleeSym && calleeSym->kind == SymbolKind::Type)
@@ -789,7 +846,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         if (namedType)
         {
             MethodSymbol* ctor = namedType->resolve_constructor(argTypes);
-            if (!ctor)
+            if (!ctor && !hasErrorArg)
             {
                 report_call_errors(namedType, "", true, argTypes, expr);
             }
@@ -813,6 +870,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         else if (calleeSym)
         {
             error("'" + std::string(idExpr->name.lexeme) + "' cannot be called as a function", idExpr->span);
+            return fhir.error_expr(expr);
         }
     }
     else if (auto* memberExpr = expr->callee->as<MemberAccessExprSyntax>())
@@ -826,6 +884,10 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         else
         {
             receiver = bind_expr(memberExpr->left);
+            if (receiver && receiver->is_error())
+            {
+                return fhir.error_expr(expr);
+            }
             TypeSymbol* leftType = receiver ? receiver->type : nullptr;
             auto* namedLeft = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
             if (namedLeft)
@@ -836,6 +898,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             else if (calleeSym)
             {
                 error("'" + std::string(memberExpr->right.lexeme) + "' cannot be called as a function", memberExpr->span);
+                return fhir.error_expr(expr);
             }
         }
     }
@@ -845,18 +908,35 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         method = targetType->resolve_method(methodName, argTypes);
         if (!method)
         {
-            report_call_errors(targetType, methodName, false, argTypes, expr);
+            if (!hasErrorArg)
+            {
+                report_call_errors(targetType, methodName, false, argTypes, expr);
+            }
+            return fhir.error_expr(expr);
         }
     }
 
-    TypeSymbol* returnType = method ? method->get_return_type() : nullptr;
+    if (!method)
+    {
+        if (!calleeSym)
+        {
+            FhirExpr* calleeExpr = bind_value_expr(expr->callee);
+            if (calleeExpr && !calleeExpr->is_error())
+            {
+                error("expression cannot be called as a function", expr->callee->span);
+            }
+        }
+        return fhir.error_expr(expr);
+    }
 
-    if (method && method->is_constructor())
+    TypeSymbol* returnType = method->get_return_type();
+
+    if (method->is_constructor())
     {
         return fhir.object_create(expr, returnType, method, std::move(argExprs));
     }
 
-    if (receiver && method && !has_modifier(method->modifiers, Modifier::Static))
+    if (receiver && !has_modifier(method->modifiers, Modifier::Static))
     {
         return fhir.method_call(expr, returnType, receiver, method, std::move(argExprs));
     }
@@ -884,7 +964,7 @@ FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
         }
     }
 
-    return bind_expr(expr->target);
+    return bind_value_expr(expr->target);
 }
 
 FhirExpr* Binder::build_field_access_chain(FhirExpr* receiver, BaseExprSyntax* target)
@@ -918,14 +998,14 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         {
             if (auto* fieldInit = member->as<FieldInitSyntax>())
             {
-                bind_expr(fieldInit->value);
+                bind_value_expr(fieldInit->value);
             }
             else if (auto* childStmt = member->as<ExpressionStmtSyntax>())
             {
-                bind_expr(childStmt->expression);
+                bind_value_expr(childStmt->expression);
             }
         }
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     NamedTypeSymbol* namedType = nullptr;
@@ -936,14 +1016,14 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         if (!sym)
         {
             error("undefined name '" + std::string(idExpr->name.lexeme) + "'", idExpr->span);
-            return nullptr;
+            return fhir.error_expr(expr);
         }
 
         namedType = sym->as<NamedTypeSymbol>();
         if (!namedType)
         {
             error("initializer lists can only be applied to a type or constructor call", idExpr->span);
-            return nullptr;
+            return fhir.error_expr(expr);
         }
 
         if (!namedType->resolve_constructor({}))
@@ -954,6 +1034,10 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     else if (auto* callExpr = expr->target->as<CallExprSyntax>())
     {
         FhirExpr* callResult = bind_call(callExpr);
+        if (callResult && callResult->is_error())
+        {
+            return fhir.error_expr(expr);
+        }
         TypeSymbol* callType = callResult ? callResult->type : nullptr;
         namedType = callType ? callType->as<NamedTypeSymbol>() : nullptr;
 
@@ -971,13 +1055,34 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             }
         }
     }
+    else if (auto* memberExpr = expr->target->as<MemberAccessExprSyntax>())
+    {
+        Symbol* sym = resolve_expr_symbol(memberExpr);
+        if (!sym)
+        {
+            error("undefined name '" + std::string(memberExpr->right.lexeme) + "'", memberExpr->span);
+            return fhir.error_expr(expr);
+        }
+
+        namedType = sym->as<NamedTypeSymbol>();
+        if (!namedType)
+        {
+            error("initializer lists can only be applied to a type or constructor call", memberExpr->span);
+            return fhir.error_expr(expr);
+        }
+
+        if (!namedType->resolve_constructor({}))
+        {
+            error("type '" + format_type_name(namedType) + "' has no default constructor", memberExpr->span);
+        }
+    }
     else if (auto* genericExpr = expr->target->as<GenericTypeExprSyntax>())
     {
         TypeSymbol* type = resolve_generic_type(genericExpr);
         namedType = type ? type->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            return nullptr;
+            return fhir.error_expr(expr);
         }
 
         if (!namedType->resolve_constructor({}))
@@ -988,7 +1093,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     else
     {
         error("initializer lists can only be applied to a type or constructor call", expr->target->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     if (!namedType)
@@ -997,14 +1102,14 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         {
             if (auto* fieldInit = member->as<FieldInitSyntax>())
             {
-                bind_expr(fieldInit->value);
+                bind_value_expr(fieldInit->value);
             }
             else if (auto* childStmt = member->as<ExpressionStmtSyntax>())
             {
-                bind_expr(childStmt->expression);
+                bind_value_expr(childStmt->expression);
             }
         }
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     if (expr->members.empty())
@@ -1020,7 +1125,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     if (!pendingStmts)
     {
         error("initializer lists are not yet supported outside of method bodies", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     auto tempPtr = std::make_unique<LocalSymbol>();
@@ -1045,7 +1150,7 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
         {
             if (auto* childStmt = member->as<ExpressionStmtSyntax>())
             {
-                bind_expr(childStmt->expression);
+                bind_value_expr(childStmt->expression);
             }
             continue;
         }
@@ -1063,11 +1168,11 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
             if (receiver)
             {
                 FhirExpr* fieldTarget = build_field_access_chain(receiver, fieldInit->target);
-                out.push_back(fhir.expr_stmt(fieldInit, fhir.assign(fieldInit, fieldTarget, bind_expr(fieldInit->value))));
+                out.push_back(fhir.expr_stmt(fieldInit, fhir.assign(fieldInit, fieldTarget, bind_value_expr(fieldInit->value))));
             }
             else
             {
-                bind_expr(fieldInit->value);
+                bind_value_expr(fieldInit->value);
             }
         }
     }
@@ -1155,7 +1260,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             if (!ctor)
             {
                 error("Core.Array has no constructor taking i32", expr->span);
-                return nullptr;
+                return fhir.error_expr(expr);
             }
 
             return fhir.object_create(expr, expectedNamed, ctor, {countLit});
@@ -1167,7 +1272,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     if (!pendingStmts)
     {
         error("array literals are not supported outside of method bodies", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     TypeSymbol* expectedElementType = nullptr;
@@ -1182,8 +1287,11 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     std::vector<FhirExpr*> elements;
     for (auto* elem : expr->elements)
     {
-        elements.push_back(bind_expr(elem, expectedElementType));
+        elements.push_back(bind_value_expr(elem, expectedElementType));
     }
+
+    bool hasErrorElement = std::any_of(elements.begin(), elements.end(),
+        [](auto* e) { return e && e->is_error(); });
 
     TypeSymbol* elementType = expectedElementType;
     if (!elementType)
@@ -1191,6 +1299,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
         for (auto* elem : elements)
         {
             if (!elem || !elem->type) continue;
+            if (elem->is_error()) continue;
             if (!elementType)
             {
                 elementType = elem->type;
@@ -1206,8 +1315,11 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
     if (!elementType)
     {
-        error("cannot infer element type for array literal", expr->span);
-        return nullptr;
+        if (!hasErrorElement)
+        {
+            error("cannot infer element type for array literal", expr->span);
+        }
+        return fhir.error_expr(expr);
     }
 
     auto* coreNs = context.symbols.globalNamespace->find_namespace("Core");
@@ -1215,7 +1327,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     if (!arrayTemplate)
     {
         error("Core.Array type not found", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     auto* arrayType = context.symbols.get_or_create_instantiation(arrayTemplate, {elementType});
@@ -1232,7 +1344,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     if (!ctor)
     {
         error("Core.Array has no constructor taking i32", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     auto* createExpr = fhir.object_create(expr, arrayType, ctor, {countLit});
@@ -1249,7 +1361,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     {
         error("Core.Array has no 'op []=' for element type '" +
               format_type_name(elementType) + "'", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     for (int i = 0; i < count; ++i)
@@ -1267,8 +1379,13 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
 FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
 {
-    FhirExpr* object = bind_expr(expr->object);
-    FhirExpr* index = bind_expr(expr->index);
+    FhirExpr* object = bind_value_expr(expr->object);
+    FhirExpr* index = bind_value_expr(expr->index);
+
+    if ((object && object->is_error()) || (index && index->is_error()))
+    {
+        return fhir.error_expr(expr);
+    }
 
     TypeSymbol* objectType = object ? object->type : nullptr;
     TypeSymbol* indexType = index ? index->type : nullptr;
@@ -1277,7 +1394,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     if (!namedType)
     {
         error("cannot index a value of type '" + format_type_name(objectType) + "'", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     auto* method = namedType->find_index_getter(indexType);
@@ -1285,7 +1402,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     {
         error("type '" + format_type_name(namedType) +
               "' has no 'op []' for index type '" + format_type_name(indexType) + "'", expr->span);
-        return nullptr;
+        return fhir.error_expr(expr);
     }
 
     return fhir.call(expr, method->get_return_type(), method, {object, index});

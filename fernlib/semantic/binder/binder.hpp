@@ -104,6 +104,7 @@ private:
 #pragma region Expression Binding
 
     FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_literal(LiteralExprSyntax* expr);
     FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
@@ -140,6 +141,7 @@ private:
     void bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out);
     void bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void bind_while(WhileStmtSyntax* stmt, std::vector<FhirStmt*>& out);
+    void check_bool_condition(FhirExpr* condition, const Span& span);
 
 #pragma region Attribute Resolution
 

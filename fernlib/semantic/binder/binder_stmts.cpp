@@ -135,7 +135,7 @@ void Binder::emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& 
         auto* fieldDecl = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
         if (!fieldDecl || !fieldDecl->initializer) continue;
 
-        auto* value = bind_expr(fieldDecl->initializer);
+        auto* value = bind_value_expr(fieldDecl->initializer);
         if (!value) continue;
 
         auto* fieldAccess = fhir.field_access(nullptr, fhir.this_expr(nullptr, type), field);
@@ -196,7 +196,7 @@ void Binder::bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     }
     else if (auto* exprStmt = stmt->as<ExpressionStmtSyntax>())
     {
-        out.push_back(fhir.expr_stmt(exprStmt, bind_expr(exprStmt->expression)));
+        out.push_back(fhir.expr_stmt(exprStmt, bind_value_expr(exprStmt->expression)));
     }
 }
 
@@ -205,7 +205,7 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     FhirExpr* value = nullptr;
     if (stmt->value)
     {
-        value = bind_expr(stmt->value);
+        value = bind_value_expr(stmt->value);
     }
 
     TypeSymbol* retType = value ? value->type : nullptr;
@@ -240,7 +240,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
     FhirExpr* initExpr = nullptr;
     if (decl->initializer)
     {
-        initExpr = bind_expr(decl->initializer, type);
+        initExpr = bind_value_expr(decl->initializer, type);
         TypeSymbol* initType = initExpr ? initExpr->type : nullptr;
         if (!type)
         {
@@ -267,21 +267,27 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
     out.push_back(fhir.var_decl(decl, local, initExpr));
 }
 
-void Binder::bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out)
+void Binder::check_bool_condition(FhirExpr* condition, const Span& span)
 {
-    FhirExpr* condition = bind_expr(stmt->condition);
-    TypeSymbol* condType = condition ? condition->type : nullptr;
+    if (condition && condition->is_error()) return;
 
+    TypeSymbol* condType = condition ? condition->type : nullptr;
     TypeSymbol* boolType = context.resolve_type_name("bool");
     if (!condType)
     {
-        error("if condition must be of type 'bool'", stmt->condition->span);
+        error("condition must be of type 'bool'", span);
     }
     else if (boolType && condType != boolType)
     {
-        error("if condition must be of type 'bool', got '" +
-              format_type_name(condType) + "'", stmt->condition->span);
+        error("condition must be of type 'bool', got '" +
+              format_type_name(condType) + "'", span);
     }
+}
+
+void Binder::bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out)
+{
+    FhirExpr* condition = bind_value_expr(stmt->condition);
+    check_bool_condition(condition, stmt->condition->span);
 
     FhirBlock* thenBlock = stmt->thenBody ? bind_block(stmt->thenBody) : nullptr;
 
@@ -303,19 +309,8 @@ void Binder::bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 
 void Binder::bind_while(WhileStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 {
-    FhirExpr* condition = bind_expr(stmt->condition);
-    TypeSymbol* condType = condition ? condition->type : nullptr;
-
-    TypeSymbol* boolType = context.resolve_type_name("bool");
-    if (!condType)
-    {
-        error("expected condition of type 'bool'", stmt->condition->span);
-    }
-    else if (boolType && condType != boolType)
-    {
-        error("while condition must be of type 'bool', got '" +
-              format_type_name(condType) + "'", stmt->condition->span);
-    }
+    FhirExpr* condition = bind_value_expr(stmt->condition);
+    check_bool_condition(condition, stmt->condition->span);
 
     FhirBlock* body = stmt->body ? bind_block(stmt->body) : nullptr;
 

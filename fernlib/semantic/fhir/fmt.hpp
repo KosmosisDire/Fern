@@ -49,6 +49,7 @@ public:
     void visit(FhirMethodCallExpr* node) override;
     void visit(FhirObjectCreateExpr* node) override;
     void visit(FhirAssignExpr* node) override;
+    void visit(FhirErrorExpr* node) override;
 
     void visit(FhirBlock* node) override;
     void visit(FhirVarDeclStmt* node) override;

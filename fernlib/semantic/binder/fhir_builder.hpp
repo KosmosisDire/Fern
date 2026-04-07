@@ -120,6 +120,15 @@ struct FhirBuilder
         return node;
     }
 
+    FhirErrorExpr* error_expr(BaseSyntax* syntax, TypeSymbol* type = nullptr)
+    {
+        auto* node = arena.alloc<FhirErrorExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = type;
+        return node;
+    }
+
     FhirAssignExpr* assign(BaseSyntax* syntax, FhirExpr* target, FhirExpr* value)
     {
         auto* node = arena.alloc<FhirAssignExpr>();
