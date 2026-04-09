@@ -18,8 +18,8 @@ enum class TokenKind
     Identifier,
 
     // Literals
-    LiteralF32,
-    LiteralI32,
+    LiteralFloat,
+    LiteralInt,
     LiteralBool,
     LiteralString,
     LiteralMultilineString,
@@ -194,8 +194,8 @@ constexpr bool is_modifier(TokenKind k)
 
 constexpr bool is_literal(TokenKind k)
 {
-    return k == TokenKind::LiteralF32 ||
-           k == TokenKind::LiteralI32 ||
+    return k == TokenKind::LiteralFloat ||
+           k == TokenKind::LiteralInt ||
            k == TokenKind::LiteralBool ||
            k == TokenKind::LiteralString ||
            k == TokenKind::LiteralMultilineString ||
@@ -379,8 +379,8 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Newline:      return "Newline";
         case TokenKind::Identifier:   return "Identifier";
 
-        case TokenKind::LiteralF32:   return "LiteralF32";
-        case TokenKind::LiteralI32:   return "LiteralI32";
+        case TokenKind::LiteralFloat:  return "LiteralFloat";
+        case TokenKind::LiteralInt:   return "LiteralInt";
         case TokenKind::LiteralBool:  return "LiteralBool";
         case TokenKind::LiteralString: return "LiteralString";
         case TokenKind::LiteralMultilineString: return "LiteralMultilineString";

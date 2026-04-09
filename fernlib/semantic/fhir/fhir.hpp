@@ -92,14 +92,14 @@ constexpr std::string_view format(IntrinsicOp op)
 
 struct LiteralValue
 {
-    enum class Kind { Int, UInt, Float32, Bool, String };
+    enum class Kind { Int, UInt, Float, Bool, String };
 
     Kind kind = Kind::Int;
     union
     {
         int64_t intValue = 0;
         uint64_t uintValue;
-        float floatValue;
+        double floatValue;
         bool boolValue;
         std::string_view stringValue;
     };
@@ -120,10 +120,10 @@ struct LiteralValue
         return lv;
     }
 
-    static LiteralValue make_float(float v)
+    static LiteralValue make_float(double v)
     {
         LiteralValue lv;
-        lv.kind = Kind::Float32;
+        lv.kind = Kind::Float;
         lv.floatValue = v;
         return lv;
     }
@@ -150,7 +150,7 @@ struct LiteralValue
         {
             case Kind::Int:     return std::to_string(intValue);
             case Kind::UInt:    return std::to_string(uintValue);
-            case Kind::Float32: return std::to_string(floatValue);
+            case Kind::Float:   return std::to_string(floatValue);
             case Kind::Bool:    return boolValue ? "true" : "false";
             case Kind::String:  return "\"" + std::string(stringValue) + "\"";
         }

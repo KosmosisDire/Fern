@@ -3,8 +3,10 @@ namespace Core
 
 attr type BuiltinType{}
 attr type AllowCustomLiterals{}
+attr type NumericInt{}
+attr type NumericFloat{}
 
-@BuiltinType @AllowCustomLiterals
+@BuiltinType @AllowCustomLiterals @NumericFloat
 type F32
 {
     value: f32
@@ -30,7 +32,7 @@ type F32
     op <(left: f32, right: i32) -> bool
 }
 
-@BuiltinType @AllowCustomLiterals
+@BuiltinType @AllowCustomLiterals @NumericInt
 type I32
 {
     value: i32
@@ -84,7 +86,7 @@ type Array<T>
     op []=(self: Array<T>, index: i32, value: T) {}
 }
 
-@BuiltinType @AllowCustomLiterals
+@BuiltinType @AllowCustomLiterals @NumericInt
 type U8
 {
     value: u8

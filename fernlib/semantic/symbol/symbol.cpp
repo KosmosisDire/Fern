@@ -73,6 +73,33 @@ bool NamedTypeSymbol::is_builtin() const
     return false;
 }
 
+bool NamedTypeSymbol::is_integer() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.NumericInt")
+            return true;
+    }
+    if (genericOrigin) return genericOrigin->is_integer();
+    return false;
+}
+
+bool NamedTypeSymbol::is_float() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.NumericFloat")
+            return true;
+    }
+    if (genericOrigin) return genericOrigin->is_float();
+    return false;
+}
+
+bool NamedTypeSymbol::is_numeric() const
+{
+    return is_integer() || is_float();
+}
+
 bool NamedTypeSymbol::allows_custom_literals() const
 {
     for (const auto& attr : resolvedAttributes)

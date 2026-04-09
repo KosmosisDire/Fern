@@ -29,7 +29,7 @@ class FhirConstantFolder
 public:
     static void fold(FhirMethod* method, AllocArena& arena);
     static std::optional<int64_t> try_evaluate_constant_int(FhirExpr* expr);
-    static std::optional<float> try_evaluate_constant_float(FhirExpr* expr);
+    static std::optional<double> try_evaluate_constant_float(FhirExpr* expr);
     static std::optional<bool> try_evaluate_constant_bool(FhirExpr* expr);
 };
 

@@ -359,10 +359,10 @@ Token Lexer::scan_number()
         {
             walker.advance();
         }
-        return make_token(TokenKind::LiteralF32);
+        return make_token(TokenKind::LiteralFloat);
     }
 
-    return make_token(TokenKind::LiteralI32);
+    return make_token(TokenKind::LiteralInt);
 }
 
 Token Lexer::scan_string(char delimiter)

@@ -275,13 +275,13 @@ std::optional<int64_t> FhirConstantFolder::try_evaluate_constant_int(FhirExpr* e
     return std::nullopt;
 }
 
-std::optional<float> FhirConstantFolder::try_evaluate_constant_float(FhirExpr* expr)
+std::optional<double> FhirConstantFolder::try_evaluate_constant_float(FhirExpr* expr)
 {
     if (!expr) return std::nullopt;
 
     if (auto* lit = expr->as<FhirLiteralExpr>())
     {
-        if (lit->value.kind == LiteralValue::Kind::Float32)
+        if (lit->value.kind == LiteralValue::Kind::Float)
             return lit->value.floatValue;
     }
 
@@ -307,7 +307,7 @@ std::optional<float> FhirConstantFolder::try_evaluate_constant_float(FhirExpr* e
                     case IntrinsicOp::Add: return *lhs + *rhs;
                     case IntrinsicOp::Sub: return *lhs - *rhs;
                     case IntrinsicOp::Mul: return *lhs * *rhs;
-                    case IntrinsicOp::Div: return *rhs != 0.0f ? std::optional(*lhs / *rhs) : std::nullopt;
+                    case IntrinsicOp::Div: return *rhs != 0.0 ? std::optional(*lhs / *rhs) : std::nullopt;
                     default: break;
                 }
             }

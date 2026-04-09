@@ -82,7 +82,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     FhirExpr* result = nullptr;
 
     if (auto* lit = expr->as<LiteralExprSyntax>())
-        result = bind_literal(lit);
+        result = bind_literal(lit, expected);
     else if (auto* id = expr->as<IdentifierExprSyntax>())
         result = bind_identifier(id);
     else if (auto* thisExpr = expr->as<ThisExprSyntax>())
@@ -263,13 +263,25 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
     return fhir.call(expr, returnType, method, {operand});
 }
 
-FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
+FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr, TypeSymbol* expected)
 {
     TypeSymbol* type = nullptr;
+    auto* expectedNamed = expected ? expected->as<NamedTypeSymbol>() : nullptr;
+
     switch (expr->token.kind)
     {
-        case TokenKind::LiteralI32:    type = context.resolve_type_name("i32");    break;
-        case TokenKind::LiteralF32:    type = context.resolve_type_name("f32");    break;
+        case TokenKind::LiteralInt:
+            if (expectedNamed && expectedNamed->is_numeric())
+                type = expected;
+            else
+                type = context.resolve_type_name("i32");
+            break;
+        case TokenKind::LiteralFloat:
+            if (expectedNamed && expectedNamed->is_float())
+                type = expected;
+            else
+                type = context.resolve_type_name("f32");
+            break;
         case TokenKind::LiteralBool:   type = context.resolve_type_name("bool");   break;
         case TokenKind::LiteralString:
         case TokenKind::LiteralMultilineString:
@@ -283,10 +295,33 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 
     try
     {
-        if (expr->token.kind == TokenKind::LiteralI32)
-            node->value = LiteralValue::make_int(std::stoll(std::string(expr->token.lexeme)));
-        else if (expr->token.kind == TokenKind::LiteralF32)
-            node->value = LiteralValue::make_float(std::stof(std::string(expr->token.lexeme)));
+        if (expr->token.kind == TokenKind::LiteralInt)
+        {
+            int64_t val = std::stoll(std::string(expr->token.lexeme));
+
+            if (type == context.resolve_type_name("u8"))
+            {
+                if (val < 0 || val > 255)
+                    error("value " + std::to_string(val) + " is out of range for u8 (0-255)", expr->span);
+                node->value = LiteralValue::make_uint(static_cast<uint64_t>(val));
+            }
+            else if (type == context.resolve_type_name("i32"))
+            {
+                if (val < INT32_MIN || val > INT32_MAX)
+                    error("value " + std::to_string(val) + " is out of range for i32", expr->span);
+                node->value = LiteralValue::make_int(val);
+            }
+            else if (expectedNamed && expectedNamed->is_float())
+            {
+                node->value = LiteralValue::make_float(static_cast<float>(val));
+            }
+            else
+            {
+                node->value = LiteralValue::make_int(val);
+            }
+        }
+        else if (expr->token.kind == TokenKind::LiteralFloat)
+            node->value = LiteralValue::make_float(std::stod(std::string(expr->token.lexeme)));
         else if (expr->token.kind == TokenKind::LiteralBool)
             node->value = LiteralValue::make_bool(expr->token.lexeme == "true");
         else if (expr->token.kind == TokenKind::LiteralString)
