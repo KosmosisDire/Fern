@@ -32,6 +32,7 @@ private:
     CallableDeclSyntax* parse_init_decl();
     CallableDeclSyntax* parse_operator_decl();
     CallableDeclSyntax* parse_literal_decl();
+    CallableDeclSyntax* parse_cast_decl();
     NamespaceDeclSyntax* parse_namespace_decl();
 
     // Shared parse helpers

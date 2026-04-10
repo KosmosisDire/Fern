@@ -105,6 +105,7 @@ private:
 
     FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirCastExpr* try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span);
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_literal(LiteralExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
@@ -123,14 +124,10 @@ private:
     void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver);
     TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
     FhirExpr* bind_this(ThisExprSyntax* expr);
-    FhirExpr* bind_paren(ParenExprSyntax* expr);
+    FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
     FhirExpr* bind_index(IndexExprSyntax* expr);
     FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected = nullptr);
-    MethodSymbol* find_closest_overload(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
-                                        const std::vector<TypeSymbol*>& argTypes);
-    void report_call_errors(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
-                             const std::vector<TypeSymbol*>& argTypes, CallExprSyntax* expr);
 
 #pragma region Statement Binding
 
@@ -141,7 +138,6 @@ private:
     void bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out);
     void bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void bind_while(WhileStmtSyntax* stmt, std::vector<FhirStmt*>& out);
-    void check_bool_condition(FhirExpr* condition, const Span& span);
 
 #pragma region Attribute Resolution
 

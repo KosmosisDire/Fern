@@ -41,6 +41,26 @@ struct ResolvedAttribute
     MethodSymbol* constructor = nullptr;
 };
 
+enum class Convertibility { None, Explicit, Implicit, Exact };
+enum class MatchQuality { Exact, ImplicitCast, None };
+
+struct OverloadMatch
+{
+    MethodSymbol* method = nullptr;
+    int exactCount = 0;
+    int implicitCount = 0;
+    int failCount = 0;
+
+    bool is_callable() const { return method && failCount == 0; }
+};
+
+struct OverloadResult
+{
+    OverloadMatch best;
+    std::vector<MethodSymbol*> ambiguousCandidates;
+    bool ambiguous = false;
+};
+
 enum class SymbolKind
 {
     Namespace,
@@ -161,15 +181,16 @@ struct NamedTypeSymbol : TypeSymbol
 
     FieldSymbol* find_field(std::string_view name);
     MethodSymbol* find_method(std::string_view name);
-    MethodSymbol* find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
-    MethodSymbol* find_constructor(const std::vector<TypeSymbol*>& argTypes);
+    OverloadResult find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
+    OverloadResult find_constructor(const std::vector<TypeSymbol*>& argTypes);
     NamedTypeSymbol* find_nested_type(std::string_view name);
     MethodSymbol* find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
     MethodSymbol* find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
     MethodSymbol* find_index_getter(TypeSymbol* indexType);
     MethodSymbol* find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType);
-    bool has_constructor_with_count(size_t count) const;
-    bool has_method_with_count(std::string_view name, size_t count) const;
+    MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
+    MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
+    static Convertibility get_convertibility(TypeSymbol* from, TypeSymbol* to);
 
     std::string format(int indent = 0) const override;
 };
@@ -219,6 +240,7 @@ struct MethodSymbol : Symbol
     bool is_literal() const { return callableKind == CallableKind::Literal; }
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
+    std::string format_parameters() const;
 
     std::string format(int indent = 0) const override;
 

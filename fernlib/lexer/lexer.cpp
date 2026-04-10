@@ -309,6 +309,18 @@ Token Lexer::scan_identifier()
     {
         kind = TokenKind::Literal;
     }
+    else if (lexeme == "cast")
+    {
+        kind = TokenKind::Cast;
+    }
+    else if (lexeme == "implicit")
+    {
+        kind = TokenKind::Implicit;
+    }
+    else if (lexeme == "explicit")
+    {
+        kind = TokenKind::Explicit;
+    }
     else if (lexeme == "var")
     {
         kind = TokenKind::Var;

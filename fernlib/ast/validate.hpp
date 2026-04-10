@@ -67,6 +67,10 @@ public:
         {
             error("literal declarations can only be declared inside a type", node->span);
         }
+        else if (node->callableKind == CallableKind::Cast && scope != Scope::Type)
+        {
+            error("cast declarations can only be declared inside a type", node->span);
+        }
         else if (node->callableKind == CallableKind::Function && scope == Scope::Function)
         {
             error("nested functions are not yet supported", node->span);
@@ -140,6 +144,24 @@ private:
             {
                 error("'attr' modifier can only be applied to type declarations", node->span);
             }
+        }
+
+        auto* callable = node->as<CallableDeclSyntax>();
+        bool isCast = callable && callable->callableKind == CallableKind::Cast;
+        bool hasImplicit = has_modifier(node->modifiers, Modifier::Implicit);
+        bool hasExplicit = has_modifier(node->modifiers, Modifier::Explicit);
+
+        if ((hasImplicit || hasExplicit) && !isCast)
+        {
+            error("'implicit' and 'explicit' modifiers can only be applied to cast declarations", node->span);
+        }
+        if (isCast && !hasImplicit && !hasExplicit)
+        {
+            error("cast declarations must be marked 'implicit' or 'explicit'", node->span);
+        }
+        if (hasImplicit && hasExplicit)
+        {
+            error("cast declarations cannot be both 'implicit' and 'explicit'", node->span);
         }
     }
 };

@@ -407,6 +407,9 @@ public:
             case CallableKind::Literal:
                 out << "LiteralDecl (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
                 break;
+            case CallableKind::Cast:
+                out << "CastDecl (span: " << node->span.format() << ")\n";
+                break;
         }
         write_indent();
         out << "{\n";

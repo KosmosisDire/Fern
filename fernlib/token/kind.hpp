@@ -37,6 +37,9 @@ enum class TokenKind
     Init,
     Op,
     Literal,
+    Cast,
+    Implicit,
+    Explicit,
     Var,
     Type,
     Namespace,
@@ -144,15 +147,18 @@ enum class CallableKind
     Constructor,
     Operator,
     Literal,
+    Cast,
 };
 
 enum class Modifier : uint16_t
 {
-    None   = 0,
-    Public = 1 << 0,
-    Static = 1 << 1,
-    Ref    = 1 << 2,
-    Attr   = 1 << 3,
+    None     = 0,
+    Public   = 1 << 0,
+    Static   = 1 << 1,
+    Ref      = 1 << 2,
+    Attr     = 1 << 3,
+    Implicit = 1 << 4,
+    Explicit = 1 << 5,
 };
 
 constexpr Modifier operator|(Modifier a, Modifier b)
@@ -176,11 +182,13 @@ constexpr std::optional<Modifier> to_modifier(TokenKind k)
 {
     switch (k)
     {
-        case TokenKind::Pub:    return Modifier::Public;
-        case TokenKind::Static: return Modifier::Static;
-        case TokenKind::Ref:    return Modifier::Ref;
-        case TokenKind::Attr:   return Modifier::Attr;
-        default:                return std::nullopt;
+        case TokenKind::Pub:      return Modifier::Public;
+        case TokenKind::Static:   return Modifier::Static;
+        case TokenKind::Ref:      return Modifier::Ref;
+        case TokenKind::Attr:     return Modifier::Attr;
+        case TokenKind::Implicit: return Modifier::Implicit;
+        case TokenKind::Explicit: return Modifier::Explicit;
+        default:                  return std::nullopt;
     }
 }
 
@@ -189,7 +197,9 @@ constexpr bool is_modifier(TokenKind k)
     return k == TokenKind::Pub ||
            k == TokenKind::Static ||
            k == TokenKind::Ref ||
-           k == TokenKind::Attr;
+           k == TokenKind::Attr ||
+           k == TokenKind::Implicit ||
+           k == TokenKind::Explicit;
 }
 
 constexpr bool is_literal(TokenKind k)
@@ -236,7 +246,8 @@ constexpr bool is_declaration_keyword(TokenKind k)
            k == TokenKind::Fn ||
            k == TokenKind::Init ||
            k == TokenKind::Op ||
-           k == TokenKind::Literal;
+           k == TokenKind::Literal ||
+           k == TokenKind::Cast;
 }
 
 constexpr bool is_statement_keyword(TokenKind k)
@@ -397,6 +408,9 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::Init:         return "Init";
         case TokenKind::Op:           return "Op";
         case TokenKind::Literal:      return "Literal";
+        case TokenKind::Cast:         return "Cast";
+        case TokenKind::Implicit:     return "Implicit";
+        case TokenKind::Explicit:     return "Explicit";
         case TokenKind::Var:          return "Var";
         case TokenKind::Type:         return "Type";
         case TokenKind::Namespace:    return "Namespace";
@@ -504,6 +518,14 @@ inline std::string format(Modifier mods)
     if (has_modifier(mods, Modifier::Attr))
     {
         result += "attr ";
+    }
+    if (has_modifier(mods, Modifier::Implicit))
+    {
+        result += "implicit ";
+    }
+    if (has_modifier(mods, Modifier::Explicit))
+    {
+        result += "explicit ";
     }
     if (!result.empty())
     {

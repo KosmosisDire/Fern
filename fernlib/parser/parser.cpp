@@ -243,6 +243,10 @@ BaseDeclSyntax* Parser::parse_declaration()
     {
         decl = parse_literal_decl();
     }
+    else if (walker.check(TokenKind::Cast))
+    {
+        decl = parse_cast_decl();
+    }
     else if (auto* field = parse_field_decl())
     {
         decl = field;
@@ -640,6 +644,35 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     else
     {
         error("expected '{' after literal declaration", walker.current().span);
+    }
+    decl->span = span;
+
+    return decl;
+}
+
+CallableDeclSyntax* Parser::parse_cast_decl()
+{
+    auto* decl = arena.alloc<CallableDeclSyntax>();
+    decl->callableKind = CallableKind::Cast;
+    Span span = walker.current().span;
+
+    walker.advance();
+    skip_newlines(walker);
+
+    parse_parameter_list(decl->parameters, span);
+    skip_newlines(walker);
+
+    decl->returnType = parse_return_type(span);
+    skip_newlines(walker);
+
+    if (walker.check(TokenKind::LeftBrace))
+    {
+        decl->body = parse_block();
+        span = span.merge(decl->body->span);
+    }
+    else
+    {
+        error("expected '{' after cast declaration", walker.current().span);
     }
     decl->span = span;
 

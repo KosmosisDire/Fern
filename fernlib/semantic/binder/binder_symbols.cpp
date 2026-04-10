@@ -89,6 +89,10 @@ NamedTypeSymbol* Binder::create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* pa
                     methodPtr->name = std::string(callableAst->name.lexeme);
                     methodPtr->modifiers = Modifier::Public | Modifier::Static;
                     break;
+                case CallableKind::Cast:
+                    methodPtr->name = "cast";
+                    methodPtr->modifiers = callableAst->modifiers | Modifier::Static;
+                    break;
             }
 
             auto* method = context.symbols.own(std::move(methodPtr));
@@ -301,6 +305,9 @@ void Binder::check_duplicate_methods(NamedTypeSymbol* type)
                     case CallableKind::Literal:
                         error("duplicate literal '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
                         break;
+                    case CallableKind::Cast:
+                        error("duplicate cast on type '" + format_type_name(type) + "'", loc);
+                        break;
                 }
             }
         }
@@ -414,7 +421,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
                 auto* fhir = bind_value_expr(arg);
                 argTypes.push_back(fhir ? fhir->type : nullptr);
             }
-            ctor = attrType->find_constructor(argTypes);
+            ctor = attrType->find_constructor(argTypes).best.method;
         }
         else if (auto* initExpr = attr->value->as<InitializerExprSyntax>())
         {
@@ -435,13 +442,13 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             else
             {
                 std::vector<TypeSymbol*> emptyArgs;
-                ctor = attrType->find_constructor(emptyArgs);
+                ctor = attrType->find_constructor(emptyArgs).best.method;
             }
         }
         else
         {
             std::vector<TypeSymbol*> emptyArgs;
-            ctor = attrType->find_constructor(emptyArgs);
+            ctor = attrType->find_constructor(emptyArgs).best.method;
             if (!ctor)
             {
                 error("'" + attrType->name + "' must contain a parameterless constructor to construct with only an initializer list", attr->span);

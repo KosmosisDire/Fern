@@ -1,9 +1,0 @@
-
-
-
-namespace Core
-{
-    type I32 {}
-    type F32 {}
-    type Bool {}
-}

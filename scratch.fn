@@ -1,0 +1,20 @@
+
+
+type Program
+{
+    fn Main
+    {
+        -- OK: literal 255 fits in u8
+        TakeU8(255)
+
+        -- ERROR: literal 256 out of range for u8
+        TakeU8(256)
+
+    }
+
+    fn TakeU8(x: u8)
+    {
+    }
+
+}
+

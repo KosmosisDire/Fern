@@ -18,6 +18,17 @@ TypeSymbol* MethodSymbol::get_return_type() const
     return returnType;
 }
 
+std::string MethodSymbol::format_parameters() const
+{
+    std::string result;
+    for (size_t i = 0; i < parameters.size(); ++i)
+    {
+        if (i > 0) result += ", ";
+        result += parameters[i]->name + ": " + format_type_name(parameters[i]->type);
+    }
+    return result;
+}
+
 TypeSymbol* SubstitutedMethodSymbol::get_return_type() const
 {
     if (!returnTypeResolved)
@@ -127,20 +138,97 @@ FieldSymbol* NamedTypeSymbol::find_field(std::string_view name)
     return nullptr;
 }
 
-static bool match_parameters(const std::vector<ParameterSymbol*>& params, const std::vector<TypeSymbol*>& argTypes)
+static MatchQuality grade_arg(TypeSymbol* argType, TypeSymbol* paramType)
 {
-    if (params.size() != argTypes.size())
+    auto conv = NamedTypeSymbol::get_convertibility(argType, paramType);
+    switch (conv)
     {
-        return false;
+        case Convertibility::Exact:    return MatchQuality::Exact;
+        case Convertibility::Implicit: return MatchQuality::ImplicitCast;
+        default:                       return MatchQuality::None;
     }
+}
+
+static OverloadMatch grade_method(MethodSymbol* method, const std::vector<TypeSymbol*>& argTypes)
+{
+    OverloadMatch match;
+    match.method = method;
+
+    if (method->parameters.size() != argTypes.size())
+    {
+        match.failCount = static_cast<int>(argTypes.size());
+        return match;
+    }
+
     for (size_t i = 0; i < argTypes.size(); ++i)
     {
-        if (!argTypes[i] || !params[i]->type || argTypes[i] != params[i]->type)
+        switch (grade_arg(argTypes[i], method->parameters[i]->type))
         {
-            return false;
+            case MatchQuality::Exact:        ++match.exactCount; break;
+            case MatchQuality::ImplicitCast:  ++match.implicitCount; break;
+            case MatchQuality::None:          ++match.failCount; break;
         }
     }
-    return true;
+
+    return match;
+}
+
+static bool is_better_match(const OverloadMatch& a, const OverloadMatch& b)
+{
+    if (a.failCount != b.failCount) return a.failCount < b.failCount;
+    return a.exactCount > b.exactCount;
+}
+
+static OverloadResult resolve_overloads(const std::vector<OverloadMatch>& candidates)
+{
+    if (candidates.empty()) return {};
+
+    std::vector<OverloadMatch> applicable;
+    for (const auto& c : candidates)
+    {
+        if (c.is_callable())
+            applicable.push_back(c);
+    }
+
+    if (applicable.size() == 1)
+        return {applicable[0]};
+
+    if (applicable.size() > 1)
+    {
+        OverloadMatch best = applicable[0];
+        bool tied = false;
+        std::vector<MethodSymbol*> tiedMethods;
+
+        for (size_t i = 1; i < applicable.size(); ++i)
+        {
+            if (is_better_match(applicable[i], best))
+            {
+                best = applicable[i];
+                tied = false;
+                tiedMethods.clear();
+            }
+            else if (!is_better_match(best, applicable[i]))
+            {
+                if (!tied)
+                    tiedMethods.push_back(best.method);
+                tiedMethods.push_back(applicable[i].method);
+                tied = true;
+            }
+        }
+
+        if (tied)
+            return {{}, tiedMethods, true};
+
+        return {best};
+    }
+
+    OverloadMatch best = candidates[0];
+    for (size_t i = 1; i < candidates.size(); ++i)
+    {
+        if (is_better_match(candidates[i], best))
+            best = candidates[i];
+    }
+    return {best};
 }
 
 MethodSymbol* NamedTypeSymbol::find_method(std::string_view name)
@@ -156,30 +244,38 @@ MethodSymbol* NamedTypeSymbol::find_method(std::string_view name)
     return nullptr;
 }
 
-MethodSymbol* NamedTypeSymbol::find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
+OverloadResult NamedTypeSymbol::find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
 {
     if (table) table->ensure_members_populated(this);
+
+    std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
-        if (method->callableKind == CallableKind::Function && method->name == name && match_parameters(method->parameters, argTypes))
-        {
-            return method;
-        }
+        if (method->callableKind != CallableKind::Function || method->name != name)
+            continue;
+        if (method->parameters.size() != argTypes.size())
+            continue;
+        candidates.push_back(grade_method(method, argTypes));
     }
-    return nullptr;
+
+    return resolve_overloads(candidates);
 }
 
-MethodSymbol* NamedTypeSymbol::find_constructor(const std::vector<TypeSymbol*>& argTypes)
+OverloadResult NamedTypeSymbol::find_constructor(const std::vector<TypeSymbol*>& argTypes)
 {
     if (table) table->ensure_members_populated(this);
+
+    std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
-        if (method->is_constructor() && match_parameters(method->parameters, argTypes))
-        {
-            return method;
-        }
+        if (!method->is_constructor())
+            continue;
+        if (method->parameters.size() != argTypes.size())
+            continue;
+        candidates.push_back(grade_method(method, argTypes));
     }
-    return nullptr;
+
+    return resolve_overloads(candidates);
 }
 
 NamedTypeSymbol* NamedTypeSymbol::find_nested_type(std::string_view name)
@@ -266,28 +362,53 @@ MethodSymbol* NamedTypeSymbol::find_index_setter(TypeSymbol* indexType, TypeSymb
     return nullptr;
 }
 
-bool NamedTypeSymbol::has_constructor_with_count(size_t count) const
+MethodSymbol* NamedTypeSymbol::find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
-        if (method->is_constructor() && method->parameters.size() == count)
-        {
-            return true;
-        }
+        if (method->callableKind != CallableKind::Cast) continue;
+        if (!has_modifier(method->modifiers, Modifier::Implicit)) continue;
+        if (method->parameters.size() != 1) continue;
+        if (method->parameters[0]->type == fromType && method->get_return_type() == toType)
+            return method;
     }
-    return false;
+    return nullptr;
 }
 
-bool NamedTypeSymbol::has_method_with_count(std::string_view name, size_t count) const
+MethodSymbol* NamedTypeSymbol::find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType)
 {
+    if (table) table->ensure_members_populated(this);
     for (auto* method : methods)
     {
-        if (method->callableKind == CallableKind::Function && method->name == name && method->parameters.size() == count)
-        {
-            return true;
-        }
+        if (method->callableKind != CallableKind::Cast) continue;
+        if (!has_modifier(method->modifiers, Modifier::Explicit)) continue;
+        if (method->parameters.size() != 1) continue;
+        if (method->parameters[0]->type == fromType && method->get_return_type() == toType)
+            return method;
     }
-    return false;
+    return nullptr;
+}
+
+Convertibility NamedTypeSymbol::get_convertibility(TypeSymbol* from, TypeSymbol* to)
+{
+    if (!from || !to) return Convertibility::None;
+    if (from == to) return Convertibility::Exact;
+
+    auto* sourceNamed = from->as<NamedTypeSymbol>();
+    auto* targetNamed = to->as<NamedTypeSymbol>();
+
+    if (targetNamed && targetNamed->find_implicit_cast(from, to))
+        return Convertibility::Implicit;
+    if (sourceNamed && sourceNamed->find_implicit_cast(from, to))
+        return Convertibility::Implicit;
+
+    if (targetNamed && targetNamed->find_explicit_cast(from, to))
+        return Convertibility::Explicit;
+    if (sourceNamed && sourceNamed->find_explicit_cast(from, to))
+        return Convertibility::Explicit;
+
+    return Convertibility::None;
 }
 
 NamespaceSymbol* Symbol::find_enclosing_namespace()
@@ -474,6 +595,9 @@ std::string MethodSymbol::format(int indent) const
             break;
         case CallableKind::Literal:
             ss << "literal " << name;
+            break;
+        case CallableKind::Cast:
+            ss << "cast";
             break;
     }
 

@@ -29,21 +29,6 @@ static std::string format_field_path(BaseExprSyntax* expr)
     return "";
 }
 
-static std::string format_arg_types(const std::vector<TypeSymbol*>& argTypes)
-{
-    std::string result = "(";
-    for (size_t i = 0; i < argTypes.size(); ++i)
-    {
-        if (i > 0)
-        {
-            result += ", ";
-        }
-        result += format_type_name(argTypes[i]);
-    }
-    result += ")";
-    return result;
-}
-
 constexpr IntrinsicOp to_intrinsic_op(BinaryOp op)
 {
     switch (op)
@@ -100,7 +85,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     else if (auto* initializer = expr->as<InitializerExprSyntax>())
         result = bind_initializer(initializer);
     else if (auto* paren = expr->as<ParenExprSyntax>())
-        result = bind_paren(paren);
+        result = bind_paren(paren, expected);
     else if (auto* generic = expr->as<GenericTypeExprSyntax>())
         result = bind_generic_type_expr(generic);
     else if (auto* indexExpr = expr->as<IndexExprSyntax>())
@@ -114,12 +99,27 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
     if (expected && result && result->type && result->type != expected)
     {
+        if (auto* castResult = try_implicit_cast(result, expected, expr->span))
+        {
+            return castResult;
+        }
         error("expected '" + format_type_name(expected) +
               "', got '" + format_type_name(result->type) + "'", expr->span);
         return fhir.error_expr(expr, expected);
     }
 
     return result;
+}
+
+FhirCastExpr* Binder::try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span)
+{
+    if (!expr || !expr->type || !targetType) return nullptr;
+
+    auto conv = NamedTypeSymbol::get_convertibility(expr->type, targetType);
+    if (conv == Convertibility::Implicit)
+        return fhir.cast(expr->syntax, targetType, expr, true);
+
+    return nullptr;
 }
 
 FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
@@ -464,9 +464,9 @@ FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
     return fhir.this_expr(expr, currentType);
 }
 
-FhirExpr* Binder::bind_paren(ParenExprSyntax* expr)
+FhirExpr* Binder::bind_paren(ParenExprSyntax* expr, TypeSymbol* expected)
 {
-    return bind_value_expr(expr->expression);
+    return bind_value_expr(expr->expression, expected);
 }
 
 FhirExpr* Binder::bind_generic_type_expr(GenericTypeExprSyntax* expr)
@@ -770,91 +770,6 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
     return fhir.error_expr(expr);
 }
 
-MethodSymbol* Binder::find_closest_overload(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
-                                             const std::vector<TypeSymbol*>& argTypes)
-{
-    MethodSymbol* closest = nullptr;
-    size_t bestMatchCount = 0;
-
-    for (auto* method : type->methods)
-    {
-        bool nameMatch = isConstructor ? method->is_constructor()
-            : (method->callableKind == CallableKind::Function && method->name == name);
-        if (!nameMatch || method->parameters.size() != argTypes.size())
-            continue;
-
-        size_t matchCount = 0;
-        for (size_t i = 0; i < argTypes.size(); ++i)
-        {
-            if (argTypes[i] && method->parameters[i]->type && argTypes[i] == method->parameters[i]->type)
-                ++matchCount;
-        }
-
-        if (!closest || matchCount > bestMatchCount)
-        {
-            closest = method;
-            bestMatchCount = matchCount;
-        }
-    }
-
-    if (bestMatchCount == argTypes.size())
-        return nullptr;
-
-    return closest;
-}
-
-void Binder::report_call_errors(NamedTypeSymbol* type, std::string_view name, bool isConstructor,
-                                 const std::vector<TypeSymbol*>& argTypes, CallExprSyntax* expr)
-{
-    auto* closest = find_closest_overload(type, name, isConstructor, argTypes);
-    if (closest)
-    {
-        for (size_t i = 0; i < argTypes.size(); ++i)
-        {
-            if (!closest->parameters[i]->type)
-                continue;
-            if (!argTypes[i])
-            {
-                error("expected '" + format_type_name(closest->parameters[i]->type) + 
-                      "' for arg '" + closest->parameters[i]->name + "'", expr->arguments[i]->span);
-            }
-            else if (argTypes[i] != closest->parameters[i]->type)
-            {
-                error("expected '" + format_type_name(closest->parameters[i]->type) + 
-                      "' for arg '" + closest->parameters[i]->name + "', got '" +
-                      format_type_name(argTypes[i]) + "'", expr->arguments[i]->span);
-            }
-        }
-    }
-    else if (isConstructor)
-    {
-        if (type->has_constructor_with_count(argTypes.size()))
-        {
-            error("no constructor for '" + format_type_name(type) +
-                  "' matches argument types " + format_arg_types(argTypes), expr->span);
-        }
-        else
-        {
-            error("'" + format_type_name(type) + "' does not contain a constructor that takes " +
-                  std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-        }
-    }
-    else
-    {
-        if (type->has_method_with_count(name, argTypes.size()))
-        {
-            error("no overload of '" + std::string(name) + "' on '" + format_type_name(type) +
-                  "' matches argument types " + format_arg_types(argTypes), expr->span);
-        }
-        else
-        {
-            error("'" + format_type_name(type) + "' does not contain a method '" + std::string(name) +
-                  "' that takes " + std::to_string(argTypes.size()) +
-                  (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-        }
-    }
-}
-
 FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 {
     Symbol* calleeSym = resolve_expr_symbol(expr->callee);
@@ -882,13 +797,29 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto* namedType = calleeSym->as<NamedTypeSymbol>();
         if (namedType)
         {
-            MethodSymbol* ctor = namedType->find_constructor(argTypes);
-            if (!ctor && !hasErrorArg)
+            auto result = namedType->find_constructor(argTypes);
+            if (result.ambiguous && !hasErrorArg)
             {
-                report_call_errors(namedType, "", true, argTypes, expr);
+                std::string msg = "call is ambiguous between constructors:";
+                for (auto* m : result.ambiguousCandidates)
+                    msg += "\n  " + format_type_name(namedType) + "(" + m->format_parameters() + ")";
+                error(msg, expr->span);
+                return fhir.error_expr(expr);
+            }
+            if (!result.best.method && !hasErrorArg)
+            {
+                error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
+                      std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+            }
+            if (result.best.method && !hasErrorArg)
+            {
+                for (size_t i = 0; i < expr->arguments.size(); ++i)
+                {
+                    argExprs[i] = bind_value_expr(expr->arguments[i], result.best.method->parameters[i]->type);
+                }
             }
 
-            return fhir.object_create(expr, namedType, ctor, std::move(argExprs));
+            return fhir.object_create(expr, namedType, result.best.method, std::move(argExprs));
         }
     }
 
@@ -942,14 +873,32 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 
     if (targetType && !methodName.empty())
     {
-        method = targetType->find_method(methodName, argTypes);
+        auto result = targetType->find_method(methodName, argTypes);
+        if (result.ambiguous && !hasErrorArg)
+        {
+            std::string msg = "call to '" + std::string(methodName) + "' is ambiguous between:";
+            for (auto* m : result.ambiguousCandidates)
+                msg += "\n  " + format_type_name(targetType) + "." + std::string(methodName) + "(" + m->format_parameters() + ")";
+            error(msg, expr->span);
+            return fhir.error_expr(expr);
+        }
+        method = result.best.method;
         if (!method)
         {
             if (!hasErrorArg)
             {
-                report_call_errors(targetType, methodName, false, argTypes, expr);
+                error("'" + format_type_name(targetType) + "' does not contain a method '" + std::string(methodName) +
+                      "' that takes " + std::to_string(argTypes.size()) +
+                      (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
             }
             return fhir.error_expr(expr);
+        }
+        if (!hasErrorArg)
+        {
+            for (size_t i = 0; i < expr->arguments.size(); ++i)
+            {
+                argExprs[i] = bind_value_expr(expr->arguments[i], method->parameters[i]->type);
+            }
         }
     }
 
@@ -994,10 +943,10 @@ FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
     auto* namedType = sym ? sym->as<NamedTypeSymbol>() : nullptr;
     if (namedType)
     {
-        MethodSymbol* ctor = namedType->find_constructor({});
-        if (ctor)
+        auto ctorResult = namedType->find_constructor({});
+        if (ctorResult.best.method)
         {
-            return fhir.object_create(expr->target, namedType, ctor, {});
+            return fhir.object_create(expr->target, namedType, ctorResult.best.method, {});
         }
     }
 
@@ -1063,7 +1012,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        if (!namedType->find_constructor({}))
+        if (!namedType->find_constructor({}).best.method)
         {
             error("type '" + format_type_name(namedType) + "' has no default constructor", idExpr->span);
         }
@@ -1108,7 +1057,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        if (!namedType->find_constructor({}))
+        if (!namedType->find_constructor({}).best.method)
         {
             error("type '" + format_type_name(namedType) + "' has no default constructor", memberExpr->span);
         }
@@ -1122,7 +1071,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        if (!namedType->find_constructor({}))
+        if (!namedType->find_constructor({}).best.method)
         {
             error("type '" + format_type_name(namedType) + "' has no default constructor", genericExpr->span);
         }
@@ -1205,11 +1154,11 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
             if (receiver)
             {
                 FhirExpr* fieldTarget = build_field_access_chain(receiver, fieldInit->target);
-                out.push_back(fhir.expr_stmt(fieldInit, fhir.assign(fieldInit, fieldTarget, bind_value_expr(fieldInit->value))));
+                out.push_back(fhir.expr_stmt(fieldInit, fhir.assign(fieldInit, fieldTarget, bind_value_expr(fieldInit->value, fieldType))));
             }
             else
             {
-                bind_value_expr(fieldInit->value);
+                bind_value_expr(fieldInit->value, fieldType);
             }
         }
     }
@@ -1293,14 +1242,14 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             countLit->value = LiteralValue::make_int(0);
 
             std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
-            auto* ctor = expectedNamed->find_constructor(ctorArgTypes);
-            if (!ctor)
+            auto ctorResult = expectedNamed->find_constructor(ctorArgTypes);
+            if (!ctorResult.best.method)
             {
                 error("Core.Array has no constructor taking i32", expr->span);
                 return fhir.error_expr(expr);
             }
 
-            return fhir.object_create(expr, expectedNamed, ctor, {countLit});
+            return fhir.object_create(expr, expectedNamed, ctorResult.best.method, {countLit});
         }
 
         return nullptr;
@@ -1377,14 +1326,14 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     countLit->value = LiteralValue::make_int(count);
 
     std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
-    auto* ctor = arrayType->find_constructor(ctorArgTypes);
-    if (!ctor)
+    auto ctorResult = arrayType->find_constructor(ctorArgTypes);
+    if (!ctorResult.best.method)
     {
         error("Core.Array has no constructor taking i32", expr->span);
         return fhir.error_expr(expr);
     }
 
-    auto* createExpr = fhir.object_create(expr, arrayType, ctor, {countLit});
+    auto* createExpr = fhir.object_create(expr, arrayType, ctorResult.best.method, {countLit});
 
     auto tempPtr = std::make_unique<LocalSymbol>();
     tempPtr->name = "__arr_" + std::to_string(tempCounter++);

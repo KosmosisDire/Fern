@@ -100,6 +100,12 @@ FhirExpr* FhirConstantFolder::fold_expr(FhirExpr* expr)
         return node;
     }
 
+    if (auto* node = expr->as<FhirCastExpr>())
+    {
+        node->operand = fold_expr(node->operand);
+        return node;
+    }
+
     return expr;
 }
 

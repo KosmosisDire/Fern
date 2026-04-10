@@ -1,0 +1,145 @@
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    init{}
+
+    static fn Scale(v: Vector2, k: f32) -> Vector2
+    {
+        return Vector2(v.x * k, v.y * k)
+    }
+}
+
+
+type Program
+{
+    fn Main
+    {
+        var e: i32 = 5
+        var b: u8 = 42
+        var f: f32 = 1.5
+
+        -- === NESTED IMPLICIT CASTS ===
+
+        -- OK: u8 -> i32 -> passed to Process which takes f32
+        --     Needs u8 -> f32 (direct implicit cast on F32)
+        Process(b)
+
+        -- OK: implicit cast through return value
+        var r1: f32 = GetI32()
+
+        -- OK: implicit cast in constructor arg
+        var v1 = Vector2(e, e)
+
+        -- OK: implicit cast in method call through member
+        var v2 = Vector2.Scale(v1, e)
+
+        -- === COMPLEX OVERLOAD RESOLUTION ===
+
+        -- OK: exact match on (i32, i32)
+        Combine(e, e)
+
+        -- OK: exact match on (f32, f32)
+        Combine(f, f)
+
+        -- OK: one arg needs implicit cast, other is exact
+        --     Best candidate: (i32, f32), 1 exact + 1 implicit
+        --     vs (f32, i32), 0 exact + 2 implicit
+        --     Wait - (i32, f32) with args (i32, u8): exact i32, u8->f32 implicit
+        --     vs (f32, i32) with args (i32, u8): i32->f32 implicit, u8->i32 implicit
+        --     Ours ranks by exactCount: (i32,f32) has 1 exact beats (f32,i32) with 0 exact
+        Combine(e, b)
+
+        -- ERROR: ambiguous between (i32, f32) and (f32, i32)
+        --     Both have 0 exact, 2 implicit for (u8, u8)
+        Combine(b, b)
+
+        -- === NESTED EXPRESSIONS WITH CASTS ===
+
+        -- OK: Process takes f32, inner call returns i32 -> implicit cast
+        Process(GetI32())
+
+        -- OK: Vector2 ctor takes f32, f32 - args are e (i32), b (u8)
+        var v3 = Vector2(e, b)
+
+        -- OK: f32 + f32 works, but left is i32, right is f32
+        --     The cross-type operator still exists for now
+        var math1: f32 = e + f
+
+        -- === LITERALS INSIDE CALLS ===
+
+        -- OK: literal 10 adopts f32 through parameter
+        Process(10)
+
+        -- OK: literal 255 fits in u8
+        TakeU8(255)
+
+        -- ERROR: literal 256 out of range for u8
+        TakeU8(256)
+
+        -- === CHAINED CASTS AND METHOD CALLS ===
+
+        -- OK: return value cast and used as arg
+        Process(GetU8())
+
+        -- OK: nested construction with casts
+        var v4 = Vector2(GetI32(), GetU8())
+
+        -- === ERROR CASES ===
+
+        -- ERROR: no overload matches - only Process(f32) exists, bool has no implicit cast
+        Process(true)
+
+        -- ERROR: wrong arg count
+        Combine(e)
+
+        -- ERROR: both overloads fail - no conversion from bool
+        Combine(true, true)
+    }
+
+    fn Process(x: f32)
+    {
+    }
+
+    fn GetI32() -> i32
+    {
+        return 42
+    }
+
+    fn GetU8() -> u8
+    {
+        return 100
+    }
+
+    fn TakeU8(x: u8)
+    {
+    }
+
+    fn Combine(a: i32, b: i32) -> i32
+    {
+        return a
+    }
+
+    fn Combine(a: f32, b: f32) -> f32
+    {
+        return a
+    }
+
+    fn Combine(a: i32, b: f32) -> f32
+    {
+        return b
+    }
+
+    fn Combine(a: f32, b: i32) -> f32
+    {
+        return a
+    }
+}
