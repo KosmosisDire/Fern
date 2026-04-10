@@ -116,6 +116,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     {
         error("expected '" + format_type_name(expected) +
               "', got '" + format_type_name(result->type) + "'", expr->span);
+        return fhir.error_expr(expr, expected);
     }
 
     return result;
