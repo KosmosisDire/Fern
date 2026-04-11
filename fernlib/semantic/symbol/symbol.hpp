@@ -7,6 +7,8 @@
 #include <vector>
 #include <token/kind.hpp>
 
+#include "overload.hpp"
+
 namespace Fern
 {
 
@@ -42,24 +44,6 @@ struct ResolvedAttribute
 };
 
 enum class Convertibility { None, Explicit, Implicit, Exact };
-enum class MatchQuality { Exact, ImplicitCast, None };
-
-struct OverloadMatch
-{
-    MethodSymbol* method = nullptr;
-    int exactCount = 0;
-    int implicitCount = 0;
-    int failCount = 0;
-
-    bool is_callable() const { return method && failCount == 0; }
-};
-
-struct OverloadResult
-{
-    OverloadMatch best;
-    std::vector<MethodSymbol*> ambiguousCandidates;
-    bool ambiguous = false;
-};
 
 enum class SymbolKind
 {
@@ -184,10 +168,10 @@ struct NamedTypeSymbol : TypeSymbol
     OverloadResult find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
     OverloadResult find_constructor(const std::vector<TypeSymbol*>& argTypes);
     NamedTypeSymbol* find_nested_type(std::string_view name);
-    MethodSymbol* find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
-    MethodSymbol* find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
-    MethodSymbol* find_index_getter(TypeSymbol* indexType);
-    MethodSymbol* find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType);
+    OverloadResult find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
+    OverloadResult find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
+    OverloadResult find_index_getter(TypeSymbol* indexType);
+    OverloadResult find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType);
     MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     static Convertibility get_convertibility(TypeSymbol* from, TypeSymbol* to);

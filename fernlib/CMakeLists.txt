@@ -9,6 +9,9 @@ set(FERNLIB_SOURCES
 
     # semantic
     semantic/symbol/symbol.cpp
+    semantic/symbol/symbol_lookup.cpp
+    semantic/symbol/symbol_fmt.cpp
+    semantic/symbol/overload.cpp
     semantic/symbol/table.cpp
     semantic/context.cpp
     semantic/binder/binder.cpp
@@ -16,8 +19,8 @@ set(FERNLIB_SOURCES
     semantic/binder/binder_types.cpp
     semantic/binder/binder_exprs.cpp
     semantic/binder/binder_stmts.cpp
+    semantic/fhir/fhir_constant.cpp
     semantic/fhir/flow.cpp
-    semantic/fhir/fold.cpp
     semantic/fhir/fmt.cpp
 
     # source

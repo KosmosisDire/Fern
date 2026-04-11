@@ -18,6 +18,23 @@ void FhirFormatter::write_child(FhirNode* node)
     else out << "null";
 }
 
+void FhirFormatter::write_child(FhirExpr* node)
+{
+    if (!node) { out << "null"; return; }
+
+    const auto& c = node->get_constant();
+    if (c)
+    {
+        out << "(";
+        node->accept(this);
+        out << ")=" << c->format();
+    }
+    else
+    {
+        node->accept(this);
+    }
+}
+
 void FhirFormatter::write_args(const std::vector<FhirExpr*>& args)
 {
     out << "(";
@@ -120,7 +137,9 @@ void FhirFormatter::visit(FhirCastExpr* node)
 
 void FhirFormatter::visit(FhirErrorExpr* node)
 {
-    out << "<error>";
+    out << "ERROR(";
+    if (node->inner) write_child(node->inner);
+    out << ")";
 }
 
 void FhirFormatter::visit(FhirBlock* node)

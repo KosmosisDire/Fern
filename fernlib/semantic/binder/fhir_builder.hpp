@@ -131,12 +131,13 @@ struct FhirBuilder
         return node;
     }
 
-    FhirErrorExpr* error_expr(BaseSyntax* syntax, TypeSymbol* type = nullptr)
+    FhirErrorExpr* error_expr(BaseSyntax* syntax, TypeSymbol* type = nullptr, FhirExpr* inner = nullptr)
     {
         auto* node = arena.alloc<FhirErrorExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
+        node->inner = inner;
         return node;
     }
 

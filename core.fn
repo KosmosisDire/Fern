@@ -27,13 +27,6 @@ type F32
     op ==(left: f32, right: f32) -> bool
     op >(left: f32, right: f32) -> bool
     op <(left: f32, right: f32) -> bool
-    op +(left: f32, right: i32) -> f32
-    op -(left: f32, right: i32) -> f32
-    op *(left: f32, right: i32) -> f32
-    op /(left: f32, right: i32) -> f32
-    op ==(left: f32, right: i32) -> bool
-    op >(left: f32, right: i32) -> bool
-    op <(left: f32, right: i32) -> bool
 }
 
 @BuiltinType @AllowCustomLiterals @NumericInt
@@ -44,6 +37,8 @@ type I32
     literal i32(from: i32) {}
 
     implicit cast(from: u8) -> i32 {}
+    explicit cast(from: f32) -> i32 {}
+    explicit cast(from: bool) -> i32 {}
 
     op -(value: i32) -> i32
     op +(value: i32) -> i32
@@ -54,19 +49,14 @@ type I32
     op ==(left: i32, right: i32) -> bool
     op >(left: i32, right: i32) -> bool
     op <(left: i32, right: i32) -> bool
-    op +(left: i32, right: f32) -> f32
-    op -(left: i32, right: f32) -> f32
-    op *(left: i32, right: f32) -> f32
-    op /(left: i32, right: f32) -> f32
-    op ==(left: i32, right: f32) -> bool
-    op >(left: i32, right: f32) -> bool
-    op <(left: i32, right: f32) -> bool
 }
 
 @BuiltinType
 type Bool
 {
     value: bool
+
+    explicit cast(from: i32) -> bool {}
 
     op !(value: bool) -> bool
     op ==(left: bool, right: bool) -> bool

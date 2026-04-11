@@ -1,20 +1,17 @@
 
+type Vector3<T>
+{
+    x: T
+    y: T
+    z: T
+}
 
 type Program
 {
-    fn Main
+    fn Main -> i32
     {
-        -- OK: literal 255 fits in u8
-        TakeU8(255)
+        return
 
-        -- ERROR: literal 256 out of range for u8
-        TakeU8(256)
-
+        var i = 10
     }
-
-    fn TakeU8(x: u8)
-    {
-    }
-
 }
-

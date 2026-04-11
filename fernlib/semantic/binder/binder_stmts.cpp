@@ -236,6 +236,16 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
         if (!type)
         {
             type = initType;
+
+            if (initExpr && type)
+            {
+                const auto& c = initExpr->get_constant();
+                if (c && !c->range_fits(type))
+                {
+                    error(c->format_range_message(type), decl->initializer->span);
+                    initExpr = fhir.error_expr(decl->initializer, type, initExpr);
+                }
+            }
         }
         if (!type && decl->initializer)
         {

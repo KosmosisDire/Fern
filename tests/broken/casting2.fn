@@ -1,0 +1,116 @@
+type Test
+{
+    value: i32
+    literal test(from: i32) -> Test
+    {
+        return Test(from)
+    }
+}
+
+type Program
+{
+    fn Main
+    {
+        -- === INT_MIN asymmetry (the classic bug) ===
+
+        -- OK: inferred i32, negated INT_MAX+1 = INT_MIN
+        var imin_inferred = -2147483648
+
+        -- OK: explicit i32 with INT_MIN
+        var imin_explicit: i32 = -2147483648
+
+        -- OK: INT_MAX
+        var imax: i32 = 2147483647
+
+        -- ERROR: bare INT_MAX + 1 (out of range for default i32)
+        var over_max = 2147483648
+
+        -- ERROR: INT_MIN - 1
+        var under_min = -2147483649
+
+        -- === Constant expression intermediates ===
+
+        -- OK: intermediate 1000 exceeds u8 but final 200 fits
+        var narrow_ok: u8 = 1000 - 800
+
+        -- ERROR: final 260 exceeds u8 even though each operand fits
+        var narrow_overflow: u8 = 200 + 60
+
+        -- OK: chained constant arithmetic
+        var narrow_chain: u8 = 50 + 50 + 50 + 50 + 55
+
+        -- OK: INT_MAX + 0 still fits i32
+        var edge_add_zero = 2147483647 + 0
+
+        -- ERROR: INT_MAX + 1 overflows i32
+        var edge_add_one = 2147483647 + 1
+
+        -- === u8 boundaries ===
+
+        -- OK: lower boundary
+        var u8_zero: u8 = 0
+
+        -- OK: upper boundary
+        var u8_max: u8 = 255
+
+        -- ERROR: above upper boundary
+        var u8_over: u8 = 256
+
+        -- ERROR: below lower boundary (negative)
+        var u8_neg: u8 = -1
+
+        -- === Unary negation ===
+
+        -- OK: bare negated literal
+        var neg_simple = -100
+
+        -- OK: negation inside i32 expression
+        var neg_in_expr: i32 = -100 + 50
+
+        -- OK: negated literal fits u8
+        var neg_into_u8: u8 = -0 + 200
+
+        -- ERROR: negative value can't fit u8
+        var neg_fail_u8: u8 = -100 + 50
+
+        -- === Float coercion via annotation ===
+
+        -- OK: int literal adopts f32
+        var float_from_int: f32 = 100
+
+        -- OK: negated int literal adopts f32
+        var float_from_neg_int: f32 = -100
+
+        -- OK: plain float literal
+        var float_plain: f32 = 3.14
+
+        -- OK: negated float literal
+        var float_neg: f32 = -3.14
+
+        -- OK: float int mixed arithmetic
+        var float_mixed: f32 = 100 + 3.14 - 50
+
+        -- === Literal suffixes ===
+
+        -- OK: positive literal suffix
+        var suf_pos = 100test
+
+        -- OK: negative literal suffix
+        var suf_neg = -100test
+
+        -- === Call arguments ===
+
+        -- OK: expression fits parameter
+        TakeU8(1000 - 800)
+
+        -- ERROR: expression result out of range for parameter
+        TakeU8(200 + 60)
+
+        -- ERROR: negative into u8 parameter
+        TakeU8(-1)
+    }
+
+    fn TakeU8(x: u8)
+    {
+    }
+}

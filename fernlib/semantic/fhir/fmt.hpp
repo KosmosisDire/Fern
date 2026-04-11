@@ -13,6 +13,7 @@ class FhirFormatter : public DefaultFhirVisitor
 
     void write_indent();
     void write_child(FhirNode* node);
+    void write_child(FhirExpr* node);
     void write_args(const std::vector<FhirExpr*>& args);
     std::string method_label(MethodSymbol* method);
 

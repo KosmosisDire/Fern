@@ -11,7 +11,6 @@
 #include <token/walker.hpp>
 #include <binder/binder.hpp>
 #include <semantic/fhir/flow.hpp>
-#include <semantic/fhir/fold.hpp>
 
 namespace Fern
 {
@@ -103,12 +102,6 @@ void Compilation::compile()
     for (const auto& diag : binder.get_diagnostics())
     {
         report(diag);
-    }
-
-    // constant folding
-    for (auto* method : semanticContext.methods)
-    {
-        FhirConstantFolder::fold(method, arena);
     }
 
     // flow analysis (return checking, unreachable code)

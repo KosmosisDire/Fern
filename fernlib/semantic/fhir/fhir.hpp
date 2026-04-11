@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -91,58 +92,49 @@ constexpr std::string_view format(IntrinsicOp op)
     }
 }
 
-struct LiteralValue
+struct ConstantValue
 {
-    enum class Kind { Int, UInt, Float, Bool, String };
+    enum class Kind { Int, Float, Bool, String };
 
     Kind kind = Kind::Int;
     union
     {
         int64_t intValue = 0;
-        uint64_t uintValue;
         double floatValue;
         bool boolValue;
         std::string_view stringValue;
     };
 
-    static LiteralValue make_int(int64_t v)
+    static ConstantValue make_int(int64_t v)
     {
-        LiteralValue lv;
-        lv.kind = Kind::Int;
-        lv.intValue = v;
-        return lv;
+        ConstantValue cv;
+        cv.kind = Kind::Int;
+        cv.intValue = v;
+        return cv;
     }
 
-    static LiteralValue make_uint(uint64_t v)
+    static ConstantValue make_float(double v)
     {
-        LiteralValue lv;
-        lv.kind = Kind::UInt;
-        lv.uintValue = v;
-        return lv;
+        ConstantValue cv;
+        cv.kind = Kind::Float;
+        cv.floatValue = v;
+        return cv;
     }
 
-    static LiteralValue make_float(double v)
+    static ConstantValue make_bool(bool v)
     {
-        LiteralValue lv;
-        lv.kind = Kind::Float;
-        lv.floatValue = v;
-        return lv;
+        ConstantValue cv;
+        cv.kind = Kind::Bool;
+        cv.boolValue = v;
+        return cv;
     }
 
-    static LiteralValue make_bool(bool v)
+    static ConstantValue make_string(std::string_view v)
     {
-        LiteralValue lv;
-        lv.kind = Kind::Bool;
-        lv.boolValue = v;
-        return lv;
-    }
-
-    static LiteralValue make_string(std::string_view v)
-    {
-        LiteralValue lv;
-        lv.kind = Kind::String;
-        lv.stringValue = v;
-        return lv;
+        ConstantValue cv;
+        cv.kind = Kind::String;
+        cv.stringValue = v;
+        return cv;
     }
 
     std::string format() const
@@ -150,12 +142,14 @@ struct LiteralValue
         switch (kind)
         {
             case Kind::Int:     return std::to_string(intValue);
-            case Kind::UInt:    return std::to_string(uintValue);
             case Kind::Float:   return std::to_string(floatValue);
             case Kind::Bool:    return boolValue ? "true" : "false";
             case Kind::String:  return "\"" + std::string(stringValue) + "\"";
         }
     }
+
+    bool range_fits(TypeSymbol* target) const;
+    std::string format_range_message(TypeSymbol* target) const;
 };
 
 #pragma region Visitor
@@ -222,8 +216,14 @@ public:
 struct FhirExpr : FhirNode
 {
     TypeSymbol* type = nullptr;
+
+    mutable std::optional<ConstantValue> constantCache;
+    mutable bool constantComputed = false;
+
     FhirExpr(int k) : FhirNode(k) {}
     bool is_error() const { return is<FhirErrorExpr>(); }
+
+    const std::optional<ConstantValue>& get_constant() const;
 };
 
 struct FhirStmt : FhirNode
@@ -237,7 +237,9 @@ struct FhirLiteralExpr : FhirExpr
 {
     FHIR_NODE(FhirLiteralExpr, FhirExpr)
 
-    LiteralValue value;
+    ConstantValue value;
+
+    std::optional<ConstantValue> compute_constant() const;
 };
 
 struct FhirLocalRefExpr : FhirExpr
@@ -278,6 +280,8 @@ struct FhirIntrinsicExpr : FhirExpr
 
     IntrinsicOp op = IntrinsicOp::Add;
     std::vector<FhirExpr*> args;
+
+    std::optional<ConstantValue> compute_constant() const;
 
     void visit_children(FhirVisitor* v) override
     {
@@ -351,6 +355,8 @@ struct FhirCastExpr : FhirExpr
     FhirExpr* operand = nullptr;
     bool isImplicit = false;
 
+    std::optional<ConstantValue> compute_constant() const;
+
     void visit_children(FhirVisitor* v) override
     {
         if (operand) operand->accept(v);
@@ -360,6 +366,13 @@ struct FhirCastExpr : FhirExpr
 struct FhirErrorExpr : FhirExpr
 {
     FHIR_NODE(FhirErrorExpr, FhirExpr)
+
+    FhirExpr* inner = nullptr;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        if (inner) inner->accept(v);
+    }
 };
 
 #pragma region Block

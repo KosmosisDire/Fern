@@ -12,21 +12,15 @@ FlowAnalyzer::FlowAnalyzer() : DiagnosticSystem("FlowAnalysis") {}
 bool FlowAnalyzer::is_constant_true(FhirExpr* expr)
 {
     if (!expr) return false;
-    if (auto* lit = expr->as<FhirLiteralExpr>())
-    {
-        return lit->value.kind == LiteralValue::Kind::Bool && lit->value.boolValue;
-    }
-    return false;
+    const auto& c = expr->get_constant();
+    return c && c->kind == ConstantValue::Kind::Bool && c->boolValue;
 }
 
 bool FlowAnalyzer::is_constant_false(FhirExpr* expr)
 {
     if (!expr) return false;
-    if (auto* lit = expr->as<FhirLiteralExpr>())
-    {
-        return lit->value.kind == LiteralValue::Kind::Bool && !lit->value.boolValue;
-    }
-    return false;
+    const auto& c = expr->get_constant();
+    return c && c->kind == ConstantValue::Kind::Bool && !c->boolValue;
 }
 
 #pragma region Statement Analysis
@@ -110,12 +104,10 @@ FlowAnalyzer FlowAnalyzer::analyze(FhirMethod* method)
     if (!method->symbol) return analyzer;
     if (method->symbol->is_constructor()) return analyzer;
 
-    TypeSymbol* returnType = method->symbol->get_return_type();
-    if (!returnType) return analyzer;
-
     bool definitelyReturns = analyzer.check_block(method->body);
 
-    if (!definitelyReturns)
+    TypeSymbol* returnType = method->symbol->get_return_type();
+    if (returnType && !definitelyReturns)
     {
         Span loc = method->body->span;
         if (auto* callable = method->symbol->syntax ? method->symbol->syntax->as<CallableDeclSyntax>() : nullptr)

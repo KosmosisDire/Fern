@@ -2,13 +2,11 @@
 
 #include <algorithm>
 #include <cassert>
-#include <climits>
 #include <stdexcept>
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
-#include <semantic/fhir/fold.hpp>
 
 namespace Fern
 {
@@ -67,7 +65,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     FhirExpr* result = nullptr;
 
     if (auto* lit = expr->as<LiteralExprSyntax>())
-        result = bind_literal(lit, expected);
+        result = bind_literal(lit);
     else if (auto* id = expr->as<IdentifierExprSyntax>())
         result = bind_identifier(id);
     else if (auto* thisExpr = expr->as<ThisExprSyntax>())
@@ -97,15 +95,43 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
     if (result && result->is_error()) return result;
 
-    if (expected && result && result->type && result->type != expected)
+    if (expected && result && result->type)
     {
+        if (result->type == expected)
+        {
+            const auto& constant = result->get_constant();
+            if (constant && !constant->range_fits(expected))
+            {
+                error(constant->format_range_message(expected), expr->span);
+                return fhir.error_expr(expr, expected, result);
+            }
+            return result;
+        }
+
         if (auto* castResult = try_implicit_cast(result, expected, expr->span))
         {
             return castResult;
         }
+
+        auto* expectedNamed = expected->as<NamedTypeSymbol>();
+        auto* resultNamed = result->type->as<NamedTypeSymbol>();
+        if (expectedNamed && expectedNamed->is_integer() &&
+            resultNamed && resultNamed->is_integer())
+        {
+            const auto& constant = result->get_constant();
+            if (constant)
+            {
+                if (constant->range_fits(expected))
+                    return fhir.cast(result->syntax, expected, result, /*isImplicit=*/true);
+
+                error(constant->format_range_message(expected), expr->span);
+                return fhir.error_expr(expr, expected, result);
+            }
+        }
+
         error("expected '" + format_type_name(expected) +
               "', got '" + format_type_name(result->type) + "'", expr->span);
-        return fhir.error_expr(expr, expected);
+        return fhir.error_expr(expr, expected, result);
     }
 
     return result;
@@ -120,6 +146,14 @@ FhirCastExpr* Binder::try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, 
         return fhir.cast(expr->syntax, targetType, expr, true);
 
     return nullptr;
+}
+
+FhirExpr* Binder::coerce_to_param(FhirExpr* arg, TypeSymbol* paramType)
+{
+    if (!arg || !paramType || arg->type == paramType) return arg;
+    if (auto* cast = try_implicit_cast(arg, paramType, Span{}))
+        return cast;
+    return arg;
 }
 
 FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
@@ -239,23 +273,9 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
 
     if (namedReturnType && namedReturnType->is_builtin())
     {
-        auto constVal = FhirConstantFolder::try_evaluate_constant_int(operand);
-
-        if (constVal)
-        {
-            int64_t val = *constVal;
-
-            if (returnType == context.resolve_type_name("u8"))
-            {
-                if (val < 0 || val > 255)
-                    error("value " + std::to_string(val) + " is out of range for u8 (0-255)", expr->span);
-            }
-            else if (returnType == context.resolve_type_name("i32"))
-            {
-                if (val < INT32_MIN || val > INT32_MAX)
-                    error("value " + std::to_string(val) + " is out of range for i32", expr->span);
-            }
-        }
+        const auto& constVal = operand->get_constant();
+        if (constVal && !constVal->range_fits(returnType))
+            error(constVal->format_range_message(returnType), expr->span);
 
         operand->type = returnType;
         return operand;
@@ -264,25 +284,14 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
     return fhir.call(expr, returnType, method, {operand});
 }
 
-FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr, TypeSymbol* expected)
+FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 {
     TypeSymbol* type = nullptr;
-    auto* expectedNamed = expected ? expected->as<NamedTypeSymbol>() : nullptr;
 
     switch (expr->token.kind)
     {
-        case TokenKind::LiteralInt:
-            if (expectedNamed && expectedNamed->is_numeric())
-                type = expected;
-            else
-                type = context.resolve_type_name("i32");
-            break;
-        case TokenKind::LiteralFloat:
-            if (expectedNamed && expectedNamed->is_float())
-                type = expected;
-            else
-                type = context.resolve_type_name("f32");
-            break;
+        case TokenKind::LiteralInt:    type = context.resolve_type_name("i32");    break;
+        case TokenKind::LiteralFloat:  type = context.resolve_type_name("f32");    break;
         case TokenKind::LiteralBool:   type = context.resolve_type_name("bool");   break;
         case TokenKind::LiteralString:
         case TokenKind::LiteralMultilineString:
@@ -297,41 +306,18 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr, TypeSymbol* expected)
     try
     {
         if (expr->token.kind == TokenKind::LiteralInt)
-        {
-            int64_t val = std::stoll(std::string(expr->token.lexeme));
-
-            if (type == context.resolve_type_name("u8"))
-            {
-                if (val < 0 || val > 255)
-                    error("value " + std::to_string(val) + " is out of range for u8 (0-255)", expr->span);
-                node->value = LiteralValue::make_uint(static_cast<uint64_t>(val));
-            }
-            else if (type == context.resolve_type_name("i32"))
-            {
-                if (val < INT32_MIN || val > INT32_MAX)
-                    error("value " + std::to_string(val) + " is out of range for i32", expr->span);
-                node->value = LiteralValue::make_int(val);
-            }
-            else if (expectedNamed && expectedNamed->is_float())
-            {
-                node->value = LiteralValue::make_float(static_cast<float>(val));
-            }
-            else
-            {
-                node->value = LiteralValue::make_int(val);
-            }
-        }
+            node->value = ConstantValue::make_int(std::stoll(std::string(expr->token.lexeme)));
         else if (expr->token.kind == TokenKind::LiteralFloat)
-            node->value = LiteralValue::make_float(std::stod(std::string(expr->token.lexeme)));
+            node->value = ConstantValue::make_float(std::stod(std::string(expr->token.lexeme)));
         else if (expr->token.kind == TokenKind::LiteralBool)
-            node->value = LiteralValue::make_bool(expr->token.lexeme == "true");
+            node->value = ConstantValue::make_bool(expr->token.lexeme == "true");
         else if (expr->token.kind == TokenKind::LiteralString)
         {
             auto raw = expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2);
             if (raw.find('\\') == std::string_view::npos)
-                node->value = LiteralValue::make_string(raw);
+                node->value = ConstantValue::make_string(raw);
             else
-                node->value = LiteralValue::make_string(arena.alloc_string(process_escape_sequences(raw, expr->span)));
+                node->value = ConstantValue::make_string(arena.alloc_string(process_escape_sequences(raw, expr->span)));
         }
         else if (expr->token.kind == TokenKind::LiteralMultilineString)
         {
@@ -385,22 +371,22 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr, TypeSymbol* expected)
             }
 
             auto processed = process_escape_sequences(result, expr->span);
-            node->value = LiteralValue::make_string(arena.alloc_string(processed));
+            node->value = ConstantValue::make_string(arena.alloc_string(processed));
         }
         else if (expr->token.kind == TokenKind::LiteralRawString)
-            node->value = LiteralValue::make_string(expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2));
+            node->value = ConstantValue::make_string(expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2));
         else if (expr->token.kind == TokenKind::LiteralRawMultilineString)
-            node->value = LiteralValue::make_string(expr->token.lexeme.substr(3, expr->token.lexeme.size() - 6));
+            node->value = ConstantValue::make_string(expr->token.lexeme.substr(3, expr->token.lexeme.size() - 6));
         else if (expr->token.kind == TokenKind::LiteralChar)
         {
             auto inner = expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2);
             auto processed = process_escape_sequences(inner, expr->span);
             if (processed.size() == 1)
-                node->value = LiteralValue::make_uint(static_cast<uint8_t>(processed[0]));
+                node->value = ConstantValue::make_int(static_cast<uint8_t>(processed[0]));
             else
             {
                 error("character literal must contain exactly one character", expr->span);
-                node->value = LiteralValue::make_uint(0);
+                node->value = ConstantValue::make_int(0);
             }
         }
     }
@@ -486,8 +472,20 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
     if (namedType)
     {
         TokenKind opToken = unary_op_to_token(expr->op);
-        if (auto* method = namedType->find_unary_operator(opToken, operandType))
+        auto result = namedType->find_unary_operator(opToken, operandType);
+        if (result.ambiguous)
         {
+            std::string msg = "operator '" + std::string(Fern::format(opToken)) +
+                  "' is ambiguous for value of type '" + format_type_name(namedType) + "':";
+            for (auto* m : result.ambiguousCandidates)
+                msg += "\n  op " + std::string(Fern::format(opToken)) + "(" + m->format_parameters() + ")";
+            error(msg, expr->span);
+            return fhir.error_expr(expr);
+        }
+        if (result.best.is_callable())
+        {
+            MethodSymbol* method = result.best.method;
+            operand = coerce_to_param(operand, method->parameters[0]->type);
             if (!namedType->is_builtin())
             {
                 return fhir.call(expr, method->get_return_type(), method, {operand});
@@ -533,11 +531,16 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
 
     if (baseToken != TokenKind::Invalid)
     {
-        bool hasBase = namedType->find_binary_operator(baseToken, leftType, rightType) != nullptr;
-        bool hasEqual = (baseToken == TokenKind::Equal) || namedType->find_binary_operator(TokenKind::Equal, leftType, rightType) != nullptr;
+        auto baseResult = namedType->find_binary_operator(baseToken, leftType, rightType);
+        bool hasBase = baseResult.best.is_callable();
+        bool hasEqual = (baseToken == TokenKind::Equal) ||
+                        namedType->find_binary_operator(TokenKind::Equal, leftType, rightType).best.is_callable();
 
         if (hasBase && hasEqual)
         {
+            MethodSymbol* baseMethod = baseResult.best.method;
+            lhs = coerce_to_param(lhs, baseMethod->parameters[0]->type);
+            rhs = coerce_to_param(rhs, baseMethod->parameters[1]->type);
             TypeSymbol* boolType = context.resolve_type_name("bool");
             return fhir.intrinsic(syntax, boolType, to_intrinsic_op(op), {lhs, rhs});
         }
@@ -588,8 +591,22 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         return fhir.intrinsic(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
     }
 
-    if (auto* method = namedType->find_binary_operator(opToken, leftType, rightType))
+    auto result = namedType->find_binary_operator(opToken, leftType, rightType);
+    if (result.ambiguous)
     {
+        std::string msg = "operator '" + std::string(Fern::format(opToken)) +
+              "' is ambiguous for values of type '" + format_type_name(leftType) +
+              "' and '" + format_type_name(rightType) + "':";
+        for (auto* m : result.ambiguousCandidates)
+            msg += "\n  op " + std::string(Fern::format(opToken)) + "(" + m->format_parameters() + ")";
+        error(msg, syntax->span);
+        return fhir.error_expr(syntax);
+    }
+    if (result.best.is_callable())
+    {
+        MethodSymbol* method = result.best.method;
+        lhs = coerce_to_param(lhs, method->parameters[0]->type);
+        rhs = coerce_to_param(rhs, method->parameters[1]->type);
         if (!namedType->is_builtin())
         {
             return fhir.call(syntax, method->get_return_type(), method, {lhs, rhs});
@@ -639,8 +656,16 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        auto* method = namedType->find_index_setter(indexType, valueType);
-        if (!method)
+        auto setterResult = namedType->find_index_setter(indexType, valueType);
+        if (setterResult.ambiguous)
+        {
+            std::string msg = "index assignment is ambiguous between:";
+            for (auto* m : setterResult.ambiguousCandidates)
+                msg += "\n  " + format_type_name(namedType) + ".op []=(" + m->format_parameters() + ")";
+            error(msg, expr->span);
+            return fhir.error_expr(expr);
+        }
+        if (!setterResult.best.is_callable())
         {
             error("type '" + format_type_name(namedType) +
                   "' has no 'op []=' for index type '" + format_type_name(indexType) +
@@ -648,6 +673,9 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
+        MethodSymbol* method = setterResult.best.method;
+        index = coerce_to_param(index, method->parameters[1]->type);
+        value = coerce_to_param(value, method->parameters[2]->type);
         return fhir.call(expr, method->get_return_type(), method, {object, index, value});
     }
 
@@ -1239,7 +1267,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             TypeSymbol* i32Type = context.resolve_type_name("i32");
 
             auto* countLit = fhir.literal(expr, i32Type);
-            countLit->value = LiteralValue::make_int(0);
+            countLit->value = ConstantValue::make_int(0);
 
             std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
             auto ctorResult = expectedNamed->find_constructor(ctorArgTypes);
@@ -1323,7 +1351,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     int count = static_cast<int>(elements.size());
 
     auto* countLit = fhir.literal(expr, i32Type);
-    countLit->value = LiteralValue::make_int(count);
+    countLit->value = ConstantValue::make_int(count);
 
     std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
     auto ctorResult = arrayType->find_constructor(ctorArgTypes);
@@ -1342,18 +1370,19 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
     pendingStmts->push_back(fhir.var_decl(expr, tempLocal, createExpr));
 
-    auto* setter = arrayType->find_index_setter(i32Type, elementType);
-    if (!setter)
+    auto setterResult = arrayType->find_index_setter(i32Type, elementType);
+    if (!setterResult.best.is_callable())
     {
         error("Core.Array has no 'op []=' for element type '" +
               format_type_name(elementType) + "'", expr->span);
         return fhir.error_expr(expr);
     }
+    MethodSymbol* setter = setterResult.best.method;
 
     for (int i = 0; i < count; ++i)
     {
         auto* indexLit = fhir.literal(expr, i32Type);
-        indexLit->value = LiteralValue::make_int(i);
+        indexLit->value = ConstantValue::make_int(i);
 
         auto* setCall = fhir.call(expr, setter->get_return_type(), setter,
                                   {fhir.local_ref(expr, tempLocal), indexLit, elements[i]});
@@ -1383,14 +1412,24 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
         return fhir.error_expr(expr);
     }
 
-    auto* method = namedType->find_index_getter(indexType);
-    if (!method)
+    auto getterResult = namedType->find_index_getter(indexType);
+    if (getterResult.ambiguous)
+    {
+        std::string msg = "index access is ambiguous between:";
+        for (auto* m : getterResult.ambiguousCandidates)
+            msg += "\n  " + format_type_name(namedType) + ".op [](" + m->format_parameters() + ")";
+        error(msg, expr->span);
+        return fhir.error_expr(expr);
+    }
+    if (!getterResult.best.is_callable())
     {
         error("type '" + format_type_name(namedType) +
               "' has no 'op []' for index type '" + format_type_name(indexType) + "'", expr->span);
         return fhir.error_expr(expr);
     }
 
+    MethodSymbol* method = getterResult.best.method;
+    index = coerce_to_param(index, method->parameters[1]->type);
     return fhir.call(expr, method->get_return_type(), method, {object, index});
 }
 
