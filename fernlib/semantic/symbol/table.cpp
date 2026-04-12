@@ -1,5 +1,7 @@
 #include <symbol/table.hpp>
 
+#include <ast/ast.hpp>
+
 namespace Fern
 {
 
@@ -11,7 +13,7 @@ SymbolTable::SymbolTable()
     own(std::move(globalPtr));
 }
 
-NamespaceSymbol* SymbolTable::get_or_create_namespace(NamespaceSymbol* parent, std::string_view name)
+NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, std::string_view name)
 {
     if (!parent)
     {
@@ -31,16 +33,22 @@ NamespaceSymbol* SymbolTable::get_or_create_namespace(NamespaceSymbol* parent, s
     return ns;
 }
 
-NamedTypeSymbol* SymbolTable::create_type(Symbol* parent, std::string_view name, BaseSyntax* syntax, Modifier modifiers)
+NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, NamespaceDeclSyntax* syntax)
 {
-    if (!parent)
+    auto* ns = get_or_declare_namespace(parent, syntax->name.lexeme);
+    if (ns && !ns->syntax)
     {
-        return nullptr;
+        ns->syntax = syntax;
     }
+    return ns;
+}
 
+#pragma region Declare Symbols
+
+NamedTypeSymbol* SymbolTable::declare_type(Symbol* parent, std::string_view name, Modifier modifiers)
+{
     auto typePtr = std::make_unique<NamedTypeSymbol>();
     typePtr->name = std::string(name);
-    typePtr->syntax = syntax;
     typePtr->parent = parent;
     typePtr->modifiers = modifiers;
     auto* type = own(std::move(typePtr));
@@ -55,6 +63,111 @@ NamedTypeSymbol* SymbolTable::create_type(Symbol* parent, std::string_view name,
     }
 
     return type;
+}
+
+NamedTypeSymbol* SymbolTable::declare_type(Symbol* parent, TypeDeclSyntax* syntax)
+{
+    auto* type = declare_type(parent, syntax->name.lexeme, syntax->modifiers);
+    type->syntax = syntax;
+    return type;
+}
+
+TypeParamSymbol* SymbolTable::declare_type_param(NamedTypeSymbol* owner, int index, std::string_view name)
+{
+    auto paramPtr = std::make_unique<TypeParamSymbol>();
+    paramPtr->name = std::string(name);
+    paramPtr->index = index;
+    paramPtr->owningType = owner;
+    paramPtr->parent = owner;
+    auto* param = own(std::move(paramPtr));
+    owner->typeParamSymbols.push_back(param);
+    return param;
+}
+
+FieldSymbol* SymbolTable::declare_field(NamedTypeSymbol* parent, std::string_view name, Modifier modifiers, int index)
+{
+    auto fieldPtr = std::make_unique<FieldSymbol>();
+    fieldPtr->name = std::string(name);
+    fieldPtr->parent = parent;
+    fieldPtr->modifiers = modifiers;
+    fieldPtr->index = index;
+    auto* field = own(std::move(fieldPtr));
+    parent->fields.push_back(field);
+    return field;
+}
+
+FieldSymbol* SymbolTable::declare_field(NamedTypeSymbol* parent, FieldDeclSyntax* syntax, int index)
+{
+    auto* field = declare_field(parent, syntax->name.lexeme, syntax->modifiers, index);
+    field->syntax = syntax;
+    return field;
+}
+
+MethodSymbol* SymbolTable::declare_method(NamedTypeSymbol* parent, std::string_view name, Modifier modifiers, CallableKind kind, TokenKind operatorKind)
+{
+    auto methodPtr = std::make_unique<MethodSymbol>();
+    methodPtr->name = std::string(name);
+    methodPtr->parent = parent;
+    methodPtr->modifiers = modifiers;
+    methodPtr->callableKind = kind;
+    methodPtr->operatorKind = operatorKind;
+    auto* method = own(std::move(methodPtr));
+    parent->methods.push_back(method);
+    return method;
+}
+
+MethodSymbol* SymbolTable::declare_method(NamedTypeSymbol* parent, CallableDeclSyntax* syntax)
+{
+    std::string_view name;
+    Modifier modifiers = {};
+    TokenKind operatorKind = {};
+
+    switch (syntax->callableKind)
+    {
+        case CallableKind::Function:
+            name = syntax->name.lexeme;
+            modifiers = syntax->modifiers;
+            break;
+        case CallableKind::Constructor:
+            name = "init";
+            modifiers = syntax->modifiers;
+            break;
+        case CallableKind::Operator:
+            name = syntax->name.lexeme;
+            operatorKind = syntax->name.kind;
+            modifiers = Modifier::Public | Modifier::Static;
+            break;
+        case CallableKind::Literal:
+            name = syntax->name.lexeme;
+            modifiers = Modifier::Public | Modifier::Static;
+            break;
+        case CallableKind::Cast:
+            name = "cast";
+            modifiers = syntax->modifiers | Modifier::Static;
+            break;
+    }
+
+    auto* method = declare_method(parent, name, modifiers, syntax->callableKind, operatorKind);
+    method->syntax = syntax;
+    return method;
+}
+
+ParameterSymbol* SymbolTable::declare_parameter(MethodSymbol* parent, std::string_view name, int index)
+{
+    auto paramPtr = std::make_unique<ParameterSymbol>();
+    paramPtr->name = std::string(name);
+    paramPtr->parent = parent;
+    paramPtr->index = index;
+    auto* param = own(std::move(paramPtr));
+    parent->parameters.push_back(param);
+    return param;
+}
+
+ParameterSymbol* SymbolTable::declare_parameter(MethodSymbol* parent, ParameterDeclSyntax* syntax, int index)
+{
+    auto* param = declare_parameter(parent, syntax->name.lexeme, index);
+    param->syntax = syntax;
+    return param;
 }
 
 #pragma region Generic Instantiation

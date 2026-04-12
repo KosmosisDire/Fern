@@ -27,11 +27,11 @@ void Binder::bind_ast(RootSyntax* ast)
     {
         if (auto* nsDecl = decl->as<NamespaceDeclSyntax>())
         {
-            declare_namespace(nsDecl, globalNs);
+            define_namespace(nsDecl, globalNs);
         }
         else if (auto* typeDecl = decl->as<TypeDeclSyntax>())
         {
-            declare_type(typeDecl, globalNs);
+            define_type(typeDecl, globalNs);
         }
     }
 }

@@ -19,7 +19,7 @@ Usually it is silly to include a list of files in a README, but since the binder
 | File | Responsibility |
 |------|---------------|
 | `binder.cpp` | Constructor and `bind_ast` entry point |
-| `binder_declare.cpp` | Phase 1: symbol creation for types, methods, fields |
+| `binder_declare.cpp` | Phase 1: symbol definition for types, methods, fields |
 | `binder_types.cpp` | Phase 2: type expression resolution, generic instantiation |
 | `binder_attributes.cpp` | Phase 3: attribute resolution |
 | `binder_methods.cpp` | Phase 4 entry: `bind_all_methods`, `bind_method`, synthetic constructors, field defaults |

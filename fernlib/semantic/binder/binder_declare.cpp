@@ -8,40 +8,36 @@
 namespace Fern
 {
 
-void Binder::declare_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs)
+void Binder::define_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs)
 {
     if (!nsDecl || !parentNs)
     {
         return;
     }
 
-    auto* ns = context.symbols.get_or_create_namespace(parentNs, nsDecl->name.lexeme);
-    if (!ns->syntax)
-    {
-        ns->syntax = nsDecl;
-    }
+    auto* ns = context.symbols.get_or_declare_namespace(parentNs, nsDecl);
 
     for (auto* decl : nsDecl->declarations)
     {
         if (auto* nestedNs = decl->as<NamespaceDeclSyntax>())
         {
-            declare_namespace(nestedNs, ns);
+            define_namespace(nestedNs, ns);
         }
         else if (auto* typeDecl = decl->as<TypeDeclSyntax>())
         {
-            declare_type(typeDecl, ns);
+            define_type(typeDecl, ns);
         }
     }
 }
 
-NamedTypeSymbol* Binder::declare_type(TypeDeclSyntax* typeDecl, Symbol* parent)
+NamedTypeSymbol* Binder::define_type(TypeDeclSyntax* typeDecl, Symbol* parent)
 {
     if (!typeDecl || !parent)
     {
         return nullptr;
     }
 
-    auto* type = context.symbols.create_type(parent, typeDecl->name.lexeme, typeDecl, typeDecl->modifiers);
+    auto* type = context.symbols.declare_type(parent, typeDecl);
 
     for (auto& param : typeDecl->typeParams)
     {
@@ -50,12 +46,7 @@ NamedTypeSymbol* Binder::declare_type(TypeDeclSyntax* typeDecl, Symbol* parent)
 
     for (int i = 0; i < static_cast<int>(type->typeParams.size()); ++i)
     {
-        auto paramPtr = std::make_unique<TypeParamSymbol>();
-        paramPtr->name = type->typeParams[i];
-        paramPtr->index = i;
-        paramPtr->owningType = type;
-        paramPtr->parent = type;
-        type->typeParamSymbols.push_back(context.symbols.own(std::move(paramPtr)));
+        context.symbols.declare_type_param(type, i, type->typeParams[i]);
     }
 
     allTypes.push_back(type);
@@ -65,49 +56,16 @@ NamedTypeSymbol* Binder::declare_type(TypeDeclSyntax* typeDecl, Symbol* parent)
     {
         if (auto* fieldAst = member->as<FieldDeclSyntax>())
         {
-            auto fieldPtr = std::make_unique<FieldSymbol>();
-            fieldPtr->name = std::string(fieldAst->name.lexeme);
-            fieldPtr->syntax = fieldAst;
-            fieldPtr->parent = type;
-            fieldPtr->modifiers = fieldAst->modifiers;
-            fieldPtr->index = fieldIndex++;
-
-            type->fields.push_back(context.symbols.own(std::move(fieldPtr)));
+            context.symbols.declare_field(type, fieldAst, fieldIndex++);
         }
         else if (auto* callableAst = member->as<CallableDeclSyntax>())
         {
-            auto methodPtr = std::make_unique<MethodSymbol>();
-            methodPtr->syntax = callableAst;
-            methodPtr->parent = type;
-            methodPtr->callableKind = callableAst->callableKind;
+            auto* method = context.symbols.declare_method(type, callableAst);
 
-            switch (callableAst->callableKind)
+            for (int i = 0; i < static_cast<int>(callableAst->parameters.size()); ++i)
             {
-                case CallableKind::Function:
-                    methodPtr->name = std::string(callableAst->name.lexeme);
-                    methodPtr->modifiers = callableAst->modifiers;
-                    break;
-                case CallableKind::Constructor:
-                    methodPtr->name = "init";
-                    methodPtr->modifiers = callableAst->modifiers;
-                    break;
-                case CallableKind::Operator:
-                    methodPtr->name = std::string(callableAst->name.lexeme);
-                    methodPtr->operatorKind = callableAst->name.kind;
-                    methodPtr->modifiers = Modifier::Public | Modifier::Static;
-                    break;
-                case CallableKind::Literal:
-                    methodPtr->name = std::string(callableAst->name.lexeme);
-                    methodPtr->modifiers = Modifier::Public | Modifier::Static;
-                    break;
-                case CallableKind::Cast:
-                    methodPtr->name = "cast";
-                    methodPtr->modifiers = callableAst->modifiers | Modifier::Static;
-                    break;
+                context.symbols.declare_parameter(method, callableAst->parameters[i], i);
             }
-
-            auto* method = context.symbols.own(std::move(methodPtr));
-            create_parameters(method, callableAst->parameters);
 
             if (callableAst->callableKind == CallableKind::Operator)
             {
@@ -133,7 +91,6 @@ NamedTypeSymbol* Binder::declare_type(TypeDeclSyntax* typeDecl, Symbol* parent)
                 }
             }
 
-            type->methods.push_back(method);
             allMethods.push_back(method);
 
             if (method->is_literal())
@@ -141,7 +98,7 @@ NamedTypeSymbol* Binder::declare_type(TypeDeclSyntax* typeDecl, Symbol* parent)
         }
         else if (auto* nestedTypeDecl = member->as<TypeDeclSyntax>())
         {
-            declare_type(nestedTypeDecl, type);
+            define_type(nestedTypeDecl, type);
         }
     }
 
@@ -154,46 +111,18 @@ NamedTypeSymbol* Binder::declare_type(TypeDeclSyntax* typeDecl, Symbol* parent)
 
     if (!hasInit)
     {
-        auto methodPtr = std::make_unique<MethodSymbol>();
-        methodPtr->name = "init";
-        methodPtr->parent = type;
-        methodPtr->callableKind = CallableKind::Constructor;
-        methodPtr->modifiers = Modifier::Public;
+        auto* method = context.symbols.declare_method(type, "init", Modifier::Public, CallableKind::Constructor);
 
-        auto* method = context.symbols.own(std::move(methodPtr));
-
-        int paramIndex = 0;
-        for (auto* field : type->fields)
+        for (int i = 0; i < static_cast<int>(type->fields.size()); ++i)
         {
-            auto paramPtr = std::make_unique<ParameterSymbol>();
-            paramPtr->name = field->name;
-            paramPtr->parent = method;
-            paramPtr->index = paramIndex++;
-
-            method->parameters.push_back(context.symbols.own(std::move(paramPtr)));
+            context.symbols.declare_parameter(method, type->fields[i]->name, i);
         }
 
-        type->methods.push_back(method);
         allMethods.push_back(method);
     }
 
     type->membersPopulated = true;
     return type;
-}
-
-void Binder::create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params)
-{
-    int paramIndex = 0;
-    for (auto* paramAst : params)
-    {
-        auto paramPtr = std::make_unique<ParameterSymbol>();
-        paramPtr->name = std::string(paramAst->name.lexeme);
-        paramPtr->syntax = paramAst;
-        paramPtr->parent = method;
-        paramPtr->index = paramIndex++;
-
-        method->parameters.push_back(context.symbols.own(std::move(paramPtr)));
-    }
 }
 
 }

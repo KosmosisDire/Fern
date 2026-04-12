@@ -89,11 +89,10 @@ private:
     std::vector<FhirStmt*>* pendingStmts = nullptr;
     int tempCounter = 0;
 
-    // Symbol Discovery
+    // Symbol Definition
 
-    void declare_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs);
-    NamedTypeSymbol* declare_type(TypeDeclSyntax* typeDecl, Symbol* parent);
-    void create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params);
+    void define_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs);
+    NamedTypeSymbol* define_type(TypeDeclSyntax* typeDecl, Symbol* parent);
 
     // Type Expression Resolution
 
