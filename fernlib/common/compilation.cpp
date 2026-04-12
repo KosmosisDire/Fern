@@ -25,7 +25,8 @@ void Compilation::add_file(std::string_view path)
     std::ifstream file{std::string{path}};
     if (!file)
     {
-        throw std::runtime_error("Could not open file: " + std::string(path));
+        error("Could not open file: " + std::string(path), Span{});
+        return;
     }
 
     std::ostringstream buffer;
