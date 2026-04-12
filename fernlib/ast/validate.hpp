@@ -71,9 +71,9 @@ public:
         {
             error("cast declarations can only be declared inside a type", node->span);
         }
-        else if (node->callableKind == CallableKind::Function && scope == Scope::Function)
+        else if (node->callableKind == CallableKind::Function && scope != Scope::Type)
         {
-            error("nested functions are not yet supported", node->span);
+            error("functions can only be declared inside a type", node->span);
         }
 
         validate_modifiers(node);
