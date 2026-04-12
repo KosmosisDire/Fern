@@ -76,6 +76,11 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
                   "' returns a value but has no return type annotation", loc);
         }
     }
+    else if (TypeSymbol* retType = currentMethod->get_return_type())
+    {
+        error("function '" + currentMethod->name +
+              "' expects a return of type '" + format_type_name(retType) + "'", stmt->span);
+    }
 
     out.push_back(fhir.return_stmt(stmt, value));
 }
