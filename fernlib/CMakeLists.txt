@@ -15,7 +15,7 @@ set(FERNLIB_SOURCES
     semantic/symbol/table.cpp
     semantic/context.cpp
     semantic/binder/binder.cpp
-    semantic/binder/binder_declare.cpp
+    semantic/binder/binder_define.cpp
     semantic/binder/binder_validate.cpp
     semantic/binder/binder_attributes.cpp
     semantic/binder/binder_methods.cpp
