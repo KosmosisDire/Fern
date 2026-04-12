@@ -1,0 +1,44 @@
+type Foo
+{
+    x: i32
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        var f: f32 = 1.5
+
+        -- resolve_type_expr: identifier that is a variable, not a type
+        var a: x = 5
+
+        -- resolve_type_expr: cast target is a variable, not a type
+        var b = (x)5
+
+        -- resolve_type_expr: undefined type in cast
+        var c = (Blah)5
+
+        -- resolve_type_expr: qualified path resolves to non-type
+        -- (Foo.x is a field, not a type)
+        var d: Foo.x = 5
+
+        -- resolve_generic_type: variable used as generic base
+        var e: x<i32> = 5
+
+        -- resolve_generic_type: multi-segment, parent is not a namespace
+        var g: Foo.Bar<i32> = 5
+
+        -- cast: no conversion exists (bool -> f32)
+        var h = (f32)true
+
+        -- cast: no conversion exists (string -> i32)
+        var i = (i32)"hello"
+
+        -- cast: undefined type in array cast
+        var j = (Blah[])x
+
+        return 0
+    }
+}
