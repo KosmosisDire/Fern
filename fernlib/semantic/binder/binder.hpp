@@ -30,6 +30,7 @@ struct NamespaceDeclSyntax;
 struct CallableDeclSyntax;
 struct ParameterDeclSyntax;
 struct ParenExprSyntax;
+struct CastExprSyntax;
 struct ReturnStmtSyntax;
 struct ThisExprSyntax;
 struct TypeDeclSyntax;
@@ -131,6 +132,7 @@ private:
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_this(ThisExprSyntax* expr);
     FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirExpr* bind_cast(CastExprSyntax* expr);
     FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
     FhirExpr* bind_member_access(MemberAccessExprSyntax* expr);
     FhirExpr* bind_unary(UnaryExprSyntax* expr);

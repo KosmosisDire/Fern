@@ -62,6 +62,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         result = bind_initializer(initializer);
     else if (auto* paren = expr->as<ParenExprSyntax>())
         result = bind_paren(paren, expected);
+    else if (auto* castExpr = expr->as<CastExprSyntax>())
+        result = bind_cast(castExpr);
     else if (auto* generic = expr->as<GenericTypeExprSyntax>())
         result = bind_generic_type_expr(generic);
     else if (auto* indexExpr = expr->as<IndexExprSyntax>())
@@ -119,9 +121,9 @@ FhirCastExpr* Binder::try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, 
 {
     if (!expr || !expr->type || !targetType) return nullptr;
 
-    auto conv = NamedTypeSymbol::get_convertibility(expr->type, targetType);
-    if (conv == Convertibility::Implicit)
-        return fhir.cast(expr->syntax, targetType, expr, true);
+    auto conv = NamedTypeSymbol::get_conversion(expr->type, targetType);
+    if (conv.level == Convertibility::Implicit)
+        return fhir.cast(expr->syntax, targetType, expr, true, conv.method);
 
     return nullptr;
 }
@@ -213,6 +215,53 @@ FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
 FhirExpr* Binder::bind_paren(ParenExprSyntax* expr, TypeSymbol* expected)
 {
     return bind_value_expr(expr->expression, expected);
+}
+
+FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
+{
+    TypeSymbol* targetType = nullptr;
+
+    if (expr->type->is<ArrayTypeExprSyntax>())
+    {
+        targetType = resolve_type_expr(expr->type);
+    }
+    else
+    {
+        Symbol* typeSym = resolve_expr_symbol(expr->type);
+        targetType = typeSym ? typeSym->as<TypeSymbol>() : nullptr;
+
+        if (typeSym && !targetType)
+        {
+            error("'" + typeSym->name + "' is not a type", expr->type->span);
+            return fhir.error_expr(expr);
+        }
+    }
+
+    if (!targetType)
+    {
+        if (auto* id = expr->type->as<IdentifierExprSyntax>())
+            error("undefined type '" + std::string(id->name.lexeme) + "'", expr->type->span);
+        else
+            error("expected a type in cast expression", expr->type->span);
+        return fhir.error_expr(expr);
+    }
+
+    FhirExpr* operand = bind_value_expr(expr->operand);
+    if (!operand || operand->is_error())
+        return fhir.error_expr(expr);
+
+    if (operand->type == targetType)
+        return operand;
+
+    auto conv = NamedTypeSymbol::get_conversion(operand->type, targetType);
+    if (conv.level == Convertibility::Implicit || conv.level == Convertibility::Explicit)
+    {
+        return fhir.cast(expr, targetType, operand, false, conv.method);
+    }
+
+    error("cannot cast from '" + format_type_name(operand->type) +
+          "' to '" + format_type_name(targetType) + "'", expr->span);
+    return fhir.error_expr(expr);
 }
 
 FhirExpr* Binder::bind_generic_type_expr(GenericTypeExprSyntax* expr)

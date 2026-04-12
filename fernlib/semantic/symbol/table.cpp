@@ -172,7 +172,7 @@ ParameterSymbol* SymbolTable::declare_parameter(MethodSymbol* parent, ParameterD
 
 #pragma region Generic Instantiation
 
-NamedTypeSymbol* SymbolTable::get_or_create_instantiation(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs)
+NamedTypeSymbol* SymbolTable::get_or_declare_generic_instance(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs)
 {
     if (auto* existing = templ->find_instantiation(typeArgs))
     {
@@ -190,13 +190,22 @@ NamedTypeSymbol* SymbolTable::get_or_create_instantiation(NamedTypeSymbol* templ
     return inst;
 }
 
+NamedTypeSymbol* SymbolTable::get_or_declare_array_type(TypeSymbol* elementType)
+{
+    if (!elementType) return nullptr;
+    auto* coreNs = globalNamespace->find_namespace("Core");
+    auto* arrayTemplate = coreNs ? coreNs->find_type("Array", 1) : nullptr;
+    if (!arrayTemplate) return nullptr;
+    return get_or_declare_generic_instance(arrayTemplate, {elementType});
+}
+
 TypeSymbol* SymbolTable::substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs)
 {
     if (!type) return nullptr;
 
     if (type == origin)
     {
-        return get_or_create_instantiation(origin, typeArgs);
+        return get_or_declare_generic_instance(origin, typeArgs);
     }
 
     if (auto* param = type->as<TypeParamSymbol>())
@@ -222,7 +231,7 @@ TypeSymbol* SymbolTable::substitute_type(TypeSymbol* type, NamedTypeSymbol* orig
         }
         if (changed)
         {
-            return get_or_create_instantiation(named->genericOrigin, newArgs);
+            return get_or_declare_generic_instance(named->genericOrigin, newArgs);
         }
     }
 

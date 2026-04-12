@@ -353,6 +353,7 @@ struct FhirCastExpr : FhirExpr
     FHIR_NODE(FhirCastExpr, FhirExpr)
 
     FhirExpr* operand = nullptr;
+    MethodSymbol* method = nullptr;
     bool isImplicit = false;
 
     std::optional<ConstantValue> compute_constant() const;

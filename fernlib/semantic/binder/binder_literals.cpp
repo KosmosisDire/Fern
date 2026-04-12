@@ -309,15 +309,12 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
         return fhir.error_expr(expr);
     }
 
-    auto* coreNs = context.symbols.globalNamespace->find_namespace("Core");
-    auto* arrayTemplate = coreNs ? coreNs->find_type("Array", 1) : nullptr;
-    if (!arrayTemplate)
+    auto* arrayType = context.symbols.get_or_declare_array_type(elementType);
+    if (!arrayType)
     {
-        error("Core.Array type not found", expr->span);
+        error("Array type not found", expr->span);
         return fhir.error_expr(expr);
     }
-
-    auto* arrayType = context.symbols.get_or_create_instantiation(arrayTemplate, {elementType});
     context.symbols.ensure_members_populated(arrayType);
 
     TypeSymbol* i32Type = context.resolve_type_name("i32");

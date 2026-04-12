@@ -21,11 +21,11 @@ Generic instantiations need their own copies of fields, methods, and parameters 
 
 All overloaded lookups (`find_method`, `find_constructor`, `find_binary_operator`, etc) live on `NamedTypeSymbol` and follow the same pattern: filter candidates by kind and arity, score each one with `Overload::grade`, then pick a winner with `Overload::resolve`.
 
-Grading scores each parameter as exact, implicit, or fail using `get_convertibility`. Resolution picks the candidate with the fewest failures, breaking ties by most exact matches. If two candidates tie, the result is marked ambiguous to be handled by the binder.
+Grading scores each parameter as exact, implicit, or fail using `get_conversion`. Resolution picks the candidate with the fewest failures, breaking ties by most exact matches. If two candidates tie, the result is marked ambiguous to be handled by the binder.
 
 ## Convertibility
 
-`NamedTypeSymbol::get_convertibility` determines how one type converts to another. It checks both the source and target types for user-defined casts (`CallableKind::Cast` with `Modifier::Implicit` or `Modifier::Explicit`). The four levels are Exact (same type), Implicit (automatic), Explicit (requires cast), and None. 
+`NamedTypeSymbol::get_conversion` determines how one type converts to another. It checks both the source and target types for user-defined casts (`CallableKind::Cast` with `Modifier::Implicit` or `Modifier::Explicit`). The four levels are Exact (same type), Implicit (automatic), Explicit (requires cast), and None. 
 
 ## Attribute-Driven Type Properties
 

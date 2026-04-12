@@ -1,0 +1,59 @@
+type Box<T>
+{
+    value: T
+    init(value: T)
+    {
+        this.value = value
+    }
+    init{}
+}
+
+type Container<T>
+{
+    value: T
+    init(value: T)
+    {
+        this.value = value
+    }
+    init{}
+
+    explicit cast(from: Box<T>) -> Container<T>
+    {
+        return Container<T>(from.value)
+    }
+
+    implicit cast(from: Container<T>) -> Box<T>
+    {
+        return Box<T>(from.value)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        -- Explicit cast between generic types
+        var intBox = Box<i32>(42)
+        var container = (Container<i32>)intBox
+
+        -- Implicit cast via type annotation
+        var backToBox: Box<i32> = container
+
+        -- Implicit cast via explicit syntax
+        var alsoBox = (Box<i32>)container
+
+        -- Cast fields out of generic types
+        var a = (f32)intBox.value
+        var b = (i32)Box<f32>(3.14).value
+
+        -- Cast with generic array elements
+        var arr = [1, 2, 3, 4]
+        var c = (f32)arr[0]
+        arr[(i32)1.5] = 10
+
+        -- Array type in cast position
+        var d = (i32[])arr
+
+        return 0
+    }
+}

@@ -44,20 +44,26 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
 {
     if (!expr) return nullptr;
 
-    if (auto* typeExpr = expr->as<TypeExprSyntax>())
+    auto resolve_name_as_type = [&](std::string_view name) -> TypeSymbol*
     {
-        auto it = typeParamSubstitutions.find(std::string(typeExpr->name.lexeme));
+        auto it = typeParamSubstitutions.find(std::string(name));
         if (it != typeParamSubstitutions.end()) return it->second;
 
-        TypeSymbol* builtin = context.resolve_type_name(typeExpr->name.lexeme);
+        TypeSymbol* builtin = context.resolve_type_name(name);
         if (builtin) return builtin;
 
-        Symbol* sym = resolve_name(typeExpr->name.lexeme);
+        Symbol* sym = resolve_name(name);
         if (sym) return sym->as<TypeSymbol>();
 
-        error("undefined type '" + std::string(typeExpr->name.lexeme) + "'", expr->span);
+        error("undefined type '" + std::string(name) + "'", expr->span);
         return nullptr;
-    }
+    };
+
+    if (auto* typeExpr = expr->as<TypeExprSyntax>())
+        return resolve_name_as_type(typeExpr->name.lexeme);
+
+    if (auto* idExpr = expr->as<IdentifierExprSyntax>())
+        return resolve_name_as_type(idExpr->name.lexeme);
 
     if (auto* genericExpr = expr->as<GenericTypeExprSyntax>())
     {
@@ -69,15 +75,14 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         TypeSymbol* elementType = resolve_type_expr(arrayExpr->elementType);
         if (!elementType) return nullptr;
 
-        auto* coreNs = context.symbols.globalNamespace->find_namespace("Core");
-        auto* arrayTemplate = coreNs ? coreNs->find_type("Array", 1) : nullptr;
-        if (!arrayTemplate)
+        auto* arrayType = context.symbols.get_or_declare_array_type(elementType);
+        if (!arrayType)
         {
-            error("Core.Array type not found", expr->span);
+            error("Array type not found", expr->span);
             return nullptr;
         }
 
-        return context.symbols.get_or_create_instantiation(arrayTemplate, {elementType});
+        return arrayType;
     }
 
     if (auto* memberExpr = expr->as<MemberAccessExprSyntax>())
@@ -180,7 +185,7 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
         if (isSelfRef) return templ;
     }
 
-    return context.symbols.get_or_create_instantiation(templ, typeArgs);
+    return context.symbols.get_or_declare_generic_instance(templ, typeArgs);
 }
 
 void Binder::resolve_all_types()

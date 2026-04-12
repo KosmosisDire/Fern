@@ -1,0 +1,83 @@
+type Wrapper
+{
+    value: i32
+    init(value: i32)
+    {
+        this.value = value
+    }
+    init{}
+
+    implicit cast(from: i32) -> Wrapper
+    {
+        return Wrapper(from)
+    }
+
+    explicit cast(from: Wrapper) -> i32
+    {
+        return from.value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        var f: f32 = 1.5
+        var b: u8 = 42
+
+        -- Explicit casts across builtin types
+        var a1 = (i32)f
+        var a2 = (bool)x
+        var a3 = (u8)x
+        var a4 = (u8)f
+
+        -- Implicit casts through explicit syntax
+        var b1 = (f32)x
+        var b2 = (i32)b
+        var b3 = (f32)b
+
+        -- Same type no-op
+        var c1 = (i32)x
+        var c2 = (f32)f
+
+        -- Chained casts
+        var d1 = (bool)(i32)f
+        var d2 = (u8)(i32)f
+
+        -- Cast in expression context
+        var e1 = (i32)f + x
+        Process((i32)f)
+
+        -- User-defined casts
+        var f1 = (Wrapper)x
+        var f2 = (i32)f1
+
+        -- Cast of complex expressions
+        var g1 = (f32)GetI32()
+        var g2 = (i32)(f + f)
+        var g3 = (f32)(-x)
+
+        -- Disambiguation: subtraction not cast
+        var h1 = (x) - 1
+        var h2 = (x)-1
+        var h3 = (f) - f
+        var h4 = (x) + 1
+
+        -- Generics: cast from generic array element
+        var arr = [1, 2, 3, 4]
+        arr[(i32)f] = 10
+        var g4 = (f32)arr[0]
+
+        return 0
+    }
+
+    fn Process(x: i32)
+    {
+    }
+
+    fn GetI32() -> i32
+    {
+        return 42
+    }
+}

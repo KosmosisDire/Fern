@@ -1,0 +1,55 @@
+type Box<T>
+{
+    value: T
+    init(value: T)
+    {
+        this.value = value
+    }
+    init{}
+}
+
+type Container<T>
+{
+    value: T
+    init(value: T)
+    {
+        this.value = value
+    }
+    init{}
+
+    explicit cast(from: Box<T>) -> Container<T>
+    {
+        return Container<T>(from.value)
+    }
+
+    implicit cast(from: Container<T>) -> Box<T>
+    {
+        return Box<T>(from.value)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var intBox = Box<i32>(42)
+        var floatBox = Box<f32>(3.14)
+
+        -- OK: matching T = i32
+        var a = (Container<i32>)intBox
+
+        -- ERROR: mismatched T, Container<i32> expects Box<i32> not Box<f32>
+        var b = (Container<i32>)floatBox
+
+        -- OK: implicit cast Container<i32> -> Box<i32> via assignment
+        var c: Box<i32> = a
+
+        -- OK: implicit cast Container<i32> -> Box<i32> via explicit syntax
+        var d = (Box<i32>)a
+
+        -- ERROR: implicit cast won't match Container<i32> -> Box<f32>
+        var e: Box<f32> = a
+
+        return 0
+    }
+}

@@ -45,6 +45,12 @@ struct ResolvedAttribute
 
 enum class Convertibility { None, Explicit, Implicit, Exact };
 
+struct Conversion
+{
+    Convertibility level = Convertibility::None;
+    MethodSymbol* method = nullptr;
+};
+
 enum class SymbolKind
 {
     Namespace,
@@ -174,7 +180,7 @@ struct NamedTypeSymbol : TypeSymbol
     OverloadResult find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType);
     MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
-    static Convertibility get_convertibility(TypeSymbol* from, TypeSymbol* to);
+    static Conversion get_conversion(TypeSymbol* from, TypeSymbol* to);
 
     std::string format(int indent = 0) const override;
 };

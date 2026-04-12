@@ -218,25 +218,24 @@ MethodSymbol* NamedTypeSymbol::find_explicit_cast(TypeSymbol* fromType, TypeSymb
     return nullptr;
 }
 
-Convertibility NamedTypeSymbol::get_convertibility(TypeSymbol* from, TypeSymbol* to)
+Conversion NamedTypeSymbol::get_conversion(TypeSymbol* from, TypeSymbol* to)
 {
-    if (!from || !to) return Convertibility::None;
-    if (from == to) return Convertibility::Exact;
+    if (!from || !to) return {};
+    if (from == to) return {Convertibility::Exact, nullptr};
 
     auto* sourceNamed = from->as<NamedTypeSymbol>();
     auto* targetNamed = to->as<NamedTypeSymbol>();
 
-    if (targetNamed && targetNamed->find_implicit_cast(from, to))
-        return Convertibility::Implicit;
-    if (sourceNamed && sourceNamed->find_implicit_cast(from, to))
-        return Convertibility::Implicit;
+    MethodSymbol* method = nullptr;
+    if (targetNamed) method = targetNamed->find_implicit_cast(from, to);
+    if (!method && sourceNamed) method = sourceNamed->find_implicit_cast(from, to);
+    if (method) return {Convertibility::Implicit, method};
 
-    if (targetNamed && targetNamed->find_explicit_cast(from, to))
-        return Convertibility::Explicit;
-    if (sourceNamed && sourceNamed->find_explicit_cast(from, to))
-        return Convertibility::Explicit;
+    if (targetNamed) method = targetNamed->find_explicit_cast(from, to);
+    if (!method && sourceNamed) method = sourceNamed->find_explicit_cast(from, to);
+    if (method) return {Convertibility::Explicit, method};
 
-    return Convertibility::None;
+    return {};
 }
 
 }

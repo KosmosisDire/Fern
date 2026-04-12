@@ -46,7 +46,8 @@ public:
     ParameterSymbol* declare_parameter(MethodSymbol* parent, std::string_view name, int index);
     ParameterSymbol* declare_parameter(MethodSymbol* parent, ParameterDeclSyntax* syntax, int index);
 
-    NamedTypeSymbol* get_or_create_instantiation(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs);
+    NamedTypeSymbol* get_or_declare_generic_instance(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs);
+    NamedTypeSymbol* get_or_declare_array_type(TypeSymbol* elementType);
     TypeSymbol* substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs);
     void populate_instantiation_members(NamedTypeSymbol* inst);
     void ensure_members_populated(NamedTypeSymbol* type);

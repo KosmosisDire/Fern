@@ -1,0 +1,28 @@
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        var f: f32 = 1.5
+
+        -- Explicit cast: f32 -> i32 (explicit cast defined on I32)
+        var a = (i32)f
+
+        -- Explicit cast: i32 -> bool (explicit cast defined on Bool)
+        var b = (bool)x
+
+        -- Implicit cast allowed through explicit syntax: i32 -> f32
+        var c = (f32)x
+
+        -- Same type: should be a no-op
+        var d = (i32)x
+
+        -- Chained: f32 -> i32 -> bool
+        var e = (bool)(i32)f
+
+        -- Cast in expression context
+        var g = (i32)f + x
+
+        return 0
+    }
+}

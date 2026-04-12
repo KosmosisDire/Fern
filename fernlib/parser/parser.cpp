@@ -74,6 +74,29 @@ static bool has_space_after(const Span& op, const TokenWalker& walker)
     return op.endLine != next.startLine || op.endColumn != next.startColumn;
 }
 
+static bool could_be_type_expr(BaseExprSyntax* expr)
+{
+    return expr && (expr->is<IdentifierExprSyntax>() ||
+                    expr->is<MemberAccessExprSyntax>());
+}
+
+static bool is_unambiguously_type(BaseExprSyntax* expr)
+{
+    if (!expr) return false;
+    return expr->is<GenericTypeExprSyntax>() ||
+           expr->is<ArrayTypeExprSyntax>();
+}
+
+// These tokens after a potential cast signify that we ARE doing a cast and not a parenthesized expression or call
+static bool is_cast_trigger(TokenKind k)
+{
+    return k == TokenKind::Identifier ||
+           k == TokenKind::This ||
+           k == TokenKind::LeftParen ||
+           k == TokenKind::Not ||
+           is_literal(k);
+}
+
 void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
 {
     while (walker.check(TokenKind::At))
@@ -1234,22 +1257,33 @@ BaseExprSyntax* Parser::parse_postfix()
         }
         else if (walker.check(TokenKind::LeftBracket))
         {
-            auto* indexExpr = arena.alloc<IndexExprSyntax>();
-            indexExpr->object = left;
-            Span indexSpan = left->span;
-
+            Span bracketSpan = left->span;
             walker.advance();
             skip_newlines(walker);
 
-            indexExpr->index = parse_expression();
-            skip_newlines(walker);
-
-            if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after index expression"))
+            if (walker.check(TokenKind::RightBracket))
             {
-                indexSpan = indexSpan.merge(rb->span);
+                auto* arrayType = arena.alloc<ArrayTypeExprSyntax>();
+                arrayType->elementType = left;
+                bracketSpan = bracketSpan.merge(walker.current().span);
+                walker.advance();
+                arrayType->span = bracketSpan;
+                left = arrayType;
             }
-            indexExpr->span = indexSpan;
-            left = indexExpr;
+            else
+            {
+                auto* indexExpr = arena.alloc<IndexExprSyntax>();
+                indexExpr->object = left;
+                indexExpr->index = parse_expression();
+                skip_newlines(walker);
+
+                if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after index expression"))
+                {
+                    bracketSpan = bracketSpan.merge(rb->span);
+                }
+                indexExpr->span = bracketSpan;
+                left = indexExpr;
+            }
         }
         else if (walker.check(TokenKind::LeftBrace) && !inCondition)
         {
@@ -1295,7 +1329,6 @@ BaseExprSyntax* Parser::parse_primary()
 
     if (walker.check(TokenKind::LeftParen))
     {
-        auto* paren = arena.alloc<ParenExprSyntax>();
         Span span = walker.current().span;
 
         walker.advance();
@@ -1303,7 +1336,7 @@ BaseExprSyntax* Parser::parse_primary()
 
         bool wasInCondition = inCondition;
         inCondition = false;
-        paren->expression = parse_expression();
+        auto* inner = parse_expression();
         inCondition = wasInCondition;
         skip_newlines(walker);
 
@@ -1311,8 +1344,25 @@ BaseExprSyntax* Parser::parse_primary()
         {
             span = span.merge(token->span);
         }
-        paren->span = span;
 
+        bool isCast = is_unambiguously_type(inner) ||
+                      (could_be_type_expr(inner) && is_cast_trigger(walker.current().kind));
+        if (isCast)
+        {
+            auto* cast = arena.alloc<CastExprSyntax>();
+            cast->type = inner;
+            cast->operand = parse_unary();
+            cast->span = span;
+            if (cast->operand)
+            {
+                cast->span = cast->span.merge(cast->operand->span);
+            }
+            return cast;
+        }
+
+        auto* paren = arena.alloc<ParenExprSyntax>();
+        paren->expression = inner;
+        paren->span = span;
         return paren;
     }
 

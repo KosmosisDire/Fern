@@ -23,7 +23,7 @@ OverloadMatch grade(MethodSymbol* method, const std::vector<TypeSymbol*>& argTyp
 
     for (size_t i = 0; i < argTypes.size(); ++i)
     {
-        switch (NamedTypeSymbol::get_convertibility(argTypes[i], method->parameters[i]->type))
+        switch (NamedTypeSymbol::get_conversion(argTypes[i], method->parameters[i]->type).level)
         {
             case Convertibility::Exact:    ++match.exactCount; break;
             case Convertibility::Implicit: ++match.implicitCount; break;

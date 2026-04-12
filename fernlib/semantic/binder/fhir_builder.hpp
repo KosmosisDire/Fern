@@ -120,13 +120,14 @@ struct FhirBuilder
         return node;
     }
 
-    FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, bool isImplicit)
+    FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, bool isImplicit, MethodSymbol* method = nullptr)
     {
         auto* node = arena.alloc<FhirCastExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = targetType;
         node->operand = operand;
+        node->method = method;
         node->isImplicit = isImplicit;
         return node;
     }
