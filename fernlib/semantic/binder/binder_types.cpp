@@ -8,7 +8,7 @@
 namespace Fern
 {
 
-static std::string join_path(const std::vector<std::string_view>& path)
+static std::string join_path(std::span<const std::string_view> path)
 {
     std::string result;
     for (size_t i = 0; i < path.size(); ++i)
@@ -94,7 +94,15 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
             }
         }
 
-        error("undefined type '" + join_path(path) + "'", expr->span);
+        Symbol* sym = resolve_expr_symbol(memberExpr);
+        if (sym)
+        {
+            error("'" + join_path(path) + "' is not a type", expr->span);
+        }
+        else
+        {
+            error("undefined type '" + join_path(path) + "'", expr->span);
+        }
         return nullptr;
     }
 
@@ -134,10 +142,24 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
         {
             templ = ns->find_type(path.back(), arity);
         }
+        else if (parentSym)
+        {
+            error("'" + join_path({path.data(), path.size() - 1}) + "' is not a namespace", expr->base->span);
+            return nullptr;
+        }
     }
 
     if (!templ)
     {
+        if (path.size() == 1)
+        {
+            Symbol* sym = resolve_name(path[0]);
+            if (sym && !sym->as<TypeSymbol>())
+            {
+                error("'" + std::string(path[0]) + "' is not a type", expr->base->span);
+                return nullptr;
+            }
+        }
         error("undefined type '" + join_path(path) + "'", expr->base->span);
         return nullptr;
     }
