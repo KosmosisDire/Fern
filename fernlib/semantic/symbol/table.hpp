@@ -28,6 +28,7 @@ public:
     }
 
     NamespaceSymbol* get_or_create_namespace(NamespaceSymbol* parent, std::string_view name);
+    NamedTypeSymbol* create_type(Symbol* parent, std::string_view name, BaseSyntax* syntax, Modifier modifiers);
     NamedTypeSymbol* get_or_create_instantiation(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs);
     TypeSymbol* substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs);
     void populate_instantiation_members(NamedTypeSymbol* inst);

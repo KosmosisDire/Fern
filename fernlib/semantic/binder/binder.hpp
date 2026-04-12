@@ -67,9 +67,9 @@ public:
 
     void bind_ast(RootSyntax* ast);
     void resolve_all_types();
-    void validate_all_types();
     void resolve_all_attributes();
     void bind_all_methods();
+    void validate_all_types();
 
 private:
     SemanticContext& context;
@@ -89,75 +89,87 @@ private:
     std::vector<FhirStmt*>* pendingStmts = nullptr;
     int tempCounter = 0;
 
-#pragma region Symbol Creation
+    // Symbol Discovery
 
-    void process_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs);
-    NamedTypeSymbol* create_type_symbol(TypeDeclSyntax* typeDecl, Symbol* parent);
+    void declare_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs);
+    NamedTypeSymbol* declare_type(TypeDeclSyntax* typeDecl, Symbol* parent);
+    void create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params);
 
-#pragma region Method Binding
+    // Type Expression Resolution
+
+    TypeSymbol* resolve_type_expr(BaseExprSyntax* expr);
+    TypeSymbol* resolve_generic_type(GenericTypeExprSyntax* expr);
+
+    // Type Validation
+
+    void check_duplicate_methods(NamedTypeSymbol* type);
+
+    // Attribute Resolution
+
+    void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
+    
+    // Method Body Binding
 
     void bind_method(MethodSymbol* method);
     void lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* parentType);
     void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
-    void check_duplicate_methods(NamedTypeSymbol* type);
 
-#pragma region Expression Binding
-
-    FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
-    FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
-    FhirCastExpr* try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span);
-    FhirExpr* coerce_to_param(FhirExpr* arg, TypeSymbol* paramType);
-    FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
-    FhirExpr* bind_literal(LiteralExprSyntax* expr);
-    FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
-    MethodSymbol* resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span);
-    std::string process_escape_sequences(std::string_view raw, const Span& span);
-    FhirExpr* bind_binary(BinaryExprSyntax* expr);
-    FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
-    FhirExpr* try_synthesize_compound_comparison(BinaryOp op, TokenKind opToken, NamedTypeSymbol* namedType, TypeSymbol* leftType, TypeSymbol* rightType, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
-    FhirExpr* bind_unary(UnaryExprSyntax* expr);
-    FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
-    FhirExpr* bind_call(CallExprSyntax* expr);
-    FhirExpr* bind_member_access(MemberAccessExprSyntax* expr);
-    FhirExpr* bind_initializer(InitializerExprSyntax* expr);
-    FhirExpr* bind_initializer_target(InitializerExprSyntax* expr);
-    FhirExpr* build_field_access_chain(FhirExpr* receiver, BaseExprSyntax* target);
-    void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver);
-    TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
-    FhirExpr* bind_this(ThisExprSyntax* expr);
-    FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
-    FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
-    FhirExpr* bind_index(IndexExprSyntax* expr);
-    FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected = nullptr);
-
-#pragma region Statement Binding
+    // Statement Binding
 
     FhirBlock* bind_block(BlockSyntax* block);
-
     void bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out);
     void bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void bind_while(WhileStmtSyntax* stmt, std::vector<FhirStmt*>& out);
 
-#pragma region Attribute Resolution
+    // Expression Binding
 
-    void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
+    FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirCastExpr* try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span);
+    FhirExpr* coerce_to_param(FhirExpr* arg, TypeSymbol* paramType);
+    FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
+    FhirExpr* bind_this(ThisExprSyntax* expr);
+    FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
+    FhirExpr* bind_member_access(MemberAccessExprSyntax* expr);
+    FhirExpr* bind_unary(UnaryExprSyntax* expr);
+    FhirExpr* bind_binary(BinaryExprSyntax* expr);
+    FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
+    FhirExpr* try_synthesize_compound_comparison(BinaryOp op, TokenKind opToken, NamedTypeSymbol* namedType, TypeSymbol* leftType, TypeSymbol* rightType, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
+    FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
+    FhirExpr* bind_index(IndexExprSyntax* expr);
 
-#pragma region Type Resolution
+    // Literal Binding
 
-    TypeSymbol* resolve_type_expr(BaseExprSyntax* expr);
-    TypeSymbol* resolve_generic_type(GenericTypeExprSyntax* expr);
-#pragma region Helpers
+    FhirExpr* bind_literal(LiteralExprSyntax* expr);
+    FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
+    MethodSymbol* resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span);
+    std::string process_escape_sequences(std::string_view raw, const Span& span);
+    FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected = nullptr);
+
+    // Call Binding
+
+    FhirExpr* bind_call(CallExprSyntax* expr);
+
+    // Initializer Binding
+
+    FhirExpr* bind_initializer(InitializerExprSyntax* expr);
+    FhirExpr* bind_initializer_target(InitializerExprSyntax* expr);
+    FhirExpr* build_field_access_chain(FhirExpr* receiver, BaseExprSyntax* target);
+    void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver);
+    TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
+
+    // Scope and Name Resolution
 
     void push_scope();
     void pop_scope();
     Scope& current_scope();
-
     Symbol* resolve_name(std::string_view name);
     Symbol* resolve_expr_symbol(BaseExprSyntax* expr);
 
-    void create_parameters(MethodSymbol* method, const std::vector<ParameterDeclSyntax*>& params);
+    static bool extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path);
 };
 
 }

@@ -4,7 +4,6 @@
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
-#include <semantic/fhir/fhir.hpp>
 
 namespace Fern
 {
@@ -20,7 +19,7 @@ static std::string join_path(const std::vector<std::string_view>& path)
     return result;
 }
 
-static bool extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path)
+bool Binder::extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path)
 {
     if (auto* typeExpr = expr->as<TypeExprSyntax>())
     {
@@ -40,8 +39,6 @@ static bool extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view
     }
     return false;
 }
-
-#pragma region Type Resolution
 
 TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
 {
@@ -186,108 +183,85 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
     return context.symbols.get_or_create_instantiation(templ, typeArgs);
 }
 
-#pragma region Name Resolution
-
-void Binder::push_scope()
+void Binder::resolve_all_types()
 {
-    scopes.emplace_back();
-}
-
-void Binder::pop_scope()
-{
-    scopes.pop_back();
-}
-
-Scope& Binder::current_scope()
-{
-    return scopes.back();
-}
-
-Symbol* Binder::resolve_name(std::string_view name)
-{
-    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+    for (auto* type : allTypes)
     {
-        if (Symbol* sym = it->find(name))
+        currentType = type;
+        currentNamespace = type->find_enclosing_namespace();
+
+        if (type->is_generic_definition())
         {
-            return sym;
+            for (size_t i = 0; i < type->typeParamSymbols.size(); ++i)
+            {
+                typeParamSubstitutions[type->typeParams[i]] = type->typeParamSymbols[i];
+            }
+        }
+
+        for (auto* field : type->fields)
+        {
+            auto* fieldAst = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
+            if (fieldAst && fieldAst->type)
+            {
+                field->type = resolve_type_expr(fieldAst->type);
+            }
+        }
+
+        for (auto* method : type->methods)
+        {
+            auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
+
+            if (callable)
+            {
+                if (method->is_literal())
+                {
+                    if (callable->returnType)
+                    {
+                        auto* annotated = resolve_type_expr(callable->returnType);
+                        if (annotated && annotated != type)
+                        {
+                            error("literal '" + method->name + "' must return '"
+                                  + format_type_name(type) + "', not '"
+                                  + format_type_name(annotated) + "'", callable->returnType->span);
+                        }
+                    }
+                    method->set_return_type(type);
+                }
+                else if (callable->returnType)
+                {
+                    method->set_return_type(resolve_type_expr(callable->returnType));
+                }
+                else if (method->is_constructor())
+                {
+                    method->set_return_type(type);
+                }
+
+                for (size_t i = 0; i < method->parameters.size() && i < callable->parameters.size(); ++i)
+                {
+                    if (callable->parameters[i]->type)
+                    {
+                        method->parameters[i]->type = resolve_type_expr(callable->parameters[i]->type);
+                    }
+                }
+            }
+            else if (method->is_constructor())
+            {
+                method->set_return_type(type);
+                for (size_t i = 0; i < method->parameters.size() && i < type->fields.size(); ++i)
+                {
+                    method->parameters[i]->type = type->fields[i]->type;
+                }
+            }
+        }
+
+        if (type->is_generic_definition())
+        {
+            typeParamSubstitutions.clear();
         }
     }
 
-    if (currentType)
-    {
-        if (auto* field = currentType->find_field(name))
-        {
-            return field;
-        }
-        if (auto* method = currentType->find_method(name))
-        {
-            return method;
-        }
-    }
-
-    Symbol* start = context.symbols.globalNamespace;
-    if (currentType) start = currentType;
-    else if (currentNamespace) start = currentNamespace;
-
-    std::string_view path[] = {name};
-    if (Symbol* sym = context.symbols.lookup_from(start, path))
-    {
-        return sym;
-    }
-
-    if (TypeSymbol* aliased = context.resolve_type_name(name))
-    {
-        return aliased;
-    }
-
-    return nullptr;
-}
-
-Symbol* Binder::resolve_expr_symbol(BaseExprSyntax* expr)
-{
-    if (!expr) return nullptr;
-
-    if (auto* id = expr->as<IdentifierExprSyntax>())
-    {
-        return resolve_name(id->name.lexeme);
-    }
-
-    if (auto* member = expr->as<MemberAccessExprSyntax>())
-    {
-        std::vector<std::string_view> path;
-        if (extract_type_path(member, path))
-        {
-            auto* startNs = currentNamespace ? currentNamespace : context.symbols.globalNamespace;
-            Symbol* sym = context.symbols.lookup_from(startNs, path);
-            if (sym) return sym;
-        }
-
-        Symbol* leftSym = resolve_expr_symbol(member->left);
-        if (!leftSym) return nullptr;
-
-        if (auto* ns = leftSym->as<NamespaceSymbol>())
-        {
-            return ns->find_member(member->right.lexeme);
-        }
-        if (auto* typeRef = leftSym->as<NamedTypeSymbol>())
-        {
-            if (auto* nested = typeRef->find_nested_type(member->right.lexeme))
-                return nested;
-            if (auto* field = typeRef->find_field(member->right.lexeme))
-                return field;
-            if (auto* method = typeRef->find_method(member->right.lexeme))
-                return method;
-        }
-
-        return nullptr;
-    }
-
-    if (auto* generic = expr->as<GenericTypeExprSyntax>())
-    {
-        return resolve_generic_type(generic);
-    }
-
-    return nullptr;
+    currentType = nullptr;
+    currentNamespace = nullptr;
 }
 
 }

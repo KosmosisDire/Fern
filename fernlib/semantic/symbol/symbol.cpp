@@ -11,6 +11,7 @@ TypeSymbol* MethodSymbol::get_return_type() const
 
 TypeSymbol* SubstitutedMethodSymbol::get_return_type() const
 {
+    // TODO: Is there a way to simplify this or move the binding to a different time?
     if (!returnTypeResolved)
     {
         returnTypeResolved = true;

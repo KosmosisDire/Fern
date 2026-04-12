@@ -31,6 +31,32 @@ NamespaceSymbol* SymbolTable::get_or_create_namespace(NamespaceSymbol* parent, s
     return ns;
 }
 
+NamedTypeSymbol* SymbolTable::create_type(Symbol* parent, std::string_view name, BaseSyntax* syntax, Modifier modifiers)
+{
+    if (!parent)
+    {
+        return nullptr;
+    }
+
+    auto typePtr = std::make_unique<NamedTypeSymbol>();
+    typePtr->name = std::string(name);
+    typePtr->syntax = syntax;
+    typePtr->parent = parent;
+    typePtr->modifiers = modifiers;
+    auto* type = own(std::move(typePtr));
+
+    if (auto* ns = parent->as<NamespaceSymbol>())
+    {
+        ns->add_type(type);
+    }
+    else if (auto* parentType = parent->as<NamedTypeSymbol>())
+    {
+        parentType->nestedTypes.push_back(type);
+    }
+
+    return type;
+}
+
 #pragma region Generic Instantiation
 
 NamedTypeSymbol* SymbolTable::get_or_create_instantiation(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs)
