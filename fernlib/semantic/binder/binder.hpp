@@ -34,7 +34,6 @@ struct CastExprSyntax;
 struct ReturnStmtSyntax;
 struct ThisExprSyntax;
 struct TypeDeclSyntax;
-struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
 struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;

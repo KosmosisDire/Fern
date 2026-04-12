@@ -31,7 +31,6 @@ struct BinaryExprSyntax;
 struct AssignmentExprSyntax;
 struct MemberAccessExprSyntax;
 struct ThisExprSyntax;
-struct TypeExprSyntax;
 struct GenericTypeExprSyntax;
 struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
@@ -91,7 +90,6 @@ public:
     virtual void visit(AssignmentExprSyntax* node) = 0;
     virtual void visit(MemberAccessExprSyntax* node) = 0;
     virtual void visit(ThisExprSyntax* node) = 0;
-    virtual void visit(TypeExprSyntax* node) = 0;
     virtual void visit(GenericTypeExprSyntax* node) = 0;
     virtual void visit(ArrayTypeExprSyntax* node) = 0;
     virtual void visit(IndexExprSyntax* node) = 0;
@@ -268,14 +266,6 @@ struct ThisExprSyntax : BaseExprSyntax
     SYNTAX_NODE(ThisExpr, BaseExprSyntax)
 
     Token token = Token::Invalid();
-};
-
-// f32 (type reference)
-struct TypeExprSyntax : BaseExprSyntax
-{
-    SYNTAX_NODE(TypeExpr, BaseExprSyntax)
-
-    Token name = Token::Invalid();
 };
 
 // Pair<i32, f32> or Test.Pair<i32, f32>
@@ -509,8 +499,6 @@ public:
     }
 
     void visit(ThisExprSyntax* node) override {}
-
-    void visit(TypeExprSyntax* node) override {}
 
     void visit(GenericTypeExprSyntax* node) override
     {

@@ -219,32 +219,9 @@ FhirExpr* Binder::bind_paren(ParenExprSyntax* expr, TypeSymbol* expected)
 
 FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
 {
-    TypeSymbol* targetType = nullptr;
-
-    if (expr->type->is<ArrayTypeExprSyntax>())
-    {
-        targetType = resolve_type_expr(expr->type);
-    }
-    else
-    {
-        Symbol* typeSym = resolve_expr_symbol(expr->type);
-        targetType = typeSym ? typeSym->as<TypeSymbol>() : nullptr;
-
-        if (typeSym && !targetType)
-        {
-            error("'" + typeSym->name + "' is not a type", expr->type->span);
-            return fhir.error_expr(expr);
-        }
-    }
-
+    TypeSymbol* targetType = resolve_type_expr(expr->type);
     if (!targetType)
-    {
-        if (auto* id = expr->type->as<IdentifierExprSyntax>())
-            error("undefined type '" + std::string(id->name.lexeme) + "'", expr->type->span);
-        else
-            error("expected a type in cast expression", expr->type->span);
         return fhir.error_expr(expr);
-    }
 
     FhirExpr* operand = bind_value_expr(expr->operand);
     if (!operand || operand->is_error())

@@ -1572,12 +1572,12 @@ BaseExprSyntax* Parser::parse_type()
         return nullptr;
     }
 
-    auto* t = arena.alloc<TypeExprSyntax>();
-    t->name = walker.current();
-    t->span = walker.current().span;
+    auto* ident = arena.alloc<IdentifierExprSyntax>();
+    ident->name = walker.current();
+    ident->span = walker.current().span;
     walker.advance();
 
-    BaseExprSyntax* type = t;
+    BaseExprSyntax* type = ident;
 
     while (walker.check(TokenKind::Dot))
     {

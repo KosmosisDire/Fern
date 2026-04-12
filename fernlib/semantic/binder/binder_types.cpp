@@ -21,11 +21,6 @@ static std::string join_path(const std::vector<std::string_view>& path)
 
 bool Binder::extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path)
 {
-    if (auto* typeExpr = expr->as<TypeExprSyntax>())
-    {
-        path.push_back(typeExpr->name.lexeme);
-        return true;
-    }
     if (auto* idExpr = expr->as<IdentifierExprSyntax>())
     {
         path.push_back(idExpr->name.lexeme);
@@ -44,26 +39,25 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
 {
     if (!expr) return nullptr;
 
-    auto resolve_name_as_type = [&](std::string_view name) -> TypeSymbol*
+    if (auto* idExpr = expr->as<IdentifierExprSyntax>())
     {
-        auto it = typeParamSubstitutions.find(std::string(name));
+        auto it = typeParamSubstitutions.find(std::string(idExpr->name.lexeme));
         if (it != typeParamSubstitutions.end()) return it->second;
 
-        TypeSymbol* builtin = context.resolve_type_name(name);
+        TypeSymbol* builtin = context.resolve_type_name(idExpr->name.lexeme);
         if (builtin) return builtin;
 
-        Symbol* sym = resolve_name(name);
-        if (sym) return sym->as<TypeSymbol>();
+        Symbol* sym = resolve_name(idExpr->name.lexeme);
+        if (sym)
+        {
+            if (auto* type = sym->as<TypeSymbol>()) return type;
+            error("'" + std::string(idExpr->name.lexeme) + "' is not a type", expr->span);
+            return nullptr;
+        }
 
-        error("undefined type '" + std::string(name) + "'", expr->span);
+        error("undefined type '" + std::string(idExpr->name.lexeme) + "'", expr->span);
         return nullptr;
-    };
-
-    if (auto* typeExpr = expr->as<TypeExprSyntax>())
-        return resolve_name_as_type(typeExpr->name.lexeme);
-
-    if (auto* idExpr = expr->as<IdentifierExprSyntax>())
-        return resolve_name_as_type(idExpr->name.lexeme);
+    }
 
     if (auto* genericExpr = expr->as<GenericTypeExprSyntax>())
     {
@@ -92,7 +86,12 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         {
             auto* startNs = currentNamespace ? currentNamespace : context.symbols.globalNamespace;
             Symbol* sym = context.symbols.lookup_from(startNs, path);
-            if (sym) return sym->as<TypeSymbol>();
+            if (sym)
+            {
+                if (auto* type = sym->as<TypeSymbol>()) return type;
+                error("'" + join_path(path) + "' is not a type", expr->span);
+                return nullptr;
+            }
         }
 
         error("undefined type '" + join_path(path) + "'", expr->span);

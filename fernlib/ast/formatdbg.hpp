@@ -240,11 +240,6 @@ public:
         begin_node(node);
     }
 
-    void visit(TypeExprSyntax* node) override
-    {
-        begin_node_with_name(node, node->name.lexeme);
-    }
-
     void visit(GenericTypeExprSyntax* node) override
     {
         begin_node(node);
