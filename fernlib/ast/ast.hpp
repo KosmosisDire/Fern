@@ -447,23 +447,29 @@ struct RootSyntax : BaseSyntax
 
 class DefaultAstVisitor : public AstVisitor
 {
+protected:
+    virtual void on_visit(BaseSyntax*) {}
+
 public:
     void visit(BlockSyntax* node) override
     {
+        on_visit(node);
         for (auto& stmt : node->statements)
             if (stmt) stmt->accept(this);
     }
 
-    void visit(IdentifierExprSyntax* node) override {}
-    void visit(LiteralExprSyntax* node) override {}
+    void visit(IdentifierExprSyntax* node) override { on_visit(node); }
+    void visit(LiteralExprSyntax* node) override { on_visit(node); }
 
     void visit(ParenExprSyntax* node) override
     {
+        on_visit(node);
         if (node->expression) node->expression->accept(this);
     }
 
     void visit(CallExprSyntax* node) override
     {
+        on_visit(node);
         if (node->callee) node->callee->accept(this);
         for (auto& arg : node->arguments)
             if (arg) arg->accept(this);
@@ -471,6 +477,7 @@ public:
 
     void visit(InitializerExprSyntax* node) override
     {
+        on_visit(node);
         if (node->target) node->target->accept(this);
         for (auto& member : node->members)
             if (member) member->accept(this);
@@ -478,30 +485,35 @@ public:
 
     void visit(UnaryExprSyntax* node) override
     {
+        on_visit(node);
         if (node->operand) node->operand->accept(this);
     }
 
     void visit(BinaryExprSyntax* node) override
     {
+        on_visit(node);
         if (node->left) node->left->accept(this);
         if (node->right) node->right->accept(this);
     }
 
     void visit(AssignmentExprSyntax* node) override
     {
+        on_visit(node);
         if (node->target) node->target->accept(this);
         if (node->value) node->value->accept(this);
     }
 
     void visit(MemberAccessExprSyntax* node) override
     {
+        on_visit(node);
         if (node->left) node->left->accept(this);
     }
 
-    void visit(ThisExprSyntax* node) override {}
+    void visit(ThisExprSyntax* node) override { on_visit(node); }
 
     void visit(GenericTypeExprSyntax* node) override
     {
+        on_visit(node);
         if (node->base) node->base->accept(this);
         for (auto& arg : node->typeArgs)
             if (arg) arg->accept(this);
@@ -509,44 +521,52 @@ public:
 
     void visit(ArrayTypeExprSyntax* node) override
     {
+        on_visit(node);
         if (node->elementType) node->elementType->accept(this);
     }
 
     void visit(IndexExprSyntax* node) override
     {
+        on_visit(node);
         if (node->object) node->object->accept(this);
         if (node->index) node->index->accept(this);
     }
 
     void visit(ArrayLiteralExprSyntax* node) override
     {
+        on_visit(node);
         for (auto& elem : node->elements)
             if (elem) elem->accept(this);
     }
 
     void visit(LiteralSuffixExprSyntax* node) override
     {
+        on_visit(node);
         if (node->operand) node->operand->accept(this);
     }
 
     void visit(CastExprSyntax* node) override
     {
+        on_visit(node);
         if (node->type) node->type->accept(this);
         if (node->operand) node->operand->accept(this);
     }
 
     void visit(ReturnStmtSyntax* node) override
     {
+        on_visit(node);
         if (node->value) node->value->accept(this);
     }
 
     void visit(ExpressionStmtSyntax* node) override
     {
+        on_visit(node);
         if (node->expression) node->expression->accept(this);
     }
 
     void visit(IfStmtSyntax* node) override
     {
+        on_visit(node);
         if (node->condition) node->condition->accept(this);
         if (node->thenBody) node->thenBody->accept(this);
         if (node->elseIf) node->elseIf->accept(this);
@@ -555,23 +575,27 @@ public:
 
     void visit(WhileStmtSyntax* node) override
     {
+        on_visit(node);
         if (node->condition) node->condition->accept(this);
         if (node->body) node->body->accept(this);
     }
 
     void visit(ParameterDeclSyntax* node) override
     {
+        on_visit(node);
         if (node->type) node->type->accept(this);
     }
 
     void visit(VariableDeclSyntax* node) override
     {
+        on_visit(node);
         if (node->type) node->type->accept(this);
         if (node->initializer) node->initializer->accept(this);
     }
 
     void visit(CallableDeclSyntax* node) override
     {
+        on_visit(node);
         for (auto& param : node->parameters)
             if (param) param->accept(this);
         if (node->returnType) node->returnType->accept(this);
@@ -580,29 +604,34 @@ public:
 
     void visit(TypeDeclSyntax* node) override
     {
+        on_visit(node);
         for (auto& decl : node->declarations)
             if (decl) decl->accept(this);
     }
 
     void visit(FieldDeclSyntax* node) override
     {
+        on_visit(node);
         if (node->type) node->type->accept(this);
     }
 
     void visit(FieldInitSyntax* node) override
     {
+        on_visit(node);
         if (node->target) node->target->accept(this);
         if (node->value) node->value->accept(this);
     }
 
     void visit(NamespaceDeclSyntax* node) override
     {
+        on_visit(node);
         for (auto& decl : node->declarations)
             if (decl) decl->accept(this);
     }
 
     void visit(RootSyntax* node) override
     {
+        on_visit(node);
         for (auto& decl : node->declarations)
             if (decl) decl->accept(this);
     }

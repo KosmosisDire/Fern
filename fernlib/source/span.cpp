@@ -12,6 +12,14 @@ Span::Span(uint32_t startLine, uint32_t startColumn, uint32_t endLine, uint32_t 
 {
 }
 
+bool Span::contains(uint32_t line, uint32_t col) const
+{
+    if (line < startLine || line > endLine) return false;
+    if (line == startLine && col < startColumn) return false;
+    if (line == endLine && col > endColumn) return false;
+    return true;
+}
+
 Span Span::at_start() const
 {
     return Span(startLine, startColumn, startLine, startColumn, fileId);

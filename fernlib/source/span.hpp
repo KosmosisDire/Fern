@@ -18,6 +18,7 @@ struct Span
     Span() = default;
     Span(uint32_t startLine, uint32_t startColumn, uint32_t endLine, uint32_t endColumn, uint32_t fileId = 0);
 
+    bool contains(uint32_t line, uint32_t col) const;
     Span at_start() const;
     Span merge(const Span& other) const;
     std::string format() const;
