@@ -57,3 +57,22 @@ endif()
 
 add_subdirectory(fernlib)
 add_subdirectory(ferncli)
+
+# LSP Server
+
+option(FERN_BUILD_LSP "Build the Fern LSP server" ON)
+
+if(FERN_BUILD_LSP)
+    include(FetchContent)
+
+    FetchContent_Declare(
+        lsp-framework
+        GIT_REPOSITORY https://github.com/leon-bckl/lsp-framework.git
+        GIT_TAG        1.3.0
+    )
+
+    set(LSP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(lsp-framework)
+
+    add_subdirectory(fernlsp)
+endif()

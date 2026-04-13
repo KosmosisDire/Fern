@@ -18,6 +18,10 @@ scratch.fn
 *.a
 *.lib
 
+# Compiled packages
+*.vsix
+out/
+
 # Executables
 *.exe
 

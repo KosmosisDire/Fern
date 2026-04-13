@@ -1,0 +1,56 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Fern",
+    "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#keywords" }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.block.fern",
+                    "begin": "---",
+                    "end": "---"
+                },
+                {
+                    "name": "comment.line.double-dash.fern",
+                    "match": "--.*$"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.fern",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.fern",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.fern",
+                    "match": "\\b(if|else|while|return)\\b"
+                },
+                {
+                    "name": "keyword.other.fern",
+                    "match": "\\b(fn|var|type|ref|op|init|cast|pub|static|attr|implicit|explicit|namespace|literal|this)\\b"
+                },
+                {
+                    "name": "constant.language.boolean.fern",
+                    "match": "\\b(true|false)\\b"
+                }
+            ]
+        }
+    },
+    "scopeName": "source.fern"
+}
