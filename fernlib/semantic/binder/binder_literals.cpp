@@ -45,8 +45,9 @@ std::string Binder::process_escape_sequences(std::string_view raw, const Span& s
 
 MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span)
 {
-    auto it = literalSuffixMap.find(std::string(suffixName));
-    if (it == literalSuffixMap.end() || it->second.empty())
+    auto& map = context.symbols.literalSuffixMap;
+    auto it = map.find(std::string(suffixName));
+    if (it == map.end() || it->second.empty())
     {
         error("unknown literal suffix '" + std::string(suffixName) + "'", span);
         return nullptr;

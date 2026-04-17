@@ -54,7 +54,7 @@ void Binder::check_duplicate_methods(NamedTypeSymbol* type)
 
 void Binder::validate_all_types()
 {
-    for (auto* type : allTypes)
+    for (auto* type : context.symbols.allTypes)
     {
         for (auto* method : type->methods)
         {

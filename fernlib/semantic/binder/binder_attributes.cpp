@@ -109,7 +109,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
 void Binder::resolve_all_attributes()
 {
-    for (auto* type : allTypes)
+    for (auto* type : context.symbols.allTypes)
     {
 
         currentType = type;

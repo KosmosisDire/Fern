@@ -211,7 +211,7 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
 
 void Binder::resolve_all_types()
 {
-    for (auto* type : allTypes)
+    for (auto* type : context.symbols.allTypes)
     {
         currentType = type;
         currentNamespace = type->find_enclosing_namespace();

@@ -62,6 +62,7 @@ NamedTypeSymbol* SymbolTable::declare_type(Symbol* parent, std::string_view name
         parentType->nestedTypes.push_back(type);
     }
 
+    allTypes.push_back(type);
     return type;
 }
 
@@ -113,6 +114,11 @@ MethodSymbol* SymbolTable::declare_method(NamedTypeSymbol* parent, std::string_v
     methodPtr->operatorKind = operatorKind;
     auto* method = own(std::move(methodPtr));
     parent->methods.push_back(method);
+    allMethods.push_back(method);
+    if (method->is_literal())
+    {
+        literalSuffixMap[method->name].push_back(method);
+    }
     return method;
 }
 

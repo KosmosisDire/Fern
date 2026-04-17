@@ -9,7 +9,7 @@ namespace Fern
 
 void Binder::bind_all_methods()
 {
-    for (auto* method : allMethods)
+    for (auto* method : context.symbols.allMethods)
     {
         auto* parentType = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
         if (!parentType) continue;
@@ -18,7 +18,7 @@ void Binder::bind_all_methods()
         bind_method(method);
     }
 
-    for (auto* type : allTypes)
+    for (auto* type : context.symbols.allTypes)
     {
         if (!type->is_generic_definition()) continue;
         size_t count = type->instantiations.size();

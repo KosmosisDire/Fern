@@ -49,8 +49,6 @@ NamedTypeSymbol* Binder::define_type(TypeDeclSyntax* typeDecl, Symbol* parent)
         context.symbols.declare_type_param(type, i, type->typeParams[i]);
     }
 
-    allTypes.push_back(type);
-
     int fieldIndex = 0;
     for (auto* member : typeDecl->declarations)
     {
@@ -90,11 +88,6 @@ NamedTypeSymbol* Binder::define_type(TypeDeclSyntax* typeDecl, Symbol* parent)
                           std::to_string(method->parameters.size()), callableAst->span);
                 }
             }
-
-            allMethods.push_back(method);
-
-            if (method->is_literal())
-                literalSuffixMap[method->name].push_back(method);
         }
         else if (auto* nestedTypeDecl = member->as<TypeDeclSyntax>())
         {
@@ -117,8 +110,6 @@ NamedTypeSymbol* Binder::define_type(TypeDeclSyntax* typeDecl, Symbol* parent)
         {
             context.symbols.declare_parameter(method, type->fields[i]->name, i);
         }
-
-        allMethods.push_back(method);
     }
 
     type->membersPopulated = true;

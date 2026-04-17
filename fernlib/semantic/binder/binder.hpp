@@ -80,9 +80,6 @@ private:
     NamedTypeSymbol* currentType = nullptr;
     NamespaceSymbol* currentNamespace = nullptr;
     std::vector<Scope> scopes;
-    std::vector<NamedTypeSymbol*> allTypes;
-    std::vector<MethodSymbol*> allMethods;
-    std::unordered_map<std::string, std::vector<MethodSymbol*>> literalSuffixMap;
     std::unordered_map<std::string, TypeSymbol*> typeParamSubstitutions;
     // Points to the current block's statement list so that initializer lowering
     // can inject setup statements (temp locals, field assignments) before the expression

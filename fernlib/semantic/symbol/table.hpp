@@ -3,7 +3,9 @@
 #include <initializer_list>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "symbol.hpp"
@@ -21,6 +23,9 @@ class SymbolTable
 {
 public:
     NamespaceSymbol* globalNamespace = nullptr;
+    std::vector<NamedTypeSymbol*> allTypes;
+    std::vector<MethodSymbol*> allMethods;
+    std::unordered_map<std::string, std::vector<MethodSymbol*>> literalSuffixMap;
 
     SymbolTable();
 
