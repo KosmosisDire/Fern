@@ -95,7 +95,7 @@ void FernServer::register_handlers()
             };
 
             auto compilation = compile_document(documents[uriStr], path, includeFiles, rootPath);
-            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(compilation->get_diagnostics()));
+            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(compilation->diag.get_diagnostics()));
         });
 
     handler.add<lsp::notifications::TextDocument_DidChange>(
@@ -118,7 +118,7 @@ void FernServer::register_handlers()
 
             std::string path = uri_to_path(params.textDocument.uri);
             auto compilation = compile_document(it->second, path, includeFiles, rootPath);
-            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(compilation->get_diagnostics()));
+            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(compilation->diag.get_diagnostics()));
         });
 
     handler.add<lsp::notifications::TextDocument_DidClose>(

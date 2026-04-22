@@ -28,7 +28,7 @@ std::string Binder::process_escape_sequences(std::string_view raw, const Span& s
                 case '`':  result += '`';  ++i; break;
                 case '0':  result += '\0'; ++i; break;
                 default:
-                    error("unknown escape sequence '\\" + std::string(1, raw[i + 1]) + "'", span);
+                    diag.error("unknown escape sequence '\\" + std::string(1, raw[i + 1]) + "'", span);
                     result += raw[i + 1];
                     ++i;
                     break;
@@ -49,7 +49,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
     auto it = map.find(std::string(suffixName));
     if (it == map.end() || it->second.empty())
     {
-        error("unknown literal suffix '" + std::string(suffixName) + "'", span);
+        diag.error("unknown literal suffix '" + std::string(suffixName) + "'", span);
         return nullptr;
     }
 
@@ -62,7 +62,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
 
     if (candidates.empty())
     {
-        error("no literal '" + std::string(suffixName) + "' accepting '"
+        diag.error("no literal '" + std::string(suffixName) + "' accepting '"
               + (argType ? format_type_name(argType) : "?") + "'", span);
         return nullptr;
     }
@@ -85,7 +85,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
         auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
         msg += "\n  " + (parent ? format_type_name(parent) : "?") + "." + method->name;
     }
-    error(msg, span);
+    diag.error(msg, span);
     return candidates[0];
 }
 
@@ -105,7 +105,7 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
     {
         const auto& constVal = operand->get_constant();
         if (constVal && !constVal->range_fits(returnType))
-            error(constVal->format_range_message(returnType), expr->span);
+            diag.error(constVal->format_range_message(returnType), expr->span);
 
         operand->type = returnType;
         return operand;
@@ -215,14 +215,14 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
                 node->value = ConstantValue::make_int(static_cast<uint8_t>(processed[0]));
             else
             {
-                error("character literal must contain exactly one character", expr->span);
+                diag.error("character literal must contain exactly one character", expr->span);
                 node->value = ConstantValue::make_int(0);
             }
         }
     }
     catch (const std::out_of_range&)
     {
-        error("literal '" + std::string(expr->token.lexeme) + "' is out of range", expr->span);
+        diag.error("literal '" + std::string(expr->token.lexeme) + "' is out of range", expr->span);
     }
 
     return node;
@@ -247,7 +247,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             auto ctorResult = expectedNamed->find_constructor(ctorArgTypes);
             if (!ctorResult.best.method)
             {
-                error("Core.Array has no constructor taking i32", expr->span);
+                diag.error("Core.Array has no constructor taking i32", expr->span);
                 return fhir.error_expr(expr);
             }
 
@@ -261,7 +261,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     int* counter = temp_counter();
     if (!pending || !counter)
     {
-        error("array literals are not supported outside of method bodies", expr->span);
+        diag.error("array literals are not supported outside of method bodies", expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -296,7 +296,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             }
             else if (elem->type != elementType)
             {
-                error("array literal has mixed element types: '" +
+                diag.error("array literal has mixed element types: '" +
                       format_type_name(elementType) + "' and '" +
                       format_type_name(elem->type) + "'", expr->span);
             }
@@ -307,7 +307,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     {
         if (!hasErrorElement)
         {
-            error("cannot infer element type for array literal", expr->span);
+            diag.error("cannot infer element type for array literal", expr->span);
         }
         return fhir.error_expr(expr);
     }
@@ -315,7 +315,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto* arrayType = context.symbols.get_or_declare_array_type(elementType);
     if (!arrayType)
     {
-        error("Array type not found", expr->span);
+        diag.error("Array type not found", expr->span);
         return fhir.error_expr(expr);
     }
     context.symbols.ensure_members_populated(arrayType);
@@ -330,7 +330,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto ctorResult = arrayType->find_constructor(ctorArgTypes);
     if (!ctorResult.best.method)
     {
-        error("Core.Array has no constructor taking i32", expr->span);
+        diag.error("Core.Array has no constructor taking i32", expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -346,7 +346,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto setterResult = arrayType->find_index_setter(i32Type, elementType);
     if (!setterResult.best.is_callable())
     {
-        error("Core.Array has no 'op []=' for element type '" +
+        diag.error("Core.Array has no 'op []=' for element type '" +
               format_type_name(elementType) + "'", expr->span);
         return fhir.error_expr(expr);
     }

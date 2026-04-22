@@ -55,13 +55,13 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
         if (!retType && value && value->type)
         {
             Span loc = method->syntax ? method->syntax->span : Span{};
-            error("function '" + method->name +
+            diag.error("function '" + method->name +
                   "' returns a value but has no return type annotation", loc);
         }
     }
     else if (TypeSymbol* retType = method->get_return_type())
     {
-        error("function '" + method->name +
+        diag.error("function '" + method->name +
               "' expects a return of type '" + format_type_name(retType) + "'", stmt->span);
     }
 
@@ -91,7 +91,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
                 const auto& c = initExpr->get_constant();
                 if (c && !c->range_fits(type))
                 {
-                    error(c->format_range_message(type), decl->initializer->span);
+                    diag.error(c->format_range_message(type), decl->initializer->span);
                     initExpr = fhir.error_expr(decl->initializer, type, initExpr);
                 }
             }
@@ -101,7 +101,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
             auto* arrLit = decl->initializer->as<ArrayLiteralExprSyntax>();
             if (arrLit && arrLit->elements.empty())
             {
-                error("type cannot be inferred for empty array, consider adding a type annotation or explicit constructor", decl->initializer->span);
+                diag.error("type cannot be inferred for empty array, consider adding a type annotation or explicit constructor", decl->initializer->span);
             }
         }
     }

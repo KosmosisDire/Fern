@@ -52,10 +52,11 @@ struct FhirStmt;
 // logic and reaches scope-specific state through virtual accessors. Concrete
 // subclasses contribute their scope via lookup_in_single_binder and optional
 // accessor overrides. Chain terminator is RootBinder.
-class Binder : public DiagnosticSystem
+class Binder
 {
 public:
     Binder(SemanticContext& context, AllocArena& arena);
+    virtual ~Binder() = default;
 
     Symbol* lookup(std::string_view name);
     Symbol* lookup(BaseExprSyntax* expr);
@@ -73,6 +74,7 @@ protected:
 
     SemanticContext& context;
     AllocArena& arena;
+    Diagnostics& diag;
     FhirBuilder fhir;
 
     virtual MethodSymbol* containing_method() { return next ? next->containing_method() : nullptr; }
@@ -84,11 +86,6 @@ protected:
     virtual Scope* current_block_scope() { return next ? next->current_block_scope() : nullptr; }
 
     virtual Symbol* lookup_in_single_binder(std::string_view name) = 0;
-
-    void report(const Diagnostic& diag) override;
-    void info(std::string_view msg, const Span& loc) override;
-    void warn(std::string_view msg, const Span& loc) override;
-    void error(std::string_view msg, const Span& loc) override;
 
     static bool extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path);
 

@@ -24,7 +24,7 @@ void Compilation::add_file(std::string_view path)
     std::ifstream file{std::string{path}};
     if (!file)
     {
-        error("Could not open file: " + std::string(path), Span{});
+        diag.error("Could not open file: " + std::string(path), Span{});
         return;
     }
 
@@ -57,33 +57,18 @@ void Compilation::compile()
 
     for (auto& unit : units)
     {
-        Lexer lexer(*unit->sourceFile);
+        Lexer lexer(*unit->sourceFile, diag);
         unit->tokens = lexer.tokenize();
 
-        for (const auto& diag : lexer.get_diagnostics())
-        {
-            report(diag);
-        }
-
         TokenWalker walker(unit->tokens);
-        Parser parser(walker, arena);
+        Parser parser(walker, arena, diag);
         unit->ast = parser.parse();
-
-        for (const auto& diag : parser.get_diagnostics())
-        {
-            report(diag);
-        }
     }
 
     for (auto& unit : units)
     {
-        AstValidator validator;
+        AstValidator validator(diag);
         validator.validate(unit->ast);
-
-        for (const auto& diag : validator.get_diagnostics())
-        {
-            report(diag);
-        }
     }
 
     BinderPipeline binder(semanticContext);
@@ -98,11 +83,7 @@ void Compilation::compile()
 
     for (auto* method : semanticContext.methods)
     {
-        auto flow = FlowAnalyzer::analyze(method);
-        for (const auto& diag : flow.get_diagnostics())
-        {
-            report(diag);
-        }
+        FlowAnalyzer::analyze(method, diag);
     }
 
     compiled = true;

@@ -24,9 +24,9 @@ static const std::unordered_map<std::string_view, std::pair<std::string_view, st
     {"string", {"Core", "String"}},
 };
 
-SemanticContext::SemanticContext(AllocArena& arena, DiagnosticSystem& diagnostics)
+SemanticContext::SemanticContext(AllocArena& arena, Diagnostics& diag)
     : arena(arena)
-    , diagnostics(diagnostics)
+    , diag(diag)
 {
     rootBinder = std::make_unique<RootBinder>(*this, arena);
 }

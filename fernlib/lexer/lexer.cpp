@@ -4,9 +4,9 @@
 namespace Fern
 {
 
-Lexer::Lexer(const SourceFile& file)
-    : DiagnosticSystem("Lexer")
-    , walker(file)
+Lexer::Lexer(const SourceFile& file, Diagnostics& diag)
+    : walker(file)
+    , diag(diag)
 {
 }
 
@@ -419,7 +419,7 @@ Token Lexer::scan_string(char delimiter)
             }
             if (walker.peek() == '\n')
             {
-                error("unterminated string literal", walker.make_span());
+                diag.error("unterminated string literal", walker.make_span());
                 return make_error_token();
             }
             if (delimiter != '`' && walker.peek() == '\\')
@@ -430,7 +430,7 @@ Token Lexer::scan_string(char delimiter)
         }
     }
 
-    error("unterminated string literal", walker.make_span());
+    diag.error("unterminated string literal", walker.make_span());
     return make_error_token();
 }
 
@@ -440,7 +440,7 @@ Token Lexer::scan_char()
     {
         if (walker.peek() == '\n')
         {
-            error("unterminated character literal", walker.make_span());
+            diag.error("unterminated character literal", walker.make_span());
             return make_error_token();
         }
         if (walker.peek() == '\\')
@@ -452,7 +452,7 @@ Token Lexer::scan_char()
 
     if (walker.is_at_end())
     {
-        error("unterminated character literal", walker.make_span());
+        diag.error("unterminated character literal", walker.make_span());
         return make_error_token();
     }
 

@@ -10,10 +10,10 @@ namespace Fern
 
 class SourceFile;
 
-class Lexer : public DiagnosticSystem
+class Lexer
 {
 public:
-    explicit Lexer(const SourceFile& file);
+    Lexer(const SourceFile& file, Diagnostics& diag);
 
     std::vector<Token> tokenize();
 
@@ -42,6 +42,7 @@ private:
     static bool is_alphanumeric(char c);
 
     SourceWalker walker;
+    Diagnostics& diag;
 };
 
 } 

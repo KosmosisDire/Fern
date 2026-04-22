@@ -3,10 +3,10 @@
 namespace Fern
 {
 
-Parser::Parser(TokenWalker& walker, AllocArena& arena)
-    : DiagnosticSystem("Parser")
-    , walker(walker)
+Parser::Parser(TokenWalker& walker, AllocArena& arena, Diagnostics& diag)
+    : walker(walker)
     , arena(arena)
+    , diag(diag)
 {
 }
 
@@ -16,7 +16,7 @@ const Token* Parser::expect(TokenKind kind, std::string_view message)
     {
         return &walker.advance();
     }
-    error(message, walker.current().span);
+    diag.error(message, walker.current().span);
     return nullptr;
 }
 
@@ -24,7 +24,7 @@ void Parser::expect_progress(TokenWalker::Checkpoint cp)
 {
     if (!walker.check_progress(cp))
     {
-        error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+        diag.error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
         walker.advance();
     }
 }
@@ -114,7 +114,7 @@ void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
         }
         else
         {
-            error("expected attribute name after '@'", span);
+            diag.error("expected attribute name after '@'", span);
         }
         skip_newlines(walker);
     }
@@ -127,7 +127,7 @@ Modifier Parser::parse_modifiers()
     {
         if (has_modifier(mods, *mod))
         {
-            error("duplicate modifier '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+            diag.error("duplicate modifier '" + std::string(walker.current().lexeme) + "'", walker.current().span);
         }
         mods = mods | *mod;
         walker.advance();
@@ -278,11 +278,11 @@ BaseDeclSyntax* Parser::parse_declaration()
     {
         if (!attrs.empty())
         {
-            error("expected a declaration", walker.current().span);
+            diag.error("expected a declaration", walker.current().span);
         }
         if (mods != Modifier::None)
         {
-            error("modifiers must be followed by a declaration", walker.current().span);
+            diag.error("modifiers must be followed by a declaration", walker.current().span);
         }
         walker.advance();
         return nullptr;
@@ -366,13 +366,13 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         }
         else
         {
-            error("expected expression after '='", assignSpan);
+            diag.error("expected expression after '='", assignSpan);
         }
     }
 
     if (!var->type && !hasAssign)
     {
-        error("variable declaration requires a type annotation or initializer", var->name.span);
+        diag.error("variable declaration requires a type annotation or initializer", var->name.span);
     }
 
     var->span = span;
@@ -609,7 +609,7 @@ CallableDeclSyntax* Parser::parse_init_decl()
 
     if (walker.check(TokenKind::ThinArrow))
     {
-        error("constructors cannot have a return type annotation", walker.current().span);
+        diag.error("constructors cannot have a return type annotation", walker.current().span);
         walker.advance();
         skip_newlines(walker);
         parse_type();
@@ -623,7 +623,7 @@ CallableDeclSyntax* Parser::parse_init_decl()
     }
     else
     {
-        error("expected '{' after constructor declaration", walker.current().span);
+        diag.error("expected '{' after constructor declaration", walker.current().span);
     }
     initDecl->span = span;
 
@@ -649,7 +649,7 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     }
     else
     {
-        error("expected literal suffix name", walker.current().span);
+        diag.error("expected literal suffix name", walker.current().span);
     }
     skip_newlines(walker);
 
@@ -666,7 +666,7 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     }
     else
     {
-        error("expected '{' after literal declaration", walker.current().span);
+        diag.error("expected '{' after literal declaration", walker.current().span);
     }
     decl->span = span;
 
@@ -695,7 +695,7 @@ CallableDeclSyntax* Parser::parse_cast_decl()
     }
     else
     {
-        error("expected '{' after cast declaration", walker.current().span);
+        diag.error("expected '{' after cast declaration", walker.current().span);
     }
     decl->span = span;
 
@@ -741,7 +741,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     }
     else
     {
-        error("expected operator symbol after 'op'", span);
+        diag.error("expected operator symbol after 'op'", span);
     }
     skip_newlines(walker);
 
@@ -863,7 +863,7 @@ BaseStmtSyntax* Parser::parse_statement()
         !walker.check(TokenKind::RightBrace) &&
         !walker.is_at_end())
     {
-        error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+        diag.error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
         walker.advance();
     }
 
@@ -974,7 +974,7 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
                     walker.restore(cp);
                     break;
                 }
-                error("ambiguous operator spacing: '" +
+                diag.error("ambiguous operator spacing: '" +
                       std::string(walker.current().lexeme) +
                       "' has space on the left but not the right. Did you mean '... " +
                       std::string(walker.current().lexeme) + " " +
@@ -998,7 +998,7 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
         auto* right = parse_binary(static_cast<Precedence>(static_cast<int>(prec) + 1));
         if (!right)
         {
-            error("expected expression after '" + std::string(Fern::format(opKind)) + "'",
+            diag.error("expected expression after '" + std::string(Fern::format(opKind)) + "'",
                   walker.current().span);
         }
 
@@ -1033,7 +1033,7 @@ BaseExprSyntax* Parser::parse_unary()
             {
                 return parse_postfix();
             }
-            error("unary operator cannot be separated from its operand", walker.current().span);
+            diag.error("unary operator cannot be separated from its operand", walker.current().span);
         }
 
         Span opSpan = walker.current().span;
@@ -1119,7 +1119,7 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
 
         if (walker.check(TokenKind::Comma))
         {
-            error("unexpected ',' before initializer member", walker.current().span);
+            diag.error("unexpected ',' before initializer member", walker.current().span);
             walker.advance();
             advance_past_field(walker);
             expect_progress(cp);
@@ -1149,7 +1149,7 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
                 is_terminator(walker.current().kind) ||
                 is_statement_keyword(walker.current().kind))
             {
-                error("expected value after ':'", walker.current().span);
+                diag.error("expected value after ':'", walker.current().span);
                 fieldInit->span = fieldSpan;
                 out.push_back(fieldInit);
                 advance_past_field(walker);
@@ -1435,7 +1435,7 @@ IfStmtSyntax* Parser::parse_if()
     }
     else
     {
-        error("expected '{' after if condition", ifStmt->condition ? ifStmt->condition->span : span);
+        diag.error("expected '{' after if condition", ifStmt->condition ? ifStmt->condition->span : span);
     }
 
     skip_newlines(walker);
@@ -1458,7 +1458,7 @@ IfStmtSyntax* Parser::parse_if()
         }
         else
         {
-            error("expected '{' or 'if' after 'else'", elseSpan);
+            diag.error("expected '{' or 'if' after 'else'", elseSpan);
         }
     }
 
@@ -1486,7 +1486,7 @@ WhileStmtSyntax* Parser::parse_while()
     }
     else
     {
-        error("expected '{' after while condition", whileStmt->condition ? whileStmt->condition->span : span);
+        diag.error("expected '{' after while condition", whileStmt->condition ? whileStmt->condition->span : span);
     }
 
     whileStmt->span = span;

@@ -8,8 +8,10 @@ namespace Fern
 
 struct MethodSymbol;
 
-class FlowAnalyzer : public DiagnosticSystem
+class FlowAnalyzer
 {
+    Diagnostics& diag;
+
     bool check_block(FhirBlock* block);
     bool check_stmt(FhirStmt* stmt);
     bool check_if(FhirIfStmt* stmt);
@@ -17,10 +19,10 @@ class FlowAnalyzer : public DiagnosticSystem
     bool is_constant_true(FhirExpr* expr);
     bool is_constant_false(FhirExpr* expr);
 
-    FlowAnalyzer();
+    explicit FlowAnalyzer(Diagnostics& diag);
 
 public:
-    static FlowAnalyzer analyze(FhirMethod* method);
+    static void analyze(FhirMethod* method, Diagnostics& diag);
 };
 
 }

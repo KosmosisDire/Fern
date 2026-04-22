@@ -22,18 +22,18 @@ static std::string join_path(std::span<const std::string_view> path)
 }
 
 Binder::Binder(SemanticContext& context, AllocArena& arena)
-    : DiagnosticSystem("Binder")
-    , context(context)
+    : context(context)
     , arena(arena)
+    , diag(context.diag)
     , fhir(arena)
 {
 }
 
 Binder::Binder(Binder& parent)
-    : DiagnosticSystem("Binder")
-    , next(&parent)
+    : next(&parent)
     , context(parent.context)
     , arena(parent.arena)
+    , diag(parent.diag)
     , fhir(parent.arena)
 {
 }
@@ -120,11 +120,11 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         if (Symbol* sym = lookup(idExpr->name.lexeme))
         {
             if (auto* type = sym->as<TypeSymbol>()) return type;
-            error("'" + std::string(idExpr->name.lexeme) + "' is not a type", expr->span);
+            diag.error("'" + std::string(idExpr->name.lexeme) + "' is not a type", expr->span);
             return nullptr;
         }
 
-        error("undefined type '" + std::string(idExpr->name.lexeme) + "'", expr->span);
+        diag.error("undefined type '" + std::string(idExpr->name.lexeme) + "'", expr->span);
         return nullptr;
     }
 
@@ -141,7 +141,7 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         auto* arrayType = context.symbols.get_or_declare_array_type(elementType);
         if (!arrayType)
         {
-            error("Array type not found", expr->span);
+            diag.error("Array type not found", expr->span);
             return nullptr;
         }
         return arrayType;
@@ -154,14 +154,14 @@ TypeSymbol* Binder::resolve_type_expr(BaseExprSyntax* expr)
         {
             std::vector<std::string_view> path;
             extract_type_path(memberExpr, path);
-            error("undefined type '" + join_path(path) + "'", expr->span);
+            diag.error("undefined type '" + join_path(path) + "'", expr->span);
             return nullptr;
         }
         if (auto* type = sym->as<TypeSymbol>()) return type;
 
         std::vector<std::string_view> path;
         extract_type_path(memberExpr, path);
-        error("'" + join_path(path) + "' is not a type", expr->span);
+        diag.error("'" + join_path(path) + "' is not a type", expr->span);
         return nullptr;
     }
 
@@ -173,7 +173,7 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
     std::vector<std::string_view> path;
     if (!extract_type_path(expr->base, path))
     {
-        error("invalid type in generic expression", expr->base->span);
+        diag.error("invalid type in generic expression", expr->base->span);
         return nullptr;
     }
 
@@ -206,20 +206,20 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
         }
         else if (parentSym)
         {
-            error("'" + join_path({path.data(), path.size() - 1}) + "' is not a namespace", expr->base->span);
+            diag.error("'" + join_path({path.data(), path.size() - 1}) + "' is not a namespace", expr->base->span);
             return nullptr;
         }
     }
 
     if (!templ)
     {
-        error("undefined type '" + join_path(path) + "'", expr->base->span);
+        diag.error("undefined type '" + join_path(path) + "'", expr->base->span);
         return nullptr;
     }
 
     if (!templ->is_generic_definition())
     {
-        error("type '" + format_type_name(templ) + "' is not generic", expr->span);
+        diag.error("type '" + format_type_name(templ) + "' is not generic", expr->span);
         return nullptr;
     }
 
@@ -231,7 +231,7 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
 
     if (typeArgs.size() != templ->typeParams.size())
     {
-        error("type '" + format_type_name(templ) + "' expects " +
+        diag.error("type '" + format_type_name(templ) + "' expects " +
               std::to_string(templ->typeParams.size()) + " type argument(s), got " +
               std::to_string(typeArgs.size()), expr->span);
         return nullptr;
@@ -274,30 +274,6 @@ FhirBlock* Binder::bind_block(BlockSyntax* block)
     }
 
     return node;
-}
-
-void Binder::report(const Diagnostic& diag)
-{
-    if (next) next->report(diag);
-    else context.diagnostics.report(diag);
-}
-
-void Binder::info(std::string_view msg, const Span& loc)
-{
-    if (next) next->info(msg, loc);
-    else context.diagnostics.info(msg, loc);
-}
-
-void Binder::warn(std::string_view msg, const Span& loc)
-{
-    if (next) next->warn(msg, loc);
-    else context.diagnostics.warn(msg, loc);
-}
-
-void Binder::error(std::string_view msg, const Span& loc)
-{
-    if (next) next->error(msg, loc);
-    else context.diagnostics.error(msg, loc);
 }
 
 // Emits field-default assignments for a constructor body. Called from the

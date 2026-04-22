@@ -48,7 +48,7 @@ Each binder overrides what it contributes. Defaults walk the chain.
 
 ## Diagnostics
 
-`Binder` forwards `error`, `warn`, `info`, `report` up the chain. `RootBinder` routes to `SemanticContext::diagnostics`, which points at `Compilation`.
+Every binder holds a reference to the single `Diagnostics` object owned by `Compilation`. `Binder` stores `diag` and forwards error calls like `diag.error(...)` directly.
 
 ## Type resolution
 

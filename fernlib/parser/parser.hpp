@@ -8,10 +8,10 @@
 namespace Fern
 {
 
-class Parser : public DiagnosticSystem
+class Parser
 {
 public:
-    Parser(TokenWalker& walker, AllocArena& arena);
+    Parser(TokenWalker& walker, AllocArena& arena, Diagnostics& diag);
 
     RootSyntax* parse();
 
@@ -65,6 +65,7 @@ private:
 
     TokenWalker& walker;
     AllocArena& arena;
+    Diagnostics& diag;
     bool inCondition = false;
 };
 

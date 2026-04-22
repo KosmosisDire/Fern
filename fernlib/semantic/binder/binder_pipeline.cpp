@@ -89,18 +89,18 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
 
                 if (isIndexGet && method->parameters.size() != 2)
                 {
-                    context.diagnostics.error("operator '[]' must have 2 parameters (self, index), but has " +
+                    context.diag.error("operator '[]' must have 2 parameters (self, index), but has " +
                           std::to_string(method->parameters.size()), callableAst->span);
                 }
                 else if (isIndexSet && method->parameters.size() != 3)
                 {
-                    context.diagnostics.error("operator '[]=' must have 3 parameters (self, index, value), but has " +
+                    context.diag.error("operator '[]=' must have 3 parameters (self, index, value), but has " +
                           std::to_string(method->parameters.size()), callableAst->span);
                 }
                 else if (!isIndexGet && !isIndexSet &&
                          (method->parameters.size() < 1 || method->parameters.size() > 2))
                 {
-                    context.diagnostics.error("operator '" + std::string(Fern::format(callableAst->name.kind)) +
+                    context.diag.error("operator '" + std::string(Fern::format(callableAst->name.kind)) +
                           "' must have 1 parameter (unary) or 2 parameters (binary), but has " +
                           std::to_string(method->parameters.size()), callableAst->span);
                 }
@@ -163,7 +163,7 @@ void BinderPipeline::resolve_signatures()
                         auto* annotated = tBinder.resolve_type_expr(callable->returnType);
                         if (annotated && annotated != type)
                         {
-                            context.diagnostics.error("literal '" + method->name + "' must return '"
+                            context.diag.error("literal '" + method->name + "' must return '"
                                   + format_type_name(type) + "', not '"
                                   + format_type_name(annotated) + "'", callable->returnType->span);
                         }
@@ -264,19 +264,19 @@ void BinderPipeline::check_duplicate_methods(NamedTypeSymbol* type)
                 switch (b->callableKind)
                 {
                     case CallableKind::Constructor:
-                        context.diagnostics.error("duplicate constructor on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error("duplicate constructor on type '" + format_type_name(type) + "'", loc);
                         break;
                     case CallableKind::Operator:
-                        context.diagnostics.error("duplicate operator '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error("duplicate operator '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
                         break;
                     case CallableKind::Function:
-                        context.diagnostics.error("duplicate method '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error("duplicate method '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
                         break;
                     case CallableKind::Literal:
-                        context.diagnostics.error("duplicate literal '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error("duplicate literal '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
                         break;
                     case CallableKind::Cast:
-                        context.diagnostics.error("duplicate cast on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error("duplicate cast on type '" + format_type_name(type) + "'", loc);
                         break;
                 }
             }
@@ -298,7 +298,7 @@ void BinderPipeline::validate_signatures()
                 if (!hasContainingType)
                 {
                     Span loc = method->syntax ? method->syntax->span : Span{};
-                    context.diagnostics.error("operator '" + method->name +
+                    context.diag.error("operator '" + method->name +
                           "' must have at least one parameter of containing type '" +
                           format_type_name(type) + "'", loc);
                 }
@@ -309,14 +309,14 @@ void BinderPipeline::validate_signatures()
                 Span loc = method->syntax ? method->syntax->span : Span{};
                 if (method->parameters.size() != 1)
                 {
-                    context.diagnostics.error("literal '" + method->name + "' must have exactly 1 parameter", loc);
+                    context.diag.error("literal '" + method->name + "' must have exactly 1 parameter", loc);
                 }
                 else if (auto* paramType = method->parameters[0]->type)
                 {
                     auto* namedParamType = paramType->as<NamedTypeSymbol>();
                     if (!namedParamType || !namedParamType->allows_custom_literals())
                     {
-                        context.diagnostics.error("literal '" + method->name +
+                        context.diag.error("literal '" + method->name +
                               "' parameter type '" + format_type_name(paramType) +
                               "' does not allow custom literals", loc);
                     }

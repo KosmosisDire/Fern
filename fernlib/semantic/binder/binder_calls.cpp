@@ -38,12 +38,12 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             std::string msg = "call is ambiguous between constructors:";
             for (auto* m : result.ambiguousCandidates)
                 msg += "\n  " + format_type_name(namedType) + "(" + m->format_parameters() + ")";
-            error(msg, expr->span);
+            diag.error(msg, expr->span);
             return fhir.error_expr(expr);
         }
         if (!result.best.method && !hasErrorArg)
         {
-            error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
+            diag.error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
                   std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
         }
         if (result.best.method && !hasErrorArg)
@@ -71,7 +71,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         }
         else if (calleeSym)
         {
-            error("'" + std::string(idExpr->name.lexeme) + "' cannot be called as a function", idExpr->span);
+            diag.error("'" + std::string(idExpr->name.lexeme) + "' cannot be called as a function", idExpr->span);
             return fhir.error_expr(expr);
         }
     }
@@ -99,7 +99,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             }
             else if (calleeSym)
             {
-                error("'" + std::string(memberExpr->right.lexeme) + "' cannot be called as a function", memberExpr->span);
+                diag.error("'" + std::string(memberExpr->right.lexeme) + "' cannot be called as a function", memberExpr->span);
                 return fhir.error_expr(expr);
             }
         }
@@ -113,7 +113,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             std::string msg = "call to '" + std::string(methodName) + "' is ambiguous between:";
             for (auto* m : result.ambiguousCandidates)
                 msg += "\n  " + format_type_name(targetType) + "." + std::string(methodName) + "(" + m->format_parameters() + ")";
-            error(msg, expr->span);
+            diag.error(msg, expr->span);
             return fhir.error_expr(expr);
         }
         method = result.best.method;
@@ -121,7 +121,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             if (!hasErrorArg)
             {
-                error("'" + format_type_name(targetType) + "' does not contain a method '" + std::string(methodName) +
+                diag.error("'" + format_type_name(targetType) + "' does not contain a method '" + std::string(methodName) +
                       "' that takes " + std::to_string(argTypes.size()) +
                       (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
             }
@@ -143,7 +143,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             FhirExpr* calleeExpr = bind_value_expr(expr->callee);
             if (calleeExpr && !calleeExpr->is_error())
             {
-                error("expression cannot be called as a function", expr->callee->span);
+                diag.error("expression cannot be called as a function", expr->callee->span);
             }
         }
         return fhir.error_expr(expr);

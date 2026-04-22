@@ -24,14 +24,14 @@ struct MethodSymbol;
 
 struct SemanticContext
 {
-    SemanticContext(AllocArena& arena, DiagnosticSystem& diagnostics);
+    SemanticContext(AllocArena& arena, Diagnostics& diag);
     ~SemanticContext();
 
     SemanticContext(const SemanticContext&) = delete;
     SemanticContext& operator=(const SemanticContext&) = delete;
 
     AllocArena& arena;
-    DiagnosticSystem& diagnostics;
+    Diagnostics& diag;
 
     SymbolTable symbols;
     std::vector<FhirMethod*> methods;

@@ -72,7 +72,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 {
     if (!expr->target)
     {
-        error("cannot infer type for initializer list, use an explicit type name", expr->span);
+        diag.error("cannot infer type for initializer list, use an explicit type name", expr->span);
         for (auto* member : expr->members)
         {
             if (auto* fieldInit = member->as<FieldInitSyntax>())
@@ -94,20 +94,20 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         Symbol* sym = lookup(idExpr->name.lexeme);
         if (!sym)
         {
-            error("undefined name '" + std::string(idExpr->name.lexeme) + "'", idExpr->span);
+            diag.error("undefined name '" + std::string(idExpr->name.lexeme) + "'", idExpr->span);
             return fhir.error_expr(expr);
         }
 
         namedType = sym->as<NamedTypeSymbol>();
         if (!namedType)
         {
-            error("initializer lists can only be applied to a type or constructor call", idExpr->span);
+            diag.error("initializer lists can only be applied to a type or constructor call", idExpr->span);
             return fhir.error_expr(expr);
         }
 
         if (!namedType->find_constructor({}).best.method)
         {
-            error("type '" + format_type_name(namedType) + "' has no default constructor", idExpr->span);
+            diag.error("type '" + format_type_name(namedType) + "' has no default constructor", idExpr->span);
         }
     }
     else if (auto* callExpr = expr->target->as<CallExprSyntax>())
@@ -128,7 +128,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
                 auto* method = calleeSym->as<MethodSymbol>();
                 if (method && !method->is_constructor())
                 {
-                    error("initializer lists can only be applied to a type or constructor call", callExpr->span);
+                    diag.error("initializer lists can only be applied to a type or constructor call", callExpr->span);
                     namedType = nullptr;
                 }
             }
@@ -139,20 +139,20 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         Symbol* sym = lookup(memberExpr);
         if (!sym)
         {
-            error("undefined name '" + std::string(memberExpr->right.lexeme) + "'", memberExpr->span);
+            diag.error("undefined name '" + std::string(memberExpr->right.lexeme) + "'", memberExpr->span);
             return fhir.error_expr(expr);
         }
 
         namedType = sym->as<NamedTypeSymbol>();
         if (!namedType)
         {
-            error("initializer lists can only be applied to a type or constructor call", memberExpr->span);
+            diag.error("initializer lists can only be applied to a type or constructor call", memberExpr->span);
             return fhir.error_expr(expr);
         }
 
         if (!namedType->find_constructor({}).best.method)
         {
-            error("type '" + format_type_name(namedType) + "' has no default constructor", memberExpr->span);
+            diag.error("type '" + format_type_name(namedType) + "' has no default constructor", memberExpr->span);
         }
     }
     else if (auto* genericExpr = expr->target->as<GenericTypeExprSyntax>())
@@ -166,12 +166,12 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
         if (!namedType->find_constructor({}).best.method)
         {
-            error("type '" + format_type_name(namedType) + "' has no default constructor", genericExpr->span);
+            diag.error("type '" + format_type_name(namedType) + "' has no default constructor", genericExpr->span);
         }
     }
     else
     {
-        error("initializer lists can only be applied to a type or constructor call", expr->target->span);
+        diag.error("initializer lists can only be applied to a type or constructor call", expr->target->span);
         return fhir.error_expr(expr);
     }
 
@@ -205,7 +205,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     int* counter = temp_counter();
     if (!pending || !counter)
     {
-        error("initializer lists are not yet supported outside of method bodies", expr->span);
+        diag.error("initializer lists are not yet supported outside of method bodies", expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -269,7 +269,7 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
         auto it = std::find(boundFieldPaths.begin(), boundFieldPaths.end(), path);
         if (it != boundFieldPaths.end())
         {
-            error("duplicate field '" + path + "' in initializer", fieldInit->target->span);
+            diag.error("duplicate field '" + path + "' in initializer", fieldInit->target->span);
         }
         else
         {
@@ -285,7 +285,7 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = type->find_field(id->name.lexeme);
         if (!field)
         {
-            error("type '" + format_type_name(type) + "' has no field named '" +
+            diag.error("type '" + format_type_name(type) + "' has no field named '" +
                   std::string(id->name.lexeme) + "'", target->span);
             return nullptr;
         }
@@ -303,21 +303,21 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         auto* nestedType = leftType->as<NamedTypeSymbol>();
         if (!nestedType)
         {
-            error("cannot access member on non-struct type", member->span);
+            diag.error("cannot access member on non-struct type", member->span);
             return nullptr;
         }
 
         FieldSymbol* field = nestedType->find_field(member->right.lexeme);
         if (!field)
         {
-            error("type '" + format_type_name(nestedType) + "' has no field named '" +
+            diag.error("type '" + format_type_name(nestedType) + "' has no field named '" +
                   std::string(member->right.lexeme) + "'", member->span);
             return nullptr;
         }
         return field->type;
     }
 
-    error("initializer target must be a field name or member access", target->span);
+    diag.error("initializer target must be a field name or member access", target->span);
     return nullptr;
 }
 

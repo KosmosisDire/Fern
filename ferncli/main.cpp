@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
         LOG(LogChannel::Debug) << Fern::FhirFormatter::format(method) << "\n";
     }
 
-    for (const auto& diag : compilation.get_diagnostics())
+    for (const auto& diag : compilation.diag.get_diagnostics())
     {
         auto filePath = diag.location.fileId >= 0 && diag.location.fileId < compilation.get_units().size()
                             ? compilation.get_units()[diag.location.fileId]->sourceFile->path()

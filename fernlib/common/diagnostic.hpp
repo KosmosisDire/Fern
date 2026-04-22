@@ -20,15 +20,13 @@ struct Diagnostic
     };
 
     Severity severity;
-    std::string systemName;
     std::string message;
     Span location;
 
-    Diagnostic(Severity sev, std::string_view msg, const Span& loc, std::string_view sysName)
+    Diagnostic(Severity sev, std::string_view msg, const Span& loc)
         : severity(sev)
         , message(msg)
         , location(loc)
-        , systemName(sysName)
     {
     }
 
@@ -48,8 +46,7 @@ struct Diagnostic
 
     std::string format() const
     {
-        return "[" + systemName + "] " + std::string(severity_string()) +
-               "(" + location.format() + "): " + message;
+        return std::string(severity_string()) + "(" + location.format() + "): " + message;
     }
 
     std::string format(std::string_view filename) const
@@ -62,40 +59,29 @@ struct Diagnostic
 
 
 
-class DiagnosticSystem
+class Diagnostics
 {
 public:
-    DiagnosticSystem(std::string_view sysName)
-        : systemName(sysName)
-    {
-    }
+    Diagnostics() = default;
 
-    DiagnosticSystem(std::string_view sysName, std::vector<Diagnostic> diags)
-        : systemName(sysName)
-        , diagnostics(std::move(diags))
-    {
-    }
-
-    virtual ~DiagnosticSystem() = default;
-
-    virtual void report(const Diagnostic& diag)
+    void report(const Diagnostic& diag)
     {
         diagnostics.push_back(diag);
     }
 
-    virtual void info(std::string_view msg, const Span& loc)
+    void info(std::string_view msg, const Span& loc)
     {
-        diagnostics.emplace_back(Diagnostic::Severity::Information, msg, loc, systemName);
+        diagnostics.emplace_back(Diagnostic::Severity::Information, msg, loc);
     }
 
-    virtual void warn(std::string_view msg, const Span& loc)
+    void warn(std::string_view msg, const Span& loc)
     {
-        diagnostics.emplace_back(Diagnostic::Severity::Warning, msg, loc, systemName);
+        diagnostics.emplace_back(Diagnostic::Severity::Warning, msg, loc);
     }
 
-    virtual void error(std::string_view msg, const Span& loc)
+    void error(std::string_view msg, const Span& loc)
     {
-        diagnostics.emplace_back(Diagnostic::Severity::Error, msg, loc, systemName);
+        diagnostics.emplace_back(Diagnostic::Severity::Error, msg, loc);
     }
 
     void clear()
@@ -134,7 +120,6 @@ public:
     }
 
 private:
-    std::string systemName;
     std::vector<Diagnostic> diagnostics;
 };
 

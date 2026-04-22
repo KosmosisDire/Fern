@@ -5,7 +5,7 @@
 namespace Fern
 {
 
-FlowAnalyzer::FlowAnalyzer() : DiagnosticSystem("FlowAnalysis") {}
+FlowAnalyzer::FlowAnalyzer(Diagnostics& diag) : diag(diag) {}
 
 #pragma region Constant Detection
 
@@ -85,7 +85,7 @@ bool FlowAnalyzer::check_block(FhirBlock* block)
         {
             if (i + 1 < block->statements.size())
             {
-                warn("unreachable code", block->statements[i + 1]->span);
+                diag.warn("unreachable code", block->statements[i + 1]->span);
             }
             return true;
         }
@@ -96,14 +96,13 @@ bool FlowAnalyzer::check_block(FhirBlock* block)
 
 #pragma region Public
 
-FlowAnalyzer FlowAnalyzer::analyze(FhirMethod* method)
+void FlowAnalyzer::analyze(FhirMethod* method, Diagnostics& diag)
 {
-    FlowAnalyzer analyzer;
+    if (!method || !method->body) return;
+    if (!method->symbol) return;
+    if (method->symbol->is_constructor()) return;
 
-    if (!method || !method->body) return analyzer;
-    if (!method->symbol) return analyzer;
-    if (method->symbol->is_constructor()) return analyzer;
-
+    FlowAnalyzer analyzer(diag);
     bool definitelyReturns = analyzer.check_block(method->body);
 
     TypeSymbol* returnType = method->symbol->get_return_type();
@@ -118,10 +117,8 @@ FlowAnalyzer FlowAnalyzer::analyze(FhirMethod* method)
                 loc = loc.merge(callable->returnType->span);
             }
         }
-        analyzer.error("not all code paths return a value", loc);
+        diag.error("not all code paths return a value", loc);
     }
-
-    return analyzer;
 }
 
 }

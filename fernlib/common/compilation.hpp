@@ -23,12 +23,11 @@ struct CompilationUnit
     RootSyntax* ast = nullptr;
 };
 
-class Compilation : public DiagnosticSystem
+class Compilation
 {
 public:
     Compilation()
-        : DiagnosticSystem("Compilation")
-        , semanticContext(arena, *this)
+        : semanticContext(arena, diag)
     {
     }
 
@@ -40,6 +39,8 @@ public:
     const SemanticContext& semantic() const { return semanticContext; }
 
     const auto& get_units() const { return units; }
+
+    Diagnostics diag;
 
 private:
     AllocArena arena;

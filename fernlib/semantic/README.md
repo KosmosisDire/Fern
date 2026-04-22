@@ -11,4 +11,4 @@ Everything after parsing, before code generation.
 - The primitive type alias map (`i32` to `Core.I32` etc) via `resolve_type_name`.
 - Cached binder chains and the `boundMethods` cache. Built lazily. Lifetime matches the context.
 - The `RootBinder` chain terminator.
-- A reference to the outer `DiagnosticSystem` so chain diagnostics land on `Compilation`.
+- A reference to the outer `Diagnostics` so chain diagnostics land on `Compilation`.

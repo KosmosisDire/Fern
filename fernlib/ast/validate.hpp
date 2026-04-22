@@ -7,10 +7,10 @@
 namespace Fern
 {
 
-class AstValidator : public DefaultAstVisitor, public DiagnosticSystem
+class AstValidator : public DefaultAstVisitor
 {
 public:
-    AstValidator() : DiagnosticSystem("AstValidator") {}
+    explicit AstValidator(Diagnostics& diag) : diag(diag) {}
 
     void validate(RootSyntax* root)
     {
@@ -29,7 +29,7 @@ public:
     {
         if (scope != Scope::Root && scope != Scope::Namespace)
         {
-            error("namespaces can only be declared at the top level or inside other namespaces", node->span);
+            diag.error("namespaces can only be declared at the top level or inside other namespaces", node->span);
         }
 
         Scope prev = scope;
@@ -42,7 +42,7 @@ public:
     {
         if (scope == Scope::Function)
         {
-            error("type declarations are not allowed inside function bodies", node->span);
+            diag.error("type declarations are not allowed inside function bodies", node->span);
         }
 
         validate_modifiers(node);
@@ -57,23 +57,23 @@ public:
     {
         if (node->callableKind == CallableKind::Constructor && scope != Scope::Type)
         {
-            error("constructors can only be declared inside a type", node->span);
+            diag.error("constructors can only be declared inside a type", node->span);
         }
         else if (node->callableKind == CallableKind::Operator && scope != Scope::Type)
         {
-            error("operators can only be declared inside a type", node->span);
+            diag.error("operators can only be declared inside a type", node->span);
         }
         else if (node->callableKind == CallableKind::Literal && scope != Scope::Type)
         {
-            error("literal declarations can only be declared inside a type", node->span);
+            diag.error("literal declarations can only be declared inside a type", node->span);
         }
         else if (node->callableKind == CallableKind::Cast && scope != Scope::Type)
         {
-            error("cast declarations can only be declared inside a type", node->span);
+            diag.error("cast declarations can only be declared inside a type", node->span);
         }
         else if (node->callableKind == CallableKind::Function && scope != Scope::Type)
         {
-            error("functions can only be declared inside a type", node->span);
+            diag.error("functions can only be declared inside a type", node->span);
         }
 
         validate_modifiers(node);
@@ -96,7 +96,7 @@ public:
     {
         if (scope != Scope::Type)
         {
-            error("fields can only be declared inside a type", node->span);
+            diag.error("fields can only be declared inside a type", node->span);
         }
 
         validate_modifiers(node);
@@ -109,11 +109,11 @@ public:
         {
             if (!node->attributes.empty())
             {
-                error("attributes are not allowed on local variable declarations", node->attributes.front()->span);
+                diag.error("attributes are not allowed on local variable declarations", node->attributes.front()->span);
             }
             if (node->modifiers != Modifier::None)
             {
-                error("modifiers are not allowed on local variable declarations", node->span);
+                diag.error("modifiers are not allowed on local variable declarations", node->span);
             }
         }
 
@@ -130,6 +130,7 @@ private:
         Function,
     };
 
+    Diagnostics& diag;
     Scope scope = Scope::Root;
 
     void validate_modifiers(BaseDeclSyntax* node)
@@ -138,11 +139,11 @@ private:
         {
             if (has_modifier(node->modifiers, Modifier::Ref))
             {
-                error("'ref' modifier can only be applied to type declarations", node->span);
+                diag.error("'ref' modifier can only be applied to type declarations", node->span);
             }
             if (has_modifier(node->modifiers, Modifier::Attr))
             {
-                error("'attr' modifier can only be applied to type declarations", node->span);
+                diag.error("'attr' modifier can only be applied to type declarations", node->span);
             }
         }
 
@@ -153,15 +154,15 @@ private:
 
         if ((hasImplicit || hasExplicit) && !isCast)
         {
-            error("'implicit' and 'explicit' modifiers can only be applied to cast declarations", node->span);
+            diag.error("'implicit' and 'explicit' modifiers can only be applied to cast declarations", node->span);
         }
         if (isCast && !hasImplicit && !hasExplicit)
         {
-            error("cast declarations must be marked 'implicit' or 'explicit'", node->span);
+            diag.error("cast declarations must be marked 'implicit' or 'explicit'", node->span);
         }
         if (hasImplicit && hasExplicit)
         {
-            error("cast declarations cannot be both 'implicit' and 'explicit'", node->span);
+            diag.error("cast declarations cannot be both 'implicit' and 'explicit'", node->span);
         }
     }
 };

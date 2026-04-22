@@ -37,7 +37,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
         if (!root->is<IdentifierExprSyntax>() && !root->is<MemberAccessExprSyntax>())
         {
-            error("attribute must be a type name", attr->span);
+            diag.error("attribute must be a type name", attr->span);
             continue;
         }
 
@@ -50,13 +50,13 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
         auto* attrType = sym->as<NamedTypeSymbol>();
         if (!attrType)
         {
-            error("'" + sym->qualified_name() + "' is not a type", attr->span);
+            diag.error("'" + sym->qualified_name() + "' is not a type", attr->span);
             continue;
         }
 
         if (!attrType->is_attribute())
         {
-            error("type '" + attrType->name + "' is not an attribute type (missing 'attr' modifier)", attr->span);
+            diag.error("type '" + attrType->name + "' is not an attribute type (missing 'attr' modifier)", attr->span);
             continue;
         }
 
@@ -76,7 +76,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
         {
             if (!initExpr->target)
             {
-                error("expected type name in attribute initializer", attr->span);
+                diag.error("expected type name in attribute initializer", attr->span);
                 continue;
             }
 
@@ -100,7 +100,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             ctor = attrType->find_constructor(emptyArgs).best.method;
             if (!ctor)
             {
-                error("'" + attrType->name + "' must contain a parameterless constructor to construct with only an initializer list", attr->span);
+                diag.error("'" + attrType->name + "' must contain a parameterless constructor to construct with only an initializer list", attr->span);
             }
         }
 
