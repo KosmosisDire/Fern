@@ -492,10 +492,11 @@ public:
         write_indent();
         write_attributes(node->attributes);
         write_modifiers(node->modifiers);
-        out << node->syntax_node_name() << " (name: \"" << node->name.lexeme << "\", span: " << node->span.format() << ")\n";
+        out << node->syntax_node_name() << " (span: " << node->span.format() << ")\n";
         write_indent();
         out << "{\n";
         ++indent;
+        write_child("name", node->name);
         write_children("declarations", node->declarations);
         --indent;
         write_indent();

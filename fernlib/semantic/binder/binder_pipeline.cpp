@@ -31,11 +31,44 @@ void BinderPipeline::declare_symbols(RootSyntax* ast)
     }
 }
 
+static bool collect_namespace_segments(BaseExprSyntax* name, std::vector<BaseExprSyntax*>& out)
+{
+    if (!name) return false;
+
+    if (name->is<IdentifierExprSyntax>())
+    {
+        out.push_back(name);
+        return true;
+    }
+    if (auto* member = name->as<MemberAccessExprSyntax>())
+    {
+        if (!collect_namespace_segments(member->left, out)) return false;
+        out.push_back(member);
+        return true;
+    }
+    return false;
+}
+
+static std::string_view segment_name(BaseExprSyntax* segment)
+{
+    if (auto* ident = segment->as<IdentifierExprSyntax>()) return ident->name.lexeme;
+    if (auto* member = segment->as<MemberAccessExprSyntax>()) return member->right.lexeme;
+    return {};
+}
+
 void BinderPipeline::define_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs)
 {
     if (!nsDecl || !parentNs) return;
 
-    auto* ns = context.symbols.get_or_declare_namespace(parentNs, nsDecl);
+    std::vector<BaseExprSyntax*> segments;
+    if (!collect_namespace_segments(nsDecl->name, segments) || segments.empty()) return;
+
+    NamespaceSymbol* ns = parentNs;
+    for (auto* segment : segments)
+    {
+        ns = context.symbols.get_or_declare_namespace(ns, segment_name(segment), segment);
+        if (!ns) return;
+    }
 
     for (auto* decl : nsDecl->declarations)
     {

@@ -13,7 +13,7 @@ SymbolTable::SymbolTable()
     own(std::move(globalPtr));
 }
 
-NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, std::string_view name)
+NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, std::string_view name, BaseSyntax* syntax)
 {
     if (!parent)
     {
@@ -22,6 +22,10 @@ NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, 
 
     if (auto* existing = parent->find_namespace(name))
     {
+        if (!existing->syntax)
+        {
+            existing->syntax = syntax;
+        }
         return existing;
     }
 
@@ -29,17 +33,8 @@ NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, 
     nsPtr->name = std::string(name);
     nsPtr->parent = parent;
     auto* ns = own(std::move(nsPtr));
+    ns->syntax = syntax;
     parent->add_namespace(ns);
-    return ns;
-}
-
-NamespaceSymbol* SymbolTable::get_or_declare_namespace(NamespaceSymbol* parent, NamespaceDeclSyntax* syntax)
-{
-    auto* ns = get_or_declare_namespace(parent, syntax->name.lexeme);
-    if (ns && !ns->syntax)
-    {
-        ns->syntax = syntax;
-    }
     return ns;
 }
 

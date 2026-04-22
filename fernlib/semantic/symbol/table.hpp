@@ -13,7 +13,6 @@
 namespace Fern
 {
 
-struct NamespaceDeclSyntax;
 struct TypeDeclSyntax;
 struct FieldDeclSyntax;
 struct CallableDeclSyntax;
@@ -38,8 +37,7 @@ public:
         return raw;
     }
 
-    NamespaceSymbol* get_or_declare_namespace(NamespaceSymbol* parent, std::string_view name);
-    NamespaceSymbol* get_or_declare_namespace(NamespaceSymbol* parent, NamespaceDeclSyntax* syntax);
+    NamespaceSymbol* get_or_declare_namespace(NamespaceSymbol* parent, std::string_view name, BaseSyntax* syntax = nullptr);
 
     NamedTypeSymbol* declare_type(Symbol* parent, std::string_view name, Modifier modifiers);
     NamedTypeSymbol* declare_type(Symbol* parent, TypeDeclSyntax* syntax);

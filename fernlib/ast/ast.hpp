@@ -428,7 +428,7 @@ struct NamespaceDeclSyntax : BaseDeclSyntax
     SYNTAX_NODE(NamespaceDecl, BaseDeclSyntax)
 
     bool isFileLevel = false;
-    Token name = Token::Invalid();
+    ExprPtr name = nullptr;
     std::vector<DeclPtr> declarations;
 };
 
@@ -625,6 +625,7 @@ public:
     void visit(NamespaceDeclSyntax* node) override
     {
         on_visit(node);
+        if (node->name) node->name->accept(this);
         for (auto& decl : node->declarations)
             if (decl) decl->accept(this);
     }

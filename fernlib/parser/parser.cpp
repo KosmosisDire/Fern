@@ -767,8 +767,18 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
 
     if (auto* name = expect(TokenKind::Identifier, "expected name after 'namespace'"))
     {
-        nsDecl->name = *name;
-        span = span.merge(name->span);
+        auto* ident = arena.alloc<IdentifierExprSyntax>();
+        ident->name = *name;
+        ident->span = name->span;
+        BaseExprSyntax* nameExpr = ident;
+
+        while (walker.check(TokenKind::Dot))
+        {
+            nameExpr = parse_member_access(nameExpr);
+        }
+
+        nsDecl->name = nameExpr;
+        span = span.merge(nameExpr->span);
     }
 
     skip_newlines(walker);
