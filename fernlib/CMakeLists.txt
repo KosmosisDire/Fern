@@ -15,17 +15,18 @@ set(FERNLIB_SOURCES
     semantic/symbol/table.cpp
     semantic/context.cpp
     semantic/binder/binder.cpp
-    semantic/binder/binder_define.cpp
-    semantic/binder/binder_validate.cpp
     semantic/binder/binder_attributes.cpp
-    semantic/binder/binder_methods.cpp
-    semantic/binder/binder_stmts.cpp
-    semantic/binder/binder_types.cpp
-    semantic/binder/binder_scope.cpp
     semantic/binder/binder_exprs.cpp
     semantic/binder/binder_literals.cpp
     semantic/binder/binder_calls.cpp
     semantic/binder/binder_initializers.cpp
+    semantic/binder/binder_stmts.cpp
+    semantic/binder/namespace_binder.cpp
+    semantic/binder/type_binder.cpp
+    semantic/binder/method_binder.cpp
+    semantic/binder/block_binder.cpp
+    semantic/binder/root_binder.cpp
+    semantic/binder/binder_pipeline.cpp
     semantic/fhir/fhir_constant.cpp
     semantic/fhir/flow.cpp
     semantic/fhir/fmt.cpp

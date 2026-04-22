@@ -257,7 +257,9 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
         return nullptr;
     }
 
-    if (!pendingStmts)
+    auto* pending = pending_statements();
+    int* counter = temp_counter();
+    if (!pending || !counter)
     {
         error("array literals are not supported outside of method bodies", expr->span);
         return fhir.error_expr(expr);
@@ -335,11 +337,11 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto* createExpr = fhir.object_create(expr, arrayType, ctorResult.best.method, {countLit});
 
     auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = "__arr_" + std::to_string(tempCounter++);
+    tempPtr->name = "__arr_" + std::to_string((*counter)++);
     tempPtr->type = arrayType;
     auto* tempLocal = context.symbols.own(std::move(tempPtr));
 
-    pendingStmts->push_back(fhir.var_decl(expr, tempLocal, createExpr));
+    pending->push_back(fhir.var_decl(expr, tempLocal, createExpr));
 
     auto setterResult = arrayType->find_index_setter(i32Type, elementType);
     if (!setterResult.best.is_callable())
@@ -357,7 +359,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
         auto* setCall = fhir.call(expr, setter->get_return_type(), setter,
                                   {fhir.local_ref(expr, tempLocal), indexLit, elements[i]});
-        pendingStmts->push_back(fhir.expr_stmt(expr, setCall));
+        pending->push_back(fhir.expr_stmt(expr, setCall));
     }
 
     return fhir.local_ref(expr, tempLocal);

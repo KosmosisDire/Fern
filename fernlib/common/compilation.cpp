@@ -1,16 +1,15 @@
 #include "compilation.hpp"
 
 #include <fstream>
-#include <functional>
 #include <sstream>
 #include <stdexcept>
 
+#include <ast/validate.hpp>
+#include <binder/binder_pipeline.hpp>
 #include <lexer/lexer.hpp>
 #include <parser/parser.hpp>
-#include <ast/validate.hpp>
-#include <token/walker.hpp>
-#include <binder/binder.hpp>
 #include <semantic/fhir/flow.hpp>
+#include <token/walker.hpp>
 
 namespace Fern
 {
@@ -56,7 +55,6 @@ void Compilation::compile()
         throw std::runtime_error("compile() can only be called once");
     }
 
-    // Phase 1: Parse all files
     for (auto& unit : units)
     {
         Lexer lexer(*unit->sourceFile);
@@ -77,7 +75,6 @@ void Compilation::compile()
         }
     }
 
-    // Phase 2: Validate AST structure
     for (auto& unit : units)
     {
         AstValidator validator;
@@ -89,23 +86,16 @@ void Compilation::compile()
         }
     }
 
-    // Phase 3: Bind symbols and method bodies
-    Binder binder(semanticContext, arena);
+    BinderPipeline binder(semanticContext);
     for (auto& unit : units)
     {
-        binder.bind_ast(unit->ast);
+        binder.declare_symbols(unit->ast);
     }
-    binder.resolve_all_types();
-    binder.resolve_all_attributes();
-    binder.bind_all_methods();
-    binder.validate_all_types();
+    binder.resolve_signatures();
+    binder.resolve_attributes();
+    binder.bind_methods();
+    binder.validate_signatures();
 
-    for (const auto& diag : binder.get_diagnostics())
-    {
-        report(diag);
-    }
-
-    // flow analysis (return checking, unreachable code)
     for (auto* method : semanticContext.methods)
     {
         auto flow = FlowAnalyzer::analyze(method);

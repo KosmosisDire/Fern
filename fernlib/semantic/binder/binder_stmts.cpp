@@ -1,31 +1,13 @@
 #include "binder.hpp"
 
+#include "scope.hpp"
+
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
 
 namespace Fern
 {
-
-FhirBlock* Binder::bind_block(BlockSyntax* block)
-{
-    auto* node = fhir.block(block);
-
-    auto* prevPending = pendingStmts;
-    pendingStmts = &node->statements;
-
-    push_scope();
-
-    for (auto* stmt : block->statements)
-    {
-        bind_stmt(stmt, node->statements);
-    }
-
-    pop_scope();
-
-    pendingStmts = prevPending;
-    return node;
-}
 
 void Binder::bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 {
@@ -63,22 +45,23 @@ void Binder::bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 
 void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 {
+    auto* method = containing_method();
     FhirExpr* value = nullptr;
     if (stmt->value)
     {
-        TypeSymbol* retType = currentMethod->get_return_type();
+        TypeSymbol* retType = method->get_return_type();
         value = bind_value_expr(stmt->value, retType);
 
         if (!retType && value && value->type)
         {
-            Span loc = currentMethod->syntax ? currentMethod->syntax->span : Span{};
-            error("function '" + currentMethod->name +
+            Span loc = method->syntax ? method->syntax->span : Span{};
+            error("function '" + method->name +
                   "' returns a value but has no return type annotation", loc);
         }
     }
-    else if (TypeSymbol* retType = currentMethod->get_return_type())
+    else if (TypeSymbol* retType = method->get_return_type())
     {
-        error("function '" + currentMethod->name +
+        error("function '" + method->name +
               "' expects a return of type '" + format_type_name(retType) + "'", stmt->span);
     }
 
@@ -122,14 +105,19 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
             }
         }
     }
+
     auto localPtr = std::make_unique<LocalSymbol>();
     localPtr->name = std::string(decl->name.lexeme);
     localPtr->type = type;
     localPtr->syntax = decl;
-    localPtr->parent = currentMethod;
+    localPtr->parent = containing_method();
 
     auto* local = context.symbols.own(std::move(localPtr));
-    current_scope().add(decl->name.lexeme, local);
+
+    if (Scope* scope = current_block_scope())
+    {
+        scope->add(decl->name.lexeme, local);
+    }
 
     out.push_back(fhir.var_decl(decl, local, initExpr));
 }

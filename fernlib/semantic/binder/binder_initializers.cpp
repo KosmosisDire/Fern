@@ -32,7 +32,7 @@ FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
     if (auto* call = expr->target->as<CallExprSyntax>())
         return bind_call(call);
 
-    Symbol* sym = resolve_expr_symbol(expr->target);
+    Symbol* sym = lookup(expr->target);
     auto* namedType = sym ? sym->as<NamedTypeSymbol>() : nullptr;
     if (namedType)
     {
@@ -91,7 +91,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
     if (auto* idExpr = expr->target->as<IdentifierExprSyntax>())
     {
-        Symbol* sym = resolve_name(idExpr->name.lexeme);
+        Symbol* sym = lookup(idExpr->name.lexeme);
         if (!sym)
         {
             error("undefined name '" + std::string(idExpr->name.lexeme) + "'", idExpr->span);
@@ -122,7 +122,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
         if (namedType)
         {
-            Symbol* calleeSym = resolve_expr_symbol(callExpr->callee);
+            Symbol* calleeSym = lookup(callExpr->callee);
             if (calleeSym)
             {
                 auto* method = calleeSym->as<MethodSymbol>();
@@ -136,7 +136,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     }
     else if (auto* memberExpr = expr->target->as<MemberAccessExprSyntax>())
     {
-        Symbol* sym = resolve_expr_symbol(memberExpr);
+        Symbol* sym = lookup(memberExpr);
         if (!sym)
         {
             error("undefined name '" + std::string(memberExpr->right.lexeme) + "'", memberExpr->span);
@@ -197,24 +197,26 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     }
 
     // Initializer lists with field assignments are lowered to:
-    //   var __init_N = Constructor(...)   // injected into the enclosing block
-    //   __init_N.field1 = value1          // injected into the enclosing block
-    //   __init_N.field2 = value2          // injected into the enclosing block
+    //   var __init_N = Constructor(...)   
+    //   __init_N.field1 = value1          
+    //   __init_N.field2 = value2          
     //   ... expression result is __init_N
-    if (!pendingStmts)
+    auto* pending = pending_statements();
+    int* counter = temp_counter();
+    if (!pending || !counter)
     {
         error("initializer lists are not yet supported outside of method bodies", expr->span);
         return fhir.error_expr(expr);
     }
 
     auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = "__init_" + std::to_string(tempCounter++);
+    tempPtr->name = "__init_" + std::to_string((*counter)++);
     tempPtr->type = namedType;
     auto* tempLocal = context.symbols.own(std::move(tempPtr));
 
-    pendingStmts->push_back(fhir.var_decl(expr, tempLocal, bind_initializer_target(expr)));
+    pending->push_back(fhir.var_decl(expr, tempLocal, bind_initializer_target(expr)));
 
-    bind_initializer_fields(expr, namedType, *pendingStmts, fhir.local_ref(expr, tempLocal));
+    bind_initializer_fields(expr, namedType, *pending, fhir.local_ref(expr, tempLocal));
 
     return fhir.local_ref(expr, tempLocal);
 }

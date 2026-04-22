@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 #include <sstream>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 #include <token/kind.hpp>
@@ -54,7 +55,7 @@ struct Conversion
 enum class SymbolKind
 {
     Namespace,
-    Type,
+    NamedType,
     TypeParam,
     Field,
     Method,
@@ -75,7 +76,18 @@ struct Symbol
     virtual ~Symbol() = default;
 
     template<typename T>
-    bool is() const { return kind == T::Kind; }
+    bool is() const
+    {
+        // TypeSymbol is abstract; accept both concrete subclasses.
+        if constexpr (std::is_same_v<T, TypeSymbol>)
+        {
+            return kind == SymbolKind::NamedType || kind == SymbolKind::TypeParam;
+        }
+        else
+        {
+            return kind == T::Kind;
+        }
+    }
 
     template<typename T>
     T* as() { return is<T>() ? static_cast<T*>(this) : nullptr; }
@@ -137,14 +149,16 @@ struct NamespaceSymbol : Symbol
 
 #pragma region Type Symbols
 
+// Abstract base for all types
 struct TypeSymbol : Symbol
 {
-    static constexpr SymbolKind Kind = SymbolKind::Type;
-    TypeSymbol() { kind = Kind; }
 };
 
 struct NamedTypeSymbol : TypeSymbol
 {
+    static constexpr SymbolKind Kind = SymbolKind::NamedType;
+    NamedTypeSymbol() { kind = Kind; }
+
     Modifier modifiers = Modifier::None;
     std::vector<FieldSymbol*> fields;
     std::vector<MethodSymbol*> methods;
@@ -273,8 +287,6 @@ struct SubstitutedFieldSymbol : FieldSymbol
 {
     FieldSymbol* originalField = nullptr;
 };
-
-class SymbolTable;
 
 struct SubstitutedMethodSymbol : MethodSymbol
 {

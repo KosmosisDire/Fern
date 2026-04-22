@@ -144,14 +144,14 @@ FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
     if (auto* id = expr->as<IdentifierExprSyntax>())
     {
-        Symbol* sym = resolve_name(id->name.lexeme);
+        Symbol* sym = lookup(id->name.lexeme);
         if (sym)
         {
-            if (sym->kind == SymbolKind::Type)
+            if (sym->is<NamedTypeSymbol>())
                 error("'" + std::string(id->name.lexeme) + "' is a type, not a value", expr->span);
-            else if (sym->kind == SymbolKind::Namespace)
+            else if (sym->is<NamespaceSymbol>())
                 error("'" + std::string(id->name.lexeme) + "' is a namespace, not a value", expr->span);
-            else if (sym->kind == SymbolKind::Method)
+            else if (sym->is<MethodSymbol>())
                 error("'" + std::string(id->name.lexeme) + "' is a method, not a value", expr->span);
             return fhir.error_expr(expr);
         }
@@ -162,7 +162,7 @@ FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
 FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
 {
-    Symbol* symbol = resolve_name(expr->name.lexeme);
+    Symbol* symbol = lookup(expr->name.lexeme);
     if (!symbol)
     {
         error("undefined name '" + std::string(expr->name.lexeme) + "'", expr->span);
@@ -193,7 +193,8 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
             auto* thisType = symbol->parent ? symbol->parent->as<TypeSymbol>() : nullptr;
             return fhir.field_access(expr, fhir.this_expr(expr, thisType), fieldSym);
         }
-        case SymbolKind::Type:
+        case SymbolKind::NamedType:
+        case SymbolKind::TypeParam:
         case SymbolKind::Namespace:
         case SymbolKind::Method:
         default:
@@ -203,13 +204,14 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
 
 FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
 {
-    if (!currentType)
+    auto* type = containing_type();
+    if (!type)
     {
         error("'this' can only be used inside a type", expr->span);
         return fhir.error_expr(expr);
     }
 
-    return fhir.this_expr(expr, currentType);
+    return fhir.this_expr(expr, type);
 }
 
 FhirExpr* Binder::bind_paren(ParenExprSyntax* expr, TypeSymbol* expected)
@@ -255,7 +257,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         return fhir.error_expr(expr);
     }
 
-    Symbol* leftSym = resolve_expr_symbol(expr->left);
+    Symbol* leftSym = lookup(expr->left);
 
     if (auto* ns = leftSym ? leftSym->as<NamespaceSymbol>() : nullptr)
     {

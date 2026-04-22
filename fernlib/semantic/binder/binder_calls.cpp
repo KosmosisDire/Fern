@@ -1,6 +1,7 @@
 #include "binder.hpp"
 
 #include <ast/ast.hpp>
+#include <common/cast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
 
@@ -9,7 +10,7 @@ namespace Fern
 
 FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 {
-    Symbol* calleeSym = resolve_expr_symbol(expr->callee);
+    Symbol* calleeSym = lookup(expr->callee);
 
     std::vector<FhirExpr*> argExprs;
     std::vector<TypeSymbol*> argTypes;
@@ -29,35 +30,31 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         }
     }
 
-    if (calleeSym && calleeSym->kind == SymbolKind::Type)
+    if (auto* namedType = as<NamedTypeSymbol>(calleeSym))
     {
-        auto* namedType = calleeSym->as<NamedTypeSymbol>();
-        if (namedType)
+        auto result = namedType->find_constructor(argTypes);
+        if (result.ambiguous && !hasErrorArg)
         {
-            auto result = namedType->find_constructor(argTypes);
-            if (result.ambiguous && !hasErrorArg)
-            {
-                std::string msg = "call is ambiguous between constructors:";
-                for (auto* m : result.ambiguousCandidates)
-                    msg += "\n  " + format_type_name(namedType) + "(" + m->format_parameters() + ")";
-                error(msg, expr->span);
-                return fhir.error_expr(expr);
-            }
-            if (!result.best.method && !hasErrorArg)
-            {
-                error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
-                      std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
-            }
-            if (result.best.method && !hasErrorArg)
-            {
-                for (size_t i = 0; i < expr->arguments.size(); ++i)
-                {
-                    argExprs[i] = bind_value_expr(expr->arguments[i], result.best.method->parameters[i]->type);
-                }
-            }
-
-            return fhir.object_create(expr, namedType, result.best.method, std::move(argExprs));
+            std::string msg = "call is ambiguous between constructors:";
+            for (auto* m : result.ambiguousCandidates)
+                msg += "\n  " + format_type_name(namedType) + "(" + m->format_parameters() + ")";
+            error(msg, expr->span);
+            return fhir.error_expr(expr);
         }
+        if (!result.best.method && !hasErrorArg)
+        {
+            error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
+                  std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+        }
+        if (result.best.method && !hasErrorArg)
+        {
+            for (size_t i = 0; i < expr->arguments.size(); ++i)
+            {
+                argExprs[i] = bind_value_expr(expr->arguments[i], result.best.method->parameters[i]->type);
+            }
+        }
+
+        return fhir.object_create(expr, namedType, result.best.method, std::move(argExprs));
     }
 
     MethodSymbol* method = nullptr;
@@ -67,9 +64,9 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 
     if (auto* idExpr = expr->callee->as<IdentifierExprSyntax>())
     {
-        if (calleeSym && calleeSym->kind == SymbolKind::Method)
+        if (auto* methodSym = as<MethodSymbol>(calleeSym))
         {
-            targetType = calleeSym->parent ? calleeSym->parent->as<NamedTypeSymbol>() : nullptr;
+            targetType = as<NamedTypeSymbol>(methodSym->parent);
             methodName = idExpr->name.lexeme;
         }
         else if (calleeSym)
@@ -80,9 +77,9 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     }
     else if (auto* memberExpr = expr->callee->as<MemberAccessExprSyntax>())
     {
-        if (calleeSym && calleeSym->kind == SymbolKind::Method)
+        if (auto* methodSym = as<MethodSymbol>(calleeSym))
         {
-            targetType = calleeSym->parent ? calleeSym->parent->as<NamedTypeSymbol>() : nullptr;
+            targetType = as<NamedTypeSymbol>(methodSym->parent);
             methodName = memberExpr->right.lexeme;
             receiver = bind_expr(memberExpr->left);
         }

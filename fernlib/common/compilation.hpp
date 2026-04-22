@@ -7,15 +7,14 @@
 
 #include <arena.hpp>
 #include <common/diagnostic.hpp>
+#include <semantic/context.hpp>
 #include <source/file.hpp>
 #include <token/token.hpp>
-#include <semantic/context.hpp>
 
 namespace Fern
 {
 
 struct RootSyntax;
-class Binder;
 
 struct CompilationUnit
 {
@@ -27,7 +26,11 @@ struct CompilationUnit
 class Compilation : public DiagnosticSystem
 {
 public:
-    Compilation() : DiagnosticSystem("Compilation") {}
+    Compilation()
+        : DiagnosticSystem("Compilation")
+        , semanticContext(arena, *this)
+    {
+    }
 
     void add_file(std::string_view path);
     void add_source(std::string source, std::string_view path);
@@ -39,9 +42,9 @@ public:
     const auto& get_units() const { return units; }
 
 private:
-    std::vector<std::unique_ptr<CompilationUnit>> units;
-    SemanticContext semanticContext;
     AllocArena arena;
+    SemanticContext semanticContext;
+    std::vector<std::unique_ptr<CompilationUnit>> units;
     bool compiled = false;
 };
 

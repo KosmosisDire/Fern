@@ -1,6 +1,7 @@
 #include "binder.hpp"
 
 #include <ast/ast.hpp>
+#include <common/cast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
 
@@ -40,7 +41,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             continue;
         }
 
-        Symbol* sym = resolve_expr_symbol(root);
+        Symbol* sym = lookup(root);
         if (!sym)
         {
             continue;
@@ -81,10 +82,10 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
             if (auto* innerCall = initExpr->target->as<CallExprSyntax>())
             {
-                Symbol* calleeSym = resolve_expr_symbol(innerCall->callee);
-                if (calleeSym && calleeSym->kind == SymbolKind::Method)
+                Symbol* calleeSym = lookup(innerCall->callee);
+                if (auto* methodSym = as<MethodSymbol>(calleeSym))
                 {
-                    ctor = calleeSym->as<MethodSymbol>();
+                    ctor = methodSym;
                 }
             }
             else
@@ -105,48 +106,6 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
         out.push_back(ResolvedAttribute{attrType, ctor});
     }
-}
-
-void Binder::resolve_all_attributes()
-{
-    for (auto* type : context.symbols.allTypes)
-    {
-
-        currentType = type;
-        currentNamespace = type->find_enclosing_namespace();
-
-        auto* typeDecl = type->syntax ? type->syntax->as<TypeDeclSyntax>() : nullptr;
-        if (typeDecl)
-        {
-            resolve_attributes(typeDecl, type->resolvedAttributes);
-        }
-
-        for (auto* field : type->fields)
-        {
-            auto* fieldDecl = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
-            if (fieldDecl)
-            {
-                resolve_attributes(fieldDecl, field->resolvedAttributes);
-            }
-        }
-
-        for (auto* method : type->methods)
-        {
-            if (method->is_auto_generated())
-            {
-                continue;
-            }
-
-            auto* callableDecl = method->syntax->as<CallableDeclSyntax>();
-            if (callableDecl)
-            {
-                resolve_attributes(callableDecl, method->resolvedAttributes);
-            }
-        }
-    }
-
-    currentType = nullptr;
-    currentNamespace = nullptr;
 }
 
 }

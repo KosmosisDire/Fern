@@ -76,22 +76,24 @@ public:
     {
     }
 
-    void report(const Diagnostic& diag)
+    virtual ~DiagnosticSystem() = default;
+
+    virtual void report(const Diagnostic& diag)
     {
         diagnostics.push_back(diag);
     }
 
-    void info(std::string_view msg, const Span& loc)
+    virtual void info(std::string_view msg, const Span& loc)
     {
         diagnostics.emplace_back(Diagnostic::Severity::Information, msg, loc, systemName);
     }
 
-    void warn(std::string_view msg, const Span& loc)
+    virtual void warn(std::string_view msg, const Span& loc)
     {
         diagnostics.emplace_back(Diagnostic::Severity::Warning, msg, loc, systemName);
     }
 
-    void error(std::string_view msg, const Span& loc)
+    virtual void error(std::string_view msg, const Span& loc)
     {
         diagnostics.emplace_back(Diagnostic::Severity::Error, msg, loc, systemName);
     }
