@@ -120,13 +120,14 @@ struct FhirBuilder
         return node;
     }
 
-    FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, bool isImplicit, MethodSymbol* method = nullptr)
+    FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, bool isImplicit, MethodSymbol* method = nullptr, FhirTypeRef* typeRef = nullptr)
     {
         auto* node = arena.alloc<FhirCastExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = targetType;
         node->operand = operand;
+        node->typeRef = typeRef;
         node->method = method;
         node->isImplicit = isImplicit;
         return node;
@@ -181,13 +182,24 @@ struct FhirBuilder
         return node;
     }
 
-    FhirVarDeclStmt* var_decl(BaseSyntax* syntax, LocalSymbol* local, FhirExpr* initializer)
+    FhirVarDeclStmt* var_decl(BaseSyntax* syntax, LocalSymbol* local, FhirExpr* initializer, FhirTypeRef* typeRef = nullptr)
     {
         auto* node = arena.alloc<FhirVarDeclStmt>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->local = local;
+        node->typeRef = typeRef;
         node->initializer = initializer;
+        return node;
+    }
+
+    FhirTypeRef* type_ref(BaseSyntax* syntax, TypeSymbol* type, std::vector<FhirTypeRef*> args = {})
+    {
+        auto* node = arena.alloc<FhirTypeRef>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = type;
+        node->args = std::move(args);
         return node;
     }
 

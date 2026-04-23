@@ -71,10 +71,12 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out)
 {
     TypeSymbol* type = nullptr;
+    FhirTypeRef* typeRef = nullptr;
 
     if (decl->type)
     {
-        type = resolve_type_expr(decl->type);
+        typeRef = bind_type_ref(decl->type);
+        type = typeRef ? typeRef->type : nullptr;
     }
 
     FhirExpr* initExpr = nullptr;
@@ -119,7 +121,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
         scope->add(decl->name.lexeme, local);
     }
 
-    out.push_back(fhir.var_decl(decl, local, initExpr));
+    out.push_back(fhir.var_decl(decl, local, initExpr, typeRef));
 }
 
 void Binder::bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out)

@@ -221,7 +221,8 @@ FhirExpr* Binder::bind_paren(ParenExprSyntax* expr, TypeSymbol* expected)
 
 FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
 {
-    TypeSymbol* targetType = resolve_type_expr(expr->type);
+    FhirTypeRef* typeRef = bind_type_ref(expr->type);
+    TypeSymbol* targetType = typeRef ? typeRef->type : nullptr;
     if (!targetType)
         return fhir.error_expr(expr);
 
@@ -235,7 +236,7 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
     auto conv = NamedTypeSymbol::get_conversion(operand->type, targetType);
     if (conv.level == Convertibility::Implicit || conv.level == Convertibility::Explicit)
     {
-        return fhir.cast(expr, targetType, operand, false, conv.method);
+        return fhir.cast(expr, targetType, operand, false, conv.method, typeRef);
     }
 
     diag.error("cannot cast from '" + format_type_name(operand->type) +

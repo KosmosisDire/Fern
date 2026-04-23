@@ -47,6 +47,8 @@ struct FhirReturnStmt;
 struct FhirIfStmt;
 struct FhirWhileStmt;
 
+struct FhirTypeRef;
+
 struct FhirMethod;
 
 #pragma region Enums
@@ -178,6 +180,8 @@ public:
     virtual void visit(FhirReturnStmt* node) = 0;
     virtual void visit(FhirIfStmt* node) = 0;
     virtual void visit(FhirWhileStmt* node) = 0;
+
+    virtual void visit(FhirTypeRef* node) = 0;
 };
 
 #define FHIR_NODE(K, Base) \
@@ -229,6 +233,22 @@ struct FhirExpr : FhirNode
 struct FhirStmt : FhirNode
 {
     FhirStmt(int k) : FhirNode(k) {}
+};
+
+#pragma region Type Ref
+
+struct FhirTypeRef : FhirNode
+{
+    FHIR_NODE(FhirTypeRef, FhirNode)
+
+    TypeSymbol* type = nullptr;
+    std::vector<FhirTypeRef*> args;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        for (auto* arg : args)
+            if (arg) arg->accept(v);
+    }
 };
 
 #pragma region Expressions
@@ -353,6 +373,7 @@ struct FhirCastExpr : FhirExpr
     FHIR_NODE(FhirCastExpr, FhirExpr)
 
     FhirExpr* operand = nullptr;
+    FhirTypeRef* typeRef = nullptr;
     MethodSymbol* method = nullptr;
     bool isImplicit = false;
 
@@ -361,6 +382,7 @@ struct FhirCastExpr : FhirExpr
     void visit_children(FhirVisitor* v) override
     {
         if (operand) operand->accept(v);
+        if (typeRef) typeRef->accept(v);
     }
 };
 
@@ -398,10 +420,12 @@ struct FhirVarDeclStmt : FhirStmt
     FHIR_NODE(FhirVarDeclStmt, FhirStmt)
 
     LocalSymbol* local = nullptr;
+    FhirTypeRef* typeRef = nullptr;
     FhirExpr* initializer = nullptr;
 
     void visit_children(FhirVisitor* v) override
     {
+        if (typeRef) typeRef->accept(v);
         if (initializer) initializer->accept(v);
     }
 };
@@ -494,6 +518,8 @@ public:
     void visit(FhirReturnStmt* node) override { node->visit_children(this); }
     void visit(FhirIfStmt* node) override { node->visit_children(this); }
     void visit(FhirWhileStmt* node) override { node->visit_children(this); }
+
+    void visit(FhirTypeRef* node) override { node->visit_children(this); }
 };
 
 }

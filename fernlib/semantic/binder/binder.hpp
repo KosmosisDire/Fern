@@ -47,6 +47,7 @@ struct TypeSymbol;
 struct FhirExpr;
 struct FhirBlock;
 struct FhirStmt;
+struct FhirTypeRef;
 
 // Base class for every binder in the chain. Holds all scope-agnostic binding
 // logic and reaches scope-specific state through virtual accessors. Concrete
@@ -66,6 +67,7 @@ public:
     void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
     TypeSymbol* resolve_type_expr(BaseExprSyntax* expr);
     TypeSymbol* resolve_generic_type(GenericTypeExprSyntax* expr);
+    FhirTypeRef* bind_type_ref(BaseExprSyntax* expr);
 
 protected:
     explicit Binder(Binder& parent);

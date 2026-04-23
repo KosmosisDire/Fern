@@ -261,6 +261,42 @@ TypeSymbol* Binder::resolve_generic_type(GenericTypeExprSyntax* expr)
     return context.symbols.get_or_declare_generic_instance(templ, typeArgs);
 }
 
+static FhirTypeRef* build_type_ref_tree(FhirBuilder& fhir, BaseExprSyntax* expr, TypeSymbol* type)
+{
+    if (!expr) return nullptr;
+
+    std::vector<TypeSymbol*> childTypes;
+    if (auto* named = type ? type->as<NamedTypeSymbol>() : nullptr)
+    {
+        childTypes = named->typeArguments;
+    }
+
+    std::vector<FhirTypeRef*> args;
+
+    if (auto* arrayExpr = expr->as<ArrayTypeExprSyntax>())
+    {
+        TypeSymbol* elemType = !childTypes.empty() ? childTypes[0] : nullptr;
+        args.push_back(build_type_ref_tree(fhir, arrayExpr->elementType, elemType));
+    }
+    else if (auto* genericExpr = expr->as<GenericTypeExprSyntax>())
+    {
+        for (size_t i = 0; i < genericExpr->typeArgs.size(); ++i)
+        {
+            TypeSymbol* childType = i < childTypes.size() ? childTypes[i] : nullptr;
+            args.push_back(build_type_ref_tree(fhir, genericExpr->typeArgs[i], childType));
+        }
+    }
+
+    return fhir.type_ref(expr, type, std::move(args));
+}
+
+FhirTypeRef* Binder::bind_type_ref(BaseExprSyntax* expr)
+{
+    if (!expr) return nullptr;
+    TypeSymbol* type = resolve_type_expr(expr);
+    return build_type_ref_tree(fhir, expr, type);
+}
+
 FhirBlock* Binder::bind_block(BlockSyntax* block)
 {
     auto* node = fhir.block(block);
