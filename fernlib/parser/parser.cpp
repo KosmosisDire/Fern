@@ -74,19 +74,6 @@ static bool has_space_after(const Span& op, const TokenWalker& walker)
     return op.endLine != next.startLine || op.endColumn != next.startColumn;
 }
 
-static bool could_be_type_expr(BaseExprSyntax* expr)
-{
-    return expr && (expr->is<IdentifierExprSyntax>() ||
-                    expr->is<MemberAccessExprSyntax>());
-}
-
-static bool is_unambiguously_type(BaseExprSyntax* expr)
-{
-    if (!expr) return false;
-    return expr->is<GenericTypeExprSyntax>() ||
-           expr->is<ArrayTypeExprSyntax>();
-}
-
 // These tokens after a potential cast signify that we ARE doing a cast and not a parenthesized expression or call
 static bool is_cast_trigger(TokenKind k)
 {
@@ -565,7 +552,7 @@ void Parser::parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& 
     }
 }
 
-BaseExprSyntax* Parser::parse_return_type(Span& span)
+TypeExprSyntax* Parser::parse_return_type(Span& span)
 {
     if (!walker.check(TokenKind::ThinArrow))
     {
@@ -1217,19 +1204,22 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
     return init;
 }
 
-BaseExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
+MemberAccessExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
 {
+    walker.advance();
+
     auto* memberAccess = arena.alloc<MemberAccessExprSyntax>();
     memberAccess->left = left;
 
-    walker.advance();
-
-    if (auto* name = expect(TokenKind::Identifier, "expected member name after '.'"))
+    if (walker.check(TokenKind::Identifier))
     {
-        memberAccess->right = *name;
-        memberAccess->span = left->span.merge(name->span);
+        auto* right = parse_simple_name();
+        memberAccess->right = right;
+        memberAccess->span = left->span.merge(right->span);
         return memberAccess;
     }
+
+    diag.error("expected member name after '.'", walker.current().span);
 
     if (is_literal(walker.current().kind))
     {
@@ -1271,41 +1261,21 @@ BaseExprSyntax* Parser::parse_postfix()
             walker.advance();
             skip_newlines(walker);
 
-            if (walker.check(TokenKind::RightBracket))
-            {
-                auto* arrayType = arena.alloc<ArrayTypeExprSyntax>();
-                arrayType->elementType = left;
-                bracketSpan = bracketSpan.merge(walker.current().span);
-                walker.advance();
-                arrayType->span = bracketSpan;
-                left = arrayType;
-            }
-            else
-            {
-                auto* indexExpr = arena.alloc<IndexExprSyntax>();
-                indexExpr->object = left;
-                indexExpr->index = parse_expression();
-                skip_newlines(walker);
+            auto* indexExpr = arena.alloc<IndexExprSyntax>();
+            indexExpr->object = left;
+            indexExpr->index = parse_expression();
+            skip_newlines(walker);
 
-                if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after index expression"))
-                {
-                    bracketSpan = bracketSpan.merge(rb->span);
-                }
-                indexExpr->span = bracketSpan;
-                left = indexExpr;
+            if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after index expression"))
+            {
+                bracketSpan = bracketSpan.merge(rb->span);
             }
+            indexExpr->span = bracketSpan;
+            left = indexExpr;
         }
         else if (walker.check(TokenKind::LeftBrace) && !inCondition)
         {
             left = parse_initializer(left);
-        }
-        else if (!skippedNewline &&
-                 walker.check(TokenKind::Less) &&
-                 (left->is<IdentifierExprSyntax>() || left->is<MemberAccessExprSyntax>()) &&
-                 (scan_type_arg_list(walker, 1) ||
-                  !has_space_before(left->span, walker.current().span)))
-        {
-            left = parse_generic_type_args(left);
         }
         else
         {
@@ -1321,11 +1291,7 @@ BaseExprSyntax* Parser::parse_primary()
 {
     if (walker.check(TokenKind::Identifier))
     {
-        auto* ident = arena.alloc<IdentifierExprSyntax>();
-        ident->name = walker.current();
-        ident->span = walker.current().span;
-        walker.advance();
-        return ident;
+        return parse_simple_name();
     }
 
     if (is_literal(walker.current().kind))
@@ -1341,6 +1307,45 @@ BaseExprSyntax* Parser::parse_primary()
     {
         Span span = walker.current().span;
 
+        auto tokenCP = walker.checkpoint();
+        auto diagCP = diag.checkpoint();
+
+        walker.advance();
+        skip_newlines(walker);
+
+        TypeExprSyntax* maybeType = parse_type();
+        skip_newlines(walker);
+        bool endsAtCloseParen = maybeType && walker.check(TokenKind::RightParen);
+
+        bool isCast = false;
+        if (endsAtCloseParen)
+        {
+            bool unambiguous = maybeType->is<GenericNameExprSyntax>() ||
+                               maybeType->is<ArrayTypeExprSyntax>();
+            TokenKind afterParen = walker.peek(1).kind;
+            isCast = unambiguous || is_cast_trigger(afterParen);
+        }
+
+        if (isCast)
+        {
+            Span closingSpan = walker.current().span;
+            walker.advance();
+            span = span.merge(closingSpan);
+
+            auto* cast = arena.alloc<CastExprSyntax>();
+            cast->type = maybeType;
+            cast->operand = parse_unary();
+            cast->span = span;
+            if (cast->operand)
+            {
+                cast->span = cast->span.merge(cast->operand->span);
+            }
+            return cast;
+        }
+
+        walker.restore(tokenCP);
+        diag.restore(diagCP);
+
         walker.advance();
         skip_newlines(walker);
 
@@ -1353,21 +1358,6 @@ BaseExprSyntax* Parser::parse_primary()
         if (auto* token = expect(TokenKind::RightParen, "expected ')' after expression"))
         {
             span = span.merge(token->span);
-        }
-
-        bool isCast = is_unambiguously_type(inner) ||
-                      (could_be_type_expr(inner) && is_cast_trigger(walker.current().kind));
-        if (isCast)
-        {
-            auto* cast = arena.alloc<CastExprSyntax>();
-            cast->type = inner;
-            cast->operand = parse_unary();
-            cast->span = span;
-            if (cast->operand)
-            {
-                cast->span = cast->span.merge(cast->operand->span);
-            }
-            return cast;
         }
 
         auto* paren = arena.alloc<ParenExprSyntax>();
@@ -1536,67 +1526,95 @@ BlockSyntax* Parser::parse_block()
 
 #pragma region Types
 
-GenericTypeExprSyntax* Parser::parse_generic_type_args(ExprPtr base)
-{
-    auto* generic = arena.alloc<GenericTypeExprSyntax>();
-    generic->base = base;
-    Span span = base->span;
-
-    walker.advance(); // consume '<'
-    skip_newlines(walker);
-
-    while (!walker.check(TokenKind::Greater) && !walker.is_at_end())
-    {
-        auto* typeArg = parse_type();
-        if (typeArg)
-        {
-            generic->typeArgs.push_back(typeArg);
-            span = span.merge(typeArg->span);
-        }
-        skip_newlines(walker);
-
-        if (walker.check(TokenKind::Comma))
-        {
-            walker.advance();
-            skip_newlines(walker);
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    if (auto* token = expect(TokenKind::Greater, "expected '>' after type arguments"))
-    {
-        span = span.merge(token->span);
-    }
-
-    generic->span = span;
-    return generic;
-}
-
-BaseExprSyntax* Parser::parse_type()
+SimpleNameExprSyntax* Parser::parse_simple_name()
 {
     if (!walker.check(TokenKind::Identifier))
     {
         return nullptr;
     }
 
-    auto* ident = arena.alloc<IdentifierExprSyntax>();
-    ident->name = walker.current();
-    ident->span = walker.current().span;
+    Token nameTok = walker.current();
+    Span span = nameTok.span;
     walker.advance();
 
-    BaseExprSyntax* type = ident;
+    if (walker.check(TokenKind::Less) &&
+        (scan_type_arg_list(walker, 1) ||
+         !has_space_before(nameTok.span, walker.current().span)))
+    {
+        auto* gen = arena.alloc<GenericNameExprSyntax>();
+        gen->name = nameTok;
+
+        walker.advance();
+        skip_newlines(walker);
+
+        while (!walker.check(TokenKind::Greater) && !walker.is_at_end())
+        {
+            auto* typeArg = parse_type();
+            if (typeArg)
+            {
+                gen->typeArgs.push_back(typeArg);
+                span = span.merge(typeArg->span);
+            }
+            skip_newlines(walker);
+
+            if (walker.check(TokenKind::Comma))
+            {
+                walker.advance();
+                skip_newlines(walker);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (auto* token = expect(TokenKind::Greater, "expected '>' after type arguments"))
+        {
+            span = span.merge(token->span);
+        }
+
+        gen->span = span;
+        return gen;
+    }
+
+    auto* ident = arena.alloc<IdentifierExprSyntax>();
+    ident->name = nameTok;
+    ident->span = span;
+    return ident;
+}
+
+QualifiedNameExprSyntax* Parser::parse_qualified_name(TypeExprSyntax* left)
+{
+    auto* node = arena.alloc<QualifiedNameExprSyntax>();
+    node->left = left;
+
+    walker.advance();
+
+    if (walker.check(TokenKind::Identifier))
+    {
+        auto* right = parse_simple_name();
+        node->right = right;
+        node->span = left->span.merge(right->span);
+        return node;
+    }
+
+    diag.error("expected member name after '.'", walker.current().span);
+    node->span = left->span;
+    return node;
+}
+
+TypeExprSyntax* Parser::parse_type()
+{
+    if (!walker.check(TokenKind::Identifier))
+    {
+        return nullptr;
+    }
+
+    TypeExprSyntax* type = parse_simple_name();
 
     while (walker.check(TokenKind::Dot))
     {
-        type = parse_member_access(type);
-    }
-
-    if (walker.check(TokenKind::Less))
-    {
-        type = parse_generic_type_args(type);
+        type = parse_qualified_name(type);
     }
 
     while (walker.check(TokenKind::LeftBracket) && walker.peek(1).kind == TokenKind::RightBracket)

@@ -10,11 +10,23 @@ The tree uses a visitor pattern. `FhirVisitor` is pure virtual, `DefaultFhirVisi
 
 ## Call Representations
 
-There are three distinct call nodes, because codegen needs to handle them differently:
+Two call shapes:
 
-- **FhirCallExpr**: static call to a method. Used for static functions and user-defined operators.
-- **FhirMethodCallExpr**: instance call with a receiver expression. The receiver is passed implicitly.
-- **FhirObjectCreateExpr**: constructor call that creates a new instance. Carries the constructor method and arguments.
+- **FhirCallExpr**: a method call. The `callee` is a `FhirMethodRefExpr` that bundles the resolved method with the optional `thisRef` (null for static, free, or operator calls). Static and instance calls share this single node.
+- **FhirConstructionExpr**: constructor call that creates a new instance. Holds a `FhirTypeRef` for the user written type plus a nested `FhirCallExpr` carrying the resolved constructor and arguments. The inner call's `callee.thisRef` is null because the new instance is synthesized by codegen when emitting the construction. Constructors only appear inside this nested call.
+
+## Symbol Reference Family
+
+Names in source that bind to non value symbols like types, namespaces, methods become typed `*RefExpr` nodes in FHIR:
+
+- `FhirTypeRef`. A type. Holds the `TypeSymbol*` and recursive type arg refs. Used in type slots like var, param, cast types, and as construction "callees".
+- `FhirNamespaceRefExpr`. A namespace. Only valid as the left side of a member access while resolving qualified names.
+- `FhirMethodGroupRefExpr`. A method name, before overload resolution. Carries the owning scope plus the name. `bind_call` resolves it against arg types and produces a `FhirMethodRefExpr` for the call. In any non call slot it is an error.
+- `FhirMethodRefExpr`. A specific resolved overload. Lives as the callee of `FhirCallExpr`. Rarely escapes elsewhere.
+
+The `*RefExpr` always wraps the user written reference even in error cases. `FhirErrorExpr` carries the ref as its `inner` so IDE features like hover and goto def keep working on broken code.
+
+All four `*RefExpr` nodes inherit `FhirExpr`. Their `type` field is null because they are not values at runtime. The convention is that `bind_value_expr` rejects them when they appear in value slots. `FhirTypeRef` and `FhirMethodRefExpr` may eventually carry real value types if I add that later.
 
 ## Intrinsics
 

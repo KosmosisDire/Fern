@@ -188,6 +188,7 @@ struct NamedTypeSymbol : TypeSymbol
     OverloadResult find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
     OverloadResult find_constructor(const std::vector<TypeSymbol*>& argTypes);
     NamedTypeSymbol* find_nested_type(std::string_view name);
+    Symbol* find_member(std::string_view name);
     OverloadResult find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
     OverloadResult find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
     OverloadResult find_index_getter(TypeSymbol* indexType);

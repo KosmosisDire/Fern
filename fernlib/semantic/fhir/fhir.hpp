@@ -13,6 +13,7 @@ namespace Fern
 struct BaseSyntax;
 struct Symbol;
 struct TypeSymbol;
+struct NamespaceSymbol;
 struct MethodSymbol;
 struct FieldSymbol;
 struct ParameterSymbol;
@@ -28,15 +29,17 @@ struct FhirExpr;
 struct FhirLiteralExpr;
 struct FhirLocalRefExpr;
 struct FhirParamRefExpr;
-struct FhirFieldAccessExpr;
+struct FhirFieldRefExpr;
 struct FhirThisExpr;
 struct FhirIntrinsicExpr;
 struct FhirCallExpr;
-struct FhirMethodCallExpr;
-struct FhirObjectCreateExpr;
+struct FhirConstructionExpr;
 struct FhirAssignExpr;
 struct FhirCastExpr;
 struct FhirErrorExpr;
+struct FhirNamespaceRefExpr;
+struct FhirMethodGroupRefExpr;
+struct FhirMethodRefExpr;
 
 struct FhirBlock;
 
@@ -164,15 +167,17 @@ public:
     virtual void visit(FhirLiteralExpr* node) = 0;
     virtual void visit(FhirLocalRefExpr* node) = 0;
     virtual void visit(FhirParamRefExpr* node) = 0;
-    virtual void visit(FhirFieldAccessExpr* node) = 0;
+    virtual void visit(FhirFieldRefExpr* node) = 0;
     virtual void visit(FhirThisExpr* node) = 0;
     virtual void visit(FhirIntrinsicExpr* node) = 0;
     virtual void visit(FhirCallExpr* node) = 0;
-    virtual void visit(FhirMethodCallExpr* node) = 0;
-    virtual void visit(FhirObjectCreateExpr* node) = 0;
+    virtual void visit(FhirConstructionExpr* node) = 0;
     virtual void visit(FhirAssignExpr* node) = 0;
     virtual void visit(FhirCastExpr* node) = 0;
     virtual void visit(FhirErrorExpr* node) = 0;
+    virtual void visit(FhirNamespaceRefExpr* node) = 0;
+    virtual void visit(FhirMethodGroupRefExpr* node) = 0;
+    virtual void visit(FhirMethodRefExpr* node) = 0;
 
     virtual void visit(FhirBlock* node) = 0;
     virtual void visit(FhirVarDeclStmt* node) = 0;
@@ -237,11 +242,15 @@ struct FhirStmt : FhirNode
 
 #pragma region Type Ref
 
-struct FhirTypeRef : FhirNode
+// A user written reference to a type. Used in two ways. In type slots like
+// var or param or cast types it is a type annotation. As a callee in bind_call
+// it stands in for an unresolved construction and bind_call picks a constructor
+// overload from referenced.
+struct FhirTypeRef : FhirExpr
 {
-    FHIR_NODE(FhirTypeRef, FhirNode)
+    FHIR_NODE(FhirTypeRef, FhirExpr)
 
-    TypeSymbol* type = nullptr;
+    TypeSymbol* referenced = nullptr;
     std::vector<FhirTypeRef*> args;
 
     void visit_children(FhirVisitor* v) override
@@ -276,16 +285,16 @@ struct FhirParamRefExpr : FhirExpr
     ParameterSymbol* parameter = nullptr;
 };
 
-struct FhirFieldAccessExpr : FhirExpr
+struct FhirFieldRefExpr : FhirExpr
 {
-    FHIR_NODE(FhirFieldAccessExpr, FhirExpr)
+    FHIR_NODE(FhirFieldRefExpr, FhirExpr)
 
-    FhirExpr* object = nullptr;
+    FhirExpr* thisRef = nullptr;
     FieldSymbol* field = nullptr;
 
     void visit_children(FhirVisitor* v) override
     {
-        if (object) object->accept(v);
+        if (thisRef) thisRef->accept(v);
     }
 };
 
@@ -310,47 +319,78 @@ struct FhirIntrinsicExpr : FhirExpr
     }
 };
 
+// A name that bound to a namespace. Only valid as the left side of a member
+// access while resolving qualified names. In any other slot it is an error.
+struct FhirNamespaceRefExpr : FhirExpr
+{
+    FHIR_NODE(FhirNamespaceRefExpr, FhirExpr)
+
+    NamespaceSymbol* namespaceSymbol = nullptr;
+};
+
+// A name that bound to a method, before overload resolution. Carries the
+// owning scope and name so bind_call can resolve against arg types. Method
+// names are the only lookup that can produce multiple candidates per name,
+// so this is the one ref kind with an unresolved or resolved split.
+struct FhirMethodGroupRefExpr : FhirExpr
+{
+    FHIR_NODE(FhirMethodGroupRefExpr, FhirExpr)
+
+    Symbol* enclosingScope = nullptr;
+    std::string_view name;
+    FhirExpr* thisRef = nullptr;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        if (thisRef) thisRef->accept(v);
+    }
+};
+
+// A specific method overload, picked. Lives as the callee of FhirCallExpr
+// after bind_call runs overload resolution. Rarely escapes elsewhere.
+struct FhirMethodRefExpr : FhirExpr
+{
+    FHIR_NODE(FhirMethodRefExpr, FhirExpr)
+
+    MethodSymbol* method = nullptr;
+    FhirExpr* thisRef = nullptr;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        if (thisRef) thisRef->accept(v);
+    }
+};
+
 struct FhirCallExpr : FhirExpr
 {
     FHIR_NODE(FhirCallExpr, FhirExpr)
 
-    MethodSymbol* target = nullptr;
+    FhirMethodRefExpr* callee = nullptr;
     std::vector<FhirExpr*> arguments;
 
     void visit_children(FhirVisitor* v) override
     {
+        if (callee) callee->accept(v);
         for (auto* arg : arguments)
             if (arg) arg->accept(v);
     }
 };
 
-struct FhirMethodCallExpr : FhirExpr
+// Wraps a constructor call in instance allocation. The inner `call` carries
+// the resolved constructor and arguments. Its `callee.thisRef` is null because
+// the new instance does not exist as a value until codegen.
+// Constructors only ever appear inside this nested call.
+struct FhirConstructionExpr : FhirExpr
 {
-    FHIR_NODE(FhirMethodCallExpr, FhirExpr)
+    FHIR_NODE(FhirConstructionExpr, FhirExpr)
 
-    FhirExpr* receiver = nullptr;
-    MethodSymbol* method = nullptr;
-    std::vector<FhirExpr*> arguments;
+    FhirTypeRef* typeRef = nullptr;
+    FhirCallExpr* call = nullptr;
 
     void visit_children(FhirVisitor* v) override
     {
-        if (receiver) receiver->accept(v);
-        for (auto* arg : arguments)
-            if (arg) arg->accept(v);
-    }
-};
-
-struct FhirObjectCreateExpr : FhirExpr
-{
-    FHIR_NODE(FhirObjectCreateExpr, FhirExpr)
-
-    MethodSymbol* constructor = nullptr;
-    std::vector<FhirExpr*> arguments;
-
-    void visit_children(FhirVisitor* v) override
-    {
-        for (auto* arg : arguments)
-            if (arg) arg->accept(v);
+        if (typeRef) typeRef->accept(v);
+        if (call) call->accept(v);
     }
 };
 
@@ -502,15 +542,17 @@ public:
     void visit(FhirLiteralExpr* node) override { node->visit_children(this); }
     void visit(FhirLocalRefExpr* node) override { node->visit_children(this); }
     void visit(FhirParamRefExpr* node) override { node->visit_children(this); }
-    void visit(FhirFieldAccessExpr* node) override { node->visit_children(this); }
+    void visit(FhirFieldRefExpr* node) override { node->visit_children(this); }
     void visit(FhirThisExpr* node) override { node->visit_children(this); }
     void visit(FhirIntrinsicExpr* node) override { node->visit_children(this); }
     void visit(FhirCallExpr* node) override { node->visit_children(this); }
-    void visit(FhirMethodCallExpr* node) override { node->visit_children(this); }
-    void visit(FhirObjectCreateExpr* node) override { node->visit_children(this); }
+    void visit(FhirConstructionExpr* node) override { node->visit_children(this); }
     void visit(FhirAssignExpr* node) override { node->visit_children(this); }
     void visit(FhirCastExpr* node) override { node->visit_children(this); }
     void visit(FhirErrorExpr* node) override {}
+    void visit(FhirNamespaceRefExpr* node) override {}
+    void visit(FhirMethodGroupRefExpr* node) override { node->visit_children(this); }
+    void visit(FhirMethodRefExpr* node) override { node->visit_children(this); }
 
     void visit(FhirBlock* node) override { node->visit_children(this); }
     void visit(FhirVarDeclStmt* node) override { node->visit_children(this); }

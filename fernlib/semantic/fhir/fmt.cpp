@@ -71,9 +71,9 @@ void FhirFormatter::visit(FhirParamRefExpr* node)
     out << (node->parameter ? node->parameter->name : "?");
 }
 
-void FhirFormatter::visit(FhirFieldAccessExpr* node)
+void FhirFormatter::visit(FhirFieldRefExpr* node)
 {
-    write_child(node->object);
+    write_child(node->thisRef);
     out << "." << (node->field ? node->field->name : "?");
 }
 
@@ -102,23 +102,29 @@ void FhirFormatter::visit(FhirIntrinsicExpr* node)
 
 void FhirFormatter::visit(FhirCallExpr* node)
 {
-    out << method_label(node->target);
+    auto* callee = node->callee;
+    auto* method = callee ? callee->method : nullptr;
+    if (callee && callee->thisRef)
+    {
+        write_child(callee->thisRef);
+        out << "." << (method ? method->name : "?");
+    }
+    else
+    {
+        out << method_label(method);
+    }
     write_args(node->arguments);
 }
 
-void FhirFormatter::visit(FhirMethodCallExpr* node)
+void FhirFormatter::visit(FhirConstructionExpr* node)
 {
-    write_child(node->receiver);
-    out << "." << (node->method ? node->method->name : "?");
-    write_args(node->arguments);
-}
-
-void FhirFormatter::visit(FhirObjectCreateExpr* node)
-{
-    auto* ctor = node->constructor;
+    auto* ctor = node->call && node->call->callee ? node->call->callee->method : nullptr;
     auto* parent = ctor && ctor->parent ? ctor->parent->as<NamedTypeSymbol>() : nullptr;
     out << "new " << (parent ? format_type_name(parent) : "?");
-    write_args(node->arguments);
+    if (node->call)
+        write_args(node->call->arguments);
+    else
+        out << "()";
 }
 
 void FhirFormatter::visit(FhirAssignExpr* node)
@@ -140,6 +146,37 @@ void FhirFormatter::visit(FhirErrorExpr* node)
     out << "ERROR(";
     if (node->inner) write_child(node->inner);
     out << ")";
+}
+
+void FhirFormatter::visit(FhirNamespaceRefExpr* node)
+{
+    out << "&" << (node->namespaceSymbol ? node->namespaceSymbol->qualified_name() : "?");
+}
+
+void FhirFormatter::visit(FhirMethodGroupRefExpr* node)
+{
+    if (node->thisRef)
+    {
+        write_child(node->thisRef);
+        out << ".";
+    }
+    out << "&" << (node->enclosingScope ? node->enclosingScope->qualified_name() + "." : "")
+        << std::string(node->name) << "(?)";
+}
+
+void FhirFormatter::visit(FhirMethodRefExpr* node)
+{
+    if (node->thisRef)
+    {
+        write_child(node->thisRef);
+        out << ".";
+    }
+    out << "&" << (node->method ? node->method->name : "?");
+}
+
+void FhirFormatter::visit(FhirTypeRef* node)
+{
+    out << "&" << (node->referenced ? format_type_name(node->referenced) : "?");
 }
 
 void FhirFormatter::visit(FhirBlock* node)

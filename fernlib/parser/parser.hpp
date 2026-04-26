@@ -37,7 +37,7 @@ private:
 
     // Shared parse helpers
     void parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& span);
-    BaseExprSyntax* parse_return_type(Span& span);
+    TypeExprSyntax* parse_return_type(Span& span);
     BlockSyntax* parse_body(Span& span);
 
     // Statements
@@ -53,15 +53,16 @@ private:
     CallExprSyntax* parse_call(BaseExprSyntax* callee);
     void parse_initializer_members(std::vector<StmtPtr>& out);
     InitializerExprSyntax* parse_initializer(BaseExprSyntax* target = nullptr);
-    BaseExprSyntax* parse_member_access(BaseExprSyntax* left);
+    MemberAccessExprSyntax* parse_member_access(BaseExprSyntax* left);
+    SimpleNameExprSyntax* parse_simple_name();
     BaseExprSyntax* parse_postfix();
     BlockSyntax* parse_block();
     IfStmtSyntax* parse_if();
     WhileStmtSyntax* parse_while();
 
     // Types
-    BaseExprSyntax* parse_type();
-    GenericTypeExprSyntax* parse_generic_type_args(ExprPtr base);
+    TypeExprSyntax* parse_type();
+    QualifiedNameExprSyntax* parse_qualified_name(TypeExprSyntax* left);
 
     TokenWalker& walker;
     AllocArena& arena;

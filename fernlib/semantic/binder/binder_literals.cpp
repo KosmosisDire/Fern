@@ -251,7 +251,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
                 return fhir.error_expr(expr);
             }
 
-            return fhir.object_create(expr, expectedNamed, ctorResult.best.method, {countLit});
+            auto* synthTypeRef = fhir.type_ref(expr, expectedNamed);
+            return fhir.construction(expr, expectedNamed, synthTypeRef, ctorResult.best.method, {countLit});
         }
 
         return nullptr;
@@ -334,7 +335,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
         return fhir.error_expr(expr);
     }
 
-    auto* createExpr = fhir.object_create(expr, arrayType, ctorResult.best.method, {countLit});
+    auto* synthTypeRef = fhir.type_ref(expr, arrayType);
+    auto* createExpr = fhir.construction(expr, arrayType, synthTypeRef, ctorResult.best.method, {countLit});
 
     auto tempPtr = std::make_unique<LocalSymbol>();
     tempPtr->name = "__arr_" + std::to_string((*counter)++);

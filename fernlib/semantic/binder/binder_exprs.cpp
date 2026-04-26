@@ -64,8 +64,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         result = bind_paren(paren, expected);
     else if (auto* castExpr = expr->as<CastExprSyntax>())
         result = bind_cast(castExpr);
-    else if (auto* generic = expr->as<GenericTypeExprSyntax>())
-        result = bind_generic_type_expr(generic);
+    else if (auto* genName = expr->as<GenericNameExprSyntax>())
+        result = bind_generic_name_expr(genName);
     else if (auto* indexExpr = expr->as<IndexExprSyntax>())
         result = bind_index(indexExpr);
     else if (auto* arrayLit = expr->as<ArrayLiteralExprSyntax>())
@@ -139,25 +139,26 @@ FhirExpr* Binder::coerce_to_param(FhirExpr* arg, TypeSymbol* paramType)
 FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 {
     FhirExpr* result = bind_expr(expr, expected);
-    if (result) return result;
-    if (!expr) return nullptr;
+    if (!result) return nullptr;
 
-    if (auto* id = expr->as<IdentifierExprSyntax>())
+    if (auto* tref = result->as<FhirTypeRef>())
     {
-        Symbol* sym = lookup(id->name.lexeme);
-        if (sym)
-        {
-            if (sym->is<NamedTypeSymbol>())
-                diag.error("'" + std::string(id->name.lexeme) + "' is a type, not a value", expr->span);
-            else if (sym->is<NamespaceSymbol>())
-                diag.error("'" + std::string(id->name.lexeme) + "' is a namespace, not a value", expr->span);
-            else if (sym->is<MethodSymbol>())
-                diag.error("'" + std::string(id->name.lexeme) + "' is a method, not a value", expr->span);
-            return fhir.error_expr(expr);
-        }
+        diag.error("'" + format_type_name(tref->referenced) + "' is a type, not a value", expr->span);
+        return fhir.error_expr(expr, nullptr, tref);
+    }
+    if (auto* nref = result->as<FhirNamespaceRefExpr>())
+    {
+        std::string name = nref->namespaceSymbol ? nref->namespaceSymbol->name : "?";
+        diag.error("'" + name + "' is a namespace, not a value", expr->span);
+        return fhir.error_expr(expr, nullptr, nref);
+    }
+    if (auto* mg = result->as<FhirMethodGroupRefExpr>())
+    {
+        diag.error("'" + std::string(mg->name) + "' is a method, not a value", expr->span);
+        return fhir.error_expr(expr, nullptr, mg);
     }
 
-    return nullptr;
+    return result;
 }
 
 FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
@@ -191,14 +192,33 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
             auto* fieldSym = symbol->as<FieldSymbol>();
             if (!fieldSym->type) return fhir.error_expr(expr);
             auto* thisType = symbol->parent ? symbol->parent->as<TypeSymbol>() : nullptr;
-            return fhir.field_access(expr, fhir.this_expr(expr, thisType), fieldSym);
+            return fhir.field_ref(expr, fhir.this_expr(expr, thisType), fieldSym);
         }
         case SymbolKind::NamedType:
         case SymbolKind::TypeParam:
+        {
+            auto* typeSym = symbol->as<TypeSymbol>();
+            return fhir.type_ref(expr, typeSym);
+        }
         case SymbolKind::Namespace:
+        {
+            auto* nsSym = symbol->as<NamespaceSymbol>();
+            return fhir.namespace_ref(expr, nsSym);
+        }
         case SymbolKind::Method:
+        {
+            auto* methodSym = symbol->as<MethodSymbol>();
+            FhirExpr* thisRef = nullptr;
+            if (auto* enclosingMethod = containing_method();
+                enclosingMethod && !has_modifier(enclosingMethod->modifiers, Modifier::Static))
+            {
+                if (auto* enclosingType = containing_type())
+                    thisRef = fhir.this_expr(expr, enclosingType);
+            }
+            return fhir.method_group_ref(expr, methodSym->parent, methodSym->name, thisRef);
+        }
         default:
-            return nullptr;
+            return fhir.error_expr(expr);
     }
 }
 
@@ -222,7 +242,7 @@ FhirExpr* Binder::bind_paren(ParenExprSyntax* expr, TypeSymbol* expected)
 FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
 {
     FhirTypeRef* typeRef = bind_type_ref(expr->type);
-    TypeSymbol* targetType = typeRef ? typeRef->type : nullptr;
+    TypeSymbol* targetType = typeRef ? typeRef->referenced : nullptr;
     if (!targetType)
         return fhir.error_expr(expr);
 
@@ -244,99 +264,118 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
     return fhir.error_expr(expr);
 }
 
-FhirExpr* Binder::bind_generic_type_expr(GenericTypeExprSyntax* expr)
+FhirExpr* Binder::bind_generic_name_expr(GenericNameExprSyntax* expr)
 {
-    resolve_generic_type(expr);
-    return nullptr;
+    TypeSymbol* type = resolve_generic_name(expr);
+    if (!type) return fhir.error_expr(expr);
+    return fhir.type_ref(expr, type);
 }
 
 FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 {
-    std::string_view memberName = expr->right.lexeme;
-    if (memberName.empty())
-    {
-        return fhir.error_expr(expr);
-    }
+    if (!expr->right) return fhir.error_expr(expr);
+    std::string_view memberName = expr->right->name.lexeme;
 
-    Symbol* leftSym = lookup(expr->left);
+    FhirExpr* left = bind_expr(expr->left);
+    if (left && left->is_error()) return fhir.error_expr(expr);
 
-    if (auto* ns = leftSym ? leftSym->as<NamespaceSymbol>() : nullptr)
+    // Left is a TYPE: looking up a member on a type (nested type, static field, static method)
+    if (auto* leftTypeRef = left ? left->as<FhirTypeRef>() : nullptr)
     {
-        Symbol* member = ns->find_member(memberName);
-        if (member)
+        auto* namedLeft = leftTypeRef->referenced ? leftTypeRef->referenced->as<NamedTypeSymbol>() : nullptr;
+        if (!namedLeft)
         {
-            return nullptr;
+            diag.error("type '" + format_type_name(leftTypeRef->referenced) + "' has no members", expr->span);
+            return fhir.error_expr(expr, nullptr, left);
         }
 
-        diag.error("namespace '" + ns->name + "' has no member '" +
-              std::string(memberName) + "'", expr->span);
-        return fhir.error_expr(expr);
-    }
-
-    if (auto* typeRef = leftSym ? leftSym->as<NamedTypeSymbol>() : nullptr)
-    {
-        if (auto* nested = typeRef->find_nested_type(memberName))
+        // X<T> member: only nested generic types make sense here. Methods don't carry type args in Fern.
+        if (auto* genRight = expr->right->as<GenericNameExprSyntax>())
         {
-            return nullptr;
+            TypeSymbol* type = resolve_generic_name(genRight, namedLeft);
+            if (!type) return fhir.error_expr(expr);
+            return fhir.type_ref(expr, type);
         }
 
-        if (auto* field = typeRef->find_field(memberName))
+        Symbol* member = namedLeft->find_member(memberName);
+        if (!member)
+        {
+            diag.error("type '" + format_type_name(namedLeft) + "' has no member '" +
+                  std::string(memberName) + "'", expr->span);
+            return fhir.error_expr(expr);
+        }
+
+        if (auto* nested = member->as<NamedTypeSymbol>())
+            return fhir.type_ref(expr, nested);
+
+        if (auto* field = member->as<FieldSymbol>())
         {
             if (!has_modifier(field->modifiers, Modifier::Static))
             {
                 diag.error("cannot access instance field '" + std::string(memberName) +
-                      "' on type '" + format_type_name(typeRef) + "'", expr->span);
+                      "' on type '" + format_type_name(namedLeft) + "'", expr->span);
                 return fhir.error_expr(expr, field->type);
             }
-            return fhir.field_access(expr, nullptr, field);
+            return fhir.field_ref(expr, nullptr, field);
         }
 
-        if (auto* method = typeRef->find_method(memberName))
+        if (member->as<MethodSymbol>())
         {
-            if (!has_modifier(method->modifiers, Modifier::Static))
-            {
-                diag.error("cannot access instance method '" + std::string(memberName) +
-                      "' on type '" + format_type_name(typeRef) + "'", expr->span);
-                return fhir.error_expr(expr);
-            }
-            return nullptr;
+            // Static-vs-instance check moves to bind_call (where we know the resolved overload).
+            return fhir.method_group_ref(expr, namedLeft, memberName, /*thisRef=*/nullptr);
         }
 
-        diag.error("type '" + format_type_name(typeRef) + "' has no member '" +
-              std::string(memberName) + "'", expr->span);
         return fhir.error_expr(expr);
     }
 
-    FhirExpr* left = bind_expr(expr->left);
-    if (left && left->is_error())
+    // Left is a NAMESPACE: dot into the namespace's members
+    if (auto* leftNs = left ? left->as<FhirNamespaceRefExpr>() : nullptr)
     {
+        auto* ns = leftNs->namespaceSymbol;
+
+        if (auto* genRight = expr->right->as<GenericNameExprSyntax>())
+        {
+            TypeSymbol* type = resolve_generic_name(genRight, ns);
+            if (!type) return fhir.error_expr(expr);
+            return fhir.type_ref(expr, type);
+        }
+
+        Symbol* member = ns->find_member(memberName);
+        if (!member)
+        {
+            diag.error("namespace '" + ns->name + "' has no member '" +
+                  std::string(memberName) + "'", expr->span);
+            return fhir.error_expr(expr);
+        }
+
+        if (auto* nestedNs = member->as<NamespaceSymbol>())
+            return fhir.namespace_ref(expr, nestedNs);
+        if (auto* nestedType = member->as<NamedTypeSymbol>())
+            return fhir.type_ref(expr, nestedType);
         return fhir.error_expr(expr);
     }
 
+    // Anything else: left must be a value with a NamedType; look up an instance field or method.
     TypeSymbol* leftType = left ? left->type : nullptr;
-    if (!leftType)
-    {
-        if (leftSym)
-        {
-            diag.error("'" + leftSym->name + "' is not a namespace or type", expr->span);
-        }
-        return fhir.error_expr(expr);
-    }
+    if (!leftType) return fhir.error_expr(expr);
 
     auto* namedType = leftType->as<NamedTypeSymbol>();
-    if (!namedType)
+    if (!namedType) return fhir.error_expr(expr);
+
+    if (expr->right->as<GenericNameExprSyntax>())
     {
+        diag.error("type arguments are not supported on instance members", expr->right->span);
         return fhir.error_expr(expr);
     }
 
     if (auto* field = namedType->find_field(memberName))
     {
-        return fhir.field_access(expr, left, field);
+        return fhir.field_ref(expr, left, field);
     }
 
-    if (auto* method = namedType->find_method(memberName))
+    if (namedType->find_method(memberName))
     {
-        return nullptr;
+        return fhir.method_group_ref(expr, namedType, memberName, left);
     }
 
     diag.error("type '" + format_type_name(namedType) + "' has no member '" +

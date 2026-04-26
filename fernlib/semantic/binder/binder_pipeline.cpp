@@ -52,7 +52,8 @@ static bool collect_namespace_segments(BaseExprSyntax* name, std::vector<BaseExp
 static std::string_view segment_name(BaseExprSyntax* segment)
 {
     if (auto* ident = segment->as<IdentifierExprSyntax>()) return ident->name.lexeme;
-    if (auto* member = segment->as<MemberAccessExprSyntax>()) return member->right.lexeme;
+    if (auto* member = segment->as<MemberAccessExprSyntax>())
+        return member->right ? member->right->name.lexeme : std::string_view{};
     return {};
 }
 

@@ -173,7 +173,7 @@ FhirMethod* SemanticContext::lower_synthetic_constructor(MethodSymbol* method, N
         auto* field = parentType->find_field(param->name);
         if (!field) continue;
 
-        auto* fieldAccess = fhir.field_access(nullptr, fhir.this_expr(nullptr, parentType), field);
+        auto* fieldAccess = fhir.field_ref(nullptr, fhir.this_expr(nullptr, parentType), field);
         auto* assignExpr = fhir.assign(nullptr, fieldAccess, fhir.param_ref(nullptr, param));
         ctorBlock->statements.push_back(fhir.expr_stmt(nullptr, assignExpr));
     }

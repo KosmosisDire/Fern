@@ -35,22 +35,14 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
         auto* root = extract_attribute_name(attr->value);
         if (!root) continue;
 
-        if (!root->is<IdentifierExprSyntax>() && !root->is<MemberAccessExprSyntax>())
-        {
-            diag.error("attribute must be a type name", attr->span);
-            continue;
-        }
+        FhirExpr* rootExpr = bind_expr(root);
+        if (!rootExpr || rootExpr->is_error()) continue;
 
-        Symbol* sym = lookup(root);
-        if (!sym)
-        {
-            continue;
-        }
-
-        auto* attrType = sym->as<NamedTypeSymbol>();
+        auto* tref = rootExpr->as<FhirTypeRef>();
+        auto* attrType = tref && tref->referenced ? tref->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!attrType)
         {
-            diag.error("'" + sym->qualified_name() + "' is not a type", attr->span);
+            diag.error("attribute must name a type", attr->span);
             continue;
         }
 
@@ -82,11 +74,13 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
             if (auto* innerCall = initExpr->target->as<CallExprSyntax>())
             {
-                Symbol* calleeSym = lookup(innerCall->callee);
-                if (auto* methodSym = as<MethodSymbol>(calleeSym))
+                std::vector<TypeSymbol*> argTypes;
+                for (auto* arg : innerCall->arguments)
                 {
-                    ctor = methodSym;
+                    auto* boundArg = bind_value_expr(arg);
+                    argTypes.push_back(boundArg ? boundArg->type : nullptr);
                 }
+                ctor = attrType->find_constructor(argTypes).best.method;
             }
             else
             {

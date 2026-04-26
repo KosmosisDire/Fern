@@ -76,7 +76,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
     if (decl->type)
     {
         typeRef = bind_type_ref(decl->type);
-        type = typeRef ? typeRef->type : nullptr;
+        type = typeRef ? typeRef->referenced : nullptr;
     }
 
     FhirExpr* initExpr = nullptr;

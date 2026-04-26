@@ -16,6 +16,7 @@ struct Scope;
 struct BaseDeclSyntax;
 struct BaseExprSyntax;
 struct BaseStmtSyntax;
+struct TypeExprSyntax;
 struct AssignmentExprSyntax;
 struct BinaryExprSyntax;
 struct BlockSyntax;
@@ -30,7 +31,8 @@ struct ParenExprSyntax;
 struct CastExprSyntax;
 struct ReturnStmtSyntax;
 struct ThisExprSyntax;
-struct GenericTypeExprSyntax;
+struct GenericNameExprSyntax;
+struct QualifiedNameExprSyntax;
 struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
@@ -60,14 +62,14 @@ public:
     virtual ~Binder() = default;
 
     Symbol* lookup(std::string_view name);
-    Symbol* lookup(BaseExprSyntax* expr);
     FhirBlock* bind_block(BlockSyntax* block);
     void bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
     void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
-    TypeSymbol* resolve_type_expr(BaseExprSyntax* expr);
-    TypeSymbol* resolve_generic_type(GenericTypeExprSyntax* expr);
-    FhirTypeRef* bind_type_ref(BaseExprSyntax* expr);
+    TypeSymbol* resolve_type_expr(TypeExprSyntax* expr);
+    Symbol* resolve_namespace_or_type(TypeExprSyntax* expr);
+    TypeSymbol* resolve_generic_name(GenericNameExprSyntax* gen, Symbol* parentScope = nullptr);
+    FhirTypeRef* bind_type_ref(TypeExprSyntax* expr);
 
 protected:
     explicit Binder(Binder& parent);
@@ -89,7 +91,8 @@ protected:
 
     virtual Symbol* lookup_in_single_binder(std::string_view name) = 0;
 
-    static bool extract_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path);
+    static bool collect_type_path(TypeExprSyntax* expr, std::vector<std::string_view>& path);
+    FhirTypeRef* build_type_ref_tree(TypeExprSyntax* expr, TypeSymbol* type);
 
 #pragma region Statement Binding
 
@@ -108,7 +111,7 @@ protected:
     FhirExpr* bind_this(ThisExprSyntax* expr);
     FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_cast(CastExprSyntax* expr);
-    FhirExpr* bind_generic_type_expr(GenericTypeExprSyntax* expr);
+    FhirExpr* bind_generic_name_expr(GenericNameExprSyntax* expr);
     FhirExpr* bind_member_access(MemberAccessExprSyntax* expr);
     FhirExpr* bind_unary(UnaryExprSyntax* expr);
     FhirExpr* bind_binary(BinaryExprSyntax* expr);
@@ -133,7 +136,7 @@ protected:
 
     FhirExpr* bind_initializer(InitializerExprSyntax* expr);
     FhirExpr* bind_initializer_target(InitializerExprSyntax* expr);
-    FhirExpr* build_field_access_chain(FhirExpr* receiver, BaseExprSyntax* target);
+    FhirExpr* build_field_ref_chain(FhirExpr* receiver, BaseExprSyntax* target);
     void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver);
     TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
 

@@ -224,12 +224,27 @@ public:
 
     void visit(MemberAccessExprSyntax* node) override
     {
-        begin_node_with_name(node, node->right.lexeme);
+        begin_node_with_name(node, node->right ? node->right->name.lexeme : std::string_view{});
         out << "\n";
         write_indent();
         out << "{\n";
         ++indent;
         write_child("left", node->left);
+        write_child("right", node->right);
+        --indent;
+        write_indent();
+        out << "}";
+    }
+
+    void visit(QualifiedNameExprSyntax* node) override
+    {
+        begin_node_with_name(node, node->right ? node->right->name.lexeme : std::string_view{});
+        out << "\n";
+        write_indent();
+        out << "{\n";
+        ++indent;
+        write_child("left", node->left);
+        write_child("right", node->right);
         --indent;
         write_indent();
         out << "}";
@@ -240,14 +255,13 @@ public:
         begin_node(node);
     }
 
-    void visit(GenericTypeExprSyntax* node) override
+    void visit(GenericNameExprSyntax* node) override
     {
-        begin_node(node);
+        begin_node_with_name(node, node->name.lexeme);
         out << "\n";
         write_indent();
         out << "{\n";
         ++indent;
-        write_child("base", node->base, true);
         write_children("typeArgs", node->typeArgs);
         --indent;
         write_indent();

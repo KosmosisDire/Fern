@@ -89,6 +89,19 @@ public:
         diagnostics.clear();
     }
 
+    size_t checkpoint() const
+    {
+        return diagnostics.size();
+    }
+
+    void restore(size_t cp)
+    {
+        if (cp < diagnostics.size())
+        {
+            diagnostics.erase(diagnostics.begin() + cp, diagnostics.end());
+        }
+    }
+
     const std::vector<Diagnostic>& get_diagnostics() const
     {
         return diagnostics;

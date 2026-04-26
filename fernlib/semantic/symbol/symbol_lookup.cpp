@@ -88,6 +88,14 @@ NamedTypeSymbol* NamedTypeSymbol::find_nested_type(std::string_view name)
     return nullptr;
 }
 
+Symbol* NamedTypeSymbol::find_member(std::string_view name)
+{
+    if (auto* nested = find_nested_type(name)) return nested;
+    if (auto* field = find_field(name)) return field;
+    if (auto* method = find_method(name)) return method;
+    return nullptr;
+}
+
 #pragma region Overloaded Lookup
 
 OverloadResult NamedTypeSymbol::find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)

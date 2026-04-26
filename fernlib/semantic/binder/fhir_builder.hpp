@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <initializer_list>
 #include <vector>
 
@@ -50,13 +51,13 @@ struct FhirBuilder
         return node;
     }
 
-    FhirFieldAccessExpr* field_access(BaseSyntax* syntax, FhirExpr* object, FieldSymbol* field)
+    FhirFieldRefExpr* field_ref(BaseSyntax* syntax, FhirExpr* thisRef, FieldSymbol* field)
     {
-        auto* node = arena.alloc<FhirFieldAccessExpr>();
+        auto* node = arena.alloc<FhirFieldRefExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = field ? field->type : nullptr;
-        node->object = object;
+        node->thisRef = thisRef;
         node->field = field;
         return node;
     }
@@ -82,41 +83,51 @@ struct FhirBuilder
         return node;
     }
 
-    FhirCallExpr* call(BaseSyntax* syntax, TypeSymbol* type, MethodSymbol* target,
+    FhirCallExpr* call(BaseSyntax* syntax, TypeSymbol* type, FhirMethodRefExpr* callee,
                        std::vector<FhirExpr*> args)
     {
         auto* node = arena.alloc<FhirCallExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
-        node->target = target;
+        node->callee = callee;
         node->arguments = std::move(args);
         return node;
     }
 
-    FhirMethodCallExpr* method_call(BaseSyntax* syntax, TypeSymbol* type,
-                                    FhirExpr* receiver, MethodSymbol* method,
-                                    std::vector<FhirExpr*> args)
+    FhirCallExpr* call(BaseSyntax* syntax, TypeSymbol* type, MethodSymbol* method,
+                       std::vector<FhirExpr*> args)
     {
-        auto* node = arena.alloc<FhirMethodCallExpr>();
-        node->syntax = syntax;
-        node->span = syntax ? syntax->span : Span{};
-        node->type = type;
-        node->receiver = receiver;
-        node->method = method;
-        node->arguments = std::move(args);
-        return node;
+        return call(syntax, type, method_ref(syntax, method, nullptr), std::move(args));
     }
 
-    FhirObjectCreateExpr* object_create(BaseSyntax* syntax, TypeSymbol* type,
-                                        MethodSymbol* ctor, std::vector<FhirExpr*> args)
+    FhirCallExpr* call(BaseSyntax* syntax, TypeSymbol* type, MethodSymbol* method,
+                       FhirExpr* thisRef, std::vector<FhirExpr*> args)
     {
-        auto* node = arena.alloc<FhirObjectCreateExpr>();
+        return call(syntax, type, method_ref(syntax, method, thisRef), std::move(args));
+    }
+
+    FhirConstructionExpr* construction(BaseSyntax* syntax, TypeSymbol* type,
+                                       FhirTypeRef* typeRef, MethodSymbol* ctor,
+                                       std::vector<FhirExpr*> args)
+    {
+        assert(typeRef && "construction requires a typeRef. Synthesize one with fhir.type_ref(syntax, type) if no user written type exists.");
+
+        auto* node = arena.alloc<FhirConstructionExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
-        node->constructor = ctor;
-        node->arguments = std::move(args);
+        node->typeRef = typeRef;
+
+        auto* innerCallee = unchecked_method_ref(syntax, ctor, nullptr);
+        auto* innerCall = arena.alloc<FhirCallExpr>();
+        innerCall->syntax = syntax;
+        innerCall->span = syntax ? syntax->span : Span{};
+        innerCall->type = type;
+        innerCall->callee = innerCallee;
+        innerCall->arguments = std::move(args);
+        node->call = innerCall;
+
         return node;
     }
 
@@ -140,6 +151,48 @@ struct FhirBuilder
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
         node->inner = inner;
+        return node;
+    }
+
+    FhirNamespaceRefExpr* namespace_ref(BaseSyntax* syntax, NamespaceSymbol* ns)
+    {
+        auto* node = arena.alloc<FhirNamespaceRefExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = nullptr;
+        node->namespaceSymbol = ns;
+        return node;
+    }
+
+    FhirMethodGroupRefExpr* method_group_ref(BaseSyntax* syntax, Symbol* enclosingScope,
+                                             std::string_view name, FhirExpr* thisRef = nullptr)
+    {
+        auto* node = arena.alloc<FhirMethodGroupRefExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = nullptr;
+        node->enclosingScope = enclosingScope;
+        node->name = name;
+        node->thisRef = thisRef;
+        return node;
+    }
+
+    FhirMethodRefExpr* method_ref(BaseSyntax* syntax, MethodSymbol* method, FhirExpr* thisRef = nullptr)
+    {
+        // Constructors only ever appear inside FhirConstructionExpr.call,
+        // never as a top level method ref. Use construction() for those.
+        assert(!method || !method->is_constructor());
+        return unchecked_method_ref(syntax, method, thisRef);
+    }
+
+    FhirMethodRefExpr* unchecked_method_ref(BaseSyntax* syntax, MethodSymbol* method, FhirExpr* thisRef = nullptr)
+    {
+        auto* node = arena.alloc<FhirMethodRefExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = nullptr;
+        node->method = method;
+        node->thisRef = thisRef;
         return node;
     }
 
@@ -193,12 +246,12 @@ struct FhirBuilder
         return node;
     }
 
-    FhirTypeRef* type_ref(BaseSyntax* syntax, TypeSymbol* type, std::vector<FhirTypeRef*> args = {})
+    FhirTypeRef* type_ref(BaseSyntax* syntax, TypeSymbol* referenced, std::vector<FhirTypeRef*> args = {})
     {
         auto* node = arena.alloc<FhirTypeRef>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
-        node->type = type;
+        node->referenced = referenced;
         node->args = std::move(args);
         return node;
     }

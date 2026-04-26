@@ -21,7 +21,11 @@ struct BlockSyntax;
 
 // Expressions
 struct BaseExprSyntax;
+struct TypeExprSyntax;
+struct SimpleNameExprSyntax;
 struct IdentifierExprSyntax;
+struct GenericNameExprSyntax;
+struct QualifiedNameExprSyntax;
 struct LiteralExprSyntax;
 struct ParenExprSyntax;
 struct CallExprSyntax;
@@ -31,7 +35,6 @@ struct BinaryExprSyntax;
 struct AssignmentExprSyntax;
 struct MemberAccessExprSyntax;
 struct ThisExprSyntax;
-struct GenericTypeExprSyntax;
 struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
@@ -81,6 +84,7 @@ public:
 
     // Expressions
     virtual void visit(IdentifierExprSyntax* node) = 0;
+    virtual void visit(QualifiedNameExprSyntax* node) = 0;
     virtual void visit(LiteralExprSyntax* node) = 0;
     virtual void visit(ParenExprSyntax* node) = 0;
     virtual void visit(CallExprSyntax* node) = 0;
@@ -90,7 +94,7 @@ public:
     virtual void visit(AssignmentExprSyntax* node) = 0;
     virtual void visit(MemberAccessExprSyntax* node) = 0;
     virtual void visit(ThisExprSyntax* node) = 0;
-    virtual void visit(GenericTypeExprSyntax* node) = 0;
+    virtual void visit(GenericNameExprSyntax* node) = 0;
     virtual void visit(ArrayTypeExprSyntax* node) = 0;
     virtual void visit(IndexExprSyntax* node) = 0;
     virtual void visit(ArrayLiteralExprSyntax* node) = 0;
@@ -155,6 +159,17 @@ struct BaseExprSyntax : BaseSyntax
     BaseExprSyntax(int k) : BaseSyntax(k) {}
 };
 
+struct TypeExprSyntax : BaseExprSyntax
+{
+    TypeExprSyntax(int k) : BaseExprSyntax(k) {}
+};
+
+struct SimpleNameExprSyntax : TypeExprSyntax
+{
+    Token name = Token::Invalid();
+    SimpleNameExprSyntax(int k) : TypeExprSyntax(k) {}
+};
+
 struct BaseStmtSyntax : BaseSyntax
 {
     BaseStmtSyntax(int k) : BaseSyntax(k) {}
@@ -181,11 +196,28 @@ struct BlockSyntax : BaseStmtSyntax
 #pragma region Expressions
 
 // Identifier
-struct IdentifierExprSyntax : BaseExprSyntax
+struct IdentifierExprSyntax : SimpleNameExprSyntax
 {
-    SYNTAX_NODE(IdentifierExpr, BaseExprSyntax)
+    SYNTAX_NODE(IdentifierExpr, SimpleNameExprSyntax)
+};
 
-    Token name = Token::Invalid();
+// Pair<i32, f32> leaf name
+struct GenericNameExprSyntax : SimpleNameExprSyntax
+{
+    SYNTAX_NODE(GenericNameExpr, SimpleNameExprSyntax)
+
+    std::vector<TypeExprSyntax*> typeArgs;
+};
+
+// A.B in a type context (e.g. Namespace.Type)
+// This is notably simpler than MemberAccessExprSyntax
+// since it only needs to support type-like expressions
+struct QualifiedNameExprSyntax : TypeExprSyntax
+{
+    SYNTAX_NODE(QualifiedNameExpr, TypeExprSyntax)
+
+    TypeExprSyntax* left = nullptr;
+    SimpleNameExprSyntax* right = nullptr;
 };
 
 // 2, 2.5, true, false
@@ -257,7 +289,7 @@ struct MemberAccessExprSyntax : BaseExprSyntax
     SYNTAX_NODE(MemberAccessExpr, BaseExprSyntax)
 
     ExprPtr left = nullptr;
-    Token right = Token::Invalid();
+    SimpleNameExprSyntax* right = nullptr;
 };
 
 // this
@@ -268,21 +300,12 @@ struct ThisExprSyntax : BaseExprSyntax
     Token token = Token::Invalid();
 };
 
-// Pair<i32, f32> or Test.Pair<i32, f32>
-struct GenericTypeExprSyntax : BaseExprSyntax
-{
-    SYNTAX_NODE(GenericTypeExpr, BaseExprSyntax)
-
-    ExprPtr base = nullptr;
-    std::vector<ExprPtr> typeArgs;
-};
-
 // i32[] (array type shorthand for Core.Array<i32>)
-struct ArrayTypeExprSyntax : BaseExprSyntax
+struct ArrayTypeExprSyntax : TypeExprSyntax
 {
-    SYNTAX_NODE(ArrayTypeExpr, BaseExprSyntax)
+    SYNTAX_NODE(ArrayTypeExpr, TypeExprSyntax)
 
-    ExprPtr elementType = nullptr;
+    TypeExprSyntax* elementType = nullptr;
 };
 
 // object[index]
@@ -316,7 +339,7 @@ struct CastExprSyntax : BaseExprSyntax
 {
     SYNTAX_NODE(CastExpr, BaseExprSyntax)
 
-    ExprPtr type = nullptr;
+    TypeExprSyntax* type = nullptr;
     ExprPtr operand = nullptr;
 };
 
@@ -368,7 +391,7 @@ struct ParameterDeclSyntax : BaseDeclSyntax
     SYNTAX_NODE(ParameterDecl, BaseDeclSyntax)
 
     Token name = Token::Invalid();
-    ExprPtr type = nullptr;
+    TypeExprSyntax* type = nullptr;
 };
 
 // var name: type = initializer;
@@ -377,7 +400,7 @@ struct VariableDeclSyntax : BaseDeclSyntax
     SYNTAX_NODE(VariableDecl, BaseDeclSyntax)
 
     Token name = Token::Invalid();
-    ExprPtr type = nullptr;
+    TypeExprSyntax* type = nullptr;
     ExprPtr initializer = nullptr;
 };
 
@@ -391,7 +414,7 @@ struct CallableDeclSyntax : BaseDeclSyntax
     CallableKind callableKind = CallableKind::Function;
     Token name = Token::Invalid();
     std::vector<ParameterDeclSyntax*> parameters;
-    ExprPtr returnType = nullptr;
+    TypeExprSyntax* returnType = nullptr;
     BlockSyntax* body = nullptr;
 };
 
@@ -410,7 +433,7 @@ struct FieldDeclSyntax : BaseDeclSyntax
     SYNTAX_NODE(FieldDecl, BaseDeclSyntax)
 
     Token name = Token::Invalid();
-    ExprPtr type = nullptr;
+    TypeExprSyntax* type = nullptr;
     ExprPtr initializer = nullptr;
 };
 
@@ -459,6 +482,14 @@ public:
     }
 
     void visit(IdentifierExprSyntax* node) override { on_visit(node); }
+
+    void visit(QualifiedNameExprSyntax* node) override
+    {
+        on_visit(node);
+        if (node->left) node->left->accept(this);
+        if (node->right) node->right->accept(this);
+    }
+
     void visit(LiteralExprSyntax* node) override { on_visit(node); }
 
     void visit(ParenExprSyntax* node) override
@@ -507,14 +538,14 @@ public:
     {
         on_visit(node);
         if (node->left) node->left->accept(this);
+        if (node->right) node->right->accept(this);
     }
 
     void visit(ThisExprSyntax* node) override { on_visit(node); }
 
-    void visit(GenericTypeExprSyntax* node) override
+    void visit(GenericNameExprSyntax* node) override
     {
         on_visit(node);
-        if (node->base) node->base->accept(this);
         for (auto& arg : node->typeArgs)
             if (arg) arg->accept(this);
     }
