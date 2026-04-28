@@ -2,13 +2,18 @@
 
 #include <fern.hpp>
 #include <semantic/fhir/fmt.hpp>
+
+#ifdef _MSC_VER
 #include <crtdbg.h>
+#endif
 
 int main(int argc, char* argv[])
 {
+#ifdef _MSC_VER
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 
     if (argc < 2)
     {

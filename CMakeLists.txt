@@ -1,5 +1,60 @@
 cmake_minimum_required(VERSION 3.18)
+
+if(NOT CMAKE_GENERATOR MATCHES "Ninja")
+    message(FATAL_ERROR
+        "Fern requires the Ninja generator, but CMake was invoked with '${CMAKE_GENERATOR}'.\n"
+        "Install Ninja:\n"
+        "    Windows (winget): winget install Ninja-build.Ninja\n"
+        "    Linux   (apt):    sudo apt install ninja-build\n"
+        "    Other:            https://ninja-build.org/\n"
+        "Then reconfigure using a Fern preset, e.g.:\n"
+        "    cmake --preset windows-debug\n"
+        "    cmake --preset linux-debug")
+endif()
+
+find_program(NINJA_EXECUTABLE ninja)
+if(NOT NINJA_EXECUTABLE)
+    message(FATAL_ERROR
+        "Fern requires Ninja, but the 'ninja' executable was not found on PATH.\n"
+        "Install Ninja:\n"
+        "    Windows (winget): winget install Ninja-build.Ninja\n"
+        "    Linux   (apt):    sudo apt install ninja-build\n"
+        "    Other:            https://ninja-build.org/\n"
+        "Then reconfigure using a Fern preset, e.g.:\n"
+        "    cmake --preset windows-debug\n"
+        "    cmake --preset linux-debug")
+endif()
+
 project(Fern C CXX)
+
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR
+        "Fern requires Clang 19 or newer, but the detected C++ compiler is "
+        "'${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}' (${CMAKE_CXX_COMPILER}).\n"
+        "Install Clang:\n"
+        "    Windows (winget): winget install LLVM.LLVM\n"
+        "                      (provides 'clang' / 'clang++' on PATH)\n"
+        "    Linux   (apt):    sudo apt install clang-19\n"
+        "                      (installs as 'clang-19' / 'clang++-19')\n"
+        "    Other:            https://releases.llvm.org/\n"
+        "Then reconfigure using a Fern preset, e.g.:\n"
+        "    cmake --preset windows-debug\n"
+        "    cmake --preset linux-debug\n"
+        "(The presets pin 'clang' on Windows and 'clang-19' on Linux. Override CMAKE_C_COMPILER / CMAKE_CXX_COMPILER if your install uses different names.)")
+endif()
+
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19)
+    message(FATAL_ERROR
+        "Fern requires Clang 19 or newer, but found Clang ${CMAKE_CXX_COMPILER_VERSION} "
+        "at '${CMAKE_CXX_COMPILER}'.\n"
+        "Upgrade Clang:\n"
+        "    Windows (winget): winget upgrade LLVM.LLVM\n"
+        "    Linux   (apt):    sudo apt install clang-19\n"
+        "    Other:            https://releases.llvm.org/\n"
+        "Delete the existing build directory, then reconfigure with a Fern preset, e.g.:\n"
+        "    cmake --preset windows-debug\n"
+        "    cmake --preset linux-debug")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
