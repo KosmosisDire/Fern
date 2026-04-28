@@ -23,7 +23,7 @@ public:
 protected:
     NamedTypeSymbol* containing_type() override { return typeSymbol; }
     const std::unordered_map<std::string, TypeSymbol*>* type_param_substitutions() override { return &typeParamSubs; }
-    Symbol* lookup_in_single_binder(std::string_view name) override;
+    LookupResult lookup_in_single_binder(std::string_view name) override;
 
 private:
     NamedTypeSymbol* typeSymbol;

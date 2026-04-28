@@ -18,7 +18,7 @@ public:
 
 protected:
     MethodSymbol* containing_method() override { return method; }
-    Symbol* lookup_in_single_binder(std::string_view name) override;
+    LookupResult lookup_in_single_binder(std::string_view name) override;
     int* temp_counter() override { return &tempCounter; }
 
 private:

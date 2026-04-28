@@ -17,7 +17,7 @@ public:
     }
 
 protected:
-    Symbol* lookup_in_single_binder(std::string_view name) override;
+    LookupResult lookup_in_single_binder(std::string_view name) override;
 };
 
 }

@@ -1,0 +1,133 @@
+---
+Tests overload resolution and the binder lookup paths.
+Exercises:
+  bare name lookup walking the binder chain to a method group
+  member access on a value resolving to an instance method group
+  member access on a type resolving to a static method group
+  constructor overloads
+  arity disambiguation
+  parameter type disambiguation with implicit conversions
+---
+
+type Box
+{
+    value: i32 = 0
+
+    init {}
+    init(v: i32)
+    {
+        this.value = v
+    }
+    init(a: i32, b: i32)
+    {
+        this.value = a + b
+    }
+
+    fn Set(v: i32)
+    {
+        value = v
+    }
+    fn Set(v: f32)
+    {
+        value = (i32)v
+    }
+    fn Set(a: i32, b: i32)
+    {
+        value = a + b
+    }
+
+    fn Get -> i32
+    {
+        return value
+    }
+
+    static fn Make -> Box
+    {
+        return Box()
+    }
+    static fn Make(v: i32) -> Box
+    {
+        return Box(v)
+    }
+    static fn Make(a: i32, b: i32) -> Box
+    {
+        return Box(a, b)
+    }
+
+    fn UseSelf -> i32
+    {
+        Set(1)
+        Set(1, 2)
+        Set(3.5)
+        return Get()
+    }
+}
+
+type Math
+{
+    static fn Abs(x: i32) -> i32
+    {
+        if (x < 0) { return -x }
+        return x
+    }
+
+    static fn Abs(x: f32) -> f32
+    {
+        if (x < 0.0) { return -x }
+        return x
+    }
+
+    static fn Clamp(x: i32, lo: i32, hi: i32) -> i32
+    {
+        if (x < lo) { return lo }
+        if (x > hi) { return hi }
+        return x
+    }
+
+    static fn Clamp(x: f32, lo: f32, hi: f32) -> f32
+    {
+        if (x < lo) { return lo }
+        if (x > hi) { return hi }
+        return x
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        -- Constructor overload: zero, one, and two args
+        var b0 = Box()
+        var b1 = Box(10)
+        var b2 = Box(3, 4)
+
+        -- Static method overloads on a type, called via member access
+        var m0 = Box.Make()
+        var m1 = Box.Make(7)
+        var m2 = Box.Make(2, 3)
+
+        -- Instance method overloads, picked by arity
+        b1.Set(99)
+        b1.Set(10, 20)
+
+        -- Instance method overloads, picked by parameter type
+        b1.Set(1)
+        b1.Set(2.5)
+
+        -- Member-access on type: static overloads picked by argument type
+        var ai = Math.Abs(-5)
+        var af = Math.Abs(-3.14)
+
+        -- Three-arg overloads on different types
+        var ci = Math.Clamp(15, 0, 10)
+        var cf = Math.Clamp(0.5, 0.0, 1.0)
+
+        -- Bare-name call from inside the type (UseSelf): the chain walks
+        -- BlockBinder, MethodBinder, then TypeBinder which produces a method
+        -- group containing all three Set overloads. bind_call then resolves
+        -- the right one against the actual argument types.
+        var self = b1.UseSelf()
+
+        return ai + ci + self
+    }
+}

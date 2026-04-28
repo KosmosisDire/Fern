@@ -5,10 +5,11 @@
 namespace Fern
 {
 
-Symbol* RootBinder::lookup_in_single_binder(std::string_view name)
+LookupResult RootBinder::lookup_in_single_binder(std::string_view name)
 {
-    if (TypeSymbol* aliased = context.resolve_type_name(name)) return aliased;
-    return nullptr;
+    LookupResult result;
+    if (TypeSymbol* aliased = context.resolve_type_name(name)) result.symbols.push_back(aliased);
+    return result;
 }
 
 }

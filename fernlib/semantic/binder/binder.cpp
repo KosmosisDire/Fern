@@ -6,6 +6,7 @@
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
+#include <semantic/symbol/symbol.hpp>
 
 namespace Fern
 {
@@ -38,13 +39,19 @@ Binder::Binder(Binder& parent)
 {
 }
 
-Symbol* Binder::lookup(std::string_view name)
+bool LookupResult::is_method_group() const
+{
+    return !symbols.empty() && symbols[0]->kind == SymbolKind::Method;
+}
+
+LookupResult Binder::lookup(std::string_view name)
 {
     for (Binder* b = this; b != nullptr; b = b->next)
     {
-        if (Symbol* sym = b->lookup_in_single_binder(name)) return sym;
+        LookupResult result = b->lookup_in_single_binder(name);
+        if (!result.empty()) return result;
     }
-    return nullptr;
+    return {};
 }
 
 bool Binder::collect_type_path(TypeExprSyntax* expr, std::vector<std::string_view>& path)
@@ -81,9 +88,13 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
             if (it != subs->end()) return it->second;
         }
 
-        if (Symbol* sym = lookup(idExpr->name.lexeme))
+        LookupResult result = lookup(idExpr->name.lexeme);
+        if (!result.empty())
         {
-            if (auto* type = sym->as<TypeSymbol>()) return type;
+            if (Symbol* sym = result.single())
+            {
+                if (auto* type = sym->as<TypeSymbol>()) return type;
+            }
             diag.error("'" + std::string(idExpr->name.lexeme) + "' is not a type", expr->span);
             return nullptr;
         }
@@ -151,7 +162,7 @@ Symbol* Binder::resolve_namespace_or_type(TypeExprSyntax* expr)
 
     if (auto* id = expr->as<IdentifierExprSyntax>())
     {
-        return lookup(id->name.lexeme);
+        return lookup(id->name.lexeme).single();
     }
 
     if (auto* gen = expr->as<GenericNameExprSyntax>())
@@ -174,7 +185,7 @@ Symbol* Binder::resolve_namespace_or_type(TypeExprSyntax* expr)
         if (auto* ns = left->as<NamespaceSymbol>())
             return ns->find_member(rightName);
         if (auto* type = left->as<NamedTypeSymbol>())
-            return type->find_member(rightName);
+            return type->find_non_method_member(rightName);
         return nullptr;
     }
 

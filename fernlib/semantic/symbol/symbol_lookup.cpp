@@ -63,17 +63,18 @@ FieldSymbol* NamedTypeSymbol::find_field(std::string_view name)
     return nullptr;
 }
 
-MethodSymbol* NamedTypeSymbol::find_method(std::string_view name)
+std::vector<MethodSymbol*> NamedTypeSymbol::collect_methods(std::string_view name)
 {
     if (table) table->ensure_members_populated(this);
+    std::vector<MethodSymbol*> result;
     for (auto* method : methods)
     {
         if (method->callableKind == CallableKind::Function && method->name == name)
         {
-            return method;
+            result.push_back(method);
         }
     }
-    return nullptr;
+    return result;
 }
 
 NamedTypeSymbol* NamedTypeSymbol::find_nested_type(std::string_view name)
@@ -88,11 +89,10 @@ NamedTypeSymbol* NamedTypeSymbol::find_nested_type(std::string_view name)
     return nullptr;
 }
 
-Symbol* NamedTypeSymbol::find_member(std::string_view name)
+Symbol* NamedTypeSymbol::find_non_method_member(std::string_view name)
 {
     if (auto* nested = find_nested_type(name)) return nested;
     if (auto* field = find_field(name)) return field;
-    if (auto* method = find_method(name)) return method;
     return nullptr;
 }
 

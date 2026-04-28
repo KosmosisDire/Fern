@@ -24,7 +24,7 @@ public:
     void set_pending_statements(std::vector<FhirStmt*>* stmts) { pendingStmts = stmts; }
 
 protected:
-    Symbol* lookup_in_single_binder(std::string_view name) override;
+    LookupResult lookup_in_single_binder(std::string_view name) override;
     std::vector<FhirStmt*>* pending_statements() override { return pendingStmts; }
     Scope* current_block_scope() override { return &blockScope; }
 

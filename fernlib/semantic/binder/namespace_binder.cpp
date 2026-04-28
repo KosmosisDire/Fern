@@ -5,10 +5,12 @@
 namespace Fern
 {
 
-Symbol* NamespaceBinder::lookup_in_single_binder(std::string_view name)
+LookupResult NamespaceBinder::lookup_in_single_binder(std::string_view name)
 {
-    if (!namespaceSymbol) return nullptr;
-    return namespaceSymbol->find_member(name);
+    LookupResult result;
+    if (!namespaceSymbol) return result;
+    if (Symbol* member = namespaceSymbol->find_member(name)) result.symbols.push_back(member);
+    return result;
 }
 
 }

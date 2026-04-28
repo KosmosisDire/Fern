@@ -17,7 +17,7 @@ public:
 
 protected:
     NamespaceSymbol* containing_namespace() override { return namespaceSymbol; }
-    Symbol* lookup_in_single_binder(std::string_view name) override;
+    LookupResult lookup_in_single_binder(std::string_view name) override;
 
 private:
     NamespaceSymbol* namespaceSymbol;

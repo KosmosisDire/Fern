@@ -46,6 +46,19 @@ struct NamedTypeSymbol;
 struct NamespaceSymbol;
 struct TypeSymbol;
 
+// Result of a name lookup. A single non method symbol, or one to many
+// methods sharing a name in the same scope. Method names are the only
+// lookup that can yield multiple candidates per name. The list never
+// mixes methods with other symbol kinds.
+struct LookupResult
+{
+    std::vector<Symbol*> symbols;
+
+    bool empty() const { return symbols.empty(); }
+    bool is_method_group() const;
+    Symbol* single() const { return symbols.size() == 1 ? symbols[0] : nullptr; }
+};
+
 struct FhirExpr;
 struct FhirBlock;
 struct FhirStmt;
@@ -61,7 +74,7 @@ public:
     Binder(SemanticContext& context, AllocArena& arena);
     virtual ~Binder() = default;
 
-    Symbol* lookup(std::string_view name);
+    LookupResult lookup(std::string_view name);
     FhirBlock* bind_block(BlockSyntax* block);
     void bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
@@ -89,7 +102,7 @@ protected:
     virtual int* temp_counter() { return next ? next->temp_counter() : nullptr; }
     virtual Scope* current_block_scope() { return next ? next->current_block_scope() : nullptr; }
 
-    virtual Symbol* lookup_in_single_binder(std::string_view name) = 0;
+    virtual LookupResult lookup_in_single_binder(std::string_view name) = 0;
 
     static bool collect_type_path(TypeExprSyntax* expr, std::vector<std::string_view>& path);
     FhirTypeRef* build_type_ref_tree(TypeExprSyntax* expr, TypeSymbol* type);

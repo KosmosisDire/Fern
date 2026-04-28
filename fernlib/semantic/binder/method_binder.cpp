@@ -5,16 +5,21 @@
 namespace Fern
 {
 
-Symbol* MethodBinder::lookup_in_single_binder(std::string_view name)
+LookupResult MethodBinder::lookup_in_single_binder(std::string_view name)
 {
-    if (!method) return nullptr;
+    LookupResult result;
+    if (!method) return result;
 
     for (auto* param : method->parameters)
     {
-        if (param->name == name) return param;
+        if (param->name == name)
+        {
+            result.symbols.push_back(param);
+            return result;
+        }
     }
 
-    return nullptr;
+    return result;
 }
 
 }

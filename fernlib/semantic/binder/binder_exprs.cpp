@@ -163,12 +163,28 @@ FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
 FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
 {
-    Symbol* symbol = lookup(expr->name.lexeme);
-    if (!symbol)
+    LookupResult result = lookup(expr->name.lexeme);
+    if (result.empty())
     {
         diag.error("undefined name '" + std::string(expr->name.lexeme) + "'", expr->span);
         return fhir.error_expr(expr);
     }
+
+    if (result.is_method_group())
+    {
+        auto* first = result.symbols.front()->as<MethodSymbol>();
+        FhirExpr* thisRef = nullptr;
+        if (auto* enclosingMethod = containing_method();
+            enclosingMethod && !has_modifier(enclosingMethod->modifiers, Modifier::Static))
+        {
+            if (auto* enclosingType = containing_type())
+                thisRef = fhir.this_expr(expr, enclosingType);
+        }
+        return fhir.method_group_ref(expr, first->parent, first->name, thisRef);
+    }
+
+    Symbol* symbol = result.single();
+    if (!symbol) return fhir.error_expr(expr);
 
     // A null type on a value symbol means its type failed to resolve upstream
     // (e.g. unresolved type annotation, or inferred from an error expression).
@@ -204,18 +220,6 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
         {
             auto* nsSym = symbol->as<NamespaceSymbol>();
             return fhir.namespace_ref(expr, nsSym);
-        }
-        case SymbolKind::Method:
-        {
-            auto* methodSym = symbol->as<MethodSymbol>();
-            FhirExpr* thisRef = nullptr;
-            if (auto* enclosingMethod = containing_method();
-                enclosingMethod && !has_modifier(enclosingMethod->modifiers, Modifier::Static))
-            {
-                if (auto* enclosingType = containing_type())
-                    thisRef = fhir.this_expr(expr, enclosingType);
-            }
-            return fhir.method_group_ref(expr, methodSym->parent, methodSym->name, thisRef);
         }
         default:
             return fhir.error_expr(expr);
@@ -297,7 +301,13 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
             return fhir.type_ref(expr, type);
         }
 
-        Symbol* member = namedLeft->find_member(memberName);
+        if (!namedLeft->collect_methods(memberName).empty())
+        {
+            // Static-vs-instance check moves to bind_call (where we know the resolved overload).
+            return fhir.method_group_ref(expr, namedLeft, memberName, /*thisRef=*/nullptr);
+        }
+
+        Symbol* member = namedLeft->find_non_method_member(memberName);
         if (!member)
         {
             diag.error("type '" + format_type_name(namedLeft) + "' has no member '" +
@@ -317,12 +327,6 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
                 return fhir.error_expr(expr, field->type);
             }
             return fhir.field_ref(expr, nullptr, field);
-        }
-
-        if (member->as<MethodSymbol>())
-        {
-            // Static-vs-instance check moves to bind_call (where we know the resolved overload).
-            return fhir.method_group_ref(expr, namedLeft, memberName, /*thisRef=*/nullptr);
         }
 
         return fhir.error_expr(expr);
@@ -373,7 +377,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         return fhir.field_ref(expr, left, field);
     }
 
-    if (namedType->find_method(memberName))
+    if (!namedType->collect_methods(memberName).empty())
     {
         return fhir.method_group_ref(expr, namedType, memberName, left);
     }
