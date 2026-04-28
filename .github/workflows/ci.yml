@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64 (Clang 19)
+            runner: ubuntu-24.04
+          - name: Windows x64 (MSVC + Clang)
+            runner: windows-latest
+          - name: macOS ARM64 (Clang)
+            runner: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 19
+          sudo apt-get install -y ninja-build libzstd-dev libstdc++-13-dev
+
+      - name: Install toolchain (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install ninja --no-progress -y
+          choco install llvm --no-progress -y
+        shell: pwsh
+
+      - name: Install toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja llvm@19
+          echo "/opt/homebrew/opt/llvm@19/bin" >> $GITHUB_PATH
+
+      - name: Cache fetched LLVM
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/debug/_deps/llvm-*
+            build/debug/_deps/LLVM-*
+          key: llvm-prebuilt-${{ runner.os }}-${{ runner.arch }}-20.1.8
+
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: cmake --preset linux-debug
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --preset windows-debug
+        shell: pwsh
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cmake -G Ninja -B build/debug \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: cmake --build --preset linux-debug-build
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --build --preset windows-debug-build
+        shell: pwsh
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: cmake --build build/debug
