@@ -1,9 +1,21 @@
 # FetchLLVM.cmake - Automatically download and configure prebuilt LLVM
 
+# If the consumer has already configured LLVM (e.g. when embedding Fern via
+# add_subdirectory and pointing at their own LLVM install), respect that.
+if(LLVM_DIR)
+    return()
+endif()
+
 set(LLVM_VERSION "20.1.8")
 set(LLVM_DEPS_DIR "${CMAKE_BINARY_DIR}/_deps")
+set(LLVM_PACKAGE_NAME "")
+set(LLVM_ARCHIVE_NAME "")
+set(LLVM_DOWNLOAD_URL "")
 
-if(WIN32)
+# Pick the right prebuilt for this (OS, arch). Sources:
+#   Windows: vovkos/llvm-package-windows  - has Debug + static-CRT variants
+#   Linux/macOS: official llvm/llvm-project releases
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(LLVM_PACKAGE_NAME "llvm-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt-dbg")
     else()
@@ -11,48 +23,69 @@ if(WIN32)
     endif()
     set(LLVM_ARCHIVE_NAME "${LLVM_PACKAGE_NAME}.7z")
     set(LLVM_DOWNLOAD_URL "https://github.com/vovkos/llvm-package-windows/releases/download/llvm-${LLVM_VERSION}/${LLVM_ARCHIVE_NAME}")
-    set(LLVM_INSTALL_DIR "${LLVM_DEPS_DIR}/${LLVM_PACKAGE_NAME}")
-    set(LLVM_CMAKE_DIR "${LLVM_INSTALL_DIR}/lib/cmake/llvm")
+elseif(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+    set(LLVM_PACKAGE_NAME "LLVM-${LLVM_VERSION}-macOS-ARM64")
+    set(LLVM_ARCHIVE_NAME "${LLVM_PACKAGE_NAME}.tar.xz")
+    set(LLVM_DOWNLOAD_URL "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_ARCHIVE_NAME}")
+elseif(UNIX AND NOT APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+    set(LLVM_PACKAGE_NAME "LLVM-${LLVM_VERSION}-Linux-X64")
+    set(LLVM_ARCHIVE_NAME "${LLVM_PACKAGE_NAME}.tar.xz")
+    set(LLVM_DOWNLOAD_URL "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_ARCHIVE_NAME}")
+elseif(UNIX AND NOT APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(LLVM_PACKAGE_NAME "LLVM-${LLVM_VERSION}-Linux-ARM64")
+    set(LLVM_ARCHIVE_NAME "${LLVM_PACKAGE_NAME}.tar.xz")
+    set(LLVM_DOWNLOAD_URL "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_ARCHIVE_NAME}")
+endif()
 
-    if(NOT EXISTS "${LLVM_CMAKE_DIR}/LLVMConfig.cmake")
-        message(STATUS "LLVM not found, downloading prebuilt LLVM ${LLVM_VERSION}...")
+if(NOT LLVM_PACKAGE_NAME)
+    message(STATUS "FetchLLVM: no prebuilt available for this platform/arch; "
+                   "falling back to find_package(LLVM). Set LLVM_DIR if needed.")
+    return()
+endif()
 
-        set(LLVM_ARCHIVE_PATH "${LLVM_DEPS_DIR}/${LLVM_ARCHIVE_NAME}")
+set(LLVM_INSTALL_DIR "${LLVM_DEPS_DIR}/${LLVM_PACKAGE_NAME}")
+set(LLVM_CMAKE_DIR "${LLVM_INSTALL_DIR}/lib/cmake/llvm")
 
-        file(MAKE_DIRECTORY "${LLVM_DEPS_DIR}")
+if(NOT EXISTS "${LLVM_CMAKE_DIR}/LLVMConfig.cmake")
+    message(STATUS "LLVM not found, downloading prebuilt LLVM ${LLVM_VERSION}...")
 
-        if(NOT EXISTS "${LLVM_ARCHIVE_PATH}")
-            message(STATUS "Downloading ${LLVM_DOWNLOAD_URL}...")
-            file(DOWNLOAD
-                "${LLVM_DOWNLOAD_URL}"
-                "${LLVM_ARCHIVE_PATH}"
-                SHOW_PROGRESS
-                STATUS DOWNLOAD_STATUS
-            )
-            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-            if(NOT STATUS_CODE EQUAL 0)
-                list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
-                file(REMOVE "${LLVM_ARCHIVE_PATH}")
-                message(FATAL_ERROR "Failed to download LLVM: ${ERROR_MESSAGE}")
-            endif()
-        endif()
+    set(LLVM_ARCHIVE_PATH "${LLVM_DEPS_DIR}/${LLVM_ARCHIVE_NAME}")
 
-        message(STATUS "Extracting LLVM to ${LLVM_DEPS_DIR}...")
-        file(ARCHIVE_EXTRACT
-            INPUT "${LLVM_ARCHIVE_PATH}"
-            DESTINATION "${LLVM_DEPS_DIR}"
+    file(MAKE_DIRECTORY "${LLVM_DEPS_DIR}")
+
+    if(NOT EXISTS "${LLVM_ARCHIVE_PATH}")
+        message(STATUS "Downloading ${LLVM_DOWNLOAD_URL}...")
+        file(DOWNLOAD
+            "${LLVM_DOWNLOAD_URL}"
+            "${LLVM_ARCHIVE_PATH}"
+            SHOW_PROGRESS
+            STATUS DOWNLOAD_STATUS
         )
-
-        file(REMOVE "${LLVM_ARCHIVE_PATH}")
-
-        if(NOT EXISTS "${LLVM_CMAKE_DIR}/LLVMConfig.cmake")
-            message(FATAL_ERROR "LLVM extraction failed - LLVMConfig.cmake not found")
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
+            file(REMOVE "${LLVM_ARCHIVE_PATH}")
+            message(FATAL_ERROR "Failed to download LLVM: ${ERROR_MESSAGE}")
         endif()
-
-        message(STATUS "LLVM ${LLVM_VERSION} installed to ${LLVM_INSTALL_DIR}")
-    else()
-        message(STATUS "Using cached LLVM from ${LLVM_INSTALL_DIR}")
     endif()
 
-    set(LLVM_DIR "${LLVM_CMAKE_DIR}" CACHE PATH "Path to LLVM CMake config" FORCE)
+    message(STATUS "Extracting LLVM to ${LLVM_DEPS_DIR}...")
+    file(ARCHIVE_EXTRACT
+        INPUT "${LLVM_ARCHIVE_PATH}"
+        DESTINATION "${LLVM_DEPS_DIR}"
+    )
+
+    file(REMOVE "${LLVM_ARCHIVE_PATH}")
+
+    if(NOT EXISTS "${LLVM_CMAKE_DIR}/LLVMConfig.cmake")
+        message(FATAL_ERROR
+            "LLVM extraction succeeded but LLVMConfig.cmake was not found at "
+            "${LLVM_CMAKE_DIR}. The prebuilt archive layout may have changed.")
+    endif()
+
+    message(STATUS "LLVM ${LLVM_VERSION} installed to ${LLVM_INSTALL_DIR}")
+else()
+    message(STATUS "Using cached LLVM from ${LLVM_INSTALL_DIR}")
 endif()
+
+set(LLVM_DIR "${LLVM_CMAKE_DIR}" CACHE PATH "Path to LLVM CMake config")
