@@ -187,46 +187,13 @@ if(FERN_BUILD_LIBFFI)
     include(FetchContent)
     FetchContent_Declare(
         libffi
-        GIT_REPOSITORY https://github.com/chrysante/ffi.git
+        GIT_REPOSITORY https://github.com/partic2/libffi.git
         GIT_TAG        main
     )
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(FFI_USE_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-
-    FetchContent_GetProperties(libffi)
-    if(NOT libffi_POPULATED)
-        FetchContent_Populate(libffi)
-        file(READ "${libffi_SOURCE_DIR}/CMakeLists.txt" FFI_CMAKE)
-        string(REPLACE
-            "CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL \"x64\""
-            "CMAKE_HOST_SYSTEM_PROCESSOR MATCHES \"x64|AMD64\""
-            FFI_CMAKE "${FFI_CMAKE}")
-        # The fork only sets FFI_CONFIG_FILE outside Debug builds, which makes
-        # the file(COPY) a no-op and breaks the MSVC assembler step which needs
-        # fficonfig.h in the binary dir to preprocess win64_intel.S.
-        string(REPLACE
-[[if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(FFI_SKIP_HEADERS ON)
-else()
-    set(FFI_CONFIG_FILE ${FFI_ROOT}/fficonfig.h)
-endif()]]
-[[if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(FFI_SKIP_HEADERS ON)
-endif()
-set(FFI_CONFIG_FILE ${FFI_ROOT}/fficonfig.h)]]
-            FFI_CMAKE "${FFI_CMAKE}")
-        # The fork unconditionally adds GCC-style -Wno-* flags on any Windows
-        # build, but MSVC's cl rejects them. Limit to non-MSVC.
-        string(REPLACE
-[[if(WIN32 OR MINGW)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations -Wno-pointer-to-int-cast")
-endif()]]
-[[if((WIN32 OR MINGW) AND NOT MSVC)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations -Wno-pointer-to-int-cast")
-endif()]]
-            FFI_CMAKE "${FFI_CMAKE}")
-        file(WRITE "${libffi_SOURCE_DIR}/CMakeLists.txt" "${FFI_CMAKE}")
-        add_subdirectory(${libffi_SOURCE_DIR} ${libffi_BINARY_DIR} EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(libffi)
+    # partic2/libffi exports ffi_static; alias to the name fernlib links against.
+    if(NOT TARGET libffi)
+        add_library(libffi ALIAS ffi_static)
     endif()
     set(LIBFFI_AVAILABLE TRUE)
 else()
