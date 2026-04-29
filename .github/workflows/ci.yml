@@ -19,7 +19,7 @@ jobs:
             runner: ubuntu-24.04
           - name: Windows x64 (MSVC + Clang)
             runner: windows-latest
-          - name: macOS ARM64 (Clang)
+          - name: macOS ARM64 (Clang, no LLVM)
             runner: macos-14
 
     steps:
@@ -71,6 +71,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
+            -DFERN_BUILD_LLVM=OFF \
+            -DFERN_BUILD_LSP=OFF \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Build (Linux)
