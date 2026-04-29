@@ -88,4 +88,17 @@ else()
     message(STATUS "Using cached LLVM from ${LLVM_INSTALL_DIR}")
 endif()
 
+# The Linux/macOS LLVM tarballs ship a complete bundled libc++ at
+# include/c++/v1/. When fernlib adds LLVM_INCLUDE_DIRS via -isystem the
+# bundled libc++ shadows the consumer compiler's libc++ and produces the
+# classic "<cstddef> didn't find libc++'s <stddef.h>" error. We don't need
+# the bundled libc++ (the consumer compiler brings its own), so move it out
+# of the include search path. Runs every configure for idempotence — also
+# fixes already-cached LLVM dirs from before this patch.
+if(EXISTS "${LLVM_INSTALL_DIR}/include/c++")
+    file(RENAME
+        "${LLVM_INSTALL_DIR}/include/c++"
+        "${LLVM_INSTALL_DIR}/_unused_bundled_cxx_headers")
+endif()
+
 set(LLVM_DIR "${LLVM_CMAKE_DIR}" CACHE PATH "Path to LLVM CMake config")

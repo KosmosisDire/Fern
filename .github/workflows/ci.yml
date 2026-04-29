@@ -30,6 +30,12 @@ jobs:
             cxx: g++-13
             llvm: ON
 
+          - name: Linux ARM64 (Clang 19)
+            runner: ubuntu-24.04-arm
+            cc: clang-19
+            cxx: clang++-19
+            llvm: ON
+
           - name: Windows x64 (MSVC)
             runner: windows-latest
             msvc: true
@@ -48,11 +54,11 @@ jobs:
             llvm: OFF
             mingw: true
 
-          - name: macOS ARM64 (Apple Clang, no LLVM)
+          - name: macOS ARM64 (Apple Clang)
             runner: macos-14
             cc: clang
             cxx: clang++
-            llvm: OFF
+            llvm: ON
 
     steps:
       - name: Checkout
