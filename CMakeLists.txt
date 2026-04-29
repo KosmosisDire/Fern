@@ -13,6 +13,7 @@ option(FERN_BUILD_LLVM   "Build with LLVM backend"     ON)
 option(FERN_BUILD_LIBFFI "Build with libffi support"   ON)
 option(FERN_BUILD_CLI    "Build the Fern CLI"          ${_fern_default_dev_tools})
 option(FERN_BUILD_LSP    "Build the Fern LSP server"   ${_fern_default_dev_tools})
+option(FERN_BUILD_FUZZER "Build the libFuzzer harness" OFF)
 
 # ---------------------------------------------------------------------------
 # Pre-project gates: only enforced when building the LSP, which is the only
@@ -160,6 +161,76 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(FERN_DEBUG)
 endif()
 
+# ---------------------------------------------------------------------------
+# Fuzzer toolchain. libFuzzer is part of Clang's compiler-rt and is enabled
+# by passing -fsanitize=fuzzer. We pair it with AddressSanitizer and
+# UndefinedBehaviorSanitizer so memory errors and UB surface as crashes.
+# Coverage and sanitizer compile flags are applied globally so fernlib gets
+# instrumented; the libFuzzer entry point (-fsanitize=fuzzer link flag) is
+# added only on the fernfuzz target so it does not clash with other mains.
+# ---------------------------------------------------------------------------
+if(FERN_BUILD_FUZZER)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR
+            "FERN_BUILD_FUZZER requires Clang (libFuzzer ships with Clang's compiler-rt), "
+            "but the detected C++ compiler is "
+            "'${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}'.\n"
+            "Set CC and CXX to clang and clang++ before configuring, "
+            "or set -DFERN_BUILD_FUZZER=OFF.")
+    endif()
+
+    if(MSVC)
+        message(FATAL_ERROR
+            "FERN_BUILD_FUZZER requires the GCC style Clang frontend (clang++), "
+            "not clang-cl. Reconfigure with clang.exe / clang++.exe as CC / CXX.")
+    endif()
+
+    # libFuzzer's prebuilt runtime on Windows (clang_rt.fuzzer-x86_64.lib) is
+    # built against the static release MSVC CRT (/MT). The project's prebuilt
+    # LLVM uses the dynamic CRT (/MD), so the fuzzer cannot link both at
+    # once. The fuzzer targets the front end (lexer, parser, binder), which
+    # does not need LLVM, so disable LLVM and libffi here to avoid the
+    # conflict.
+    if(WIN32)
+        set(FERN_BUILD_LLVM   OFF CACHE BOOL "" FORCE)
+        set(FERN_BUILD_LIBFFI OFF CACHE BOOL "" FORCE)
+        message(STATUS
+            "FERN_BUILD_FUZZER: forced FERN_BUILD_LLVM=OFF and "
+            "FERN_BUILD_LIBFFI=OFF on Windows; libFuzzer requires the static "
+            "CRT and the prebuilt LLVM uses the dynamic CRT")
+    endif()
+
+    # libFuzzer's runtime requires _ITERATOR_DEBUG_LEVEL=0, which means the
+    # release CRT. A Debug build links the debug CRT and fails with
+    # /failifmismatch on link, so force RelWithDebInfo. Optimization and
+    # debug info are set explicitly by the global flags below.
+    if(WIN32 AND (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
+        set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
+        message(STATUS
+            "FERN_BUILD_FUZZER: forced CMAKE_BUILD_TYPE=RelWithDebInfo on Windows "
+            "to match libFuzzer's release CRT runtime")
+    endif()
+
+    # libFuzzer's prebuilt runtime is built against the static release CRT
+    # (/MT). Under CMake policy CMP0091 NEW (default since 3.15), CRT
+    # selection is driven by CMAKE_MSVC_RUNTIME_LIBRARY rather than per
+    # config flag variables, so set it directly.
+    if(WIN32)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+    endif()
+
+    # Keep internal assertions on for fuzzing even when not in a Debug build.
+    add_compile_definitions(FERN_DEBUG)
+
+    add_compile_options(
+        -fsanitize=fuzzer-no-link,address,undefined
+        -fno-omit-frame-pointer
+        -g
+        -O1
+    )
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(FERN_BUILD_LLVM)
@@ -218,4 +289,8 @@ if(FERN_BUILD_LSP)
     FetchContent_MakeAvailable(lsp-framework)
 
     add_subdirectory(fernlsp)
+endif()
+
+if(FERN_BUILD_FUZZER)
+    add_subdirectory(fernfuzz)
 endif()

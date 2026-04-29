@@ -1,0 +1,93 @@
+# Fern fuzzer dictionary
+# Tokens spliced by libFuzzer mutators to reach deeper compiler states faster.
+# Format: one quoted entry per line. Use \xNN for non printable bytes.
+
+# Multi file separator. Splits the input buffer into separate Fern source files.
+file_sep="\xff\x00\xff\x00"
+
+# Keywords
+kw_pub="pub"
+kw_static="static"
+kw_ref="ref"
+kw_attr="attr"
+kw_fn="fn"
+kw_init="init"
+kw_op="op"
+kw_literal="literal"
+kw_cast="cast"
+kw_implicit="implicit"
+kw_explicit="explicit"
+kw_var="var"
+kw_type="type"
+kw_namespace="namespace"
+kw_return="return"
+kw_this="this"
+kw_if="if"
+kw_else="else"
+kw_while="while"
+kw_true="true"
+kw_false="false"
+
+# Assignment operators
+op_assign="="
+op_add_assign="+="
+op_sub_assign="-="
+op_mul_assign="*="
+op_div_assign="/="
+
+# Arithmetic operators
+op_plus="+"
+op_minus="-"
+op_star="*"
+op_slash="/"
+op_percent="%"
+op_dollar="$"
+
+# Comparison operators
+op_gt=">"
+op_lt="<"
+op_gte=">="
+op_lte="<="
+op_eq="=="
+op_neq="!="
+
+# Logical operators
+op_and="&&"
+op_or="||"
+op_not="!"
+
+# Punctuation
+p_at="@"
+p_colon=":"
+p_arrow="->"
+p_lparen="("
+p_rparen=")"
+p_lbrace="{"
+p_rbrace="}"
+p_lbracket="["
+p_rbracket="]"
+p_semi=";"
+p_comma=","
+p_dot="."
+
+# Comments
+cmt_single="--"
+cmt_multi="---"
+
+# Literal seeds
+lit_int="42"
+lit_float="3.14"
+lit_string="\"hello\""
+lit_char="'a'"
+
+# Common identifiers and skeletal forms
+id_main="main"
+id_int="i32"
+id_string="string"
+id_bool="bool"
+
+skel_fn="fn Foo() -> Int { return 0 }"
+skel_type="type Foo { var x: Int }"
+skel_ns="namespace Foo {}"
+skel_if="if x { } else { }"
+skel_while="while x { }"

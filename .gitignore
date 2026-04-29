@@ -3,7 +3,8 @@ spec/
 tools/
 roslyn/
 scratch.fn
-
+corpus/
+crash-*
 
 
 # Compiled object files

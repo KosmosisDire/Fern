@@ -33,7 +33,6 @@ set(FERNLIB_SOURCES
 
     # source
     source/file.cpp
-    # source/fuzzer.cpp
     source/span.cpp
     source/walker.cpp
 
