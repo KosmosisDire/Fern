@@ -7,8 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Tests fernlib's portability across compilers. The CLI and LSP keep their
+# strict toolchain requirements (Clang 19+, libstdc++ 12+) and are tested
+# locally via the developer presets, not in CI.
 jobs:
-  build:
+  fernlib:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -17,73 +20,104 @@ jobs:
         include:
           - name: Linux x64 (Clang 19)
             runner: ubuntu-24.04
-          - name: Windows x64 (MSVC + Clang)
+            cc: clang-19
+            cxx: clang++-19
+            llvm: ON
+
+          - name: Linux x64 (GCC 13)
+            runner: ubuntu-24.04
+            cc: gcc-13
+            cxx: g++-13
+            llvm: ON
+
+          - name: Windows x64 (MSVC)
             runner: windows-latest
-          - name: macOS ARM64 (Clang, no LLVM)
+            msvc: true
+            llvm: ON
+
+          - name: Windows x64 (Clang)
+            runner: windows-latest
+            cc: clang
+            cxx: clang++
+            llvm: ON
+
+          - name: macOS ARM64 (Apple Clang, no LLVM)
             runner: macos-14
+            cc: clang
+            cxx: clang++
+            llvm: OFF
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install toolchain (Linux)
+      - name: Install Linux toolchain
         if: runner.os == 'Linux'
         run: |
-          wget -q https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 19
+          if [[ "${{ matrix.cc }}" == clang-* ]]; then
+            wget -q https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh 19
+          fi
+          if [[ "${{ matrix.cc }}" == gcc-* ]]; then
+            sudo apt-get install -y gcc-13 g++-13
+          fi
           sudo apt-get install -y ninja-build libzstd-dev libstdc++-13-dev
 
-      - name: Install toolchain (Windows)
-        if: runner.os == 'Windows'
+      - name: Install Windows toolchain (Clang)
+        if: runner.os == 'Windows' && matrix.cc == 'clang'
         run: |
           choco install ninja --no-progress -y
           choco install llvm --no-progress -y
         shell: pwsh
 
-      - name: Install toolchain (macOS)
-        if: runner.os == 'macOS'
+      - name: Install Windows toolchain (MSVC)
+        if: runner.os == 'Windows' && matrix.msvc
         run: |
-          brew install ninja llvm@19
-          echo "/opt/homebrew/opt/llvm@19/bin" >> $GITHUB_PATH
+          choco install ninja --no-progress -y
+        shell: pwsh
+
+      - name: Set up MSVC environment
+        if: runner.os == 'Windows' && matrix.msvc
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install macOS toolchain
+        if: runner.os == 'macOS'
+        run: brew install ninja
 
       - name: Cache fetched LLVM
+        if: matrix.llvm == 'ON'
         uses: actions/cache@v4
         with:
           path: |
             build/debug/_deps/llvm-*
             build/debug/_deps/LLVM-*
-          key: llvm-prebuilt-${{ runner.os }}-${{ runner.arch }}-20.1.8
+          key: llvm-prebuilt-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cc || 'msvc' }}-20.1.8
 
-      - name: Configure (Linux)
-        if: runner.os == 'Linux'
-        run: cmake --preset linux-debug
-
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        run: cmake --preset windows-debug
-        shell: pwsh
-
-      - name: Configure (macOS)
-        if: runner.os == 'macOS'
+      - name: Configure (with explicit compiler)
+        if: matrix.cc
         run: |
           cmake -G Ninja -B build/debug \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_COMPILER=clang \
-            -DCMAKE_CXX_COMPILER=clang++ \
-            -DFERN_BUILD_LLVM=OFF \
+            -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DFERN_BUILD_LLVM=${{ matrix.llvm }} \
             -DFERN_BUILD_LSP=OFF \
+            -DFERN_BUILD_CLI=OFF \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      - name: Build (Linux)
-        if: runner.os == 'Linux'
-        run: cmake --build --preset linux-debug-build
-
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        run: cmake --build --preset windows-debug-build
+      - name: Configure (MSVC auto-detect)
+        if: matrix.msvc
+        run: |
+          cmake -G Ninja -B build/debug `
+            -DCMAKE_BUILD_TYPE=Debug `
+            -DFERN_BUILD_LLVM=${{ matrix.llvm }} `
+            -DFERN_BUILD_LSP=OFF `
+            -DFERN_BUILD_CLI=OFF `
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         shell: pwsh
 
-      - name: Build (macOS)
-        if: runner.os == 'macOS'
+      - name: Build
         run: cmake --build build/debug
