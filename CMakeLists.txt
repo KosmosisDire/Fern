@@ -215,6 +215,16 @@ endif()]]
 endif()
 set(FFI_CONFIG_FILE ${FFI_ROOT}/fficonfig.h)]]
             FFI_CMAKE "${FFI_CMAKE}")
+        # The fork unconditionally adds GCC-style -Wno-* flags on any Windows
+        # build, but MSVC's cl rejects them. Limit to non-MSVC.
+        string(REPLACE
+[[if(WIN32 OR MINGW)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations -Wno-pointer-to-int-cast")
+endif()]]
+[[if((WIN32 OR MINGW) AND NOT MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations -Wno-pointer-to-int-cast")
+endif()]]
+            FFI_CMAKE "${FFI_CMAKE}")
         file(WRITE "${libffi_SOURCE_DIR}/CMakeLists.txt" "${FFI_CMAKE}")
         add_subdirectory(${libffi_SOURCE_DIR} ${libffi_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
