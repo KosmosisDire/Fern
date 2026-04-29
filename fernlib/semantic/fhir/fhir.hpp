@@ -104,11 +104,13 @@ struct ConstantValue
     Kind kind = Kind::Int;
     union
     {
-        int64_t intValue = 0;
+        int64_t intValue;
         double floatValue;
         bool boolValue;
         std::string_view stringValue;
     };
+
+    ConstantValue() : kind(Kind::Int), intValue(0) {}
 
     static ConstantValue make_int(int64_t v)
     {

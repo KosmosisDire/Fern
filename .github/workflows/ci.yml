@@ -41,6 +41,13 @@ jobs:
             cxx: clang++
             llvm: ON
 
+          - name: Windows x64 (MinGW GCC, no LLVM)
+            runner: windows-latest
+            cc: gcc
+            cxx: g++
+            llvm: OFF
+            mingw: true
+
           - name: macOS ARM64 (Apple Clang, no LLVM)
             runner: macos-14
             cc: clang
@@ -77,6 +84,13 @@ jobs:
           choco install ninja --no-progress -y
         shell: pwsh
 
+      - name: Install Windows toolchain (MinGW)
+        if: runner.os == 'Windows' && matrix.mingw
+        run: |
+          choco install mingw --no-progress -y
+          choco install ninja --no-progress -y
+        shell: pwsh
+
       - name: Set up MSVC environment
         if: runner.os == 'Windows' && matrix.msvc
         uses: ilammy/msvc-dev-cmd@v1
@@ -104,9 +118,11 @@ jobs:
             -DCMAKE_C_COMPILER=${{ matrix.cc }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DFERN_BUILD_LLVM=${{ matrix.llvm }} \
+            -DFERN_BUILD_LIBFFI=${{ matrix.mingw && 'OFF' || 'ON' }} \
             -DFERN_BUILD_LSP=OFF \
             -DFERN_BUILD_CLI=OFF \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        shell: bash
 
       - name: Configure (MSVC auto-detect)
         if: matrix.msvc
@@ -114,6 +130,7 @@ jobs:
           cmake -G Ninja -B build/debug `
             -DCMAKE_BUILD_TYPE=Debug `
             -DFERN_BUILD_LLVM=${{ matrix.llvm }} `
+            -DFERN_BUILD_LIBFFI=OFF `
             -DFERN_BUILD_LSP=OFF `
             -DFERN_BUILD_CLI=OFF `
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
