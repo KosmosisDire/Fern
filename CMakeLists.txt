@@ -201,6 +201,20 @@ if(FERN_BUILD_LIBFFI)
             "CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL \"x64\""
             "CMAKE_HOST_SYSTEM_PROCESSOR MATCHES \"x64|AMD64\""
             FFI_CMAKE "${FFI_CMAKE}")
+        # The fork only sets FFI_CONFIG_FILE outside Debug builds, which makes
+        # the file(COPY) a no-op and breaks the MSVC assembler step which needs
+        # fficonfig.h in the binary dir to preprocess win64_intel.S.
+        string(REPLACE
+[[if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(FFI_SKIP_HEADERS ON)
+else()
+    set(FFI_CONFIG_FILE ${FFI_ROOT}/fficonfig.h)
+endif()]]
+[[if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(FFI_SKIP_HEADERS ON)
+endif()
+set(FFI_CONFIG_FILE ${FFI_ROOT}/fficonfig.h)]]
+            FFI_CMAKE "${FFI_CMAKE}")
         file(WRITE "${libffi_SOURCE_DIR}/CMakeLists.txt" "${FFI_CMAKE}")
         add_subdirectory(${libffi_SOURCE_DIR} ${libffi_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()

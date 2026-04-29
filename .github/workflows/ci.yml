@@ -118,7 +118,6 @@ jobs:
             -DCMAKE_C_COMPILER=${{ matrix.cc }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DFERN_BUILD_LLVM=${{ matrix.llvm }} \
-            -DFERN_BUILD_LIBFFI=${{ matrix.mingw && 'OFF' || 'ON' }} \
             -DFERN_BUILD_LSP=OFF \
             -DFERN_BUILD_CLI=OFF \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -130,7 +129,6 @@ jobs:
           cmake -G Ninja -B build/debug `
             -DCMAKE_BUILD_TYPE=Debug `
             -DFERN_BUILD_LLVM=${{ matrix.llvm }} `
-            -DFERN_BUILD_LIBFFI=OFF `
             -DFERN_BUILD_LSP=OFF `
             -DFERN_BUILD_CLI=OFF `
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
