@@ -191,10 +191,6 @@ if(FERN_BUILD_LIBFFI)
         GIT_TAG        main
     )
     FetchContent_MakeAvailable(libffi)
-    # partic2/libffi exports ffi_static; alias to the name fernlib links against.
-    if(NOT TARGET libffi)
-        add_library(libffi ALIAS ffi_static)
-    endif()
     set(LIBFFI_AVAILABLE TRUE)
 else()
     set(LIBFFI_AVAILABLE FALSE)
