@@ -98,7 +98,7 @@ Use Fern as a library inside another CMake project via `FetchContent`:
 include(FetchContent)
 FetchContent_Declare(
     fern
-    GIT_REPOSITORY https://github.com/your-org/fern.git
+    GIT_REPOSITORY https://github.com/KosmosisDire/Fern.git
     GIT_TAG        v0.1.0       # pin to a tag or commit
 )
 FetchContent_MakeAvailable(fern)
