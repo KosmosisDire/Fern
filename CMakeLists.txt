@@ -187,11 +187,14 @@ if(FERN_BUILD_LIBFFI)
     include(FetchContent)
     FetchContent_Declare(
         libffi
-        GIT_REPOSITORY https://github.com/partic2/libffi.git
-        GIT_TAG        main
+        GIT_REPOSITORY https://github.com/libffi/libffi.git
+        GIT_TAG        v3.5.2
     )
+    # libffi/libffi has no top-level CMakeLists, so MakeAvailable just
+    # populates the source tree (no add_subdirectory) and we drive the build
+    # ourselves via BuildLibffi.cmake.
     FetchContent_MakeAvailable(libffi)
-    set(LIBFFI_AVAILABLE TRUE)
+    include(cmake/BuildLibffi.cmake)
 else()
     set(LIBFFI_AVAILABLE FALSE)
 endif()

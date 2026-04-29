@@ -90,8 +90,6 @@ if(LLVM_AVAILABLE)
 endif()
 
 if(LIBFFI_AVAILABLE)
-    target_link_libraries(fernlib PUBLIC ffi_static)
-    # FFI_BUILDING tells partic2 libffi's ffi.h to drop the dllimport decoration
-    # since we're statically linking.
-    target_compile_definitions(fernlib PUBLIC FERN_LIBFFI_AVAILABLE FFI_BUILDING)
+    target_link_libraries(fernlib PUBLIC libffi)
+    target_compile_definitions(fernlib PUBLIC FERN_LIBFFI_AVAILABLE)
 endif()
