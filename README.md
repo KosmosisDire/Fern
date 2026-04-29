@@ -14,13 +14,21 @@ Source -> Lexer -> Parser -> AST -> Binder -> FHIR (Fern High-level IR) -> FLIR 
 
 ## Building
 
-Fern requires:
+Two modes:
+
+* **Developer build** — full project (CLI + LSP). Strict toolchain.
+* **Embedded build** — `fernlib` only for embedding into your own project.
+
+### Developer build
+
+Requirements:
 
 * CMake 3.18 or newer
 * Ninja
 * Clang 19 or newer
+* On Linux: libstdc++ 12 or newer
 
-### Windows
+#### Windows
 
 Install the toolchain:
 
@@ -38,8 +46,6 @@ Then add LLVM to `PATH` if it isn't already, using powershell:
 )
 ```
 
-> **Note:** if you ran this without admin, LLVM installs but does not add itself to `PATH`. Either reinstall elevated, or add `C:\Program Files\LLVM\bin` to `PATH` manually.
-
 Open a fresh shell, then configure and build:
 
 ```
@@ -52,7 +58,7 @@ Output binaries are at:
 * `build/debug/bin/ferncli.exe`
 * `build/debug/bin/fernlsp.exe`
 
-### Debian/Ubuntu
+#### Debian/Ubuntu
 
 Install Clang 19, build tools, and required libraries:
 
@@ -83,3 +89,40 @@ Output binaries are at:
 
 * `build/debug/bin/ferncli`
 * `build/debug/bin/fernlsp`
+
+### Embedding fernlib
+
+Use Fern as a library inside another CMake project via `FetchContent`:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+    fern
+    GIT_REPOSITORY https://github.com/your-org/fern.git
+    GIT_TAG        v0.1.0       # pin to a tag or commit
+)
+FetchContent_MakeAvailable(fern)
+
+target_link_libraries(your_target PRIVATE fernlib)
+```
+
+Or as a git submodule with `add_subdirectory`:
+
+```cmake
+add_subdirectory(external/fern)
+target_link_libraries(your_target PRIVATE fernlib)
+```
+
+Embedded builds skip the developer-tool gates. Fern only requires a C++20 compiler:
+
+* MSVC 19.30 (Visual Studio 2022 17.0) or newer
+* GCC 11 or newer
+* Clang 14 or newer (including AppleClang 14)
+
+LLVM and libffi are fetched and built automatically. To skip them (faster build, smaller checkout):
+
+```cmake
+set(FERN_BUILD_LLVM   OFF)
+set(FERN_BUILD_LIBFFI OFF)
+FetchContent_MakeAvailable(fern)
+```
