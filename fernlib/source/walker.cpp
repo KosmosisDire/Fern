@@ -33,6 +33,10 @@ char SourceWalker::peek_next() const
 
 char SourceWalker::advance()
 {
+    if (is_at_end())
+    {
+        return '\0';
+    }
     char c = sourceFile.source()[currentPos++];
     if (c == '\n')
     {

@@ -406,6 +406,10 @@ Token Lexer::scan_string(char delimiter)
                 if (delimiter != '`' && walker.peek() == '\\')
                 {
                     walker.advance();
+                    if (walker.is_at_end())
+                    {
+                        break;
+                    }
                 }
                 walker.advance();
             }
@@ -425,6 +429,10 @@ Token Lexer::scan_string(char delimiter)
             if (delimiter != '`' && walker.peek() == '\\')
             {
                 walker.advance();
+                if (walker.is_at_end())
+                {
+                    break;
+                }
             }
             walker.advance();
         }
@@ -446,6 +454,10 @@ Token Lexer::scan_char()
         if (walker.peek() == '\\')
         {
             walker.advance();
+            if (walker.is_at_end())
+            {
+                break;
+            }
         }
         walker.advance();
     }
