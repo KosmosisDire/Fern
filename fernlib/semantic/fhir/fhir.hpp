@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -151,7 +152,7 @@ struct ConstantValue
             case Kind::Int:     return std::to_string(intValue);
             case Kind::Float:   return std::to_string(floatValue);
             case Kind::Bool:    return boolValue ? "true" : "false";
-            case Kind::String:  return "\"" + std::string(stringValue) + "\"";
+            case Kind::String:  return std::format("\"{}\"", stringValue);
         }
     }
 

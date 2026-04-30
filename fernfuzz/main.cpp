@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cstring>
+#include <format>
 #include <string>
 
 #include <common/compilation.hpp>
@@ -13,7 +14,7 @@ constexpr size_t fileSeparatorSize = sizeof(fileSeparator);
 void add_chunk(Fern::Compilation& compilation, const uint8_t* data, size_t size, int index)
 {
     std::string content(reinterpret_cast<const char*>(data), size);
-    std::string name = "fuzz_" + std::to_string(index) + ".fn";
+    std::string name = std::format("fuzz_{}.fn", index);
     compilation.add_source(std::move(content), name);
 }
 

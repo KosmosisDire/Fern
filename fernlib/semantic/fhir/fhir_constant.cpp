@@ -2,6 +2,7 @@
 #include <semantic/symbol/symbol.hpp>
 
 #include <climits>
+#include <format>
 
 namespace Fern
 {
@@ -21,13 +22,12 @@ bool ConstantValue::range_fits(TypeSymbol* target) const
 
 std::string ConstantValue::format_range_message(TypeSymbol* target) const
 {
-    std::string val = std::to_string(intValue);
     auto* named = target ? target->as<NamedTypeSymbol>() : nullptr;
     if (named && named->name == "U8")
-        return "value " + val + " is out of range for u8 (0-255)";
+        return std::format("value {} is out of range for u8 (0-255)", intValue);
     if (named && named->name == "I32")
-        return "value " + val + " is out of range for i32 (-2147483648 to 2147483647)";
-    return "value " + val + " is out of range for " + format_type_name(target);
+        return std::format("value {} is out of range for i32 (-2147483648 to 2147483647)", intValue);
+    return std::format("value {} is out of range for {}", intValue, format_type_name(target));
 }
 
 #pragma region Lazy Dispatch

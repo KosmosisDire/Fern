@@ -1,6 +1,7 @@
 #include "binder.hpp"
 
 #include <algorithm>
+#include <format>
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
@@ -20,7 +21,7 @@ static std::string format_field_path(BaseExprSyntax* expr)
     {
         std::string left = format_field_path(member->left);
         if (left.empty() || !member->right) return "";
-        return left + "." + std::string(member->right->name.lexeme);
+        return std::format("{}.{}", left, member->right->name.lexeme);
     }
     return "";
 }
@@ -132,7 +133,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
         if (!namedType->find_constructor({}).best.method)
         {
-            diag.error("type '" + format_type_name(namedType) + "' has no default constructor", expr->target->span);
+            diag.error(std::format("type '{}' has no default constructor", format_type_name(namedType)), expr->target->span);
         }
     }
 
@@ -171,7 +172,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     }
 
     auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = "__init_" + std::to_string((*counter)++);
+    tempPtr->name = std::format("__init_{}", (*counter)++);
     tempPtr->type = namedType;
     auto* tempLocal = context.symbols.own(std::move(tempPtr));
 
@@ -230,7 +231,7 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
         auto it = std::find(boundFieldPaths.begin(), boundFieldPaths.end(), path);
         if (it != boundFieldPaths.end())
         {
-            diag.error("duplicate field '" + path + "' in initializer", fieldInit->target->span);
+            diag.error(std::format("duplicate field '{}' in initializer", path), fieldInit->target->span);
         }
         else
         {
@@ -246,8 +247,8 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = type->find_field(id->name.lexeme);
         if (!field)
         {
-            diag.error("type '" + format_type_name(type) + "' has no field named '" +
-                  std::string(id->name.lexeme) + "'", target->span);
+            diag.error(std::format("type '{}' has no field named '{}'",
+                  format_type_name(type), id->name.lexeme), target->span);
             return nullptr;
         }
         return field->type;
@@ -272,8 +273,8 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = nestedType->find_field(rightName);
         if (!field)
         {
-            diag.error("type '" + format_type_name(nestedType) + "' has no field named '" +
-                  std::string(rightName) + "'", member->span);
+            diag.error(std::format("type '{}' has no field named '{}'",
+                  format_type_name(nestedType), rightName), member->span);
             return nullptr;
         }
         return field->type;

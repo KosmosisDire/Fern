@@ -1,6 +1,7 @@
 #include "binder.hpp"
 
 #include <algorithm>
+#include <format>
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
@@ -28,7 +29,7 @@ std::string Binder::process_escape_sequences(std::string_view raw, const Span& s
                 case '`':  result += '`';  ++i; break;
                 case '0':  result += '\0'; ++i; break;
                 default:
-                    diag.error("unknown escape sequence '\\" + std::string(1, raw[i + 1]) + "'", span);
+                    diag.error(std::format("unknown escape sequence '\\{}'", raw[i + 1]), span);
                     result += raw[i + 1];
                     ++i;
                     break;
@@ -49,7 +50,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
     auto it = map.find(std::string(suffixName));
     if (it == map.end() || it->second.empty())
     {
-        diag.error("unknown literal suffix '" + std::string(suffixName) + "'", span);
+        diag.error(std::format("unknown literal suffix '{}'", suffixName), span);
         return nullptr;
     }
 
@@ -62,8 +63,9 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
 
     if (candidates.empty())
     {
-        diag.error("no literal '" + std::string(suffixName) + "' accepting '"
-              + (argType ? format_type_name(argType) : "?") + "'", span);
+        diag.error(std::format("no literal '{}' accepting '{}'",
+              suffixName,
+              argType ? format_type_name(argType) : "?"), span);
         return nullptr;
     }
 
@@ -79,11 +81,11 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
         }
     }
 
-    std::string msg = "ambiguous literal suffix '" + std::string(suffixName) + "', candidates:";
+    std::string msg = std::format("ambiguous literal suffix '{}', candidates:", suffixName);
     for (auto* method : candidates)
     {
         auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
-        msg += "\n  " + (parent ? format_type_name(parent) : "?") + "." + method->name;
+        msg += std::format("\n  {}.{}", parent ? format_type_name(parent) : "?", method->name);
     }
     diag.error(msg, span);
     return candidates[0];
@@ -222,7 +224,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
     }
     catch (const std::out_of_range&)
     {
-        diag.error("literal '" + std::string(expr->token.lexeme) + "' is out of range", expr->span);
+        diag.error(std::format("literal '{}' is out of range", expr->token.lexeme), expr->span);
     }
 
     return node;
@@ -297,9 +299,9 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             }
             else if (elem->type != elementType)
             {
-                diag.error("array literal has mixed element types: '" +
-                      format_type_name(elementType) + "' and '" +
-                      format_type_name(elem->type) + "'", expr->span);
+                diag.error(std::format("array literal has mixed element types: '{}' and '{}'",
+                      format_type_name(elementType),
+                      format_type_name(elem->type)), expr->span);
             }
         }
     }
@@ -339,7 +341,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto* createExpr = fhir.construction(expr, arrayType, synthTypeRef, ctorResult.best.method, {countLit});
 
     auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = "__arr_" + std::to_string((*counter)++);
+    tempPtr->name = std::format("__arr_{}", (*counter)++);
     tempPtr->type = arrayType;
     auto* tempLocal = context.symbols.own(std::move(tempPtr));
 
@@ -348,8 +350,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto setterResult = arrayType->find_index_setter(i32Type, elementType);
     if (!setterResult.best.is_callable())
     {
-        diag.error("Core.Array has no 'op []=' for element type '" +
-              format_type_name(elementType) + "'", expr->span);
+        diag.error(std::format("Core.Array has no 'op []=' for element type '{}'",
+              format_type_name(elementType)), expr->span);
         return fhir.error_expr(expr);
     }
     MethodSymbol* setter = setterResult.best.method;

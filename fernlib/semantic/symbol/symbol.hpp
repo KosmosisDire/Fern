@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <string>
 #include <string_view>
 #include <sstream>
@@ -103,14 +104,14 @@ struct Symbol
     {
         if (parent && parent->parent) // Don't include global namespace
         {
-            return parent->qualified_name() + "." + name;
+            return std::format("{}.{}", parent->qualified_name(), name);
         }
         return name;
     }
 
     virtual std::string format(int indent = 0) const
     {
-        return std::string(indent, ' ') + name;
+        return std::format("{}{}", std::string(indent, ' '), name);
     }
 };
 
@@ -210,7 +211,7 @@ struct TypeParamSymbol : TypeSymbol
 
     std::string format(int indent = 0) const override
     {
-        return std::string(indent, ' ') + name;
+        return std::format("{}{}", std::string(indent, ' '), name);
     }
 };
 
@@ -265,7 +266,7 @@ struct ParameterSymbol : Symbol
 
     std::string format(int indent = 0) const override
     {
-        return std::string(indent, ' ') + name + ": " + format_type_name(type);
+        return std::format("{}{}: {}", std::string(indent, ' '), name, format_type_name(type));
     }
 };
 
@@ -278,7 +279,7 @@ struct LocalSymbol : Symbol
 
     std::string format(int indent = 0) const override
     {
-        return std::string(indent, ' ') + name + ": " + format_type_name(type);
+        return std::format("{}{}: {}", std::string(indent, ' '), name, format_type_name(type));
     }
 };
 

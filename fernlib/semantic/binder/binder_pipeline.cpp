@@ -1,6 +1,7 @@
 #include "binder_pipeline.hpp"
 
 #include <algorithm>
+#include <format>
 
 #include <ast/ast.hpp>
 #include <semantic/binder/binder.hpp>
@@ -123,20 +124,20 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
 
                 if (isIndexGet && method->parameters.size() != 2)
                 {
-                    context.diag.error("operator '[]' must have 2 parameters (self, index), but has " +
-                          std::to_string(method->parameters.size()), callableAst->span);
+                    context.diag.error(std::format("operator '[]' must have 2 parameters (self, index), but has {}",
+                          method->parameters.size()), callableAst->span);
                 }
                 else if (isIndexSet && method->parameters.size() != 3)
                 {
-                    context.diag.error("operator '[]=' must have 3 parameters (self, index, value), but has " +
-                          std::to_string(method->parameters.size()), callableAst->span);
+                    context.diag.error(std::format("operator '[]=' must have 3 parameters (self, index, value), but has {}",
+                          method->parameters.size()), callableAst->span);
                 }
                 else if (!isIndexGet && !isIndexSet &&
                          (method->parameters.size() < 1 || method->parameters.size() > 2))
                 {
-                    context.diag.error("operator '" + std::string(Fern::format(callableAst->name.kind)) +
-                          "' must have 1 parameter (unary) or 2 parameters (binary), but has " +
-                          std::to_string(method->parameters.size()), callableAst->span);
+                    context.diag.error(std::format("operator '{}' must have 1 parameter (unary) or 2 parameters (binary), but has {}",
+                          Fern::format(callableAst->name.kind),
+                          method->parameters.size()), callableAst->span);
                 }
             }
         }
@@ -197,9 +198,10 @@ void BinderPipeline::resolve_signatures()
                         auto* annotated = tBinder.resolve_type_expr(callable->returnType);
                         if (annotated && annotated != type)
                         {
-                            context.diag.error("literal '" + method->name + "' must return '"
-                                  + format_type_name(type) + "', not '"
-                                  + format_type_name(annotated) + "'", callable->returnType->span);
+                            context.diag.error(std::format("literal '{}' must return '{}', not '{}'",
+                                  method->name,
+                                  format_type_name(type),
+                                  format_type_name(annotated)), callable->returnType->span);
                         }
                     }
                     method->set_return_type(type);
@@ -298,19 +300,19 @@ void BinderPipeline::check_duplicate_methods(NamedTypeSymbol* type)
                 switch (b->callableKind)
                 {
                     case CallableKind::Constructor:
-                        context.diag.error("duplicate constructor on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error(std::format("duplicate constructor on type '{}'", format_type_name(type)), loc);
                         break;
                     case CallableKind::Operator:
-                        context.diag.error("duplicate operator '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error(std::format("duplicate operator '{}' on type '{}'", b->name, format_type_name(type)), loc);
                         break;
                     case CallableKind::Function:
-                        context.diag.error("duplicate method '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error(std::format("duplicate method '{}' on type '{}'", b->name, format_type_name(type)), loc);
                         break;
                     case CallableKind::Literal:
-                        context.diag.error("duplicate literal '" + b->name + "' on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error(std::format("duplicate literal '{}' on type '{}'", b->name, format_type_name(type)), loc);
                         break;
                     case CallableKind::Cast:
-                        context.diag.error("duplicate cast on type '" + format_type_name(type) + "'", loc);
+                        context.diag.error(std::format("duplicate cast on type '{}'", format_type_name(type)), loc);
                         break;
                 }
             }
@@ -332,9 +334,9 @@ void BinderPipeline::validate_signatures()
                 if (!hasContainingType)
                 {
                     Span loc = method->syntax ? method->syntax->span : Span{};
-                    context.diag.error("operator '" + method->name +
-                          "' must have at least one parameter of containing type '" +
-                          format_type_name(type) + "'", loc);
+                    context.diag.error(std::format("operator '{}' must have at least one parameter of containing type '{}'",
+                          method->name,
+                          format_type_name(type)), loc);
                 }
             }
 
@@ -343,16 +345,16 @@ void BinderPipeline::validate_signatures()
                 Span loc = method->syntax ? method->syntax->span : Span{};
                 if (method->parameters.size() != 1)
                 {
-                    context.diag.error("literal '" + method->name + "' must have exactly 1 parameter", loc);
+                    context.diag.error(std::format("literal '{}' must have exactly 1 parameter", method->name), loc);
                 }
                 else if (auto* paramType = method->parameters[0]->type)
                 {
                     auto* namedParamType = paramType->as<NamedTypeSymbol>();
                     if (!namedParamType || !namedParamType->allows_custom_literals())
                     {
-                        context.diag.error("literal '" + method->name +
-                              "' parameter type '" + format_type_name(paramType) +
-                              "' does not allow custom literals", loc);
+                        context.diag.error(std::format("literal '{}' parameter type '{}' does not allow custom literals",
+                              method->name,
+                              format_type_name(paramType)), loc);
                     }
                 }
             }

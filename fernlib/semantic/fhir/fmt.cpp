@@ -1,6 +1,8 @@
 #include "fmt.hpp"
 #include <semantic/symbol/symbol.hpp>
 
+#include <format>
+
 namespace Fern
 {
 
@@ -50,7 +52,7 @@ std::string FhirFormatter::method_label(MethodSymbol* method)
 {
     if (!method) return "?";
     auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
-    if (parent) return format_type_name(parent) + "." + method->name;
+    if (parent) return std::format("{}.{}", format_type_name(parent), method->name);
     return method->name;
 }
 
@@ -160,7 +162,7 @@ void FhirFormatter::visit(FhirMethodGroupRefExpr* node)
         write_child(node->thisRef);
         out << ".";
     }
-    out << "&" << (node->enclosingScope ? node->enclosingScope->qualified_name() + "." : "")
+    out << "&" << (node->enclosingScope ? std::format("{}.", node->enclosingScope->qualified_name()) : "")
         << std::string(node->name) << "(?)";
 }
 
@@ -282,7 +284,7 @@ std::string FhirFormatter::format(FhirMethod* method)
         method->body->accept(&fmt);
     }
 
-    return fmt.out.str() + "\n";
+    return std::format("{}\n", fmt.out.str());
 }
 
 }

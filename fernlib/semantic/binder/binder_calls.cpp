@@ -1,6 +1,7 @@
 #include "binder.hpp"
 
 #include <cassert>
+#include <format>
 
 #include <ast/ast.hpp>
 #include <common/cast.hpp>
@@ -45,7 +46,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             std::string msg = "call is ambiguous between constructors:";
             for (auto* m : result.ambiguousCandidates)
-                msg += "\n  " + format_type_name(namedType) + "(" + m->format_parameters() + ")";
+                msg += std::format("\n  {}({})", format_type_name(namedType), m->format_parameters());
             diag.error(msg, expr->span);
             return fhir.error_expr(expr);
         }
@@ -53,8 +54,10 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             if (!hasErrorArg)
             {
-                diag.error("'" + format_type_name(namedType) + "' does not contain a constructor that takes " +
-                      std::to_string(argTypes.size()) + (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+                diag.error(std::format("'{}' does not contain a constructor that takes {}{}",
+                      format_type_name(namedType),
+                      argTypes.size(),
+                      argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
             }
             return fhir.error_expr(expr);
         }
@@ -74,16 +77,16 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto* targetType = group->enclosingScope ? group->enclosingScope->as<NamedTypeSymbol>() : nullptr;
         if (!targetType)
         {
-            diag.error("'" + std::string(group->name) + "' cannot be called", expr->callee->span);
+            diag.error(std::format("'{}' cannot be called", group->name), expr->callee->span);
             return fhir.error_expr(expr, nullptr, group);
         }
 
         auto result = targetType->find_method(group->name, argTypes);
         if (result.ambiguous && !hasErrorArg)
         {
-            std::string msg = "call to '" + std::string(group->name) + "' is ambiguous between:";
+            std::string msg = std::format("call to '{}' is ambiguous between:", group->name);
             for (auto* m : result.ambiguousCandidates)
-                msg += "\n  " + format_type_name(targetType) + "." + std::string(group->name) + "(" + m->format_parameters() + ")";
+                msg += std::format("\n  {}.{}({})", format_type_name(targetType), group->name, m->format_parameters());
             diag.error(msg, expr->span);
             return fhir.error_expr(expr);
         }
@@ -92,9 +95,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             if (!hasErrorArg)
             {
-                diag.error("'" + format_type_name(targetType) + "' does not contain a method '" + std::string(group->name) +
-                      "' that takes " + std::to_string(argTypes.size()) +
-                      (argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+                diag.error(std::format("'{}' does not contain a method '{}' that takes {}{}",
+                      format_type_name(targetType),
+                      group->name,
+                      argTypes.size(),
+                      argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
             }
             return fhir.error_expr(expr);
         }
@@ -103,7 +108,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         bool isStatic = has_modifier(method->modifiers, Modifier::Static);
         if (!isStatic && !group->thisRef)
         {
-            diag.error("instance method '" + std::string(group->name) + "' requires a receiver", expr->callee->span);
+            diag.error(std::format("instance method '{}' requires a receiver", group->name), expr->callee->span);
             return fhir.error_expr(expr);
         }
 
@@ -131,7 +136,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     if (auto* nref = callee->as<FhirNamespaceRefExpr>())
     {
         std::string name = nref->namespaceSymbol ? nref->namespaceSymbol->name : "?";
-        diag.error("'" + name + "' is a namespace and cannot be called", expr->callee->span);
+        diag.error(std::format("'{}' is a namespace and cannot be called", name), expr->callee->span);
         return fhir.error_expr(expr, nullptr, nref);
     }
 

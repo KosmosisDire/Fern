@@ -1,5 +1,7 @@
 #include "binder.hpp"
 
+#include <format>
+
 #include <ast/ast.hpp>
 #include <common/cast.hpp>
 #include <semantic/context.hpp>
@@ -48,7 +50,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
         if (!attrType->is_attribute())
         {
-            diag.error("type '" + attrType->name + "' is not an attribute type (missing 'attr' modifier)", attr->span);
+            diag.error(std::format("type '{}' is not an attribute type (missing 'attr' modifier)", attrType->name), attr->span);
             continue;
         }
 
@@ -94,7 +96,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             ctor = attrType->find_constructor(emptyArgs).best.method;
             if (!ctor)
             {
-                diag.error("'" + attrType->name + "' must contain a parameterless constructor to construct with only an initializer list", attr->span);
+                diag.error(std::format("'{}' must contain a parameterless constructor to construct with only an initializer list", attrType->name), attr->span);
             }
         }
 

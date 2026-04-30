@@ -1,5 +1,7 @@
 #include "binder.hpp"
 
+#include <format>
+
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
@@ -109,8 +111,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             }
         }
 
-        diag.error("expected '" + format_type_name(expected) +
-              "', got '" + format_type_name(result->type) + "'", expr->span);
+        diag.error(std::format("expected '{}', got '{}'",
+              format_type_name(expected), format_type_name(result->type)), expr->span);
         return fhir.error_expr(expr, expected, result);
     }
 
@@ -143,18 +145,18 @@ FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
     if (auto* tref = result->as<FhirTypeRef>())
     {
-        diag.error("'" + format_type_name(tref->referenced) + "' is a type, not a value", expr->span);
+        diag.error(std::format("'{}' is a type, not a value", format_type_name(tref->referenced)), expr->span);
         return fhir.error_expr(expr, nullptr, tref);
     }
     if (auto* nref = result->as<FhirNamespaceRefExpr>())
     {
         std::string name = nref->namespaceSymbol ? nref->namespaceSymbol->name : "?";
-        diag.error("'" + name + "' is a namespace, not a value", expr->span);
+        diag.error(std::format("'{}' is a namespace, not a value", name), expr->span);
         return fhir.error_expr(expr, nullptr, nref);
     }
     if (auto* mg = result->as<FhirMethodGroupRefExpr>())
     {
-        diag.error("'" + std::string(mg->name) + "' is a method, not a value", expr->span);
+        diag.error(std::format("'{}' is a method, not a value", mg->name), expr->span);
         return fhir.error_expr(expr, nullptr, mg);
     }
 
@@ -166,7 +168,7 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
     LookupResult result = lookup(expr->name.lexeme);
     if (result.empty())
     {
-        diag.error("undefined name '" + std::string(expr->name.lexeme) + "'", expr->span);
+        diag.error(std::format("undefined name '{}'", expr->name.lexeme), expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -263,8 +265,8 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
         return fhir.cast(expr, targetType, operand, false, conv.method, typeRef);
     }
 
-    diag.error("cannot cast from '" + format_type_name(operand->type) +
-          "' to '" + format_type_name(targetType) + "'", expr->span);
+    diag.error(std::format("cannot cast from '{}' to '{}'",
+          format_type_name(operand->type), format_type_name(targetType)), expr->span);
     return fhir.error_expr(expr);
 }
 
@@ -289,7 +291,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         auto* namedLeft = leftTypeRef->referenced ? leftTypeRef->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!namedLeft)
         {
-            diag.error("type '" + format_type_name(leftTypeRef->referenced) + "' has no members", expr->span);
+            diag.error(std::format("type '{}' has no members", format_type_name(leftTypeRef->referenced)), expr->span);
             return fhir.error_expr(expr, nullptr, left);
         }
 
@@ -310,8 +312,8 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         Symbol* member = namedLeft->find_non_method_member(memberName);
         if (!member)
         {
-            diag.error("type '" + format_type_name(namedLeft) + "' has no member '" +
-                  std::string(memberName) + "'", expr->span);
+            diag.error(std::format("type '{}' has no member '{}'",
+                  format_type_name(namedLeft), memberName), expr->span);
             return fhir.error_expr(expr);
         }
 
@@ -322,8 +324,8 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         {
             if (!has_modifier(field->modifiers, Modifier::Static))
             {
-                diag.error("cannot access instance field '" + std::string(memberName) +
-                      "' on type '" + format_type_name(namedLeft) + "'", expr->span);
+                diag.error(std::format("cannot access instance field '{}' on type '{}'",
+                      memberName, format_type_name(namedLeft)), expr->span);
                 return fhir.error_expr(expr, field->type);
             }
             return fhir.field_ref(expr, nullptr, field);
@@ -347,8 +349,8 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         Symbol* member = ns->find_member(memberName);
         if (!member)
         {
-            diag.error("namespace '" + ns->name + "' has no member '" +
-                  std::string(memberName) + "'", expr->span);
+            diag.error(std::format("namespace '{}' has no member '{}'",
+                  ns->name, memberName), expr->span);
             return fhir.error_expr(expr);
         }
 
@@ -382,8 +384,8 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         return fhir.method_group_ref(expr, namedType, memberName, left);
     }
 
-    diag.error("type '" + format_type_name(namedType) + "' has no member '" +
-          std::string(memberName) + "'", expr->span);
+    diag.error(std::format("type '{}' has no member '{}'",
+          format_type_name(namedType), memberName), expr->span);
     return fhir.error_expr(expr);
 }
 
@@ -401,10 +403,10 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         auto result = namedType->find_unary_operator(opToken, operandType);
         if (result.ambiguous)
         {
-            std::string msg = "operator '" + std::string(Fern::format(opToken)) +
-                  "' is ambiguous for value of type '" + format_type_name(namedType) + "':";
+            std::string msg = std::format("operator '{}' is ambiguous for value of type '{}':",
+                  Fern::format(opToken), format_type_name(namedType));
             for (auto* m : result.ambiguousCandidates)
-                msg += "\n  op " + std::string(Fern::format(opToken)) + "(" + m->format_parameters() + ")";
+                msg += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
             diag.error(msg, expr->span);
             return fhir.error_expr(expr);
         }
@@ -419,8 +421,8 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
             return fhir.intrinsic(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand});
         }
 
-        diag.error("operator '" + std::string(Fern::format(opToken)) +
-              "' cannot be applied to value of type '" + format_type_name(namedType) + "'", expr->span);
+        diag.error(std::format("operator '{}' cannot be applied to value of type '{}'",
+              Fern::format(opToken), format_type_name(namedType)), expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -473,16 +475,16 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
 
         std::string leftName = format_type_name(leftType);
         std::string rightName = format_type_name(rightType);
-        std::string msg = "operator '" + std::string(Fern::format(opToken)) +
-              "' cannot be applied to values of type '" + leftName + "' and '" + rightName + "'";
+        std::string msg = std::format("operator '{}' cannot be applied to values of type '{}' and '{}'",
+              Fern::format(opToken), leftName, rightName);
 
         if (!hasBase && !hasEqual)
         {
-            msg += " (requires '" + std::string(Fern::format(baseToken)) + "' and '==' operators)";
+            msg += std::format(" (requires '{}' and '==' operators)", Fern::format(baseToken));
         }
         else if (!hasBase)
         {
-            msg += " (requires '" + std::string(Fern::format(baseToken)) + "' operator)";
+            msg += std::format(" (requires '{}' operator)", Fern::format(baseToken));
         }
         else
         {
@@ -495,8 +497,8 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
 
     std::string leftName = format_type_name(leftType);
     std::string rightName = format_type_name(rightType);
-    diag.error("operator '" + std::string(Fern::format(opToken)) +
-          "' cannot be applied to values of type '" + leftName + "' and '" + rightName + "'", syntax->span);
+    diag.error(std::format("operator '{}' cannot be applied to values of type '{}' and '{}'",
+          Fern::format(opToken), leftName, rightName), syntax->span);
     return fhir.error_expr(syntax);
 }
 
@@ -520,11 +522,10 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     auto result = namedType->find_binary_operator(opToken, leftType, rightType);
     if (result.ambiguous)
     {
-        std::string msg = "operator '" + std::string(Fern::format(opToken)) +
-              "' is ambiguous for values of type '" + format_type_name(leftType) +
-              "' and '" + format_type_name(rightType) + "':";
+        std::string msg = std::format("operator '{}' is ambiguous for values of type '{}' and '{}':",
+              Fern::format(opToken), format_type_name(leftType), format_type_name(rightType));
         for (auto* m : result.ambiguousCandidates)
-            msg += "\n  op " + std::string(Fern::format(opToken)) + "(" + m->format_parameters() + ")";
+            msg += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
         diag.error(msg, syntax->span);
         return fhir.error_expr(syntax);
     }
@@ -578,7 +579,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            diag.error("cannot index a value of type '" + format_type_name(objectType) + "'", expr->span);
+            diag.error(std::format("cannot index a value of type '{}'", format_type_name(objectType)), expr->span);
             return fhir.error_expr(expr);
         }
 
@@ -587,15 +588,14 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         {
             std::string msg = "index assignment is ambiguous between:";
             for (auto* m : setterResult.ambiguousCandidates)
-                msg += "\n  " + format_type_name(namedType) + ".op []=(" + m->format_parameters() + ")";
+                msg += std::format("\n  {}.op []=({})", format_type_name(namedType), m->format_parameters());
             diag.error(msg, expr->span);
             return fhir.error_expr(expr);
         }
         if (!setterResult.best.is_callable())
         {
-            diag.error("type '" + format_type_name(namedType) +
-                  "' has no 'op []=' for index type '" + format_type_name(indexType) +
-                  "' and value type '" + format_type_name(valueType) + "'", expr->span);
+            diag.error(std::format("type '{}' has no 'op []=' for index type '{}' and value type '{}'",
+                  format_type_name(namedType), format_type_name(indexType), format_type_name(valueType)), expr->span);
             return fhir.error_expr(expr);
         }
 
@@ -646,7 +646,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
     {
-        diag.error("cannot index a value of type '" + format_type_name(objectType) + "'", expr->span);
+        diag.error(std::format("cannot index a value of type '{}'", format_type_name(objectType)), expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -655,14 +655,14 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     {
         std::string msg = "index access is ambiguous between:";
         for (auto* m : getterResult.ambiguousCandidates)
-            msg += "\n  " + format_type_name(namedType) + ".op [](" + m->format_parameters() + ")";
+            msg += std::format("\n  {}.op []({})", format_type_name(namedType), m->format_parameters());
         diag.error(msg, expr->span);
         return fhir.error_expr(expr);
     }
     if (!getterResult.best.is_callable())
     {
-        diag.error("type '" + format_type_name(namedType) +
-              "' has no 'op []' for index type '" + format_type_name(indexType) + "'", expr->span);
+        diag.error(std::format("type '{}' has no 'op []' for index type '{}'",
+              format_type_name(namedType), format_type_name(indexType)), expr->span);
         return fhir.error_expr(expr);
     }
 

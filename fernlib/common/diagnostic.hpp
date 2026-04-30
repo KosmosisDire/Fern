@@ -1,6 +1,7 @@
 #pragma once
 
 #include "source/span.hpp"
+#include <format>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -46,14 +47,17 @@ struct Diagnostic
 
     std::string format() const
     {
-        return std::string(severity_string()) + "(" + location.format() + "): " + message;
+        return std::format("{}({}): {}", severity_string(), location.format(), message);
     }
 
     std::string format(std::string_view filename) const
     {
-        return std::string(filename) + ":" + std::to_string(location.startLine + 1) +
-               ":" + std::to_string(location.startColumn + 1) + ": " +
-               std::string(severity_string()) + ": " + message;
+        return std::format("{}:{}:{}: {}: {}",
+            filename,
+            location.startLine + 1,
+            location.startColumn + 1,
+            severity_string(),
+            message);
     }
 };
 

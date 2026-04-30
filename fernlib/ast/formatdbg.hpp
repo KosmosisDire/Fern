@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ast/ast.hpp>
+#include <format>
 #include <sstream>
 
 namespace Fern
@@ -538,7 +539,7 @@ public:
         if (!node) return "";
         AstDebugFormatter formatter;
         node->accept(&formatter);
-        return formatter.out.str() + "\n";
+        return std::format("{}\n", formatter.out.str());
     }
 };
 

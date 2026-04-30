@@ -1,5 +1,6 @@
 #include "walker.hpp"
 #include <table_builder.hpp>
+#include <format>
 
 namespace Fern
 {
@@ -157,7 +158,7 @@ std::string TokenWalker::format() const
         table.add_row({
             std::to_string(i),
             std::string(Fern::format(token.kind)),
-            "'" + lexemeStr + "'",
+            std::format("'{}'", lexemeStr),
             token.span.format()
         });
     }

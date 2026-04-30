@@ -1,5 +1,7 @@
 #include "parser.hpp"
 
+#include <format>
+
 namespace Fern
 {
 
@@ -24,7 +26,7 @@ void Parser::expect_progress(TokenWalker::Checkpoint cp)
 {
     if (!walker.check_progress(cp))
     {
-        diag.error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+        diag.error(std::format("unexpected token '{}'", walker.current().lexeme), walker.current().span);
         walker.advance();
     }
 }
@@ -114,7 +116,7 @@ Modifier Parser::parse_modifiers()
     {
         if (has_modifier(mods, *mod))
         {
-            diag.error("duplicate modifier '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+            diag.error(std::format("duplicate modifier '{}'", walker.current().lexeme), walker.current().span);
         }
         mods = mods | *mod;
         walker.advance();
@@ -860,7 +862,7 @@ BaseStmtSyntax* Parser::parse_statement()
         !walker.check(TokenKind::RightBrace) &&
         !walker.is_at_end())
     {
-        diag.error("unexpected token '" + std::string(walker.current().lexeme) + "'", walker.current().span);
+        diag.error(std::format("unexpected token '{}'", walker.current().lexeme), walker.current().span);
         walker.advance();
     }
 
@@ -971,11 +973,10 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
                     walker.restore(cp);
                     break;
                 }
-                diag.error("ambiguous operator spacing: '" +
-                      std::string(walker.current().lexeme) +
-                      "' has space on the left but not the right. Did you mean '... " +
-                      std::string(walker.current().lexeme) + " " +
-                      std::string(walker.peek(1).lexeme) + "'?",
+                diag.error(std::format("ambiguous operator spacing: '{}' has space on the left but not the right. Did you mean '... {} {}'?",
+                      walker.current().lexeme,
+                      walker.current().lexeme,
+                      walker.peek(1).lexeme),
                       walker.current().span);
                 walker.restore(cp);
                 break;
@@ -995,7 +996,7 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
         auto* right = parse_binary(static_cast<Precedence>(static_cast<int>(prec) + 1));
         if (!right)
         {
-            diag.error("expected expression after '" + std::string(Fern::format(opKind)) + "'",
+            diag.error(std::format("expected expression after '{}'", Fern::format(opKind)),
                   walker.current().span);
         }
 

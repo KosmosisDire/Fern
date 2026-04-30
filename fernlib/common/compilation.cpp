@@ -1,5 +1,6 @@
 #include "compilation.hpp"
 
+#include <format>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -24,7 +25,7 @@ void Compilation::add_file(std::string_view path)
     std::ifstream file{std::string{path}};
     if (!file)
     {
-        diag.error("Could not open file: " + std::string(path), Span{});
+        diag.error(std::format("Could not open file: {}", path), Span{});
         return;
     }
 

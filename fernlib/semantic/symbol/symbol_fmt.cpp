@@ -1,5 +1,7 @@
 #include "symbol.hpp"
 
+#include <format>
+
 namespace Fern
 {
 
@@ -20,7 +22,7 @@ std::string format_type_name(TypeSymbol* type)
     auto* named = type->as<NamedTypeSymbol>();
     if (named && !named->typeArguments.empty())
     {
-        std::string result = named->name + "<";
+        std::string result = std::format("{}<", named->name);
         for (size_t i = 0; i < named->typeArguments.size(); ++i)
         {
             if (i > 0) result += ", ";
@@ -31,7 +33,7 @@ std::string format_type_name(TypeSymbol* type)
     }
     if (named && !named->typeParams.empty())
     {
-        std::string result = named->name + "<";
+        std::string result = std::format("{}<", named->name);
         for (size_t i = 0; i < named->typeParams.size(); ++i)
         {
             if (i > 0) result += ", ";
@@ -49,7 +51,7 @@ std::string MethodSymbol::format_parameters() const
     for (size_t i = 0; i < parameters.size(); ++i)
     {
         if (i > 0) result += ", ";
-        result += parameters[i]->name + ": " + format_type_name(parameters[i]->type);
+        result += std::format("{}: {}", parameters[i]->name, format_type_name(parameters[i]->type));
     }
     return result;
 }

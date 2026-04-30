@@ -2,6 +2,8 @@
 
 #include "scope.hpp"
 
+#include <format>
+
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
@@ -55,14 +57,14 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
         if (!retType && value && value->type)
         {
             Span loc = method->syntax ? method->syntax->span : Span{};
-            diag.error("function '" + method->name +
-                  "' returns a value but has no return type annotation", loc);
+            diag.error(std::format("function '{}' returns a value but has no return type annotation",
+                  method->name), loc);
         }
     }
     else if (TypeSymbol* retType = method->get_return_type())
     {
-        diag.error("function '" + method->name +
-              "' expects a return of type '" + format_type_name(retType) + "'", stmt->span);
+        diag.error(std::format("function '{}' expects a return of type '{}'",
+              method->name, format_type_name(retType)), stmt->span);
     }
 
     out.push_back(fhir.return_stmt(stmt, value));
