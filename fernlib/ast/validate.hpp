@@ -116,6 +116,10 @@ public:
                 diag.error("modifiers are not allowed on local variable declarations", node->span);
             }
         }
+        else
+        {
+            diag.error("Local variable declarations are only allowed inside function bodies", node->span);
+        }
 
         validate_modifiers(node);
         DefaultAstVisitor::visit(node);
