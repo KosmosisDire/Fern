@@ -20,7 +20,9 @@ struct Span
 
     bool contains(uint32_t line, uint32_t col) const;
     Span at_start() const;
+    Span at_end() const;
     Span merge(const Span& other) const;
+    Span expand_until(uint32_t line, uint32_t column) const;
     std::string format() const;
 };
 

@@ -27,6 +27,11 @@ Span Span::at_start() const
     return Span(startLine, startColumn, startLine, startColumn, fileId);
 }
 
+Span Span::at_end() const
+{
+    return Span(endLine, endColumn, endLine, endColumn, fileId);
+}
+
 Span Span::merge(const Span& other) const
 {
     uint32_t newStartLine = startLine;
@@ -49,6 +54,20 @@ Span Span::merge(const Span& other) const
     }
 
     return Span(newStartLine, newStartColumn, newEndLine, newEndColumn, fileId);
+}
+
+Span Span::expand_until(uint32_t line, uint32_t column) const
+{
+    uint32_t newEndLine = endLine;
+    uint32_t newEndColumn = endColumn;
+
+    if (line > newEndLine || (line == newEndLine && column > newEndColumn))
+    {
+        newEndLine = line;
+        newEndColumn = column;
+    }
+
+    return Span(startLine, startColumn, newEndLine, newEndColumn, fileId);
 }
 
 std::string Span::format() const

@@ -509,12 +509,15 @@ FieldDeclSyntax* Parser::parse_field_decl()
     return field;
 }
 
-void Parser::parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& span)
+void Parser::parse_parameter_list(ParameterListSyntax& out, Span& span)
 {
     if (!walker.check(TokenKind::LeftParen))
     {
+        out.span = span.at_end();
         return;
     }
+
+    Span parametersSpan = walker.current().span;
 
     walker.advance();
     skip_newlines(walker);
@@ -529,7 +532,7 @@ void Parser::parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& 
         auto* param = parse_parameter_decl();
         if (param)
         {
-            out.push_back(param);
+            out.list.push_back(param);
         }
         else
         {
@@ -551,6 +554,8 @@ void Parser::parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& 
     if (auto* token = expect(TokenKind::RightParen, "expected ')' after parameter list"))
     {
         span = span.merge(token->span);
+        parametersSpan = parametersSpan.merge(token->span);
+        out.span = parametersSpan;
     }
 }
 

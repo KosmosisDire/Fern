@@ -36,7 +36,7 @@ private:
     NamespaceDeclSyntax* parse_namespace_decl();
 
     // Shared parse helpers
-    void parse_parameter_list(std::vector<ParameterDeclSyntax*>& out, Span& span);
+    void parse_parameter_list(ParameterListSyntax& out, Span& span);
     TypeExprSyntax* parse_return_type(Span& span);
     BlockSyntax* parse_body(Span& span);
 

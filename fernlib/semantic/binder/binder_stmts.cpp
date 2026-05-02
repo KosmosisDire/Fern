@@ -7,6 +7,7 @@
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <common/cast.hpp>
 
 namespace Fern
 {
@@ -56,7 +57,8 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
 
         if (!retType && value && value->type)
         {
-            Span loc = method->syntax ? method->syntax->span : Span{};
+            auto callable = as<CallableDeclSyntax>(method->syntax);
+            Span loc = callable ? callable->name.span.merge(callable->parameters.span) : Span{};
             diag.error(std::format("function '{}' returns a value but has no return type annotation",
                   method->name), loc);
         }

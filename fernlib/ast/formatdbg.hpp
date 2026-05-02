@@ -438,7 +438,7 @@ public:
         write_indent();
         out << "{\n";
         ++indent;
-        write_children("parameters", node->parameters, true);
+        write_children("parameters", node->parameters.list, true);
         if (node->returnType) write_child("returnType", node->returnType, true);
         write_child("body", node->body);
         --indent;

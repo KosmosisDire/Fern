@@ -72,6 +72,15 @@ struct AttributeSyntax
     Span span;
 };
 
+struct ParameterListSyntax
+{
+    std::vector<ParameterDeclSyntax*> list;
+    Span span;
+
+    size_t size() const { return list.size(); }
+    ParameterDeclSyntax* operator[](size_t index) const { return list[index]; }
+};
+
 #pragma region DefaultAstVisitor
 
 class AstVisitor
@@ -413,7 +422,7 @@ struct CallableDeclSyntax : BaseDeclSyntax
 
     CallableKind callableKind = CallableKind::Function;
     Token name = Token::Invalid();
-    std::vector<ParameterDeclSyntax*> parameters;
+    ParameterListSyntax parameters;
     TypeExprSyntax* returnType = nullptr;
     BlockSyntax* body = nullptr;
 };
@@ -627,7 +636,7 @@ public:
     void visit(CallableDeclSyntax* node) override
     {
         on_visit(node);
-        for (auto& param : node->parameters)
+        for (auto& param : node->parameters.list)
             if (param) param->accept(this);
         if (node->returnType) node->returnType->accept(this);
         if (node->body) node->body->accept(this);
