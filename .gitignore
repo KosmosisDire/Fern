@@ -5,6 +5,7 @@ roslyn/
 scratch.fn
 corpus*/
 crash-*
+logs/
 
 
 # Compiled object files
