@@ -1,7 +1,9 @@
 #include "binder.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <format>
+#include <system_error>
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
@@ -135,12 +137,36 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 
     auto* node = fhir.literal(expr, type);
 
+    // Use from_chars to avoid throwing exceptions and better handle out-of-range errors.
+    auto report_out_of_range = [&]()
+    {
+        diag.error(std::format("literal '{}' is out of range", expr->token.lexeme), expr->span);
+    };
+
     try
     {
         if (expr->token.kind == TokenKind::LiteralInt)
-            node->value = ConstantValue::make_int(std::stoll(std::string(expr->token.lexeme)));
+        {
+            int64_t value = 0;
+            const char* first = expr->token.lexeme.data();
+            const char* last = first + expr->token.lexeme.size();
+            auto [ptr, ec] = std::from_chars(first, last, value);
+            if (ec == std::errc::result_out_of_range)
+                report_out_of_range();
+            else if (ec == std::errc{})
+                node->value = ConstantValue::make_int(value);
+        }
         else if (expr->token.kind == TokenKind::LiteralFloat)
-            node->value = ConstantValue::make_float(std::stod(std::string(expr->token.lexeme)));
+        {
+            double value = 0;
+            const char* first = expr->token.lexeme.data();
+            const char* last = first + expr->token.lexeme.size();
+            auto [ptr, ec] = std::from_chars(first, last, value);
+            if (ec == std::errc::result_out_of_range)
+                report_out_of_range();
+            else if (ec == std::errc{})
+                node->value = ConstantValue::make_float(value);
+        }
         else if (expr->token.kind == TokenKind::LiteralBool)
             node->value = ConstantValue::make_bool(expr->token.lexeme == "true");
         else if (expr->token.kind == TokenKind::LiteralString)
