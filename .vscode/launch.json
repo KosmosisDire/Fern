@@ -1,24 +1,58 @@
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"name": "Fern",
-			"type": "cppvsdbg",
-			"request": "launch",
-			"program": "${workspaceFolder}/build/debug/bin/ferncli.exe",
-			"args": "${input:args}",
-			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}",
-			"environment": [],
-			"preLaunchTask": "CMake: Build"
-		},
-	],
-	"inputs": [
-		{
-			"id": "args",
-			"type": "promptString",
-			"description": "Command line arguments",
-			"default": "minimal.fn"
-		}
-	]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Fern: Replay Crash Input",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/fuzz/bin/fernfuzz.exe",
+            "args": ["${input:crashFile}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "environment": [],
+            "preLaunchTask": "CMake: Build"
+        },
+        {
+            "name": "Fern: Fuzz From Corpus",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/fuzz/bin/fernfuzz.exe",
+            "args": [
+                "-dict=build/fuzz/bin/fern.dict",
+                "corpus"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "environment": [],
+            "preLaunchTask": "CMake: Build"
+        },
+        {
+            "name": "Fern CLI",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/bin/ferncli.exe",
+            "args": ["${input:cliFile}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "environment": [],
+            "preLaunchTask": "CMake: Build"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "crashFile",
+            "type": "promptString",
+            "description": "Path to crash artifact (e.g. crash-abc123)",
+            "default": "scratch.fn"
+        },
+        {
+            "id": "cliFile",
+            "type": "promptString",
+            "description": "Path to .fn file",
+            "default": "scratch.fn"
+        }
+    ]
 }

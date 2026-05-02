@@ -200,35 +200,38 @@ if(FERN_BUILD_FUZZER)
             "CRT and the prebuilt LLVM uses the dynamic CRT")
     endif()
 
-    # libFuzzer's runtime requires _ITERATOR_DEBUG_LEVEL=0, which means the
-    # release CRT. A Debug build links the debug CRT and fails with
-    # /failifmismatch on link, so force RelWithDebInfo. Optimization and
-    # debug info are set explicitly by the global flags below.
-    if(WIN32 AND (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
-        set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
-        message(STATUS
-            "FERN_BUILD_FUZZER: forced CMAKE_BUILD_TYPE=RelWithDebInfo on Windows "
-            "to match libFuzzer's release CRT runtime")
-    endif()
-
     # libFuzzer's prebuilt runtime is built against the static release CRT
     # (/MT). Under CMake policy CMP0091 NEW (default since 3.15), CRT
-    # selection is driven by CMAKE_MSVC_RUNTIME_LIBRARY rather than per
-    # config flag variables, so set it directly.
+    # selection is driven by CMAKE_MSVC_RUNTIME_LIBRARY independently of
+    # the build type, so we can force /MT here while still letting users
+    # choose Debug / RelWithDebInfo / Release for the optimization level.
     if(WIN32)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+    endif()
+
+    # Default to RelWithDebInfo for fast fuzzing. Users who want full debug
+    # info (no inlining, all variables visible in the debugger) can configure
+    # with -DCMAKE_BUILD_TYPE=Debug; this still produces a /MT binary so it
+    # links against libFuzzer correctly.
+    if(WIN32 AND NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
+        message(STATUS
+            "FERN_BUILD_FUZZER: defaulted CMAKE_BUILD_TYPE=RelWithDebInfo. "
+            "Use -DCMAKE_BUILD_TYPE=Debug for easier debugging.")
     endif()
 
     # Keep internal assertions on for fuzzing even when not in a Debug build.
     add_compile_definitions(FERN_DEBUG)
 
+    # Optimization level comes from CMAKE_BUILD_TYPE (Debug = -O0, RelWithDebInfo
+    # = -O2, Release = -O3). We only add the sanitizer + debug info flags
+    # explicitly so they apply regardless of build type.
     add_compile_options(
-        -fsanitize=fuzzer-no-link,address,undefined
+        -fsanitize=fuzzer-no-link,address
         -fno-omit-frame-pointer
         -g
-        -O1
     )
-    add_link_options(-fsanitize=address,undefined)
+    add_link_options(-fsanitize=address)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
