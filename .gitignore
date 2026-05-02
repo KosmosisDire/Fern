@@ -3,7 +3,7 @@ spec/
 tools/
 roslyn/
 scratch.fn
-corpus/
+corpus*/
 crash-*
 
 
