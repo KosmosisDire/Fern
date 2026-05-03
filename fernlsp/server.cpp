@@ -1,6 +1,7 @@
 #include "server.hpp"
 #include "analysis.hpp"
 #include "diagnostics.hpp"
+#include "hover.hpp"
 
 #include <lsp/messages.h>
 
@@ -60,6 +61,7 @@ void FernServer::register_handlers()
             syncOptions.openClose = true;
             syncOptions.change = lsp::TextDocumentSyncKind::Full;
             result.capabilities.textDocumentSync = syncOptions;
+            result.capabilities.hoverProvider = true;
 
             result.serverInfo = lsp::InitializeResultServerInfo{
                 .name = "FernLSP",
@@ -88,14 +90,13 @@ void FernServer::register_handlers()
             std::string uriStr = params.textDocument.uri.toString();
             std::string path = uri_to_path(params.textDocument.uri);
 
-            documents[uriStr] = DocumentState{
-                .uri = uriStr,
-                .content = params.textDocument.text,
-                .version = params.textDocument.version
-            };
+            auto& doc = documents[uriStr];
+            doc.uri = uriStr;
+            doc.content = params.textDocument.text;
+            doc.version = params.textDocument.version;
 
-            auto compilation = compile_document(documents[uriStr], path, includeFiles, rootPath);
-            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(compilation->diag.get_diagnostics()));
+            compile_document(doc, path, includeFiles, rootPath);
+            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(doc.compilation->diag.get_diagnostics()));
         });
 
     handler.add<lsp::notifications::TextDocument_DidChange>(
@@ -117,8 +118,8 @@ void FernServer::register_handlers()
             it->second.version = params.textDocument.version;
 
             std::string path = uri_to_path(params.textDocument.uri);
-            auto compilation = compile_document(it->second, path, includeFiles, rootPath);
-            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(compilation->diag.get_diagnostics()));
+            compile_document(it->second, path, includeFiles, rootPath);
+            publish_diagnostics(handler, params.textDocument.uri, map_diagnostics(it->second.compilation->diag.get_diagnostics()));
         });
 
     handler.add<lsp::notifications::TextDocument_DidClose>(
@@ -128,5 +129,50 @@ void FernServer::register_handlers()
             documents.erase(uriStr);
 
             publish_diagnostics(handler, params.textDocument.uri, {});
+        });
+
+    handler.add<lsp::requests::TextDocument_Hover>(
+        [this](lsp::requests::TextDocument_Hover::Params&& params) -> lsp::requests::TextDocument_Hover::Result
+        {
+            std::string uriStr = params.textDocument.uri.toString();
+            auto it = documents.find(uriStr);
+            if (it == documents.end())
+            {
+                return nullptr;
+            }
+
+            std::optional<lsp::Hover> hover;
+            switch (hoverMode)
+            {
+                case HoverMode::Ast:
+                    hover = compute_ast_debug_hover(it->second, params.position.line, params.position.character);
+                    break;
+                case HoverMode::Fhir:
+                    hover = compute_fhir_debug_hover(it->second, params.position.line, params.position.character);
+                    break;
+                case HoverMode::Normal:
+                default:
+                    hover = compute_hover(it->second, params.position.line, params.position.character);
+                    break;
+            }
+            if (!hover) return nullptr;
+            return std::move(*hover);
+        });
+
+    handler.add("fern/setHoverMode",
+        [this](lsp::json::Any&& params) -> lsp::json::Any
+        {
+            if (params.isObject())
+            {
+                auto it = params.object().find("mode");
+                if (it != params.object().end() && it->second.isString())
+                {
+                    const auto& mode = it->second.string();
+                    if (mode == "ast") hoverMode = HoverMode::Ast;
+                    else if (mode == "fhir") hoverMode = HoverMode::Fhir;
+                    else hoverMode = HoverMode::Normal;
+                }
+            }
+            return lsp::json::Any{};
         });
 }

@@ -2,8 +2,8 @@
 
 #include <filesystem>
 
-std::unique_ptr<Fern::Compilation> compile_document(
-    const DocumentState& doc,
+void compile_document(
+    DocumentState& doc,
     std::string_view path,
     const std::vector<std::string>& includeFiles,
     std::string_view rootPath)
@@ -34,7 +34,8 @@ std::unique_ptr<Fern::Compilation> compile_document(
     }
 
     compilation->add_source(doc.content, path);
+    doc.fileId = static_cast<uint32_t>(compilation->get_units().size() - 1);
     compilation->compile();
 
-    return compilation;
+    doc.compilation = std::move(compilation);
 }

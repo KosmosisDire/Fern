@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     LOG(LogChannel::Debug) << "---- FHIR ----\n";
     for (auto* method : compilation.semantic().methods)
     {
-        LOG(LogChannel::Debug) << Fern::FhirFormatter::format(method) << "\n";
+        LOG(LogChannel::Debug) << Fern::FhirDebugFormatter::format(method) << "\n";
     }
 
     for (const auto& diag : compilation.diag.get_diagnostics())

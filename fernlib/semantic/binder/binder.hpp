@@ -105,7 +105,7 @@ protected:
     virtual LookupResult lookup_in_single_binder(std::string_view name) = 0;
 
     static bool collect_type_path(TypeExprSyntax* expr, std::vector<std::string_view>& path);
-    FhirTypeRef* build_type_ref_tree(TypeExprSyntax* expr, TypeSymbol* type);
+    FhirTypeRef* build_type_ref_tree(BaseExprSyntax* expr, TypeSymbol* type);
 
 #pragma region Statement Binding
 

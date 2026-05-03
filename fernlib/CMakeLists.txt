@@ -13,6 +13,7 @@ set(FERNLIB_SOURCES
     semantic/symbol/symbol_fmt.cpp
     semantic/symbol/overload.cpp
     semantic/symbol/table.cpp
+    semantic/builtin_aliases.cpp
     semantic/context.cpp
     semantic/binder/binder.cpp
     semantic/binder/binder_attributes.cpp
@@ -30,6 +31,7 @@ set(FERNLIB_SOURCES
     semantic/fhir/fhir_constant.cpp
     semantic/fhir/flow.cpp
     semantic/fhir/fmt.cpp
+    semantic/fhir/hittest.cpp
 
     # source
     source/file.cpp

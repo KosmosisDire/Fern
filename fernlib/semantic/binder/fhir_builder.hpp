@@ -72,13 +72,14 @@ struct FhirBuilder
     }
 
     FhirIntrinsicExpr* intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicOp op,
-                                 std::initializer_list<FhirExpr*> args)
+                                 std::initializer_list<FhirExpr*> args, MethodSymbol* method = nullptr)
     {
         auto* node = arena.alloc<FhirIntrinsicExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
         node->op = op;
+        node->method = method;
         node->args = args;
         return node;
     }

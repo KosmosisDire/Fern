@@ -216,7 +216,7 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
         case SymbolKind::TypeParam:
         {
             auto* typeSym = symbol->as<TypeSymbol>();
-            return fhir.type_ref(expr, typeSym);
+            return build_type_ref_tree(expr, typeSym);
         }
         case SymbolKind::Namespace:
         {
@@ -274,7 +274,7 @@ FhirExpr* Binder::bind_generic_name_expr(GenericNameExprSyntax* expr)
 {
     TypeSymbol* type = resolve_generic_name(expr);
     if (!type) return fhir.error_expr(expr);
-    return fhir.type_ref(expr, type);
+    return build_type_ref_tree(expr, type);
 }
 
 FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
@@ -300,7 +300,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         {
             TypeSymbol* type = resolve_generic_name(genRight, namedLeft);
             if (!type) return fhir.error_expr(expr);
-            return fhir.type_ref(expr, type);
+            return build_type_ref_tree(expr, type);
         }
 
         if (!namedLeft->collect_methods(memberName).empty())
@@ -318,7 +318,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         }
 
         if (auto* nested = member->as<NamedTypeSymbol>())
-            return fhir.type_ref(expr, nested);
+            return build_type_ref_tree(expr, nested);
 
         if (auto* field = member->as<FieldSymbol>())
         {
@@ -343,7 +343,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         {
             TypeSymbol* type = resolve_generic_name(genRight, ns);
             if (!type) return fhir.error_expr(expr);
-            return fhir.type_ref(expr, type);
+            return build_type_ref_tree(expr, type);
         }
 
         Symbol* member = ns->find_member(memberName);
@@ -357,7 +357,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         if (auto* nestedNs = member->as<NamespaceSymbol>())
             return fhir.namespace_ref(expr, nestedNs);
         if (auto* nestedType = member->as<NamedTypeSymbol>())
-            return fhir.type_ref(expr, nestedType);
+            return build_type_ref_tree(expr, nestedType);
         return fhir.error_expr(expr);
     }
 
@@ -418,7 +418,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
             {
                 return fhir.call(expr, method->get_return_type(), method, {operand});
             }
-            return fhir.intrinsic(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand});
+            return fhir.intrinsic(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand}, method);
         }
 
         diag.error(std::format("operator '{}' cannot be applied to value of type '{}'",
@@ -470,7 +470,7 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
             lhs = coerce_to_param(lhs, baseMethod->parameters[0]->type);
             rhs = coerce_to_param(rhs, baseMethod->parameters[1]->type);
             TypeSymbol* boolType = context.resolve_type_name("bool");
-            return fhir.intrinsic(syntax, boolType, to_intrinsic_op(op), {lhs, rhs});
+            return fhir.intrinsic(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
         }
 
         std::string leftName = format_type_name(leftType);
@@ -538,7 +538,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         {
             return fhir.call(syntax, method->get_return_type(), method, {lhs, rhs});
         }
-        return fhir.intrinsic(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs});
+        return fhir.intrinsic(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
     }
 
     return try_synthesize_compound_comparison(op, opToken, namedType, leftType, rightType, lhs, rhs, syntax);

@@ -311,6 +311,7 @@ struct FhirIntrinsicExpr : FhirExpr
     FHIR_NODE(FhirIntrinsicExpr, FhirExpr)
 
     IntrinsicOp op = IntrinsicOp::Add;
+    MethodSymbol* method = nullptr;
     std::vector<FhirExpr*> args;
 
     std::optional<ConstantValue> compute_constant() const;
@@ -541,30 +542,33 @@ struct FhirMethod
 
 class DefaultFhirVisitor : public FhirVisitor
 {
+protected:
+    virtual void on_visit(FhirNode*) {}
+
 public:
-    void visit(FhirLiteralExpr* node) override { node->visit_children(this); }
-    void visit(FhirLocalRefExpr* node) override { node->visit_children(this); }
-    void visit(FhirParamRefExpr* node) override { node->visit_children(this); }
-    void visit(FhirFieldRefExpr* node) override { node->visit_children(this); }
-    void visit(FhirThisExpr* node) override { node->visit_children(this); }
-    void visit(FhirIntrinsicExpr* node) override { node->visit_children(this); }
-    void visit(FhirCallExpr* node) override { node->visit_children(this); }
-    void visit(FhirConstructionExpr* node) override { node->visit_children(this); }
-    void visit(FhirAssignExpr* node) override { node->visit_children(this); }
-    void visit(FhirCastExpr* node) override { node->visit_children(this); }
-    void visit(FhirErrorExpr* node) override {}
-    void visit(FhirNamespaceRefExpr* node) override {}
-    void visit(FhirMethodGroupRefExpr* node) override { node->visit_children(this); }
-    void visit(FhirMethodRefExpr* node) override { node->visit_children(this); }
+    void visit(FhirLiteralExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirLocalRefExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirParamRefExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirFieldRefExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirThisExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirIntrinsicExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirCallExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirConstructionExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirAssignExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirCastExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirErrorExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirNamespaceRefExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirMethodGroupRefExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirMethodRefExpr* node) override { on_visit(node); node->visit_children(this); }
 
-    void visit(FhirBlock* node) override { node->visit_children(this); }
-    void visit(FhirVarDeclStmt* node) override { node->visit_children(this); }
-    void visit(FhirExprStmt* node) override { node->visit_children(this); }
-    void visit(FhirReturnStmt* node) override { node->visit_children(this); }
-    void visit(FhirIfStmt* node) override { node->visit_children(this); }
-    void visit(FhirWhileStmt* node) override { node->visit_children(this); }
+    void visit(FhirBlock* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirVarDeclStmt* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirExprStmt* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirReturnStmt* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirIfStmt* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirWhileStmt* node) override { on_visit(node); node->visit_children(this); }
 
-    void visit(FhirTypeRef* node) override { node->visit_children(this); }
+    void visit(FhirTypeRef* node) override { on_visit(node); node->visit_children(this); }
 };
 
 }

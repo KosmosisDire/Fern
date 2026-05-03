@@ -1,7 +1,5 @@
 #include <semantic/context.hpp>
 
-#include <unordered_map>
-
 #include <ast/ast.hpp>
 #include <semantic/binder/binder.hpp>
 #include <semantic/binder/fhir_builder.hpp>
@@ -9,20 +7,11 @@
 #include <semantic/binder/namespace_binder.hpp>
 #include <semantic/binder/root_binder.hpp>
 #include <semantic/binder/type_binder.hpp>
+#include <semantic/builtin_aliases.hpp>
 #include <semantic/fhir/fhir.hpp>
 
 namespace Fern
 {
-
-static const std::unordered_map<std::string_view, std::pair<std::string_view, std::string_view>> typeAliases =
-{
-    {"i32",  {"Core", "I32"}},
-    {"f32",  {"Core", "F32"}},
-    {"bool", {"Core", "Bool"}},
-    {"u8",   {"Core", "U8"}},
-    {"char", {"Core", "Char"}},
-    {"string", {"Core", "String"}},
-};
 
 SemanticContext::SemanticContext(AllocArena& arena, Diagnostics& diag)
     : arena(arena)
@@ -35,10 +24,9 @@ SemanticContext::~SemanticContext() = default;
 
 TypeSymbol* SemanticContext::resolve_type_name(std::string_view alias)
 {
-    auto it = typeAliases.find(alias);
-    if (it != typeAliases.end())
+    if (const auto* entry = BuiltinAliases::find_by_alias(alias))
     {
-        Symbol* sym = symbols.lookup({it->second.first, it->second.second});
+        Symbol* sym = symbols.lookup({entry->namespaceName, entry->typeName});
         if (sym) return sym->as<TypeSymbol>();
     }
     return nullptr;

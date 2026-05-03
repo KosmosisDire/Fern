@@ -17,6 +17,18 @@
             {
                 "command": "fern.toggleLanguageServer",
                 "title": "Fern: Toggle Language Server"
+            },
+            {
+                "command": "fern.setHoverModeNormal",
+                "title": "Fern: Hover Mode - Normal"
+            },
+            {
+                "command": "fern.setHoverModeAst",
+                "title": "Fern: Hover Mode - AST Debug"
+            },
+            {
+                "command": "fern.setHoverModeFhir",
+                "title": "Fern: Hover Mode - FHIR Debug"
             }
         ],
         "languages": [

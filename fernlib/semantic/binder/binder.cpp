@@ -276,7 +276,7 @@ TypeSymbol* Binder::resolve_generic_name(GenericNameExprSyntax* gen, Symbol* par
     return context.symbols.get_or_declare_generic_instance(templ, typeArgs);
 }
 
-FhirTypeRef* Binder::build_type_ref_tree(TypeExprSyntax* expr, TypeSymbol* type)
+FhirTypeRef* Binder::build_type_ref_tree(BaseExprSyntax* expr, TypeSymbol* type)
 {
     if (!expr) return nullptr;
 
@@ -292,6 +292,11 @@ FhirTypeRef* Binder::build_type_ref_tree(TypeExprSyntax* expr, TypeSymbol* type)
     else if (auto* qual = expr->as<QualifiedNameExprSyntax>())
     {
         if (auto* genRight = qual->right ? qual->right->as<GenericNameExprSyntax>() : nullptr)
+            typeArgs = genRight->typeArgs;
+    }
+    else if (auto* member = expr->as<MemberAccessExprSyntax>())
+    {
+        if (auto* genRight = member->right ? member->right->as<GenericNameExprSyntax>() : nullptr)
             typeArgs = genRight->typeArgs;
     }
 

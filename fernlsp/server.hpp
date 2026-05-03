@@ -8,6 +8,13 @@
 #include <unordered_map>
 #include <vector>
 
+enum class HoverMode
+{
+    Normal,
+    Ast,
+    Fhir,
+};
+
 class FernServer
 {
 public:
@@ -19,6 +26,7 @@ public:
     std::unordered_map<std::string, DocumentState> documents;
     std::vector<std::string> includeFiles;
     std::string rootPath;
+    HoverMode hoverMode = HoverMode::Normal;
 
 private:
     bool running = true;

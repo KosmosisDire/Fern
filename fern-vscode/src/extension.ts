@@ -7,7 +7,12 @@ import {
     TransportKind
 } from 'vscode-languageclient/node';
 
+type HoverMode = 'normal' | 'ast' | 'fhir';
+
 let client: LanguageClient | undefined;
+let hoverMode: HoverMode = 'normal';
+let statusBarItem: vscode.StatusBarItem | undefined;
+let debugDecorationType: vscode.TextEditorDecorationType | undefined;
 
 async function startServer(): Promise<boolean> {
     const config = vscode.workspace.getConfiguration('fern');
@@ -45,6 +50,21 @@ async function startServer(): Promise<boolean> {
         },
         initializationOptions: {
             includes
+        },
+        middleware: {
+            provideHover: async (document, position, token, next) => {
+                const hover = await next(document, position, token);
+                if (hoverMode === 'normal' || !hover || !debugDecorationType)
+                {
+                    return hover;
+                }
+                const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+                if (editor && hover.range)
+                {
+                    editor.setDecorations(debugDecorationType, [hover.range]);
+                }
+                return hover;
+            }
         }
     };
 
@@ -56,6 +76,7 @@ async function startServer(): Promise<boolean> {
     );
 
     await client.start();
+    await sendHoverMode(hoverMode);
     return true;
 }
 
@@ -66,7 +87,53 @@ async function stopServer(): Promise<void> {
     }
 }
 
+async function sendHoverMode(mode: HoverMode): Promise<void> {
+    if (!client) return;
+    try {
+        await client.sendNotification('fern/setHoverMode', { mode });
+    } catch (err) {
+        // ignore: server may not be ready yet
+    }
+}
+
+function updateStatusBar(): void {
+    if (!statusBarItem) return;
+    if (hoverMode === 'normal') {
+        statusBarItem.hide();
+    } else {
+        statusBarItem.text = `Fern: ${hoverMode.toUpperCase()} debug`;
+        statusBarItem.tooltip = 'Click to switch back to normal hover';
+        statusBarItem.command = 'fern.setHoverModeNormal';
+        statusBarItem.show();
+    }
+}
+
+function clearDecorations(): void {
+    if (!debugDecorationType) return;
+    for (const editor of vscode.window.visibleTextEditors) {
+        editor.setDecorations(debugDecorationType, []);
+    }
+}
+
+async function setHoverMode(mode: HoverMode): Promise<void> {
+    hoverMode = mode;
+    updateStatusBar();
+    await sendHoverMode(mode);
+    if (mode === 'normal') {
+        clearDecorations();
+    }
+}
+
 export function activate(context: vscode.ExtensionContext) {
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    context.subscriptions.push(statusBarItem);
+
+    debugDecorationType = vscode.window.createTextEditorDecorationType({
+        backgroundColor: 'rgba(255, 200, 0, 0.25)',
+        borderRadius: '2px'
+    });
+    context.subscriptions.push(debugDecorationType);
+
     context.subscriptions.push(
         vscode.commands.registerCommand('fern.toggleLanguageServer', async () => {
             if (client) {
@@ -79,6 +146,12 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
         })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('fern.setHoverModeAst', () => setHoverMode('ast')),
+        vscode.commands.registerCommand('fern.setHoverModeFhir', () => setHoverMode('fhir')),
+        vscode.commands.registerCommand('fern.setHoverModeNormal', () => setHoverMode('normal'))
     );
 
     context.subscriptions.push(
@@ -122,5 +195,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate(): Thenable<void> | undefined {
+    clearDecorations();
     return stopServer();
 }
