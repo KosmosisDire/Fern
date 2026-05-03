@@ -6,7 +6,7 @@ namespace Fern
 {
 
 // Chain terminator. Contributes primitive type aliases and global types via the
-// semantic context. Has no state of its own — every other binder's chain walks
+// semantic context. Has no state of its own every other binder's chain walks
 // up to here.
 class RootBinder : public Binder
 {

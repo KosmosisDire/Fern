@@ -93,7 +93,7 @@ endif()
 # bundled libc++ shadows the consumer compiler's libc++ and produces the
 # classic "<cstddef> didn't find libc++'s <stddef.h>" error. We don't need
 # the bundled libc++ (the consumer compiler brings its own), so move it out
-# of the include search path. Runs every configure for idempotence — also
+# of the include search path. Runs every configure for idempotence also
 # fixes already-cached LLVM dirs from before this patch.
 if(EXISTS "${LLVM_INSTALL_DIR}/include/c++")
     file(RENAME

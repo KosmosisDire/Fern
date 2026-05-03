@@ -315,7 +315,7 @@ elseif(_libffi_target STREQUAL "ARM_WIN64")
             "Use Clang on Windows ARM64 in the meantime, or set "
             "-DFERN_BUILD_LIBFFI=OFF to skip libffi.")
     else()
-        # Clang/MinGW on Windows ARM64 use the GAS-syntax sysv.S — same as
+        # Clang/MinGW on Windows ARM64 use the GAS-syntax sysv.S same as
         # Linux/macOS ARM64. Internal #ifdefs in the .S file handle the ABI
         # differences.
         list(APPEND LIBFFI_SOURCES ${LIBFFI_SRC}/src/aarch64/sysv.S)

@@ -16,8 +16,8 @@ Source -> Lexer -> Parser -> AST -> Binder -> FHIR (Fern High-level IR) -> FLIR 
 
 Two modes:
 
-* **Developer build** — full project (CLI + LSP). Strict toolchain.
-* **Embedded build** — `fernlib` only for embedding into your own project.
+* **Developer build**: full project (CLI + LSP). Strict toolchain.
+* **Embedded build**: `fernlib` only for embedding into your own project.
 
 ### Developer build
 
