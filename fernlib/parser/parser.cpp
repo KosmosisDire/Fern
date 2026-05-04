@@ -1589,26 +1589,6 @@ SimpleNameExprSyntax* Parser::parse_simple_name()
     return ident;
 }
 
-QualifiedNameExprSyntax* Parser::parse_qualified_name(TypeExprSyntax* left)
-{
-    auto* node = arena.alloc<QualifiedNameExprSyntax>();
-    node->left = left;
-
-    walker.advance();
-
-    if (walker.check(TokenKind::Identifier))
-    {
-        auto* right = parse_simple_name();
-        node->right = right;
-        node->span = left->span.merge(right->span);
-        return node;
-    }
-
-    diag.error("expected member name after '.'", walker.current().span);
-    node->span = left->span;
-    return node;
-}
-
 TypeExprSyntax* Parser::parse_type()
 {
     if (!walker.check(TokenKind::Identifier))
@@ -1620,7 +1600,7 @@ TypeExprSyntax* Parser::parse_type()
 
     while (walker.check(TokenKind::Dot))
     {
-        type = parse_qualified_name(type);
+        type = parse_member_access(type);
     }
 
     while (walker.check(TokenKind::LeftBracket) && walker.peek(1).kind == TokenKind::RightBracket)

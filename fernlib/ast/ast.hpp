@@ -25,7 +25,6 @@ struct TypeExprSyntax;
 struct SimpleNameExprSyntax;
 struct IdentifierExprSyntax;
 struct GenericNameExprSyntax;
-struct QualifiedNameExprSyntax;
 struct LiteralExprSyntax;
 struct ParenExprSyntax;
 struct CallExprSyntax;
@@ -93,7 +92,6 @@ public:
 
     // Expressions
     virtual void visit(IdentifierExprSyntax* node) = 0;
-    virtual void visit(QualifiedNameExprSyntax* node) = 0;
     virtual void visit(LiteralExprSyntax* node) = 0;
     virtual void visit(ParenExprSyntax* node) = 0;
     virtual void visit(CallExprSyntax* node) = 0;
@@ -218,17 +216,6 @@ struct GenericNameExprSyntax : SimpleNameExprSyntax
     std::vector<TypeExprSyntax*> typeArgs;
 };
 
-// A.B in a type context (e.g. Namespace.Type)
-// This is notably simpler than MemberAccessExprSyntax
-// since it only needs to support type-like expressions
-struct QualifiedNameExprSyntax : TypeExprSyntax
-{
-    SYNTAX_NODE(QualifiedNameExpr, TypeExprSyntax)
-
-    TypeExprSyntax* left = nullptr;
-    SimpleNameExprSyntax* right = nullptr;
-};
-
 // 2, 2.5, true, false
 struct LiteralExprSyntax : BaseExprSyntax
 {
@@ -292,10 +279,11 @@ struct AssignmentExprSyntax : BaseExprSyntax
     ExprPtr value = nullptr;
 };
 
-// object.member
-struct MemberAccessExprSyntax : BaseExprSyntax
+// A.B form. Covers type slot dots and expression dots.
+// Binder validates name shape at use.
+struct MemberAccessExprSyntax : TypeExprSyntax
 {
-    SYNTAX_NODE(MemberAccessExpr, BaseExprSyntax)
+    SYNTAX_NODE(MemberAccessExpr, TypeExprSyntax)
 
     ExprPtr left = nullptr;
     SimpleNameExprSyntax* right = nullptr;
@@ -491,13 +479,6 @@ public:
     }
 
     void visit(IdentifierExprSyntax* node) override { on_visit(node); }
-
-    void visit(QualifiedNameExprSyntax* node) override
-    {
-        on_visit(node);
-        if (node->left) node->left->accept(this);
-        if (node->right) node->right->accept(this);
-    }
 
     void visit(LiteralExprSyntax* node) override { on_visit(node); }
 

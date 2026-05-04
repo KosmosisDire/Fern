@@ -50,38 +50,29 @@ public:
     }
 };
 
-// Walks a (possibly qualified) name expression to find which symbol the cursor
-// is on. Returns the leaf symbol if the cursor is on the rightmost name, or
-// recurses through the parent chain for namespace or type prefixes on the left.
-// QualifiedNameExprSyntax appears in type slots (var x: A.B), MemberAccessExprSyntax
-// appears in expression slots (A.B(...)). Returns null if the cursor sits between
-// names (e.g. on a dot).
+// Walks a dotted name expression to find which symbol the cursor is on.
+// Returns the leaf symbol if the cursor is on the rightmost name, or recurses
+// through the parent chain for namespace or type prefixes on the left.
+// MemberAccessExprSyntax covers both type slots (var x: A.B) and expression
+// slots (A.B(...)). Returns null if the cursor sits between names (e.g. on a dot).
 Symbol* resolve_cursor_in_name(BaseSyntax* syntax, Symbol* leafSymbol, uint32_t line, uint32_t col)
 {
     if (!syntax || !leafSymbol) return nullptr;
 
-    BaseSyntax* left = nullptr;
-    BaseSyntax* right = nullptr;
+    if (auto* member = syntax->as<MemberAccessExprSyntax>())
+    {
+        BaseSyntax* left = member->left;
+        BaseSyntax* right = member->right;
 
-    if (auto* qual = syntax->as<QualifiedNameExprSyntax>())
-    {
-        left = qual->left;
-        right = qual->right;
-    }
-    else if (auto* member = syntax->as<MemberAccessExprSyntax>())
-    {
-        left = member->left;
-        right = member->right;
-    }
-
-    if (left && right)
-    {
-        if (right->span.contains(line, col)) return leafSymbol;
-        if (left->span.contains(line, col))
+        if (left && right)
         {
-            return resolve_cursor_in_name(left, leafSymbol->parent, line, col);
+            if (right->span.contains(line, col)) return leafSymbol;
+            if (left->span.contains(line, col))
+            {
+                return resolve_cursor_in_name(left, leafSymbol->parent, line, col);
+            }
+            return nullptr;
         }
-        return nullptr;
     }
 
     if (syntax->span.contains(line, col)) return leafSymbol;

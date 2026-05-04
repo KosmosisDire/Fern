@@ -32,7 +32,6 @@ struct CastExprSyntax;
 struct ReturnStmtSyntax;
 struct ThisExprSyntax;
 struct GenericNameExprSyntax;
-struct QualifiedNameExprSyntax;
 struct ArrayTypeExprSyntax;
 struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
@@ -80,7 +79,7 @@ public:
     void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
     void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
     TypeSymbol* resolve_type_expr(TypeExprSyntax* expr);
-    Symbol* resolve_namespace_or_type(TypeExprSyntax* expr);
+    Symbol* resolve_namespace_or_type(BaseExprSyntax* expr);
     TypeSymbol* resolve_generic_name(GenericNameExprSyntax* gen, Symbol* parentScope = nullptr);
     FhirTypeRef* bind_type_ref(TypeExprSyntax* expr);
 
@@ -104,7 +103,7 @@ protected:
 
     virtual LookupResult lookup_in_single_binder(std::string_view name) = 0;
 
-    static bool collect_type_path(TypeExprSyntax* expr, std::vector<std::string_view>& path);
+    static bool collect_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path);
     FhirTypeRef* build_type_ref_tree(BaseExprSyntax* expr, TypeSymbol* type);
 
 #pragma region Statement Binding

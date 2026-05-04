@@ -237,20 +237,6 @@ public:
         out << "}";
     }
 
-    void visit(QualifiedNameExprSyntax* node) override
-    {
-        begin_node_with_name(node, node->right ? node->right->name.lexeme : std::string_view{});
-        out << "\n";
-        write_indent();
-        out << "{\n";
-        ++indent;
-        write_child("left", node->left);
-        write_child("right", node->right);
-        --indent;
-        write_indent();
-        out << "}";
-    }
-
     void visit(ThisExprSyntax* node) override
     {
         begin_node(node);

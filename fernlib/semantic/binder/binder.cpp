@@ -55,7 +55,7 @@ LookupResult Binder::lookup(std::string_view name)
     return {};
 }
 
-bool Binder::collect_type_path(TypeExprSyntax* expr, std::vector<std::string_view>& path)
+bool Binder::collect_type_path(BaseExprSyntax* expr, std::vector<std::string_view>& path)
 {
     if (auto* idExpr = expr->as<IdentifierExprSyntax>())
     {
@@ -67,11 +67,11 @@ bool Binder::collect_type_path(TypeExprSyntax* expr, std::vector<std::string_vie
         path.push_back(genName->name.lexeme);
         return true;
     }
-    if (auto* qualExpr = expr->as<QualifiedNameExprSyntax>())
+    if (auto* member = expr->as<MemberAccessExprSyntax>())
     {
-        if (!collect_type_path(qualExpr->left, path)) return false;
-        if (!qualExpr->right) return false;
-        path.push_back(qualExpr->right->name.lexeme);
+        if (!collect_type_path(member->left, path)) return false;
+        if (!member->right) return false;
+        path.push_back(member->right->name.lexeme);
         return true;
     }
     return false;
@@ -123,33 +123,33 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
         return arrayType;
     }
 
-    if (auto* qualExpr = expr->as<QualifiedNameExprSyntax>())
+    if (auto* member = expr->as<MemberAccessExprSyntax>())
     {
-        if (auto* genRight = qualExpr->right ? qualExpr->right->as<GenericNameExprSyntax>() : nullptr)
+        if (auto* genRight = member->right ? member->right->as<GenericNameExprSyntax>() : nullptr)
         {
-            Symbol* parentSym = resolve_namespace_or_type(qualExpr->left);
+            Symbol* parentSym = resolve_namespace_or_type(member->left);
             if (!parentSym)
             {
                 std::vector<std::string_view> path;
-                collect_type_path(qualExpr->left, path);
-                diag.error(std::format("undefined type '{}.{}'", join_path(path), genRight->name.lexeme), qualExpr->left->span);
+                collect_type_path(member->left, path);
+                diag.error(std::format("undefined type '{}.{}'", join_path(path), genRight->name.lexeme), member->left->span);
                 return nullptr;
             }
             return resolve_generic_name(genRight, parentSym);
         }
 
-        Symbol* sym = resolve_namespace_or_type(qualExpr);
+        Symbol* sym = resolve_namespace_or_type(member);
         if (!sym)
         {
             std::vector<std::string_view> path;
-            collect_type_path(qualExpr, path);
+            collect_type_path(member, path);
             diag.error(std::format("undefined type '{}'", join_path(path)), expr->span);
             return nullptr;
         }
         if (auto* type = sym->as<TypeSymbol>()) return type;
 
         std::vector<std::string_view> path;
-        collect_type_path(qualExpr, path);
+        collect_type_path(member, path);
         diag.error(std::format("'{}' is not a type", join_path(path)), expr->span);
         return nullptr;
     }
@@ -157,7 +157,7 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
     return nullptr;
 }
 
-Symbol* Binder::resolve_namespace_or_type(TypeExprSyntax* expr)
+Symbol* Binder::resolve_namespace_or_type(BaseExprSyntax* expr)
 {
     if (!expr) return nullptr;
 
@@ -171,18 +171,18 @@ Symbol* Binder::resolve_namespace_or_type(TypeExprSyntax* expr)
         return resolve_generic_name(gen);
     }
 
-    if (auto* qual = expr->as<QualifiedNameExprSyntax>())
+    if (auto* member = expr->as<MemberAccessExprSyntax>())
     {
-        if (!qual->right) return nullptr;
-        Symbol* left = resolve_namespace_or_type(qual->left);
+        if (!member->right) return nullptr;
+        Symbol* left = resolve_namespace_or_type(member->left);
         if (!left) return nullptr;
 
-        if (auto* genRight = qual->right->as<GenericNameExprSyntax>())
+        if (auto* genRight = member->right->as<GenericNameExprSyntax>())
         {
             return resolve_generic_name(genRight, left);
         }
 
-        std::string_view rightName = qual->right->name.lexeme;
+        std::string_view rightName = member->right->name.lexeme;
         if (auto* ns = left->as<NamespaceSymbol>())
             return ns->find_member(rightName);
         if (auto* type = left->as<NamedTypeSymbol>())
@@ -288,11 +288,6 @@ FhirTypeRef* Binder::build_type_ref_tree(BaseExprSyntax* expr, TypeSymbol* type)
     else if (auto* gen = expr->as<GenericNameExprSyntax>())
     {
         typeArgs = gen->typeArgs;
-    }
-    else if (auto* qual = expr->as<QualifiedNameExprSyntax>())
-    {
-        if (auto* genRight = qual->right ? qual->right->as<GenericNameExprSyntax>() : nullptr)
-            typeArgs = genRight->typeArgs;
     }
     else if (auto* member = expr->as<MemberAccessExprSyntax>())
     {

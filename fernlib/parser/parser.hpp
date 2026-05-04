@@ -62,7 +62,6 @@ private:
 
     // Types
     TypeExprSyntax* parse_type();
-    QualifiedNameExprSyntax* parse_qualified_name(TypeExprSyntax* left);
 
     TokenWalker& walker;
     AllocArena& arena;
