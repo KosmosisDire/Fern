@@ -306,7 +306,7 @@ CallableDeclSyntax* Parser::parse_function_decl()
     func->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    func->body = parse_body(span);
+    func->body = parse_body(span, "expected '{' after function declaration");
     func->span = span;
 
     return func;
@@ -462,6 +462,10 @@ TypeDeclSyntax* Parser::parse_type_decl()
             span = span.merge(token->span);
         }
     }
+    else
+    {
+        diag.error("expected '{' after type declaration", walker.current().span);
+    }
 
     typeDecl->span = span;
 
@@ -577,10 +581,11 @@ TypeExprSyntax* Parser::parse_return_type(Span& span)
     return type;
 }
 
-BlockSyntax* Parser::parse_body(Span& span)
+BlockSyntax* Parser::parse_body(Span& span, std::string_view missingBraceMessage)
 {
     if (!walker.check(TokenKind::LeftBrace))
     {
+        diag.error(missingBraceMessage, walker.current().span);
         return nullptr;
     }
 
@@ -745,7 +750,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     opDecl->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    opDecl->body = parse_body(span);
+    opDecl->body = parse_body(span, "expected '{' after operator declaration");
     opDecl->span = span;
 
     return opDecl;
