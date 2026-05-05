@@ -1,0 +1,12 @@
+---
+Description: Double not on a bool
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        return !!true
+    }
+}

@@ -1,0 +1,12 @@
+---
+Description: Subtraction with whitespace
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 5 - 4
+    }
+}

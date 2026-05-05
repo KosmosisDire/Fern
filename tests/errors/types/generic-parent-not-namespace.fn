@@ -1,0 +1,19 @@
+---
+Description: Generic type with multi-segment path where parent is not a namespace
+Expected: compile error
+---
+
+type Foo
+{
+    x: i32
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Foo.Bar<i32> = 5
+        return 0
+    }
+}

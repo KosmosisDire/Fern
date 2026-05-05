@@ -1,0 +1,27 @@
+---
+Description: Custom literal suffix on a string literal
+Expected: true
+---
+
+type Label
+{
+    text: string
+    init(text: string)
+    {
+        this.text = text
+    }
+
+    literal l(text: string)
+    {
+        return Label(text)
+    }
+}
+
+type Program
+{
+    fn Main -> bool
+    {
+        var s = "Hello"l
+        return s.text == "Hello"
+    }
+}

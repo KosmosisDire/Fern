@@ -1,0 +1,23 @@
+---
+Description: Function defined in a nested namespace
+Expected: compile error
+---
+
+namespace Outer
+{
+    namespace Inner
+    {
+        fn Foo() -> i32
+        {
+            return 2
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return Outer.Inner.Foo()
+    }
+}

@@ -1,0 +1,32 @@
+---
+Description: Generic instances driving if/while loops
+Expected: 0
+---
+
+type Box<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var counter = Box<i32>(5)
+        while counter.Get() > 0
+        {
+            counter = Box<i32>(counter.Get() - 1)
+        }
+        return counter.Get()
+    }
+}

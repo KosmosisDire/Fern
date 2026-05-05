@@ -1,0 +1,97 @@
+---
+Description: Vector2 and Vector3 built from literal suffixes and combined with operators
+Expected: 24
+---
+
+type Vector3
+{
+    x: f32
+    y: f32
+    z: f32
+
+    literal z(from: f32) -> Vector3
+    {
+        return Vector3(0.0, 0.0, from)
+    }
+
+    op +(a: Vector3, b: Vector3) -> Vector3
+    {
+        return Vector3(a.x + b.x, a.y + b.y, a.z + b.z)
+    }
+
+    op -(a: Vector3, b: Vector3) -> Vector3
+    {
+        return Vector3(a.x - b.x, a.y - b.y, a.z - b.z)
+    }
+
+    op *(a: Vector3, b: f32) -> Vector3
+    {
+        return Vector3(a.x * b, a.y * b, a.z * b)
+    }
+
+    op +(a: Vector3, b: Vector2) -> Vector3
+    {
+        return Vector3(a.x + b.x, a.y + b.y, a.z)
+    }
+
+    op -(a: Vector3, b: Vector2) -> Vector3
+    {
+        return Vector3(a.x - b.x, a.y - b.y, a.z)
+    }
+
+}
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    literal x(from: f32) -> Vector2
+    {
+        return Vector2(from, 0.0)
+    }
+
+    literal y(from: f32) -> Vector2
+    {
+        return Vector2(0.0, from)
+    }
+
+    op +(a: Vector2, b: Vector2) -> Vector2
+    {
+        return Vector2(a.x + b.x, a.y + b.y)
+    }
+
+    op -(a: Vector2, b: Vector2) -> Vector2
+    {
+        return Vector2(a.x - b.x, a.y - b.y)
+    }
+
+    op *(a: Vector2, b: f32) -> Vector2
+    {
+        return Vector2(a.x * b, a.y * b)
+    }
+
+    op +(a: Vector2, b: Vector3) -> Vector3
+    {
+        return Vector3(a.x + b.x, a.y + b.y, b.z)
+    }
+
+    op -(a: Vector2, b: Vector3) -> Vector3
+    {
+        return Vector3(a.x - b.x, a.y - b.y, -b.z)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v1 = 1.0x + 2.0y + 3.0z
+        var v2 = 4.0x + 5.0y
+
+        var v3 = v1 + v2
+        var v4 = v1 - v2
+        var v5 = v1 * 2.0
+        return (i32)(v3.x + v3.y + v3.z + v4.x + v4.y + v4.z + v5.x + v5.y + v5.z)
+    }
+}

@@ -1,0 +1,14 @@
+---
+Description: Assigning a wrong type through array index
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var arr = [1, 2, 3]
+        arr[0] = 1.0
+        return 0
+    }
+}

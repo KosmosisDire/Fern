@@ -1,0 +1,15 @@
+---
+Description: while(true) with return in body is a guaranteed path
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        while true
+        {
+            return 1
+        }
+    }
+}

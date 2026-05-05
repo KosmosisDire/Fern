@@ -1,0 +1,20 @@
+---
+Description: While loop with non-constant condition cannot guarantee return
+Expected: compile error
+---
+
+type Program
+{
+    fn Bad(cond: bool) -> i32
+    {
+        while cond
+        {
+            return 1
+        }
+    }
+
+    fn Main -> i32
+    {
+        return Bad(true)
+    }
+}

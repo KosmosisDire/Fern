@@ -1,0 +1,13 @@
+---
+Description: Cast to an undefined type
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = (Blah)5
+        return 0
+    }
+}

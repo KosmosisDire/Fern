@@ -1,0 +1,25 @@
+---
+Description: Custom symbolic literal suffix
+Expected: 50
+---
+
+type Measure
+{
+    value: f32
+    isPercent: bool
+    init{}
+
+    literal %(value: i32)
+    {
+        return Measure { value: value, isPercent: true }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var p = 50%
+        return (i32)p.value
+    }
+}

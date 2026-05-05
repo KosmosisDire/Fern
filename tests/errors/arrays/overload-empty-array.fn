@@ -1,0 +1,16 @@
+---
+Description: Empty array literal cannot pick between two array overloads
+Expected: compile error
+---
+
+type Program
+{
+    static fn TakesArray(a: Core.Array<i32>) {}
+    static fn TakesArray(a: Core.Array<f32>) {}
+
+    fn Main -> i32
+    {
+        TakesArray([])
+        return 0
+    }
+}

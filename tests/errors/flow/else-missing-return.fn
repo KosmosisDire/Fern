@@ -1,0 +1,24 @@
+---
+Description: Then-branch returns but else-branch does not
+Expected: compile error
+---
+
+type Program
+{
+    fn Bad(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+        else
+        {
+            var x = 0
+        }
+    }
+
+    fn Main -> i32
+    {
+        return Bad(true)
+    }
+}

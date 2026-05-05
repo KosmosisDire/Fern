@@ -1,0 +1,22 @@
+---
+Description: Type declared with ref modifier
+Expected: 5
+---
+
+ref type RefType
+{
+    value: i32
+    init(v: i32)
+    {
+        this.value = v
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var r = RefType(5)
+        return r.value
+    }
+}

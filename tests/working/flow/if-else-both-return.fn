@@ -1,0 +1,20 @@
+---
+Description: If/else where both branches return
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var cond = true
+        if cond
+        {
+            return 1
+        }
+        else
+        {
+            return 0
+        }
+    }
+}

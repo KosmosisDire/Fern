@@ -1,0 +1,26 @@
+---
+Description: Indexing into a value of a type that does not support indexing
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2(1.0, 2.0)
+        var x = v[0]
+        return 0
+    }
+}

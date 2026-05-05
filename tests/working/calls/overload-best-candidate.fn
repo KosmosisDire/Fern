@@ -1,0 +1,29 @@
+---
+Description: One exact + one implicit beats zero exact + two implicit
+Expected: 7
+---
+
+type Program
+{
+    static fn Combine(a: f32, b: f32) -> i32
+    {
+        return 2
+    }
+
+    static fn Combine(a: i32, b: f32) -> i32
+    {
+        return 7
+    }
+
+    static fn Combine(a: f32, b: i32) -> i32
+    {
+        return 8
+    }
+
+    fn Main -> i32
+    {
+        var e: i32 = 5
+        var b: u8 = 2
+        return Combine(e, b)
+    }
+}

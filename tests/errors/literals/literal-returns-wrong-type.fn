@@ -1,0 +1,23 @@
+---
+Description: Literal declaration returns a value of the wrong type
+Expected: compile error
+---
+
+type BadLiteral
+{
+    value: i32
+    init{}
+
+    literal bad(value: i32)
+    {
+        return value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

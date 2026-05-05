@@ -1,0 +1,23 @@
+---
+Description: Type with field defaults and parameterless init
+Expected: 1
+---
+
+type Color
+{
+    r: f32 = 0.0
+    g: f32 = 0.0
+    b: f32 = 0.0
+    a: f32 = 1.0
+
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var c = Color()
+        return (i32)c.a
+    }
+}

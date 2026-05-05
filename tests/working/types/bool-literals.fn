@@ -1,0 +1,14 @@
+---
+Description: Bool literals
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var a = true
+        var b = false
+        return a && !b
+    }
+}

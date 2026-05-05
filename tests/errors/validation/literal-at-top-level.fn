@@ -1,0 +1,17 @@
+---
+Description: Literal declared at top level outside any type
+Expected: compile error
+---
+
+literal px(value: i32) -> i32
+{
+    return value
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

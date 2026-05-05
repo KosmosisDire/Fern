@@ -1,0 +1,18 @@
+---
+Description: Initializer applied to a non-constructor call result
+Expected: compile error
+---
+
+type Program
+{
+    static fn Helper -> i32
+    {
+        return 0
+    }
+
+    fn Main -> i32
+    {
+        var l = Helper() { x: 1.0 }
+        return 0
+    }
+}

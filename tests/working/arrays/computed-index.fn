@@ -1,0 +1,14 @@
+---
+Description: Indexing using a computed value
+Expected: 2
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var nums = [1, 2, 3]
+        var idx = 1
+        return nums[idx]
+    }
+}

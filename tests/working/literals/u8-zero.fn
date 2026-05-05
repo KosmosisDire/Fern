@@ -1,0 +1,13 @@
+---
+Description: u8 lower boundary
+Expected: 0
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v: u8 = 0
+        return (i32)v
+    }
+}

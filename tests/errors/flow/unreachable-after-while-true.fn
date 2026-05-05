@@ -1,0 +1,16 @@
+---
+Description: Code after a while(true) that returns is unreachable
+Expected: compile warning
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        while true
+        {
+            return 1
+        }
+        var z = 10
+    }
+}

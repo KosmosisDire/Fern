@@ -1,0 +1,33 @@
+---
+Description: Field typed as a nested generic-of-type-param resolves under instantiation
+Expected: 42
+---
+
+type Inner<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+}
+
+type Outer<T>
+{
+    child: Inner<T>
+
+    init(child: Inner<T>)
+    {
+        this.child = child
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var o = Outer<i32>(Inner<i32>(42))
+        return o.child.value
+    }
+}

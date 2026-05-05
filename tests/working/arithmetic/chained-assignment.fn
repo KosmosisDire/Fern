@@ -1,0 +1,15 @@
+---
+Description: Chained assignment expression
+Expected: 42
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = 0
+        var b = 0
+        a = b = 42
+        return a
+    }
+}

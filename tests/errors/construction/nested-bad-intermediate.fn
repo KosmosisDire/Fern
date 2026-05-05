@@ -1,0 +1,25 @@
+---
+Description: Initializer dot-notation references a non-existent intermediate field
+Expected: compile error
+---
+
+type Style
+{
+    fontSize: f32
+    init{}
+}
+
+type Rect
+{
+    style: Style
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var r = Rect { style.nonexistent.r: 1.0 }
+        return 0
+    }
+}

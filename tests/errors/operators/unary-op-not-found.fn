@@ -1,0 +1,14 @@
+---
+Description: Unary minus applied to a bool
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b = true
+        var x = -b
+        return 0
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: Index on undefined value should not report cannot-index
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = undefined_arr[0]
+        return 0
+    }
+}

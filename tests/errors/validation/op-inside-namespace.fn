@@ -1,0 +1,20 @@
+---
+Description: Operator declared inside a namespace
+Expected: compile error
+---
+
+namespace BadNs
+{
+    op +(a: i32, b: i32) -> i32
+    {
+        return a + b
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

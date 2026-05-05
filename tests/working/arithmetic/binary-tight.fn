@@ -1,0 +1,12 @@
+---
+Description: Binary operator with no whitespace
+Expected: 9
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 5+4
+    }
+}

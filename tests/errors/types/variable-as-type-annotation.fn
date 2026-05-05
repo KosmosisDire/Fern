@@ -1,0 +1,14 @@
+---
+Description: A variable name used as a type annotation
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        var a: x = 5
+        return 0
+    }
+}

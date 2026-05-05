@@ -1,0 +1,12 @@
+---
+Description: Function returns a float when declared to return i32
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 1.0
+    }
+}

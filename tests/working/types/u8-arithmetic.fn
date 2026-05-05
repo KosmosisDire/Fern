@@ -1,0 +1,15 @@
+---
+Description: u8 arithmetic operations
+Expected: 250
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: u8 = 100
+        var b: u8 = 150
+        var c = a + b
+        return (i32)c
+    }
+}

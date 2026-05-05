@@ -1,0 +1,17 @@
+---
+Description: Field declared inside a namespace
+Expected: compile error
+---
+
+namespace BadNs
+{
+    orphanField: i32
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

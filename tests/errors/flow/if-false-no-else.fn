@@ -1,0 +1,20 @@
+---
+Description: if(false) then-branch never runs and there is no else
+Expected: compile error
+---
+
+type Program
+{
+    fn Bad -> i32
+    {
+        if false
+        {
+            return 1
+        }
+    }
+
+    fn Main -> i32
+    {
+        return Bad()
+    }
+}

@@ -1,0 +1,26 @@
+---
+Description: Method call directly on initializer result
+Expected: 1
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+
+    fn Get() -> f32
+    {
+        return x
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2 { x: 1.0, y: 2.0 }.Get()
+        return (i32)v
+    }
+}

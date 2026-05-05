@@ -1,0 +1,13 @@
+---
+Description: Nested array type assigned a flat array
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var c: i32[][] = [1, 2]
+        return 0
+    }
+}

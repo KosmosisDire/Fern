@@ -1,0 +1,18 @@
+---
+Description: Type used directly as a value
+Expected: compile error
+---
+
+type Helpers
+{
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = Helpers
+        return 0
+    }
+}

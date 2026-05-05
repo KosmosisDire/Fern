@@ -1,0 +1,24 @@
+---
+Description: Pass an array literal directly as a function argument
+Expected: 600
+---
+
+type Program
+{
+    static fn Sum(arr: i32[]) -> i32
+    {
+        var total = 0
+        var i = 0
+        while i < arr.Length()
+        {
+            total = total + arr[i]
+            i = i + 1
+        }
+        return total
+    }
+
+    fn Main -> i32
+    {
+        return Sum([100, 200, 300])
+    }
+}

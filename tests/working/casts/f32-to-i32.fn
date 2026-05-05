@@ -1,0 +1,13 @@
+---
+Description: Explicit cast from f32 to i32
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var f: f32 = 1.5
+        return (i32)f
+    }
+}

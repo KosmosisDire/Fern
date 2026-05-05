@@ -1,0 +1,13 @@
+---
+Description: Literal with u8 suffix above 255
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = 256u8
+        return 0
+    }
+}

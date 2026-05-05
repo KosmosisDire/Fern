@@ -1,0 +1,17 @@
+---
+Description: Simple if with reachable side effect
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = 0
+        if true
+        {
+            x = 1
+        }
+        return x
+    }
+}

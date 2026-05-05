@@ -1,0 +1,16 @@
+---
+Description: If condition is an integer not a bool
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        if (1)
+        {
+            var y = 1
+        }
+        return 0
+    }
+}

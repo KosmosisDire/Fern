@@ -1,0 +1,20 @@
+---
+Description: Bracket-literal array iterated with arr.Length() and reduced
+Expected: 150
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var arr = [10, 20, 30, 40, 50]
+        var total = 0
+        var i = 0
+        while i < arr.Length()
+        {
+            total = total + arr[i]
+            i = i + 1
+        }
+        return total
+    }
+}

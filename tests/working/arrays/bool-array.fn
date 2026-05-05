@@ -1,0 +1,13 @@
+---
+Description: Array of bools
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var flags = [true, false, true]
+        return flags[2]
+    }
+}

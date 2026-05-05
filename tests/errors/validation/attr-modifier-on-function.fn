@@ -1,0 +1,20 @@
+---
+Description: attr modifier applied to a function declaration
+Expected: compile error
+---
+
+type Holder
+{
+    attr fn BadModFn() -> i32
+    {
+        return 0
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

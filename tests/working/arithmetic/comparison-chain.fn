@@ -1,0 +1,14 @@
+---
+Description: Mixed comparison operators
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var x = 10
+        var y = 20
+        return x < y && x <= y && y > x && y >= x && x != y
+    }
+}

@@ -1,0 +1,37 @@
+---
+Description: Type with multiple operators used in arithmetic
+Expected: 4
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    op +(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2(left.x + right.x, left.y + right.y)
+    }
+
+    op -(left: Vector2, right: Vector2) -> Vector2
+    {
+        return Vector2(left.x - right.x, left.y - right.y)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = Vector2(1.0, 2.0)
+        var b = Vector2(3.0, 4.0)
+        var c = a + b
+        return (i32)c.x
+    }
+}

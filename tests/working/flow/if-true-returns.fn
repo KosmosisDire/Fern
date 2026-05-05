@@ -1,0 +1,15 @@
+---
+Description: if(true) with then-branch returning is a guaranteed path
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        if true
+        {
+            return 1
+        }
+    }
+}

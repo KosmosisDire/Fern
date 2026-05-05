@@ -1,0 +1,14 @@
+---
+Description: Array of strings with index assignment
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var names: string[] = ["Alice", "Bob", "Charlie"]
+        names[1] = "Robert"
+        return names[1] == "Robert"
+    }
+}

@@ -1,0 +1,20 @@
+---
+Description: Literal declared inside a namespace
+Expected: compile error
+---
+
+namespace BadNs
+{
+    literal px(value: i32) -> i32
+    {
+        return value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

@@ -1,0 +1,12 @@
+---
+Description: Parentheses override precedence
+Expected: 9
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return (1 + 2) * 3
+    }
+}

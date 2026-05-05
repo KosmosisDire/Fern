@@ -1,0 +1,89 @@
+---
+Description: Initializer-list children syntax used to build a widget hierarchy
+Expected: 0
+---
+
+type Color
+{
+    r: f32
+    g: f32
+    b: f32
+    a: f32
+    init{}
+    init(r: f32, g: f32, b: f32, a: f32)
+    {
+        this.r = r
+        this.g = g
+        this.b = b
+        this.a = a
+    }
+}
+
+type Text
+{
+    fontSize: f32
+    fontWeight: i32
+    color: Color
+
+    init{}
+}
+
+type Spacer
+{
+    size: f32
+    init{}
+    init(size: f32)
+    {
+        this.size = size
+    }
+}
+
+type Card
+{
+    background: Color
+    init{}
+}
+
+type Column
+{
+    spacing: f32
+    padding: f32
+    init{}
+}
+
+type Layout
+{
+    init{}
+}
+
+type Page
+{
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var p = Page
+        {
+            Layout
+            {
+                Column
+                {
+                    spacing: 16.0,
+                    padding: 24.0
+
+                    Card
+                    {
+                        background: Color(1.0, 1.0, 1.0, 1.0)
+
+                        Text() { fontSize: 20.0, fontWeight: 700 }
+                        Spacer(0.0)
+                    }
+                }
+            }
+        }
+        return 0
+    }
+}

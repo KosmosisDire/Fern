@@ -1,0 +1,13 @@
+---
+Description: Char literal stored in a variable
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var c = 'A'
+        return c == 'A'
+    }
+}

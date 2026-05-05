@@ -1,0 +1,13 @@
+---
+Description: String equality comparison
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var same = "abc" == "abc"
+        return same
+    }
+}

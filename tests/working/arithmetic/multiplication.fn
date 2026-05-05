@@ -1,0 +1,12 @@
+---
+Description: Multiplication
+Expected: 20
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 5 * 4
+    }
+}

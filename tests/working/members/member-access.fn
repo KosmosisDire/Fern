@@ -1,0 +1,25 @@
+---
+Description: Field access on a constructed value
+Expected: 7
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2(7.0, 0.0)
+        return (i32)v.x
+    }
+}

@@ -1,0 +1,29 @@
+---
+Description: Method call where the dot is on the next line
+Expected: 1
+---
+
+type Box<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Box<i32>(1)
+            .Get()
+        return v
+    }
+}

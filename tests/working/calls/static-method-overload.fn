@@ -1,0 +1,27 @@
+---
+Description: Static method overloads selected by argument type
+Expected: 5
+---
+
+type Math
+{
+    static fn Abs(x: i32) -> i32
+    {
+        if (x < 0) { return -x }
+        return x
+    }
+
+    static fn Abs(x: f32) -> f32
+    {
+        if (x < 0.0) { return -x }
+        return x
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return Math.Abs(-5)
+    }
+}

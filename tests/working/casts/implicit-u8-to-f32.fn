@@ -1,0 +1,19 @@
+---
+Description: Implicit cast u8 to f32 through call argument
+Expected: 42
+---
+
+type Program
+{
+    static fn Process(x: f32) -> f32
+    {
+        return x
+    }
+
+    fn Main -> i32
+    {
+        var b: u8 = 42
+        var r = Process(b)
+        return (i32)r
+    }
+}

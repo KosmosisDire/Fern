@@ -1,0 +1,39 @@
+---
+Description: Cast Box<f32> to Container<i32> with mismatched type argument
+Expected: compile error
+---
+
+type Box<T>
+{
+    value: T
+    init(value: T)
+    {
+        this.value = value
+    }
+    init{}
+}
+
+type Container<T>
+{
+    value: T
+    init(value: T)
+    {
+        this.value = value
+    }
+    init{}
+
+    explicit cast(from: Box<T>) -> Container<T>
+    {
+        return Container<T>(from.value)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var floatBox = Box<f32>(3.14)
+        var b = (Container<i32>)floatBox
+        return 0
+    }
+}

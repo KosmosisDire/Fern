@@ -1,0 +1,13 @@
+---
+Description: String literal with escape sequences
+Expected: 13
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var escaped = "hello \"world\""
+        return escaped.length
+    }
+}

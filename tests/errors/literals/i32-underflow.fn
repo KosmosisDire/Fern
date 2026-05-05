@@ -1,0 +1,13 @@
+---
+Description: Bare literal below i32 minimum
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = -2147483649
+        return 0
+    }
+}

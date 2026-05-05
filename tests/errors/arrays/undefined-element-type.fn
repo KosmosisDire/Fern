@@ -1,0 +1,13 @@
+---
+Description: Array type with undefined element type
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Foo[] = [1]
+        return 0
+    }
+}

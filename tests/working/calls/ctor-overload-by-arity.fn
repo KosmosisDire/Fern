@@ -1,0 +1,30 @@
+---
+Description: Constructor overloads selected by argument count
+Expected: 7
+---
+
+type Box
+{
+    value: i32 = 0
+
+    init {}
+    init(v: i32)
+    {
+        this.value = v
+    }
+    init(a: i32, b: i32)
+    {
+        this.value = a + b
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b0 = Box()
+        var b1 = Box(10)
+        var b2 = Box(3, 4)
+        return b2.value
+    }
+}

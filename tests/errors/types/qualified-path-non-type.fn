@@ -1,0 +1,19 @@
+---
+Description: Qualified path resolves to a field, not a type
+Expected: compile error
+---
+
+type Foo
+{
+    x: i32
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Foo.x = 5
+        return 0
+    }
+}

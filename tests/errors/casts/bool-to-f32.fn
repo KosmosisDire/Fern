@@ -1,0 +1,13 @@
+---
+Description: Cast from bool to f32 has no conversion
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = (f32)true
+        return 0
+    }
+}

@@ -1,0 +1,12 @@
+---
+Description: Binary chain where all operands are unary negated
+Expected: 2
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return -4 + -3 * -2
+    }
+}

@@ -1,0 +1,20 @@
+---
+Description: while(true) body without return cannot guarantee return
+Expected: compile error
+---
+
+type Program
+{
+    fn Bad -> i32
+    {
+        while true
+        {
+            var x = 1
+        }
+    }
+
+    fn Main -> i32
+    {
+        return Bad()
+    }
+}

@@ -1,0 +1,14 @@
+---
+Description: Core.Array used with a generic type argument
+Expected: 0
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var arr = Core.Array<i32>(3)
+        arr[0] = 0
+        return arr[0]
+    }
+}

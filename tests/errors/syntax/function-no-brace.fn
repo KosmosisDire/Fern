@@ -1,0 +1,17 @@
+---
+Description: Function declaration with no opening brace
+Expected: compile error
+---
+
+type Broken
+{
+    fn test
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

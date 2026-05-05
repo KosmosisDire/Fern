@@ -1,0 +1,45 @@
+---
+Description: Generic instantiated with another generic as a type argument
+Expected: 1
+---
+
+type Box<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+type Pair<A, B>
+{
+    first: A
+    second: B
+
+    init(first: A, second: B)
+    {
+        this.first = first
+        this.second = second
+    }
+
+    fn First() -> A
+    {
+        return first
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var pob = Pair<Box<i32>, Box<f32>>(Box<i32>(1), Box<f32>(2.0))
+        return pob.First().Get()
+    }
+}

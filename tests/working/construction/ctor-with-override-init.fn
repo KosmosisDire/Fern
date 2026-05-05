@@ -1,0 +1,26 @@
+---
+Description: Constructor call followed by initializer that overrides a field
+Expected: 3
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = Vector2(1.0, 2.0) { x: 3.0 }
+        return (i32)a.x
+    }
+}

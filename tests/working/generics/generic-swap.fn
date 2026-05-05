@@ -1,0 +1,36 @@
+---
+Description: Generic method that swaps type parameters into a new instantiation
+Expected: 1
+---
+
+type Duo<L, R>
+{
+    left: L
+    right: R
+
+    init(left: L, right: R)
+    {
+        this.left = left
+        this.right = right
+    }
+
+    fn Swap() -> Duo<R, L>
+    {
+        return Duo<R, L>(right, left)
+    }
+
+    fn Right() -> R
+    {
+        return right
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var d1 = Duo<i32, f32>(1, 2.0)
+        var d2 = d1.Swap()
+        return (i32)d2.Right()
+    }
+}

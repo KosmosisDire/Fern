@@ -1,0 +1,13 @@
+---
+Description: Basic string literal stored in a variable
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var hello = "Hello, World!"
+        return hello == "Hello, World!"
+    }
+}

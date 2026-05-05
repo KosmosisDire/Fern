@@ -1,0 +1,45 @@
+---
+Description: Bare-name call from inside a type resolves through the binder chain
+Expected: 30
+---
+
+type Box
+{
+    value: i32 = 0
+
+    init {}
+    init(v: i32)
+    {
+        this.value = v
+    }
+
+    fn Set(v: i32)
+    {
+        value = v
+    }
+
+    fn Set(a: i32, b: i32)
+    {
+        value = a + b
+    }
+
+    fn Get -> i32
+    {
+        return value
+    }
+
+    fn UseSelf -> i32
+    {
+        Set(10, 20)
+        return Get()
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b = Box(0)
+        return b.UseSelf()
+    }
+}

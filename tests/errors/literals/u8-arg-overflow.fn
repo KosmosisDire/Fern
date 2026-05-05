@@ -1,0 +1,15 @@
+---
+Description: Constant expression argument overflows u8 parameter
+Expected: compile error
+---
+
+type Program
+{
+    static fn TakeU8(x: u8) {}
+
+    fn Main -> i32
+    {
+        TakeU8(200 + 60)
+        return 0
+    }
+}

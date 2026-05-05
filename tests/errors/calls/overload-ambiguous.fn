@@ -1,0 +1,23 @@
+---
+Description: Ambiguous overload selection between equally good candidates
+Expected: compile error
+---
+
+type Program
+{
+    static fn Combine(a: i32, b: f32) -> i32
+    {
+        return 1
+    }
+
+    static fn Combine(a: f32, b: i32) -> i32
+    {
+        return 2
+    }
+
+    fn Main -> i32
+    {
+        var b: u8 = 5
+        return Combine(b, b)
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: Initializer applied to a literal
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var k = true { x: 1.0 }
+        return 0
+    }
+}

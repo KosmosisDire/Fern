@@ -1,0 +1,13 @@
+---
+Description: String concatenation with the + operator
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var greeting = "Hello" + " " + "World"
+        return greeting == "Hello World"
+    }
+}

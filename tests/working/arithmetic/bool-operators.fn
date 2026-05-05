@@ -1,0 +1,16 @@
+---
+Description: Boolean operators on bool values
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var a = true
+        var b = false
+        var c = a && !b
+        var d = b || a
+        return c && d
+    }
+}

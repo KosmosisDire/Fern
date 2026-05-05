@@ -1,0 +1,13 @@
+---
+Description: Binary operator at the start of the next line continues the expression
+Expected: 9
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 5
+            + 4
+    }
+}

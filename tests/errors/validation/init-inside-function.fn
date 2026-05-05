@@ -1,0 +1,22 @@
+---
+Description: Constructor declared inside a function body
+Expected: compile error
+---
+
+type NestTest
+{
+    fn Outer
+    {
+        init()
+        {
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

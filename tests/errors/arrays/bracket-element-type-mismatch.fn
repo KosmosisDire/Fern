@@ -1,0 +1,13 @@
+---
+Description: Element type mismatch with bracket array syntax
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b: i32[] = [true, false]
+        return 0
+    }
+}

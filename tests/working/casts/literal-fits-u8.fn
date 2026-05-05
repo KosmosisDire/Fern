@@ -1,0 +1,18 @@
+---
+Description: Integer literal 255 fits in u8 parameter
+Expected: 255
+---
+
+type Program
+{
+    static fn TakeU8(x: u8) -> u8
+    {
+        return x
+    }
+
+    fn Main -> i32
+    {
+        var r = TakeU8(255)
+        return (i32)r
+    }
+}

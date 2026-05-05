@@ -1,0 +1,12 @@
+---
+Description: Unary minus on integer literal
+Expected: -4
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return -4
+    }
+}

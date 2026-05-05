@@ -1,0 +1,25 @@
+---
+Description: Type declared inside another type
+Expected: 7
+---
+
+type Container
+{
+    type Inner
+    {
+        value: i32
+        init(v: i32)
+        {
+            this.value = v
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var i = Container.Inner(7)
+        return i.value
+    }
+}

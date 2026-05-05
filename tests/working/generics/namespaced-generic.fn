@@ -1,0 +1,33 @@
+---
+Description: Generic type defined inside a namespace
+Expected: 7
+---
+
+namespace Collections
+{
+    type KeyValue<K, V>
+    {
+        key: K
+        val: V
+
+        init(key: K, val: V)
+        {
+            this.key = key
+            this.val = val
+        }
+
+        fn Key() -> K
+        {
+            return key
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var kv = Collections.KeyValue<i32, f32>(7, 1.5)
+        return kv.Key()
+    }
+}

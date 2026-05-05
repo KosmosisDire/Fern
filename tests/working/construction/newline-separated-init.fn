@@ -1,0 +1,25 @@
+---
+Description: Initializer fields separated by newlines, no commas
+Expected: 1
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = Vector2
+        {
+            x: 1.0
+            y: 2.0
+        }
+        return (i32)a.x
+    }
+}

@@ -1,0 +1,14 @@
+---
+Description: Top-of-file namespace header without braces scopes the rest of the file
+Expected: 0
+---
+
+namespace MyNs
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

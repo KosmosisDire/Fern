@@ -1,0 +1,28 @@
+---
+Description: Array of structs with index reassignment, member access, and accumulation
+Expected: 18
+---
+
+ref type Vec2
+{
+    x: f32
+    y: f32
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var points = [Vec2(1.0, 2.0), Vec2(3.0, 4.0), Vec2(5.0, 6.0)]
+        points[0] = Vec2(10.0, 20.0)
+
+        var total = 0.0
+        var i = 0
+        while i < points.Length()
+        {
+            total = total + points[i].x
+            i = i + 1
+        }
+        return (i32)total
+    }
+}

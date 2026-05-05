@@ -1,0 +1,40 @@
+---
+Description: Literal suffixes build vector components which combine with +
+Expected: 7
+---
+
+type Vec2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    literal x(from: f32) -> Vec2
+    {
+        return Vec2(from, 0.0)
+    }
+
+    literal y(from: f32) -> Vec2
+    {
+        return Vec2(0.0, from)
+    }
+
+    op +(a: Vec2, b: Vec2) -> Vec2
+    {
+        return Vec2(a.x + b.x, a.y + b.y)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = 3.0x + 4.0y
+        return (i32)(v.x + v.y)
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: Implicit conversion via explicit cast syntax i32 to f32
+Expected: 5.0
+---
+
+type Program
+{
+    fn Main -> f32
+    {
+        var x: i32 = 5
+        return (f32)x
+    }
+}

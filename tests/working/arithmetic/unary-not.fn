@@ -1,0 +1,12 @@
+---
+Description: Unary not on a bool literal
+Expected: false
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        return !true
+    }
+}

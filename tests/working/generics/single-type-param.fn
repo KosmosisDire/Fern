@@ -1,0 +1,28 @@
+---
+Description: Generic type with a single type parameter
+Expected: 42
+---
+
+type Box<T>
+{
+    value: T
+
+    init(value: T)
+    {
+        this.value = value
+    }
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b = Box<i32>(42)
+        return b.Get()
+    }
+}

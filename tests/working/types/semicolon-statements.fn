@@ -1,0 +1,13 @@
+---
+Description: Multiple statements on one line separated by semicolons
+Expected: 3
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var s1 = 1; var s2 = 2; var s3 = s1 + s2
+        return s3
+    }
+}

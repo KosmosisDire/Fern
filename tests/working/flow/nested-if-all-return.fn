@@ -1,0 +1,28 @@
+---
+Description: Nested if/else where all leaf paths return
+Expected: 2
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = true
+        var b = false
+        if a
+        {
+            if b
+            {
+                return 1
+            }
+            else
+            {
+                return 2
+            }
+        }
+        else
+        {
+            return 3
+        }
+    }
+}

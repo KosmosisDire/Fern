@@ -1,0 +1,12 @@
+---
+Description: i32 maximum value literal
+Expected: 2147483647
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 2147483647
+    }
+}

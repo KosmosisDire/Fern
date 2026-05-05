@@ -1,0 +1,19 @@
+---
+Description: Namespace declared inside a type
+Expected: compile error
+---
+
+type BadType
+{
+    namespace Oops
+    {
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

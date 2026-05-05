@@ -1,0 +1,18 @@
+---
+Description: Integer literal adopts f32 through parameter type
+Expected: 10
+---
+
+type Program
+{
+    static fn Process(x: f32) -> f32
+    {
+        return x
+    }
+
+    fn Main -> i32
+    {
+        var r = Process(10)
+        return (i32)r
+    }
+}

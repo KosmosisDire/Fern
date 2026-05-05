@@ -1,0 +1,13 @@
+---
+Description: Explicit cast from i32 to bool
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var x: i32 = 5
+        return (bool)x
+    }
+}

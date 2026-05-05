@@ -1,0 +1,12 @@
+---
+Description: Char ordering comparison
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        return 'a' < 'z'
+    }
+}

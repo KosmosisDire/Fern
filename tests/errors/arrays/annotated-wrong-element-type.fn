@@ -1,0 +1,13 @@
+---
+Description: Array literal element type does not match the annotation
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var arr: Core.Array<i32> = [1.0, 2.0]
+        return 0
+    }
+}

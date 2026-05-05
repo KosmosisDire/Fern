@@ -1,0 +1,13 @@
+---
+Description: Array of chars
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var chars: char[] = ['a', 'b', 'c']
+        return chars[1] == 'b'
+    }
+}

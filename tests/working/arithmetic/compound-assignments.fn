@@ -1,0 +1,17 @@
+---
+Description: Compound assignment operators
+Expected: 12
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = 100
+        x += 10
+        x -= 5
+        x *= 2
+        x /= 17
+        return x
+    }
+}

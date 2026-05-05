@@ -1,0 +1,31 @@
+---
+Description: Nested initializer lists for nested type fields
+Expected: 1
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+    init{}
+}
+
+type Rect
+{
+    pos: Vector2
+    size: Vector2
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var r = Rect
+        {
+            pos: Vector2 { x: 1.0, y: 2.0 },
+            size: Vector2 { x: 10.0, y: 20.0 }
+        }
+        return (i32)r.pos.x
+    }
+}

@@ -1,0 +1,23 @@
+---
+Description: Exact overload match on i32 arguments
+Expected: 5
+---
+
+type Program
+{
+    static fn Combine(a: i32, b: i32) -> i32
+    {
+        return a
+    }
+
+    static fn Combine(a: f32, b: f32) -> f32
+    {
+        return a
+    }
+
+    fn Main -> i32
+    {
+        var e: i32 = 5
+        return Combine(e, e)
+    }
+}

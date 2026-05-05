@@ -1,0 +1,17 @@
+---
+Description: Function declared with a return type has no return at all
+Expected: compile error
+---
+
+type Program
+{
+    fn Bad -> i32
+    {
+        var x = 10
+    }
+
+    fn Main -> i32
+    {
+        return Bad()
+    }
+}

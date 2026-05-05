@@ -1,0 +1,13 @@
+---
+Description: Method call on an undefined receiver should not also report no-such-member
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = undefined_obj.Length()
+        return 0
+    }
+}

@@ -1,0 +1,26 @@
+---
+Description: Binary operator applied to a type with no matching operator
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2(1.0, 2.0)
+        var x = v + v
+        return 0
+    }
+}

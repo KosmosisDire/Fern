@@ -1,0 +1,32 @@
+---
+Description: Whitespace variations inside generic type argument lists
+Expected: 1
+---
+
+type Pair<A, B>
+{
+    first: A
+    second: B
+
+    init(first: A, second: B)
+    {
+        this.first = first
+        this.second = second
+    }
+
+    fn First() -> A
+    {
+        return first
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var sp1 = Pair<i32,f32>(1, 2.0)
+        var sp2 = Pair< i32, f32 >(1, 2.0)
+        var sp3 = Pair<  i32 ,  f32  >(1, 2.0)
+        return sp1.First()
+    }
+}

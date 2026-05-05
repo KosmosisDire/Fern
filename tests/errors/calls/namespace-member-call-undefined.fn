@@ -1,0 +1,21 @@
+---
+Description: Calling a non-existent function on a namespace
+Expected: compile error
+---
+
+namespace Math
+{
+    type Vector2
+    {
+        init{}
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = Math.Foo(1, 2)
+        return 0
+    }
+}

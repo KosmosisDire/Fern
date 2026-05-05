@@ -1,0 +1,13 @@
+---
+Description: Dangling binary operator with no right operand
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = 5 +
+        return 0
+    }
+}

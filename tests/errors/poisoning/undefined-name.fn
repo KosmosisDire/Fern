@@ -1,0 +1,13 @@
+---
+Description: Reference to an undefined name
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = totally_undefined
+        return 0
+    }
+}

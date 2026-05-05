@@ -1,0 +1,13 @@
+---
+Description: Empty string literal
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var empty = ""
+        return empty == ""
+    }
+}

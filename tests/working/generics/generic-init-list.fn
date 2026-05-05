@@ -1,0 +1,21 @@
+---
+Description: Initializer list applied to a generic type
+Expected: 5
+---
+
+type Point<T>
+{
+    x: T
+    y: T
+
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var p = Point<i32> { x: 5, y: 6 }
+        return p.x
+    }
+}

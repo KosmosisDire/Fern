@@ -1,0 +1,22 @@
+---
+Description: Namespace declared inside a function body
+Expected: compile error
+---
+
+type NestTest
+{
+    fn Outer
+    {
+        namespace Nope
+        {
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

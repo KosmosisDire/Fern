@@ -1,0 +1,20 @@
+---
+Description: If with no else and no following return for the false branch
+Expected: compile error
+---
+
+type Program
+{
+    fn Bad(cond: bool) -> i32
+    {
+        if cond
+        {
+            return 1
+        }
+    }
+
+    fn Main -> i32
+    {
+        return Bad(true)
+    }
+}

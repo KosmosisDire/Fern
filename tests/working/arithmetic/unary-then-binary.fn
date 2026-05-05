@@ -1,0 +1,12 @@
+---
+Description: Unary minus operand mixed with binary
+Expected: 1
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return -4 + 5
+    }
+}

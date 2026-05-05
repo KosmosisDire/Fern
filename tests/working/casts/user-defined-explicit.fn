@@ -1,0 +1,29 @@
+---
+Description: User-defined explicit cast applied with explicit syntax
+Expected: 7
+---
+
+type Wrapper
+{
+    value: i32
+    init(value: i32)
+    {
+        this.value = value
+    }
+    init{}
+
+    explicit cast(from: Wrapper) -> i32
+    {
+        return from.value
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var w = Wrapper(7)
+        var v = (i32)w
+        return v
+    }
+}

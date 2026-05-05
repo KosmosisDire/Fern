@@ -1,0 +1,19 @@
+---
+Description: Literal declared with a return type annotation other than the owning type
+Expected: compile error
+---
+
+type BadLiteral
+{
+    init{}
+
+    literal wrongtype(value: i32) -> i32 {}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

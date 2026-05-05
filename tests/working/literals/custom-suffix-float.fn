@@ -1,0 +1,24 @@
+---
+Description: Custom literal suffix on float literal
+Expected: 3
+---
+
+type Measure
+{
+    value: f32
+    init{}
+
+    literal px(value: f32)
+    {
+        return Measure { value: value }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var p = 3.14px
+        return (i32)p.value
+    }
+}

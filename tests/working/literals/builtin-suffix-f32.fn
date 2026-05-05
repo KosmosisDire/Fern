@@ -1,0 +1,12 @@
+---
+Description: Builtin f32 type suffix on integer literal
+Expected: 42.0
+---
+
+type Program
+{
+    fn Main -> f32
+    {
+        return 42f32
+    }
+}

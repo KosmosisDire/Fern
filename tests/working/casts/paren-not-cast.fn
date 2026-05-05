@@ -1,0 +1,13 @@
+---
+Description: Parenthesized identifier followed by minus is subtraction not cast
+Expected: 4
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        return (x) - 1
+    }
+}

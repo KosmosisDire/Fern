@@ -1,0 +1,30 @@
+---
+Description: Type with constructor, method, and method-on-result chain
+Expected: 5
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    fn Dot(other: Vector2) -> f32
+    {
+        return x * other.x + y * other.y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var d = Vector2(1.0, 2.0).Dot(Vector2(1.0, 2.0))
+        return (i32)d
+    }
+}

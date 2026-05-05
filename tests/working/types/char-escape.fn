@@ -1,0 +1,13 @@
+---
+Description: Char escape sequence
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var t = '\t'
+        return t == '\t'
+    }
+}

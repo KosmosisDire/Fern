@@ -1,0 +1,13 @@
+---
+Description: Flat array type assigned a nested array
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var d: i32[] = [[1, 2], [3, 4]]
+        return 0
+    }
+}

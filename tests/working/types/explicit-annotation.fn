@@ -1,0 +1,13 @@
+---
+Description: Variable with explicit type annotation
+Expected: 5
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        return x
+    }
+}

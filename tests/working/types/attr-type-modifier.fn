@@ -1,0 +1,22 @@
+---
+Description: Type declared with attr modifier
+Expected: 8
+---
+
+attr type AttrType
+{
+    value: i32
+    init(v: i32)
+    {
+        this.value = v
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = AttrType(8)
+        return a.value
+    }
+}

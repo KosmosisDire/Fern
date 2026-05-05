@@ -1,0 +1,21 @@
+---
+Description: Member access on namespace where the member does not exist
+Expected: compile error
+---
+
+namespace Math
+{
+    type Vector2
+    {
+        init{}
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x = Math.NonExistent
+        return 0
+    }
+}

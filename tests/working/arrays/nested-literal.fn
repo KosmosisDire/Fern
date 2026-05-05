@@ -1,0 +1,13 @@
+---
+Description: Nested array literal indexed twice
+Expected: 4
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var grid = [[1, 2], [3, 4]]
+        return grid[1][1]
+    }
+}

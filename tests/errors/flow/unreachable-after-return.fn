@@ -1,0 +1,13 @@
+---
+Description: Code following an unconditional return is unreachable
+Expected: compile warning
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 1
+        var x = 10
+    }
+}

@@ -1,0 +1,17 @@
+---
+Description: Operator declared at top level outside any type
+Expected: compile error
+---
+
+op +(a: i32, b: i32) -> i32
+{
+    return a + b
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

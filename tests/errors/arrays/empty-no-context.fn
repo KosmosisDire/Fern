@@ -1,0 +1,13 @@
+---
+Description: Empty array literal without type context
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var noType = []
+        return 0
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: Integer literal adopts f32 from annotation
+Expected: 100.0
+---
+
+type Program
+{
+    fn Main -> f32
+    {
+        var v: f32 = 100
+        return v
+    }
+}

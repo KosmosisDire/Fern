@@ -1,0 +1,25 @@
+---
+Description: Constructor called with too many arguments
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2(1.0, 2.0, 3.0)
+        return 0
+    }
+}

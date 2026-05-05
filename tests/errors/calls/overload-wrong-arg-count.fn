@@ -1,0 +1,17 @@
+---
+Description: Function call with wrong number of arguments
+Expected: compile error
+---
+
+type Program
+{
+    static fn Combine(a: i32, b: i32) -> i32
+    {
+        return a
+    }
+
+    fn Main -> i32
+    {
+        return Combine(5)
+    }
+}

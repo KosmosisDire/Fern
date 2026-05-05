@@ -1,0 +1,35 @@
+---
+Description: Instance method overloads selected by argument type
+Expected: 2
+---
+
+type Box
+{
+    value: i32 = 0
+
+    init {}
+    init(v: i32)
+    {
+        this.value = v
+    }
+
+    fn Set(v: i32)
+    {
+        value = v
+    }
+
+    fn Set(v: f32)
+    {
+        value = (i32)v
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b = Box(0)
+        b.Set(2.5)
+        return b.value
+    }
+}

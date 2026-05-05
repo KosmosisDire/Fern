@@ -1,0 +1,15 @@
+---
+Description: No matching overload because bool has no implicit cast to f32
+Expected: compile error
+---
+
+type Program
+{
+    static fn Process(x: f32) {}
+
+    fn Main -> i32
+    {
+        Process(true)
+        return 0
+    }
+}

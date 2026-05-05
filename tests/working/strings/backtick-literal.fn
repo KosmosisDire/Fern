@@ -1,0 +1,13 @@
+---
+Description: Backtick string literal preserves contents
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var s = `Hello, World!`
+        return s == "Hello, World!"
+    }
+}

@@ -1,6 +1,23 @@
 # Tests
 
-This is a bunch of tests for the language. As you can probably tell many of these tests were written directly by AI (specifically claude).
-I am sorta using AI as a fuzzer to generate valid ferncode which doesn't necessarily have to do anything important.
+Atomic tests organized by purpose and feature.
 
-Later I will probably also implement a true fuzzer for things like handling typing, moving lines around, partial definitions, etc.
+## Structure
+
+- `working/` - Programs that should compile and produce a value.
+- `errors/` - Programs that should produce a compile error or warning.
+
+Tests are grouped by feature in subfolders. A test may exercise more than one
+feature, in which case it lives under the folder for its primary subject.
+
+Every test file has a header comment in this format:
+
+```
+---
+Description: a very short description of the test
+Expected: a primitive value or "compile error" / "compile warning"
+---
+```
+
+Every program has an entry point at `Program.Main` that returns a value
+that can be checked against `Expected`.

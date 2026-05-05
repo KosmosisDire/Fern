@@ -1,0 +1,13 @@
+---
+Description: Chained constant arithmetic that fits in u8
+Expected: 255
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v: u8 = 50 + 50 + 50 + 50 + 55
+        return (i32)v
+    }
+}

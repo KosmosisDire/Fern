@@ -1,0 +1,28 @@
+---
+Description: User-defined implicit cast invoked via assignment
+Expected: 5
+---
+
+type Wrapper
+{
+    value: i32
+    init(value: i32)
+    {
+        this.value = value
+    }
+    init{}
+
+    implicit cast(from: i32) -> Wrapper
+    {
+        return Wrapper(from)
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var w: Wrapper = 5
+        return w.value
+    }
+}

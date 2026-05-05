@@ -1,0 +1,23 @@
+---
+Description: Function declared inside another function body
+Expected: compile error
+---
+
+type NestTest
+{
+    fn Outer
+    {
+        fn Inner() -> i32
+        {
+            return 1
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

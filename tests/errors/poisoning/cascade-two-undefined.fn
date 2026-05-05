@@ -1,0 +1,18 @@
+---
+Description: Two independent undefined names report as separate errors only
+Expected: compile error
+---
+
+type Program
+{
+    static fn TakesTwo(a: i32, b: i32) -> i32
+    {
+        return a + b
+    }
+
+    fn Main -> i32
+    {
+        var x = TakesTwo(undefined_1, undefined_2)
+        return 0
+    }
+}

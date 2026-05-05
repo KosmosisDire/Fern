@@ -1,0 +1,14 @@
+---
+Description: Compound concatenation assignment
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var buf = "start"
+        buf += " end"
+        return buf == "start end"
+    }
+}

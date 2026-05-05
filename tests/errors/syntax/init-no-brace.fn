@@ -1,0 +1,20 @@
+---
+Description: Constructor declaration with no body
+Expected: compile error
+---
+
+type Broken
+{
+    x: f32
+    init(x: f32)
+
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

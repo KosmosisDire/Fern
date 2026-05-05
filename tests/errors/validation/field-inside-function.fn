@@ -1,0 +1,20 @@
+---
+Description: Field declared inside a function body
+Expected: compile error
+---
+
+type NestTest
+{
+    fn Outer
+    {
+        orphan: i32
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

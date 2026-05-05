@@ -1,0 +1,25 @@
+---
+Description: Standard constructor call with arguments
+Expected: 1
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init(x: f32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = Vector2(1.0, 2.0)
+        return (i32)a.x
+    }
+}

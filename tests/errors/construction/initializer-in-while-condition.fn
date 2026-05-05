@@ -1,0 +1,24 @@
+---
+Description: Bare initializer expression used as while condition
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        while Vector2 { x: 1.0, y: 2.0 }
+        {
+            var a = true
+        }
+        return 0
+    }
+}

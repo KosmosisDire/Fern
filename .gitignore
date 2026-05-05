@@ -7,7 +7,6 @@ corpus*/
 crash-*
 logs/
 
-
 # Compiled object files
 *.o
 *.obj
@@ -27,6 +26,7 @@ out/
 
 # Executables
 *.exe
+/fern
 
 # IDE and editor files
 *.swp

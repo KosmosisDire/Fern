@@ -1,0 +1,29 @@
+---
+Description: Custom literal suffix on integer literal
+Expected: 10
+---
+
+type Measure
+{
+    value: f32
+    init{}
+
+    literal px(value: f32)
+    {
+        return Measure { value: value }
+    }
+
+    literal px(value: i32)
+    {
+        return Measure { value: 10 }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var p = 10px
+        return (i32)p.value
+    }
+}

@@ -1,0 +1,18 @@
+---
+Description: Implicit cast through return value assignment
+Expected: 42
+---
+
+type Program
+{
+    static fn GetI32 -> i32
+    {
+        return 42
+    }
+
+    fn Main -> i32
+    {
+        var r: f32 = GetI32()
+        return (i32)r
+    }
+}

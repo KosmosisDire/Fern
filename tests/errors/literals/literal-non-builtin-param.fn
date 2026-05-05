@@ -1,0 +1,24 @@
+---
+Description: Literal declared with a non-builtin parameter type
+Expected: compile error
+---
+
+type Other
+{
+    init{}
+}
+
+type BadLiteral
+{
+    init{}
+
+    literal also_nope(value: Other) {}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

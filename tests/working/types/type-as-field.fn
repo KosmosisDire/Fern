@@ -1,0 +1,39 @@
+---
+Description: Type with another user-defined type as a field
+Expected: 5
+---
+
+type Vector3
+{
+    x: f32
+    y: f32
+    z: f32
+
+    init(x: f32, y: f32, z: f32)
+    {
+        this.x = x
+        this.y = y
+        this.z = z
+    }
+}
+
+type Particle
+{
+    position: Vector3
+    lifetime: f32
+
+    init(pos: Vector3, life: f32)
+    {
+        position = pos
+        lifetime = life
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var p = Particle(Vector3(5.0, 0.0, 0.0), 1.0)
+        return (i32)p.position.x
+    }
+}

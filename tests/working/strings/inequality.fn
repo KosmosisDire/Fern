@@ -1,0 +1,13 @@
+---
+Description: String inequality comparison
+Expected: true
+---
+
+type Program
+{
+    fn Main -> bool
+    {
+        var diff = "abc" != "xyz"
+        return diff
+    }
+}

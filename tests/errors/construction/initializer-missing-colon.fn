@@ -1,0 +1,20 @@
+---
+Description: Initializer field name with no colon
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2 { x 1.0 }
+        return 0
+    }
+}

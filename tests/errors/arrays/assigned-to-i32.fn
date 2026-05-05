@@ -1,0 +1,13 @@
+---
+Description: Array literal assigned to non-array i32 type
+Expected: compile error
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var notArray: i32 = [1, 2, 3]
+        return 0
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: Cast to the same type is a no-op
+Expected: 5
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var x: i32 = 5
+        return (i32)x
+    }
+}

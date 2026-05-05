@@ -1,0 +1,21 @@
+---
+Description: Initializer list contains a keyword instead of a field name
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a = Vector2 { return 1.0 }
+        return 0
+    }
+}

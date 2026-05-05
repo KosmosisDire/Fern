@@ -1,0 +1,14 @@
+---
+Description: Compound assignment to an indexed element
+Expected: 7
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var nums = [1, 2, 3]
+        nums[1] += 5
+        return nums[1]
+    }
+}

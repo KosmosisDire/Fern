@@ -1,0 +1,19 @@
+---
+Description: Operator declaration with no body
+Expected: compile error
+---
+
+type Broken
+{
+    x: f32
+    init{}
+    op +(left: Broken, right: Broken) -> Broken
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}
