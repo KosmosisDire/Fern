@@ -6,9 +6,10 @@ Atomic tests organized by purpose and feature.
 
 - `working/` - Programs that should compile and produce a value.
 - `errors/` - Programs that should produce a compile error or warning.
+- `bugs/` - Tests that track known unfixed behavior. Expected to fail until the underlying bug is resolved.
 
 Tests are grouped by feature in subfolders. A test may exercise more than one
-feature, in which case it lives under the folder for its primary subject.
+feature, in which case it lives under the folder for its primary subject. The test runner wutomatically discovers all files under tests/.
 
 Every test file has a header comment in this format:
 

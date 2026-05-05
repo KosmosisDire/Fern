@@ -1,0 +1,15 @@
+---
+Description: Implicit conversion of i32 to f32 in binary operator with typed variables
+Expected: 52
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var i: i32 = 10
+        var f: f32 = 42.0
+        var r = i + f
+        return (i32)r
+    }
+}

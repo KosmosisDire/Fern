@@ -1,0 +1,13 @@
+---
+Description: Implicit conversion in binary operator with mixed int and float literals
+Expected: 52
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var r = 10 + 42.0
+        return (i32)r
+    }
+}
