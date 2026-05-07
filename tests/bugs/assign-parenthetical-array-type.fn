@@ -1,0 +1,13 @@
+---
+Description: Assign an array type reference to a variable inside parentheses
+Expected: compile error
+---
+
+
+type Program
+{
+    fn Main
+    {
+        var t = (i32[])
+    }
+}
