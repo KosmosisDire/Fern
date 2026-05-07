@@ -1,0 +1,126 @@
+// X-macro list of every diagnostic the compiler can emit. Included with DIAG defined to build
+// the DiagnosticCode enum, format-string table, and severity table.
+//
+// DIAG(name, id, severity, format_string)
+// severity: Information, Warning, Error
+// format_string: std::format auto-numbered {} placeholders. Literal braces are {{ }}.
+// IDs are bucketed by phase (see section headers). Avoid leading zeros, C++ parses them as octal.
+// CS#### in trailing comments map to the closest Roslyn equivalent.
+
+// Lexer
+DIAG(Err_UnterminatedString,            1,    Error,   "unterminated string literal")                                                              // CS1010
+DIAG(Err_UnterminatedChar,              2,    Error,   "unterminated character literal")                                                            // CS1010
+
+// Parser
+DIAG(Err_UnexpectedToken,               1000, Error,   "unexpected token '{}'")                                                                     // CS1525
+DIAG(Err_ExpectedAttributeName,         1001, Error,   "expected attribute name after '@'")
+DIAG(Err_DuplicateModifier,             1002, Error,   "duplicate modifier '{}'")                                                                   // CS0596
+DIAG(Err_ExpectedDeclaration,           1003, Error,   "expected a declaration")
+DIAG(Err_ModifiersWithoutDecl,          1004, Error,   "modifiers must be followed by a declaration")
+DIAG(Err_ExpectedExprAfterEq,           1005, Error,   "expected expression after '='")                                                             // CS1525
+DIAG(Err_VarRequiresTypeOrInit,         1006, Error,   "variable declaration requires a type annotation or initializer")
+DIAG(Err_ExpectedOpenBrace,             1007, Error,   "'{{' expected")                                                                             // CS1514
+DIAG(Err_CtorReturnType,                1008, Error,   "constructors cannot have a return type annotation")
+DIAG(Err_ExpectedLiteralSuffix,         1009, Error,   "expected literal suffix name")
+DIAG(Err_ExpectedOpSymbol,              1010, Error,   "expected operator symbol after 'op'")                                                       // CS1037
+DIAG(Err_AmbiguousOpSpacing,            1011, Error,   "ambiguous operator spacing: '{}' has space on the left but not the right. Did you mean '... {} {}'?")
+DIAG(Err_ExpectedExprAfterOp,           1012, Error,   "expected expression after '{}'")                                                            // CS1525
+DIAG(Err_UnaryOpDetached,               1013, Error,   "unary operator cannot be separated from its operand")
+DIAG(Err_UnexpectedCommaInInit,         1014, Error,   "unexpected ',' before initializer member")                                                  // CS1525
+DIAG(Err_ExpectedValueAfterColon,       1015, Error,   "expected value after ':'")                                                                  // CS1525
+DIAG(Err_ExpectedMemberAfterDot,        1016, Error,   "expected member name after '.'")                                                            // CS1001
+DIAG(Err_ExpectedElseBody,              1017, Error,   "expected '{{' or 'if' after 'else'")
+DIAG(Err_SyntaxError,                   1018, Error,   "{}")                                                                                        // CS1003 (generic passthrough used by Parser::expect)
+
+// AST validation
+DIAG(Err_BadNamespaceContent,           2000, Error,   "namespaces can only contain types and other namespaces")                                    // CS0116
+DIAG(Err_BadTypeContent,                2001, Error,   "types can only contain fields, methods, and nested types")
+DIAG(Err_BadFunctionBodyContent,        2002, Error,   "function bodies can only contain statements and local variables")
+DIAG(Err_AttrOnLocal,                   2003, Error,   "attributes are not allowed on local variable declarations")
+DIAG(Err_ModifierOnLocal,               2004, Error,   "modifiers are not allowed on local variable declarations")                                  // CS0106
+DIAG(Err_BadModifierTarget,             2005, Error,   "modifier '{}' can only be applied to {} declarations")                                      // CS0106
+DIAG(Err_CastMissingExplicitness,       2006, Error,   "cast declarations must be marked 'implicit' or 'explicit'")
+DIAG(Err_CastBothExplicitness,          2007, Error,   "cast declarations cannot be both 'implicit' and 'explicit'")
+
+// Binder: type resolution (3000-3099)
+DIAG(Err_UndefinedType,                 3000, Error,   "undefined type '{}'")                                                                       // CS0246
+DIAG(Err_ArrayTypeNotFound,             3001, Error,   "Array type not found")                                                                      // CS0518
+DIAG(Err_TypeNotGeneric,                3002, Error,   "type '{}' is not generic")                                                                  // CS0308
+
+// Binder: pipeline (3100-3199, member declaration validation)
+DIAG(Err_IndexGetParamCount,            3100, Error,   "operator '[]' must have 2 parameters (self, index), but has {}")
+DIAG(Err_IndexSetParamCount,            3101, Error,   "operator '[]=' must have 3 parameters (self, index, value), but has {}")
+DIAG(Err_OperatorParamCount,            3102, Error,   "operator '{}' must have 1 parameter (unary) or 2 parameters (binary), but has {}")          // CS1019/CS1020
+DIAG(Err_LiteralReturnType,             3103, Error,   "literal '{}' must return '{}', not '{}'")
+DIAG(Err_DuplicateMember,               3104, Error,   "duplicate {} on type '{}'")                                                                 // CS0102
+DIAG(Err_OperatorMissingSelfParam,      3105, Error,   "operator '{}' must have at least one parameter of containing type '{}'")                    // CS0563
+DIAG(Err_LiteralWrongArity,             3106, Error,   "literal '{}' must have exactly 1 parameter")
+DIAG(Err_LiteralBadParamType,           3107, Error,   "literal '{}' parameter type '{}' does not allow custom literals")
+
+// Binder: expressions (3200-3299)
+DIAG(Err_ConstantOutOfRange,            3200, Error,   "{}")                                                                                        // CS0031 (rich message built by ConstantValue::format_range_message)
+DIAG(Err_TypeMismatch,                  3201, Error,   "expected '{}', got '{}'")                                                                   // CS0029
+DIAG(Err_BadSymbolKind,                 3202, Error,   "'{}' is a {} but is used like a {}")                                                        // CS0118 (merges NotAType, NotANamespace, NotAValue, CannotCallNamespace)
+DIAG(Err_NoSuchMember,                  3203, Error,   "'{}' does not contain a definition for '{}'")                                               // CS0117 (merges TypeNoMember, NamespaceNoMember, TypeNoField)
+DIAG(Err_UndefinedName,                 3204, Error,   "the name '{}' does not exist in the current context")                                       // CS0103
+DIAG(Err_ThisOutsideType,               3205, Error,   "'this' can only be used inside a type")                                                     // CS0027
+DIAG(Err_BadCast,                       3206, Error,   "cannot cast from '{}' to '{}'")                                                             // CS0030
+DIAG(Err_TypeHasNoMembers,              3207, Error,   "type '{}' has no members")
+DIAG(Err_InstanceFieldOnType,           3208, Error,   "cannot access instance field '{}' on type '{}'")                                            // CS0120
+DIAG(Err_TypeArgsOnInstanceMember,      3209, Error,   "type arguments are not supported on instance members")                                      // CS0307
+DIAG(Err_AmbiguousUnaryOp,              3210, Error,   "operator '{}' is ambiguous on an operand of type '{}':{}")                                  // CS0035
+DIAG(Err_BadUnaryOp,                    3211, Error,   "operator '{}' cannot be applied to operand of type '{}'")                                   // CS0023
+DIAG(Err_AmbiguousBinaryOp,             3212, Error,   "operator '{}' is ambiguous on operands of type '{}' and '{}':{}")                           // CS0034
+DIAG(Err_BadBinaryOp,                   3213, Error,   "operator '{}' cannot be applied to operands of type '{}' and '{}'{}")                       // CS0019 (last {} is optional hint suffix, e.g. " (requires '==' operator)")
+DIAG(Err_CannotIndex,                   3214, Error,   "cannot apply indexing with [] to an expression of type '{}'")                               // CS0021
+DIAG(Err_AmbiguousIndex,                3215, Error,   "the index call is ambiguous between the following members:{}")                              // CS0121
+DIAG(Err_NoIndexSetter,                 3216, Error,   "type '{}' cannot be index-assigned by '{}'")
+DIAG(Err_NoIndexGetter,                 3217, Error,   "type '{}' cannot be indexed by '{}'")
+
+// Binder: statements (3300-3399)
+DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
+DIAG(Err_WrongReturnType,               3301, Error,   "function '{}' expects a return of type '{}'")                                               // CS0029
+
+// Binder: calls (3400-3499)
+DIAG(Err_AmbiguousConstructor,          3400, Error,   "the constructor call is ambiguous between the following members:{}")                        // CS0121
+DIAG(Err_NoMatchingConstructor,         3401, Error,   "'{}' does not contain a constructor that takes {} arguments")                               // CS1729
+DIAG(Err_NotCallable,                   3402, Error,   "'{}' cannot be called")
+DIAG(Err_AmbiguousMethod,               3403, Error,   "the call is ambiguous between the following methods or properties:{}")                      // CS0121
+DIAG(Err_NoMatchingMethod,              3404, Error,   "no overload for method '{}' on '{}' takes {} arguments")                                    // CS1501
+DIAG(Err_InstanceMethodNoReceiver,      3405, Error,   "instance method '{}' requires a receiver")                                                  // CS0120
+DIAG(Err_NotCallableExpr,               3406, Error,   "expression cannot be called as a function")                                                 // CS1955
+
+// Binder: attributes (3500-3599)
+DIAG(Err_AttrMustBeType,                3500, Error,   "attribute must name a type")
+DIAG(Err_NotAttrType,                   3501, Error,   "type '{}' is not an attribute type (missing 'attr' modifier)")                              // CS0616
+DIAG(Err_AttrNeedsTypeName,             3502, Error,   "expected type name in attribute initializer")
+DIAG(Err_AttrNeedsParameterlessCtor,    3503, Error,   "'{}' must contain a parameterless constructor to construct with only an initializer list")
+
+// Binder: initializers (3600-3699)
+DIAG(Err_InitListNoType,                3600, Error,   "cannot infer type for initializer list, use an explicit type name")
+DIAG(Err_InitListBadTarget,             3601, Error,   "initializer lists can only be applied to a type or constructor call")
+DIAG(Err_NoDefaultCtor,                 3602, Error,   "type '{}' has no default constructor")
+DIAG(Err_InitListOutsideMethod,         3603, Error,   "initializer lists are not yet supported outside of method bodies")
+DIAG(Err_DuplicateInitField,            3604, Error,   "duplicate field '{}' in initializer")
+DIAG(Err_InitMemberOnNonStruct,         3605, Error,   "cannot access member on non-struct type")
+DIAG(Err_InitTargetBadShape,            3606, Error,   "initializer target must be a field name or member access")                                  // CS0747
+
+// Binder: literals (3700-3799)
+DIAG(Err_UnknownEscape,                 3700, Error,   "unrecognized escape sequence '\\{}'")                                                       // CS1009
+DIAG(Err_UnknownLiteralSuffix,          3701, Error,   "unknown literal suffix '{}'")
+DIAG(Err_NoMatchingLiteral,             3702, Error,   "no literal '{}' accepting '{}'")
+DIAG(Err_AmbiguousLiteral,              3703, Error,   "literal call is ambiguous between the following members:{}")
+DIAG(Err_LiteralOutOfRange,             3704, Error,   "literal '{}' is out of range")                                                              // CS1021/CS0594
+DIAG(Err_CharLiteralLength,             3705, Error,   "character literal must contain exactly one character")                                      // CS1011/CS1012
+DIAG(Err_ArrayMissingI32Ctor,           3706, Error,   "Core.Array has no constructor taking i32")
+DIAG(Err_ArrayLiteralOutsideMethod,     3707, Error,   "array literals are not supported outside of method bodies")
+DIAG(Err_ArrayMixedTypes,               3708, Error,   "array literal has mixed element types: '{}' and '{}'")
+DIAG(Err_ArrayCannotInferElement,       3709, Error,   "type cannot be inferred for array, consider adding a type annotation or explicit constructor")  // CS0826 (also covers empty array with no annotation)
+DIAG(Err_ArrayMissingSetter,            3710, Error,   "Core.Array has no 'op []=' for element type '{}'")
+
+// Flow analysis
+DIAG(Wrn_UnreachableCode,               4000, Warning, "unreachable code detected")                                                                 // CS0162
+DIAG(Err_NotAllPathsReturn,             4001, Error,   "not all code paths return a value")                                                         // CS0161
+
+// Driver
+DIAG(Err_CannotOpenFile,                5000, Error,   "could not open file: {}")                                                                   // CS2001

@@ -64,6 +64,8 @@ enum class SymbolKind
     Local,
 };
 
+std::string_view kind_noun(SymbolKind kind);
+
 #pragma region Symbol Base
 
 struct Symbol
@@ -194,6 +196,7 @@ struct NamedTypeSymbol : TypeSymbol
     OverloadResult find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
     OverloadResult find_index_getter(TypeSymbol* indexType);
     OverloadResult find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType);
+    TypeSymbol* expected_index_value_type(TypeSymbol* indexType);
     MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     static Conversion get_conversion(TypeSymbol* from, TypeSymbol* to);

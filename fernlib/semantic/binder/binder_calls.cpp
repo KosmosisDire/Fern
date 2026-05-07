@@ -44,20 +44,17 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto result = namedType->find_constructor(argTypes);
         if (result.ambiguous && !hasErrorArg)
         {
-            std::string msg = "call is ambiguous between constructors:";
+            std::string candidates;
             for (auto* m : result.ambiguousCandidates)
-                msg += std::format("\n  {}({})", format_type_name(namedType), m->format_parameters());
-            diag.error(msg, expr->span);
+                candidates += std::format("\n  {}({})", format_type_name(namedType), m->format_parameters());
+            diag.report(DiagnosticCode::Err_AmbiguousConstructor, expr->span, candidates);
             return fhir.error_expr(expr);
         }
         if (!result.best.method)
         {
             if (!hasErrorArg)
             {
-                diag.error(std::format("'{}' does not contain a constructor that takes {}{}",
-                      format_type_name(namedType),
-                      argTypes.size(),
-                      argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+                diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type_name(namedType), argTypes.size());
             }
             return fhir.error_expr(expr);
         }
@@ -77,17 +74,17 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto* targetType = group->enclosingScope ? group->enclosingScope->as<NamedTypeSymbol>() : nullptr;
         if (!targetType)
         {
-            diag.error(std::format("'{}' cannot be called", group->name), expr->callee->span);
+            diag.report(DiagnosticCode::Err_NotCallable, expr->callee->span, group->name);
             return fhir.error_expr(expr, nullptr, group);
         }
 
         auto result = targetType->find_method(group->name, argTypes);
         if (result.ambiguous && !hasErrorArg)
         {
-            std::string msg = std::format("call to '{}' is ambiguous between:", group->name);
+            std::string candidates;
             for (auto* m : result.ambiguousCandidates)
-                msg += std::format("\n  {}.{}({})", format_type_name(targetType), group->name, m->format_parameters());
-            diag.error(msg, expr->span);
+                candidates += std::format("\n  {}.{}({})", format_type_name(targetType), group->name, m->format_parameters());
+            diag.report(DiagnosticCode::Err_AmbiguousMethod, expr->span, candidates);
             return fhir.error_expr(expr);
         }
         MethodSymbol* method = result.best.method;
@@ -95,11 +92,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             if (!hasErrorArg)
             {
-                diag.error(std::format("'{}' does not contain a method '{}' that takes {}{}",
-                      format_type_name(targetType),
-                      group->name,
-                      argTypes.size(),
-                      argTypes.size() == 1 ? " argument" : " arguments"), expr->span);
+                diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type_name(targetType), argTypes.size());
             }
             return fhir.error_expr(expr);
         }
@@ -108,7 +101,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         bool isStatic = has_modifier(method->modifiers, Modifier::Static);
         if (!isStatic && !group->thisRef)
         {
-            diag.error(std::format("instance method '{}' requires a receiver", group->name), expr->callee->span);
+            diag.report(DiagnosticCode::Err_InstanceMethodNoReceiver, expr->callee->span, group->name);
             return fhir.error_expr(expr);
         }
 
@@ -136,11 +129,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     if (auto* nref = callee->as<FhirNamespaceRefExpr>())
     {
         std::string name = nref->namespaceSymbol ? nref->namespaceSymbol->name : "?";
-        diag.error(std::format("'{}' is a namespace and cannot be called", name), expr->callee->span);
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "namespace", "method");
         return fhir.error_expr(expr, nullptr, nref);
     }
 
-    diag.error("expression cannot be called as a function", expr->callee->span);
+    diag.report(DiagnosticCode::Err_NotCallableExpr, expr->callee->span);
     return fhir.error_expr(expr, nullptr, callee);
 }
 

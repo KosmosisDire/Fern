@@ -77,7 +77,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 {
     if (!expr->target)
     {
-        diag.error("cannot infer type for initializer list, use an explicit type name", expr->span);
+        diag.report(DiagnosticCode::Err_InitListNoType, expr->span);
         for (auto* member : expr->members)
         {
             if (auto* fieldInit = member->as<FieldInitSyntax>())
@@ -103,7 +103,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         }
         if (!callResult->is<FhirConstructionExpr>())
         {
-            diag.error("initializer lists can only be applied to a type or constructor call", callExpr->span);
+            diag.report(DiagnosticCode::Err_InitListBadTarget, callExpr->span);
             return fhir.error_expr(expr);
         }
         TypeSymbol* callType = callResult->type;
@@ -120,20 +120,20 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         auto* tref = targetExpr->as<FhirTypeRef>();
         if (!tref)
         {
-            diag.error("initializer lists can only be applied to a type or constructor call", expr->target->span);
+            diag.report(DiagnosticCode::Err_InitListBadTarget, expr->target->span);
             return fhir.error_expr(expr);
         }
 
         namedType = tref->referenced ? tref->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            diag.error("initializer lists can only be applied to a type or constructor call", expr->target->span);
+            diag.report(DiagnosticCode::Err_InitListBadTarget, expr->target->span);
             return fhir.error_expr(expr);
         }
 
         if (!namedType->find_constructor({}).best.method)
         {
-            diag.error(std::format("type '{}' has no default constructor", format_type_name(namedType)), expr->target->span);
+            diag.report(DiagnosticCode::Err_NoDefaultCtor, expr->target->span, format_type_name(namedType));
         }
     }
 
@@ -159,15 +159,15 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     }
 
     // Initializer lists with field assignments are lowered to:
-    //   var __init_N = Constructor(...)   
-    //   __init_N.field1 = value1          
-    //   __init_N.field2 = value2          
+    //   var __init_N = Constructor(...)
+    //   __init_N.field1 = value1
+    //   __init_N.field2 = value2
     //   ... expression result is __init_N
     auto* pending = pending_statements();
     int* counter = temp_counter();
     if (!pending || !counter)
     {
-        diag.error("initializer lists are not yet supported outside of method bodies", expr->span);
+        diag.report(DiagnosticCode::Err_InitListOutsideMethod, expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -231,7 +231,7 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
         auto it = std::find(boundFieldPaths.begin(), boundFieldPaths.end(), path);
         if (it != boundFieldPaths.end())
         {
-            diag.error(std::format("duplicate field '{}' in initializer", path), fieldInit->target->span);
+            diag.report(DiagnosticCode::Err_DuplicateInitField, fieldInit->target->span, path);
         }
         else
         {
@@ -247,8 +247,7 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = type->find_field(id->name.lexeme);
         if (!field)
         {
-            diag.error(std::format("type '{}' has no field named '{}'",
-                  format_type_name(type), id->name.lexeme), target->span);
+            diag.report(DiagnosticCode::Err_NoSuchMember, target->span, format_type_name(type), id->name.lexeme);
             return nullptr;
         }
         return field->type;
@@ -265,7 +264,7 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         auto* nestedType = leftType->as<NamedTypeSymbol>();
         if (!nestedType)
         {
-            diag.error("cannot access member on non-struct type", member->span);
+            diag.report(DiagnosticCode::Err_InitMemberOnNonStruct, member->span);
             return nullptr;
         }
 
@@ -273,14 +272,13 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = nestedType->find_field(rightName);
         if (!field)
         {
-            diag.error(std::format("type '{}' has no field named '{}'",
-                  format_type_name(nestedType), rightName), member->span);
+            diag.report(DiagnosticCode::Err_NoSuchMember, member->span, format_type_name(nestedType), rightName);
             return nullptr;
         }
         return field->type;
     }
 
-    diag.error("initializer target must be a field name or member access", target->span);
+    diag.report(DiagnosticCode::Err_InitTargetBadShape, target->span);
     return nullptr;
 }
 

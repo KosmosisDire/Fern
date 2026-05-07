@@ -85,7 +85,7 @@ bool FlowAnalyzer::check_block(FhirBlock* block)
         {
             if (i + 1 < block->statements.size())
             {
-                diag.warn("unreachable code", block->statements[i + 1]->span);
+                diag.report(DiagnosticCode::Wrn_UnreachableCode, block->statements[i + 1]->span);
             }
             return true;
         }
@@ -117,7 +117,7 @@ void FlowAnalyzer::analyze(FhirMethod* method, Diagnostics& diag)
                 loc = loc.merge(callable->returnType->span);
             }
         }
-        diag.error("not all code paths return a value", loc);
+        diag.report(DiagnosticCode::Err_NotAllPathsReturn, loc);
     }
 }
 

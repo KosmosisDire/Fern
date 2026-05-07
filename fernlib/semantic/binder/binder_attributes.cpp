@@ -44,13 +44,13 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
         auto* attrType = tref && tref->referenced ? tref->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!attrType)
         {
-            diag.error("attribute must name a type", attr->span);
+            diag.report(DiagnosticCode::Err_AttrMustBeType, attr->span);
             continue;
         }
 
         if (!attrType->is_attribute())
         {
-            diag.error(std::format("type '{}' is not an attribute type (missing 'attr' modifier)", attrType->name), attr->span);
+            diag.report(DiagnosticCode::Err_NotAttrType, attr->span, attrType->name);
             continue;
         }
 
@@ -70,7 +70,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
         {
             if (!initExpr->target)
             {
-                diag.error("expected type name in attribute initializer", attr->span);
+                diag.report(DiagnosticCode::Err_AttrNeedsTypeName, attr->span);
                 continue;
             }
 
@@ -96,7 +96,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             ctor = attrType->find_constructor(emptyArgs).best.method;
             if (!ctor)
             {
-                diag.error(std::format("'{}' must contain a parameterless constructor to construct with only an initializer list", attrType->name), attr->span);
+                diag.report(DiagnosticCode::Err_AttrNeedsParameterlessCtor, attr->span, attrType->name);
             }
         }
 

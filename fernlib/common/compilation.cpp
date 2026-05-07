@@ -25,7 +25,7 @@ void Compilation::add_file(std::string_view path)
     std::ifstream file{std::string{path}};
     if (!file)
     {
-        diag.error(std::format("Could not open file: {}", path), Span{});
+        diag.report(DiagnosticCode::Err_CannotOpenFile, Span{}, path);
         return;
     }
 

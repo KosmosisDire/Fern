@@ -1,6 +1,6 @@
 #pragma once
 
-#include "source/span.hpp"
+#include <source/span.hpp>
 #include <format>
 #include <string>
 #include <string_view>
@@ -9,7 +9,21 @@
 namespace Fern
 {
 
+#pragma region Code
 
+enum class DiagnosticCode : int
+{
+    #define DIAG(name, id, sev, fmt) name = id,
+    #include <common/diagnostic_codes.def>
+    #undef DIAG
+};
+
+inline std::string format_id(DiagnosticCode code)
+{
+    return std::format("FN{:04}", static_cast<int>(code));
+}
+
+#pragma region Diagnostic
 
 struct Diagnostic
 {
@@ -20,14 +34,16 @@ struct Diagnostic
         Error
     };
 
+    DiagnosticCode code;
     Severity severity;
-    std::string message;
     Span location;
+    std::string message;
 
-    Diagnostic(Severity sev, std::string_view msg, const Span& loc)
-        : severity(sev)
-        , message(msg)
+    Diagnostic(DiagnosticCode c, Severity sev, std::string msg, const Span& loc)
+        : code(c)
+        , severity(sev)
         , location(loc)
+        , message(std::move(msg))
     {
     }
 
@@ -45,47 +61,54 @@ struct Diagnostic
         return "Unknown";
     }
 
-    std::string format() const
-    {
-        return std::format("{}({}): {}", severity_string(), location.format(), message);
-    }
-
     std::string format(std::string_view filename) const
     {
-        return std::format("{}:{}:{}: {}: {}",
+        return std::format("{}:{}:{}: {} {}: {}",
             filename,
             location.startLine + 1,
             location.startColumn + 1,
             severity_string(),
+            format_id(code),
             message);
     }
 };
 
+#pragma region Lookup
 
+inline std::string_view format_string_for(DiagnosticCode code)
+{
+    switch (code)
+    {
+        #define DIAG(name, id, sev, fmt) case DiagnosticCode::name: return fmt;
+        #include <common/diagnostic_codes.def>
+        #undef DIAG
+    }
+    return "";
+}
+
+inline Diagnostic::Severity severity_for(DiagnosticCode code)
+{
+    switch (code)
+    {
+        #define DIAG(name, id, sev, fmt) case DiagnosticCode::name: return Diagnostic::Severity::sev;
+        #include <common/diagnostic_codes.def>
+        #undef DIAG
+    }
+    return Diagnostic::Severity::Error;
+}
+
+#pragma region Diagnostics
 
 class Diagnostics
 {
 public:
     Diagnostics() = default;
 
-    void report(const Diagnostic& diag)
+    template <typename... Args>
+    void report(DiagnosticCode code, const Span& loc, const Args&... args)
     {
-        diagnostics.push_back(diag);
-    }
-
-    void info(std::string_view msg, const Span& loc)
-    {
-        diagnostics.emplace_back(Diagnostic::Severity::Information, msg, loc);
-    }
-
-    void warn(std::string_view msg, const Span& loc)
-    {
-        diagnostics.emplace_back(Diagnostic::Severity::Warning, msg, loc);
-    }
-
-    void error(std::string_view msg, const Span& loc)
-    {
-        diagnostics.emplace_back(Diagnostic::Severity::Error, msg, loc);
+        std::string msg = std::vformat(format_string_for(code), std::make_format_args(args...));
+        diagnostics.emplace_back(code, severity_for(code), std::move(msg), loc);
     }
 
     void clear()
@@ -139,6 +162,5 @@ public:
 private:
     std::vector<Diagnostic> diagnostics;
 };
-
 
 }

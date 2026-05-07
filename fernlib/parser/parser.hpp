@@ -38,7 +38,7 @@ private:
     // Shared parse helpers
     void parse_parameter_list(ParameterListSyntax& out, Span& span);
     TypeExprSyntax* parse_return_type(Span& span);
-    BlockSyntax* parse_body(Span& span, std::string_view missingBraceMessage);
+    BlockSyntax* parse_body(Span& span);
 
     // Statements
     BaseStmtSyntax* parse_statement();

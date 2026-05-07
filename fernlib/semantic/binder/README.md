@@ -48,7 +48,7 @@ Each binder overrides what it contributes. Defaults walk the chain.
 
 ## Diagnostics
 
-Every binder holds a reference to the single `Diagnostics` object owned by `Compilation`. `Binder` stores `diag` and forwards error calls like `diag.error(...)` directly.
+Every binder holds a reference to the single `Diagnostics` object owned by `Compilation`. `Binder` stores `diag` and forwards error calls like `diag.report(DiagnosticCode::Err_X, span, args...)` directly.
 
 ## Type resolution
 
@@ -78,6 +78,7 @@ var x = __init_0;
 
 ## File naming
 
+TODO: Too many things named binder for fucks sake
 - `binder.hpp/cpp` is the `Binder` base class.
 - `*_binder.hpp/cpp` is a concrete scope binder. One file per class.
 - `binder_*.cpp` is a slice of `Binder` method definitions grouped by topic (exprs, calls, literals, stmts, attributes, initializers). Declared in `binder.hpp`.

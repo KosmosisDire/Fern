@@ -18,7 +18,7 @@ const Token* Parser::expect(TokenKind kind, std::string_view message)
     {
         return &walker.advance();
     }
-    diag.error(message, walker.current().span);
+    diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, message);
     return nullptr;
 }
 
@@ -26,7 +26,7 @@ void Parser::expect_progress(TokenWalker::Checkpoint cp)
 {
     if (!walker.check_progress(cp))
     {
-        diag.error(std::format("unexpected token '{}'", walker.current().lexeme), walker.current().span);
+        diag.report(DiagnosticCode::Err_UnexpectedToken, walker.current().span, walker.current().lexeme);
         walker.advance();
     }
 }
@@ -103,7 +103,7 @@ void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
         }
         else
         {
-            diag.error("expected attribute name after '@'", span);
+            diag.report(DiagnosticCode::Err_ExpectedAttributeName, span);
         }
         skip_newlines(walker);
     }
@@ -116,7 +116,7 @@ Modifier Parser::parse_modifiers()
     {
         if (has_modifier(mods, *mod))
         {
-            diag.error(std::format("duplicate modifier '{}'", walker.current().lexeme), walker.current().span);
+            diag.report(DiagnosticCode::Err_DuplicateModifier, walker.current().span, walker.current().lexeme);
         }
         mods = mods | *mod;
         walker.advance();
@@ -267,11 +267,11 @@ BaseDeclSyntax* Parser::parse_declaration()
     {
         if (!attrs.empty())
         {
-            diag.error("expected a declaration", walker.current().span);
+            diag.report(DiagnosticCode::Err_ExpectedDeclaration, walker.current().span);
         }
         if (mods != Modifier::None)
         {
-            diag.error("modifiers must be followed by a declaration", walker.current().span);
+            diag.report(DiagnosticCode::Err_ModifiersWithoutDecl, walker.current().span);
         }
         walker.advance();
         return nullptr;
@@ -306,7 +306,7 @@ CallableDeclSyntax* Parser::parse_function_decl()
     func->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    func->body = parse_body(span, "expected '{' after function declaration");
+    func->body = parse_body(span);
     func->span = span;
 
     return func;
@@ -355,13 +355,13 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         }
         else
         {
-            diag.error("expected expression after '='", assignSpan);
+            diag.report(DiagnosticCode::Err_ExpectedExprAfterEq, assignSpan);
         }
     }
 
     if (!var->type && !hasAssign)
     {
-        diag.error("variable declaration requires a type annotation or initializer", var->name.span);
+        diag.report(DiagnosticCode::Err_VarRequiresTypeOrInit, var->name.span);
     }
 
     var->span = span;
@@ -464,7 +464,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
     }
     else
     {
-        diag.error("expected '{' after type declaration", walker.current().span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
     }
 
     typeDecl->span = span;
@@ -474,7 +474,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
 
 FieldDeclSyntax* Parser::parse_field_decl()
 {
-    if (!walker.check(TokenKind::Identifier) || 
+    if (!walker.check(TokenKind::Identifier) ||
         !(walker.peek(1).kind == TokenKind::Colon || walker.peek(1).kind == TokenKind::Assign))
     {
         return nullptr;
@@ -581,11 +581,11 @@ TypeExprSyntax* Parser::parse_return_type(Span& span)
     return type;
 }
 
-BlockSyntax* Parser::parse_body(Span& span, std::string_view missingBraceMessage)
+BlockSyntax* Parser::parse_body(Span& span)
 {
     if (!walker.check(TokenKind::LeftBrace))
     {
-        diag.error(missingBraceMessage, walker.current().span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
         return nullptr;
     }
 
@@ -608,7 +608,7 @@ CallableDeclSyntax* Parser::parse_init_decl()
 
     if (walker.check(TokenKind::ThinArrow))
     {
-        diag.error("constructors cannot have a return type annotation", walker.current().span);
+        diag.report(DiagnosticCode::Err_CtorReturnType, walker.current().span);
         walker.advance();
         skip_newlines(walker);
         parse_type();
@@ -622,7 +622,7 @@ CallableDeclSyntax* Parser::parse_init_decl()
     }
     else
     {
-        diag.error("expected '{' after constructor declaration", walker.current().span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
     }
     initDecl->span = span;
 
@@ -648,7 +648,7 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     }
     else
     {
-        diag.error("expected literal suffix name", walker.current().span);
+        diag.report(DiagnosticCode::Err_ExpectedLiteralSuffix, walker.current().span);
     }
     skip_newlines(walker);
 
@@ -665,7 +665,7 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     }
     else
     {
-        diag.error("expected '{' after literal declaration", walker.current().span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
     }
     decl->span = span;
 
@@ -694,7 +694,7 @@ CallableDeclSyntax* Parser::parse_cast_decl()
     }
     else
     {
-        diag.error("expected '{' after cast declaration", walker.current().span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
     }
     decl->span = span;
 
@@ -740,7 +740,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     }
     else
     {
-        diag.error("expected operator symbol after 'op'", span);
+        diag.report(DiagnosticCode::Err_ExpectedOpSymbol, span);
     }
     skip_newlines(walker);
 
@@ -750,7 +750,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     opDecl->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    opDecl->body = parse_body(span, "expected '{' after operator declaration");
+    opDecl->body = parse_body(span);
     opDecl->span = span;
 
     return opDecl;
@@ -872,7 +872,7 @@ BaseStmtSyntax* Parser::parse_statement()
         !walker.check(TokenKind::RightBrace) &&
         !walker.is_at_end())
     {
-        diag.error(std::format("unexpected token '{}'", walker.current().lexeme), walker.current().span);
+        diag.report(DiagnosticCode::Err_UnexpectedToken, walker.current().span, walker.current().lexeme);
         walker.advance();
     }
 
@@ -983,11 +983,11 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
                     walker.restore(cp);
                     break;
                 }
-                diag.error(std::format("ambiguous operator spacing: '{}' has space on the left but not the right. Did you mean '... {} {}'?",
+                diag.report(DiagnosticCode::Err_AmbiguousOpSpacing,
+                      walker.current().span,
                       walker.current().lexeme,
                       walker.current().lexeme,
-                      walker.peek(1).lexeme),
-                      walker.current().span);
+                      walker.peek(1).lexeme);
                 walker.restore(cp);
                 break;
             }
@@ -1006,8 +1006,9 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
         auto* right = parse_binary(static_cast<Precedence>(static_cast<int>(prec) + 1));
         if (!right)
         {
-            diag.error(std::format("expected expression after '{}'", Fern::format(opKind)),
-                  walker.current().span);
+            diag.report(DiagnosticCode::Err_ExpectedExprAfterOp,
+                  walker.current().span,
+                  Fern::format(opKind));
         }
 
         auto* binary = arena.alloc<BinaryExprSyntax>();
@@ -1041,7 +1042,7 @@ BaseExprSyntax* Parser::parse_unary()
             {
                 return parse_postfix();
             }
-            diag.error("unary operator cannot be separated from its operand", walker.current().span);
+            diag.report(DiagnosticCode::Err_UnaryOpDetached, walker.current().span);
         }
 
         Span opSpan = walker.current().span;
@@ -1127,7 +1128,7 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
 
         if (walker.check(TokenKind::Comma))
         {
-            diag.error("unexpected ',' before initializer member", walker.current().span);
+            diag.report(DiagnosticCode::Err_UnexpectedCommaInInit, walker.current().span);
             walker.advance();
             advance_past_field(walker);
             expect_progress(cp);
@@ -1157,7 +1158,7 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
                 is_terminator(walker.current().kind) ||
                 is_statement_keyword(walker.current().kind))
             {
-                diag.error("expected value after ':'", walker.current().span);
+                diag.report(DiagnosticCode::Err_ExpectedValueAfterColon, walker.current().span);
                 fieldInit->span = fieldSpan;
                 out.push_back(fieldInit);
                 advance_past_field(walker);
@@ -1230,7 +1231,7 @@ MemberAccessExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
         return memberAccess;
     }
 
-    diag.error("expected member name after '.'", walker.current().span);
+    diag.report(DiagnosticCode::Err_ExpectedMemberAfterDot, walker.current().span);
 
     if (is_literal(walker.current().kind))
     {
@@ -1446,7 +1447,7 @@ IfStmtSyntax* Parser::parse_if()
     }
     else
     {
-        diag.error("expected '{' after if condition", ifStmt->condition ? ifStmt->condition->span : span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, ifStmt->condition ? ifStmt->condition->span : span);
     }
 
     skip_newlines(walker);
@@ -1469,7 +1470,7 @@ IfStmtSyntax* Parser::parse_if()
         }
         else
         {
-            diag.error("expected '{' or 'if' after 'else'", elseSpan);
+            diag.report(DiagnosticCode::Err_ExpectedElseBody, elseSpan);
         }
     }
 
@@ -1497,7 +1498,7 @@ WhileStmtSyntax* Parser::parse_while()
     }
     else
     {
-        diag.error("expected '{' after while condition", whileStmt->condition ? whileStmt->condition->span : span);
+        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, whileStmt->condition ? whileStmt->condition->span : span);
     }
 
     whileStmt->span = span;

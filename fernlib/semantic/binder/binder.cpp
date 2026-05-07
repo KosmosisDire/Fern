@@ -95,12 +95,14 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
             if (Symbol* sym = result.single())
             {
                 if (auto* type = sym->as<TypeSymbol>()) return type;
+                diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, idExpr->name.lexeme, kind_noun(sym->kind), "type");
+                return nullptr;
             }
-            diag.error(std::format("'{}' is not a type", idExpr->name.lexeme), expr->span);
+            diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, idExpr->name.lexeme, "method", "type");
             return nullptr;
         }
 
-        diag.error(std::format("undefined type '{}'", idExpr->name.lexeme), expr->span);
+        diag.report(DiagnosticCode::Err_UndefinedType, expr->span, idExpr->name.lexeme);
         return nullptr;
     }
 
@@ -117,7 +119,7 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
         auto* arrayType = context.symbols.get_or_declare_array_type(elementType);
         if (!arrayType)
         {
-            diag.error("Array type not found", expr->span);
+            diag.report(DiagnosticCode::Err_ArrayTypeNotFound, expr->span);
             return nullptr;
         }
         return arrayType;
@@ -132,7 +134,7 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
             {
                 std::vector<std::string_view> path;
                 collect_type_path(member->left, path);
-                diag.error(std::format("undefined type '{}.{}'", join_path(path), genRight->name.lexeme), member->left->span);
+                diag.report(DiagnosticCode::Err_UndefinedType, member->left->span, std::format("{}.{}", join_path(path), genRight->name.lexeme));
                 return nullptr;
             }
             return resolve_generic_name(genRight, parentSym);
@@ -143,14 +145,14 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
         {
             std::vector<std::string_view> path;
             collect_type_path(member, path);
-            diag.error(std::format("undefined type '{}'", join_path(path)), expr->span);
+            diag.report(DiagnosticCode::Err_UndefinedType, expr->span, join_path(path));
             return nullptr;
         }
         if (auto* type = sym->as<TypeSymbol>()) return type;
 
         std::vector<std::string_view> path;
         collect_type_path(member, path);
-        diag.error(std::format("'{}' is not a type", join_path(path)), expr->span);
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, join_path(path), kind_noun(sym->kind), "type");
         return nullptr;
     }
 
@@ -223,7 +225,7 @@ TypeSymbol* Binder::resolve_generic_name(GenericNameExprSyntax* gen, Symbol* par
     }
     else
     {
-        diag.error(std::format("'{}' is not a namespace", parentScope->qualified_name()), gen->span);
+        diag.report(DiagnosticCode::Err_BadSymbolKind, gen->span, parentScope->qualified_name(), kind_noun(parentScope->kind), "namespace");
         return nullptr;
     }
 
@@ -238,13 +240,13 @@ TypeSymbol* Binder::resolve_generic_name(GenericNameExprSyntax* gen, Symbol* par
         {
             fullName = std::string(name);
         }
-        diag.error(std::format("undefined type '{}'", fullName), gen->span);
+        diag.report(DiagnosticCode::Err_UndefinedType, gen->span, fullName);
         return nullptr;
     }
 
     if (!templ->is_generic_definition())
     {
-        diag.error(std::format("type '{}' is not generic", format_type_name(templ)), gen->span);
+        diag.report(DiagnosticCode::Err_TypeNotGeneric, gen->span, format_type_name(templ));
         return nullptr;
     }
 

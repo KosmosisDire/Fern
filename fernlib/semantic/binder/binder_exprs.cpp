@@ -84,7 +84,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             const auto& constant = result->get_constant();
             if (constant && !constant->range_fits(expected))
             {
-                diag.error(constant->format_range_message(expected), expr->span);
+                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->format_range_message(expected));
                 return fhir.error_expr(expr, expected, result);
             }
             return result;
@@ -106,13 +106,12 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
                 if (constant->range_fits(expected))
                     return fhir.cast(result->syntax, expected, result, /*isImplicit=*/true);
 
-                diag.error(constant->format_range_message(expected), expr->span);
+                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->format_range_message(expected));
                 return fhir.error_expr(expr, expected, result);
             }
         }
 
-        diag.error(std::format("expected '{}', got '{}'",
-              format_type_name(expected), format_type_name(result->type)), expr->span);
+        diag.report(DiagnosticCode::Err_TypeMismatch, expr->span, format_type_name(expected), format_type_name(result->type));
         return fhir.error_expr(expr, expected, result);
     }
 
@@ -145,18 +144,18 @@ FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
     if (auto* tref = result->as<FhirTypeRef>())
     {
-        diag.error(std::format("'{}' is a type, not a value", format_type_name(tref->referenced)), expr->span);
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, format_type_name(tref->referenced), "type", "value");
         return fhir.error_expr(expr, nullptr, tref);
     }
     if (auto* nref = result->as<FhirNamespaceRefExpr>())
     {
         std::string name = nref->namespaceSymbol ? nref->namespaceSymbol->name : "?";
-        diag.error(std::format("'{}' is a namespace, not a value", name), expr->span);
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, name, "namespace", "value");
         return fhir.error_expr(expr, nullptr, nref);
     }
     if (auto* mg = result->as<FhirMethodGroupRefExpr>())
     {
-        diag.error(std::format("'{}' is a method, not a value", mg->name), expr->span);
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, mg->name, "method", "value");
         return fhir.error_expr(expr, nullptr, mg);
     }
 
@@ -168,7 +167,7 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
     LookupResult result = lookup(expr->name.lexeme);
     if (result.empty())
     {
-        diag.error(std::format("undefined name '{}'", expr->name.lexeme), expr->span);
+        diag.report(DiagnosticCode::Err_UndefinedName, expr->span, expr->name.lexeme);
         return fhir.error_expr(expr);
     }
 
@@ -233,7 +232,7 @@ FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
     auto* type = containing_type();
     if (!type)
     {
-        diag.error("'this' can only be used inside a type", expr->span);
+        diag.report(DiagnosticCode::Err_ThisOutsideType, expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -265,8 +264,7 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
         return fhir.cast(expr, targetType, operand, false, conv.method, typeRef);
     }
 
-    diag.error(std::format("cannot cast from '{}' to '{}'",
-          format_type_name(operand->type), format_type_name(targetType)), expr->span);
+    diag.report(DiagnosticCode::Err_BadCast, expr->span, format_type_name(operand->type), format_type_name(targetType));
     return fhir.error_expr(expr);
 }
 
@@ -291,7 +289,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         auto* namedLeft = leftTypeRef->referenced ? leftTypeRef->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!namedLeft)
         {
-            diag.error(std::format("type '{}' has no members", format_type_name(leftTypeRef->referenced)), expr->span);
+            diag.report(DiagnosticCode::Err_TypeHasNoMembers, expr->span, format_type_name(leftTypeRef->referenced));
             return fhir.error_expr(expr, nullptr, left);
         }
 
@@ -312,8 +310,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         Symbol* member = namedLeft->find_non_method_member(memberName);
         if (!member)
         {
-            diag.error(std::format("type '{}' has no member '{}'",
-                  format_type_name(namedLeft), memberName), expr->span);
+            diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type_name(namedLeft), memberName);
             return fhir.error_expr(expr);
         }
 
@@ -324,8 +321,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         {
             if (!has_modifier(field->modifiers, Modifier::Static))
             {
-                diag.error(std::format("cannot access instance field '{}' on type '{}'",
-                      memberName, format_type_name(namedLeft)), expr->span);
+                diag.report(DiagnosticCode::Err_InstanceFieldOnType, expr->span, memberName, format_type_name(namedLeft));
                 return fhir.error_expr(expr, field->type);
             }
             return fhir.field_ref(expr, nullptr, field);
@@ -349,8 +345,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         Symbol* member = ns->find_member(memberName);
         if (!member)
         {
-            diag.error(std::format("namespace '{}' has no member '{}'",
-                  ns->name, memberName), expr->span);
+            diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, ns->name, memberName);
             return fhir.error_expr(expr);
         }
 
@@ -370,7 +365,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 
     if (expr->right->as<GenericNameExprSyntax>())
     {
-        diag.error("type arguments are not supported on instance members", expr->right->span);
+        diag.report(DiagnosticCode::Err_TypeArgsOnInstanceMember, expr->right->span);
         return fhir.error_expr(expr);
     }
 
@@ -384,8 +379,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         return fhir.method_group_ref(expr, namedType, memberName, left);
     }
 
-    diag.error(std::format("type '{}' has no member '{}'",
-          format_type_name(namedType), memberName), expr->span);
+    diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type_name(namedType), memberName);
     return fhir.error_expr(expr);
 }
 
@@ -403,11 +397,11 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         auto result = namedType->find_unary_operator(opToken, operandType);
         if (result.ambiguous)
         {
-            std::string msg = std::format("operator '{}' is ambiguous for value of type '{}':",
-                  Fern::format(opToken), format_type_name(namedType));
+            std::string candidates;
             for (auto* m : result.ambiguousCandidates)
-                msg += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
-            diag.error(msg, expr->span);
+                candidates += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
+            diag.report(DiagnosticCode::Err_AmbiguousUnaryOp, expr->span,
+                  Fern::format(opToken), format_type_name(namedType), candidates);
             return fhir.error_expr(expr);
         }
         if (result.best.is_callable())
@@ -421,8 +415,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
             return fhir.intrinsic(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand}, method);
         }
 
-        diag.error(std::format("operator '{}' cannot be applied to value of type '{}'",
-              Fern::format(opToken), format_type_name(namedType)), expr->span);
+        diag.report(DiagnosticCode::Err_BadUnaryOp, expr->span, Fern::format(opToken), format_type_name(namedType));
         return fhir.error_expr(expr);
     }
 
@@ -473,32 +466,27 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
             return fhir.intrinsic(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
         }
 
-        std::string leftName = format_type_name(leftType);
-        std::string rightName = format_type_name(rightType);
-        std::string msg = std::format("operator '{}' cannot be applied to values of type '{}' and '{}'",
-              Fern::format(opToken), leftName, rightName);
-
+        std::string suffix;
         if (!hasBase && !hasEqual)
         {
-            msg += std::format(" (requires '{}' and '==' operators)", Fern::format(baseToken));
+            suffix = std::format(" (requires '{}' and '==' operators)", Fern::format(baseToken));
         }
         else if (!hasBase)
         {
-            msg += std::format(" (requires '{}' operator)", Fern::format(baseToken));
+            suffix = std::format(" (requires '{}' operator)", Fern::format(baseToken));
         }
         else
         {
-            msg += " (requires '==' operator)";
+            suffix = " (requires '==' operator)";
         }
 
-        diag.error(msg, syntax->span);
+        diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
+              Fern::format(opToken), format_type_name(leftType), format_type_name(rightType), suffix);
         return fhir.error_expr(syntax);
     }
 
-    std::string leftName = format_type_name(leftType);
-    std::string rightName = format_type_name(rightType);
-    diag.error(std::format("operator '{}' cannot be applied to values of type '{}' and '{}'",
-          Fern::format(opToken), leftName, rightName), syntax->span);
+    diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
+          Fern::format(opToken), format_type_name(leftType), format_type_name(rightType), "");
     return fhir.error_expr(syntax);
 }
 
@@ -522,11 +510,11 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     auto result = namedType->find_binary_operator(opToken, leftType, rightType);
     if (result.ambiguous)
     {
-        std::string msg = std::format("operator '{}' is ambiguous for values of type '{}' and '{}':",
-              Fern::format(opToken), format_type_name(leftType), format_type_name(rightType));
+        std::string candidates;
         for (auto* m : result.ambiguousCandidates)
-            msg += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
-        diag.error(msg, syntax->span);
+            candidates += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
+        diag.report(DiagnosticCode::Err_AmbiguousBinaryOp, syntax->span,
+              Fern::format(opToken), format_type_name(leftType), format_type_name(rightType), candidates);
         return fhir.error_expr(syntax);
     }
     if (result.best.is_callable())
@@ -579,23 +567,31 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            diag.error(std::format("cannot index a value of type '{}'", format_type_name(objectType)), expr->span);
+            diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type_name(objectType));
             return fhir.error_expr(expr);
         }
 
         auto setterResult = namedType->find_index_setter(indexType, valueType);
         if (setterResult.ambiguous)
         {
-            std::string msg = "index assignment is ambiguous between:";
+            std::string candidates;
             for (auto* m : setterResult.ambiguousCandidates)
-                msg += std::format("\n  {}.op []=({})", format_type_name(namedType), m->format_parameters());
-            diag.error(msg, expr->span);
+                candidates += std::format("\n  {}.op []=({})", format_type_name(namedType), m->format_parameters());
+            diag.report(DiagnosticCode::Err_AmbiguousIndex, expr->span, candidates);
             return fhir.error_expr(expr);
         }
         if (!setterResult.best.is_callable())
         {
-            diag.error(std::format("type '{}' has no 'op []=' for index type '{}' and value type '{}'",
-                  format_type_name(namedType), format_type_name(indexType), format_type_name(valueType)), expr->span);
+            if (TypeSymbol* expectedValueType = namedType->expected_index_value_type(indexType))
+            {
+                diag.report(DiagnosticCode::Err_TypeMismatch, expr->value->span,
+                      format_type_name(expectedValueType), format_type_name(valueType));
+            }
+            else
+            {
+                diag.report(DiagnosticCode::Err_NoIndexSetter, indexExpr->index->span,
+                      format_type_name(namedType), format_type_name(indexType));
+            }
             return fhir.error_expr(expr);
         }
 
@@ -646,23 +642,22 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
     {
-        diag.error(std::format("cannot index a value of type '{}'", format_type_name(objectType)), expr->span);
+        diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type_name(objectType));
         return fhir.error_expr(expr);
     }
 
     auto getterResult = namedType->find_index_getter(indexType);
     if (getterResult.ambiguous)
     {
-        std::string msg = "index access is ambiguous between:";
+        std::string candidates;
         for (auto* m : getterResult.ambiguousCandidates)
-            msg += std::format("\n  {}.op []({})", format_type_name(namedType), m->format_parameters());
-        diag.error(msg, expr->span);
+            candidates += std::format("\n  {}.op []({})", format_type_name(namedType), m->format_parameters());
+        diag.report(DiagnosticCode::Err_AmbiguousIndex, expr->span, candidates);
         return fhir.error_expr(expr);
     }
     if (!getterResult.best.is_callable())
     {
-        diag.error(std::format("type '{}' has no 'op []' for index type '{}'",
-              format_type_name(namedType), format_type_name(indexType)), expr->span);
+        diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type_name(namedType), format_type_name(indexType));
         return fhir.error_expr(expr);
     }
 

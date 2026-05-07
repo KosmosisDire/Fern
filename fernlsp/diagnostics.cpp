@@ -1,5 +1,21 @@
 #include "diagnostics.hpp"
 
+// TODO: This should probably be somewhere else, it is a very generic utility
+static std::string capitalize_first(std::string_view msg)
+{
+    std::string result(msg);
+    for (size_t i = 0; i < result.size(); ++i)
+    {
+        char c = result[i];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+            continue;
+        if (c >= 'a' && c <= 'z')
+            result[i] = static_cast<char>(c - 'a' + 'A');
+        break;
+    }
+    return result;
+}
+
 std::vector<lsp::Diagnostic> map_diagnostics(const std::vector<Fern::Diagnostic>& diagnostics)
 {
     std::vector<lsp::Diagnostic> result;
@@ -7,8 +23,8 @@ std::vector<lsp::Diagnostic> map_diagnostics(const std::vector<Fern::Diagnostic>
     for (const auto& diag : diagnostics)
     {
         lsp::Diagnostic lspDiag;
-        lspDiag.message = diag.message;
-        lspDiag.source = "fern";
+        lspDiag.message = capitalize_first(diag.message);
+        lspDiag.code = Fern::format_id(diag.code);
 
         lspDiag.range.start.line = diag.location.startLine;
         lspDiag.range.start.character = diag.location.startColumn;

@@ -59,14 +59,12 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
         {
             auto callable = as<CallableDeclSyntax>(method->syntax);
             Span loc = callable ? callable->name.span.merge(callable->parameters.span) : Span{};
-            diag.error(std::format("function '{}' returns a value but has no return type annotation",
-                  method->name), loc);
+            diag.report(DiagnosticCode::Err_ReturnValueNoType, loc, method->name);
         }
     }
     else if (TypeSymbol* retType = method->get_return_type())
     {
-        diag.error(std::format("function '{}' expects a return of type '{}'",
-              method->name, format_type_name(retType)), stmt->span);
+        diag.report(DiagnosticCode::Err_WrongReturnType, stmt->span, method->name, format_type_name(retType));
     }
 
     out.push_back(fhir.return_stmt(stmt, value));
@@ -97,7 +95,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
                 const auto& c = initExpr->get_constant();
                 if (c && !c->range_fits(type))
                 {
-                    diag.error(c->format_range_message(type), decl->initializer->span);
+                    diag.report(DiagnosticCode::Err_ConstantOutOfRange, decl->initializer->span, c->format_range_message(type));
                     initExpr = fhir.error_expr(decl->initializer, type, initExpr);
                 }
             }
@@ -107,7 +105,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
             auto* arrLit = decl->initializer->as<ArrayLiteralExprSyntax>();
             if (arrLit && arrLit->elements.empty())
             {
-                diag.error("type cannot be inferred for empty array, consider adding a type annotation or explicit constructor", decl->initializer->span);
+                diag.report(DiagnosticCode::Err_ArrayCannotInferElement, decl->initializer->span);
             }
         }
     }

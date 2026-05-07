@@ -5,6 +5,22 @@
 namespace Fern
 {
 
+// TODO: this will probably go away when we merge the lsp's symbol display code into fernlib
+std::string_view kind_noun(SymbolKind kind)
+{
+    switch (kind)
+    {
+        case SymbolKind::Namespace: return "namespace";
+        case SymbolKind::NamedType: return "type";
+        case SymbolKind::TypeParam: return "type parameter";
+        case SymbolKind::Field:     return "field";
+        case SymbolKind::Method:    return "method";
+        case SymbolKind::Parameter: return "parameter";
+        case SymbolKind::Local:     return "local";
+    }
+    return "unknown";
+}
+
 static void format_attributes(std::ostringstream& ss, const std::vector<ResolvedAttribute>& attrs, std::string_view pad)
 {
     for (const auto& attr : attrs)

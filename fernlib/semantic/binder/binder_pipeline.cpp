@@ -124,20 +124,19 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
 
                 if (isIndexGet && method->parameters.size() != 2)
                 {
-                    context.diag.error(std::format("operator '[]' must have 2 parameters (self, index), but has {}",
-                          method->parameters.size()), callableAst->span);
+                    context.diag.report(DiagnosticCode::Err_IndexGetParamCount, callableAst->span, method->parameters.size());
                 }
                 else if (isIndexSet && method->parameters.size() != 3)
                 {
-                    context.diag.error(std::format("operator '[]=' must have 3 parameters (self, index, value), but has {}",
-                          method->parameters.size()), callableAst->span);
+                    context.diag.report(DiagnosticCode::Err_IndexSetParamCount, callableAst->span, method->parameters.size());
                 }
                 else if (!isIndexGet && !isIndexSet &&
                          (method->parameters.size() < 1 || method->parameters.size() > 2))
                 {
-                    context.diag.error(std::format("operator '{}' must have 1 parameter (unary) or 2 parameters (binary), but has {}",
+                    context.diag.report(DiagnosticCode::Err_OperatorParamCount,
+                          callableAst->span,
                           Fern::format(callableAst->name.kind),
-                          method->parameters.size()), callableAst->span);
+                          method->parameters.size());
                 }
             }
         }
@@ -198,10 +197,11 @@ void BinderPipeline::resolve_signatures()
                         auto* annotated = tBinder.resolve_type_expr(callable->returnType);
                         if (annotated && annotated != type)
                         {
-                            context.diag.error(std::format("literal '{}' must return '{}', not '{}'",
+                            context.diag.report(DiagnosticCode::Err_LiteralReturnType,
+                                  callable->returnType->span,
                                   method->name,
                                   format_type_name(type),
-                                  format_type_name(annotated)), callable->returnType->span);
+                                  format_type_name(annotated));
                         }
                     }
                     method->set_return_type(type);
@@ -297,24 +297,26 @@ void BinderPipeline::check_duplicate_methods(NamedTypeSymbol* type)
             if (sameSignature)
             {
                 Span loc = b->syntax ? b->syntax->span : Span{};
+                std::string memberDesc;
                 switch (b->callableKind)
                 {
                     case CallableKind::Constructor:
-                        context.diag.error(std::format("duplicate constructor on type '{}'", format_type_name(type)), loc);
+                        memberDesc = "constructor";
                         break;
                     case CallableKind::Operator:
-                        context.diag.error(std::format("duplicate operator '{}' on type '{}'", b->name, format_type_name(type)), loc);
+                        memberDesc = std::format("operator '{}'", b->name);
                         break;
                     case CallableKind::Function:
-                        context.diag.error(std::format("duplicate method '{}' on type '{}'", b->name, format_type_name(type)), loc);
+                        memberDesc = std::format("method '{}'", b->name);
                         break;
                     case CallableKind::Literal:
-                        context.diag.error(std::format("duplicate literal '{}' on type '{}'", b->name, format_type_name(type)), loc);
+                        memberDesc = std::format("literal '{}'", b->name);
                         break;
                     case CallableKind::Cast:
-                        context.diag.error(std::format("duplicate cast on type '{}'", format_type_name(type)), loc);
+                        memberDesc = "cast";
                         break;
                 }
+                context.diag.report(DiagnosticCode::Err_DuplicateMember, loc, memberDesc, format_type_name(type));
             }
         }
     }
@@ -334,9 +336,10 @@ void BinderPipeline::validate_signatures()
                 if (!hasContainingType)
                 {
                     Span loc = method->syntax ? method->syntax->span : Span{};
-                    context.diag.error(std::format("operator '{}' must have at least one parameter of containing type '{}'",
+                    context.diag.report(DiagnosticCode::Err_OperatorMissingSelfParam,
+                          loc,
                           method->name,
-                          format_type_name(type)), loc);
+                          format_type_name(type));
                 }
             }
 
@@ -345,16 +348,17 @@ void BinderPipeline::validate_signatures()
                 Span loc = method->syntax ? method->syntax->span : Span{};
                 if (method->parameters.size() != 1)
                 {
-                    context.diag.error(std::format("literal '{}' must have exactly 1 parameter", method->name), loc);
+                    context.diag.report(DiagnosticCode::Err_LiteralWrongArity, loc, method->name);
                 }
                 else if (auto* paramType = method->parameters[0]->type)
                 {
                     auto* namedParamType = paramType->as<NamedTypeSymbol>();
                     if (!namedParamType || !namedParamType->allows_custom_literals())
                     {
-                        context.diag.error(std::format("literal '{}' parameter type '{}' does not allow custom literals",
+                        context.diag.report(DiagnosticCode::Err_LiteralBadParamType,
+                              loc,
                               method->name,
-                              format_type_name(paramType)), loc);
+                              format_type_name(paramType));
                     }
                 }
             }

@@ -423,7 +423,7 @@ Token Lexer::scan_string(char delimiter)
             }
             if (walker.peek() == '\n')
             {
-                diag.error("unterminated string literal", walker.make_span());
+                diag.report(DiagnosticCode::Err_UnterminatedString, walker.make_span());
                 return make_error_token();
             }
             if (delimiter != '`' && walker.peek() == '\\')
@@ -438,7 +438,7 @@ Token Lexer::scan_string(char delimiter)
         }
     }
 
-    diag.error("unterminated string literal", walker.make_span());
+    diag.report(DiagnosticCode::Err_UnterminatedString, walker.make_span());
     return make_error_token();
 }
 
@@ -448,7 +448,7 @@ Token Lexer::scan_char()
     {
         if (walker.peek() == '\n')
         {
-            diag.error("unterminated character literal", walker.make_span());
+            diag.report(DiagnosticCode::Err_UnterminatedChar, walker.make_span());
             return make_error_token();
         }
         if (walker.peek() == '\\')
@@ -464,7 +464,7 @@ Token Lexer::scan_char()
 
     if (walker.is_at_end())
     {
-        diag.error("unterminated character literal", walker.make_span());
+        diag.report(DiagnosticCode::Err_UnterminatedChar, walker.make_span());
         return make_error_token();
     }
 
@@ -495,4 +495,4 @@ bool Lexer::is_alphanumeric(char c)
 
 
 
-} 
+}

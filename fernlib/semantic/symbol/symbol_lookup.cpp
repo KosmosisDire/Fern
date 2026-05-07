@@ -196,6 +196,23 @@ OverloadResult NamedTypeSymbol::find_index_setter(TypeSymbol* indexType, TypeSym
     return Overload::resolve(candidates);
 }
 
+// TODO: returns the first matching setter's value type. 
+// We should support overloads at some point.
+TypeSymbol* NamedTypeSymbol::expected_index_value_type(TypeSymbol* indexType)
+{
+    if (table) table->ensure_members_populated(this);
+
+    for (auto* method : methods)
+    {
+        if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 3)
+            continue;
+        auto conv = get_conversion(indexType, method->parameters[1]->type);
+        if (conv.level == Convertibility::Exact || conv.level == Convertibility::Implicit)
+            return method->parameters[2]->type;
+    }
+    return nullptr;
+}
+
 #pragma region Conversion Lookup
 
 MethodSymbol* NamedTypeSymbol::find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType)

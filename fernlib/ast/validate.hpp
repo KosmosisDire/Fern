@@ -27,9 +27,13 @@ public:
 
     void visit(NamespaceDeclSyntax* node) override
     {
-        if (scope != Scope::Root && scope != Scope::Namespace)
+        if (scope == Scope::Type)
         {
-            diag.error("namespaces can only be declared at the top level or inside other namespaces", node->span);
+            diag.report(DiagnosticCode::Err_BadTypeContent, node->span);
+        }
+        else if (scope == Scope::Function)
+        {
+            diag.report(DiagnosticCode::Err_BadFunctionBodyContent, node->span);
         }
 
         Scope prev = scope;
@@ -42,7 +46,7 @@ public:
     {
         if (scope == Scope::Function)
         {
-            diag.error("type declarations are not allowed inside function bodies", node->span);
+            diag.report(DiagnosticCode::Err_BadFunctionBodyContent, node->span);
         }
 
         validate_modifiers(node);
@@ -55,25 +59,13 @@ public:
 
     void visit(CallableDeclSyntax* node) override
     {
-        if (node->callableKind == CallableKind::Constructor && scope != Scope::Type)
+        if (scope == Scope::Root || scope == Scope::Namespace)
         {
-            diag.error("constructors can only be declared inside a type", node->span);
+            diag.report(DiagnosticCode::Err_BadNamespaceContent, node->span);
         }
-        else if (node->callableKind == CallableKind::Operator && scope != Scope::Type)
+        else if (scope == Scope::Function)
         {
-            diag.error("operators can only be declared inside a type", node->span);
-        }
-        else if (node->callableKind == CallableKind::Literal && scope != Scope::Type)
-        {
-            diag.error("literal declarations can only be declared inside a type", node->span);
-        }
-        else if (node->callableKind == CallableKind::Cast && scope != Scope::Type)
-        {
-            diag.error("cast declarations can only be declared inside a type", node->span);
-        }
-        else if (node->callableKind == CallableKind::Function && scope != Scope::Type)
-        {
-            diag.error("functions can only be declared inside a type", node->span);
+            diag.report(DiagnosticCode::Err_BadFunctionBodyContent, node->span);
         }
 
         validate_modifiers(node);
@@ -94,9 +86,13 @@ public:
 
     void visit(FieldDeclSyntax* node) override
     {
-        if (scope != Scope::Type)
+        if (scope == Scope::Root || scope == Scope::Namespace)
         {
-            diag.error("fields can only be declared inside a type", node->span);
+            diag.report(DiagnosticCode::Err_BadNamespaceContent, node->span);
+        }
+        else if (scope == Scope::Function)
+        {
+            diag.report(DiagnosticCode::Err_BadFunctionBodyContent, node->span);
         }
 
         validate_modifiers(node);
@@ -109,16 +105,20 @@ public:
         {
             if (!node->attributes.empty())
             {
-                diag.error("attributes are not allowed on local variable declarations", node->attributes.front()->span);
+                diag.report(DiagnosticCode::Err_AttrOnLocal, node->attributes.front()->span);
             }
             if (node->modifiers != Modifier::None)
             {
-                diag.error("modifiers are not allowed on local variable declarations", node->span);
+                diag.report(DiagnosticCode::Err_ModifierOnLocal, node->span);
             }
         }
-        else
+        else if (scope == Scope::Root || scope == Scope::Namespace)
         {
-            diag.error("Local variable declarations are only allowed inside function bodies", node->span);
+            diag.report(DiagnosticCode::Err_BadNamespaceContent, node->span);
+        }
+        else if (scope == Scope::Type)
+        {
+            diag.report(DiagnosticCode::Err_BadTypeContent, node->span);
         }
 
         validate_modifiers(node);
@@ -137,17 +137,18 @@ private:
     Diagnostics& diag;
     Scope scope = Scope::Root;
 
+    // TODO: BaseDeclSyntax needs to track per-modifier source tokens so we can highlight modifier spans
     void validate_modifiers(BaseDeclSyntax* node)
     {
         if (!node->is<TypeDeclSyntax>())
         {
             if (has_modifier(node->modifiers, Modifier::Ref))
             {
-                diag.error("'ref' modifier can only be applied to type declarations", node->span);
+                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "ref", "type");
             }
             if (has_modifier(node->modifiers, Modifier::Attr))
             {
-                diag.error("'attr' modifier can only be applied to type declarations", node->span);
+                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "attr", "type");
             }
         }
 
@@ -156,17 +157,24 @@ private:
         bool hasImplicit = has_modifier(node->modifiers, Modifier::Implicit);
         bool hasExplicit = has_modifier(node->modifiers, Modifier::Explicit);
 
-        if ((hasImplicit || hasExplicit) && !isCast)
+        if (!isCast)
         {
-            diag.error("'implicit' and 'explicit' modifiers can only be applied to cast declarations", node->span);
+            if (hasImplicit)
+            {
+                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "implicit", "cast");
+            }
+            if (hasExplicit)
+            {
+                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "explicit", "cast");
+            }
         }
         if (isCast && !hasImplicit && !hasExplicit)
         {
-            diag.error("cast declarations must be marked 'implicit' or 'explicit'", node->span);
+            diag.report(DiagnosticCode::Err_CastMissingExplicitness, node->span);
         }
         if (hasImplicit && hasExplicit)
         {
-            diag.error("cast declarations cannot be both 'implicit' and 'explicit'", node->span);
+            diag.report(DiagnosticCode::Err_CastBothExplicitness, node->span);
         }
     }
 };
