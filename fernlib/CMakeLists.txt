@@ -10,7 +10,7 @@ set(FERNLIB_SOURCES
     # semantic
     semantic/symbol/symbol.cpp
     semantic/symbol/symbol_lookup.cpp
-    semantic/symbol/symbol_fmt.cpp
+    semantic/symbol/fmt.cpp
     semantic/symbol/overload.cpp
     semantic/symbol/table.cpp
     semantic/builtin_aliases.cpp

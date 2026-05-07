@@ -7,6 +7,7 @@
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/symbol/fmt.hpp>
 #include <common/cast.hpp>
 
 namespace Fern
@@ -64,7 +65,7 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     }
     else if (TypeSymbol* retType = method->get_return_type())
     {
-        diag.report(DiagnosticCode::Err_WrongReturnType, stmt->span, method->name, format_type_name(retType));
+        diag.report(DiagnosticCode::Err_WrongReturnType, stmt->span, method->name, format_type(retType));
     }
 
     out.push_back(fhir.return_stmt(stmt, value));
@@ -95,7 +96,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
                 const auto& c = initExpr->get_constant();
                 if (c && !c->range_fits(type))
                 {
-                    diag.report(DiagnosticCode::Err_ConstantOutOfRange, decl->initializer->span, c->format_range_message(type));
+                    diag.report(DiagnosticCode::Err_ConstantOutOfRange, decl->initializer->span, c->intValue, format_type(type));
                     initExpr = fhir.error_expr(decl->initializer, type, initExpr);
                 }
             }

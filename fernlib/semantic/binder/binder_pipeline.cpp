@@ -6,6 +6,7 @@
 #include <ast/ast.hpp>
 #include <semantic/binder/binder.hpp>
 #include <semantic/context.hpp>
+#include <semantic/symbol/fmt.hpp>
 #include <semantic/symbol/symbol.hpp>
 
 namespace Fern
@@ -200,8 +201,8 @@ void BinderPipeline::resolve_signatures()
                             context.diag.report(DiagnosticCode::Err_LiteralReturnType,
                                   callable->returnType->span,
                                   method->name,
-                                  format_type_name(type),
-                                  format_type_name(annotated));
+                                  format_type(type),
+                                  format_type(annotated));
                         }
                     }
                     method->set_return_type(type);
@@ -316,7 +317,7 @@ void BinderPipeline::check_duplicate_methods(NamedTypeSymbol* type)
                         memberDesc = "cast";
                         break;
                 }
-                context.diag.report(DiagnosticCode::Err_DuplicateMember, loc, memberDesc, format_type_name(type));
+                context.diag.report(DiagnosticCode::Err_DuplicateMember, loc, memberDesc, format_type(type));
             }
         }
     }
@@ -339,7 +340,7 @@ void BinderPipeline::validate_signatures()
                     context.diag.report(DiagnosticCode::Err_OperatorMissingSelfParam,
                           loc,
                           method->name,
-                          format_type_name(type));
+                          format_type(type));
                 }
             }
 
@@ -358,7 +359,7 @@ void BinderPipeline::validate_signatures()
                         context.diag.report(DiagnosticCode::Err_LiteralBadParamType,
                               loc,
                               method->name,
-                              format_type_name(paramType));
+                              format_type(paramType));
                     }
                 }
             }

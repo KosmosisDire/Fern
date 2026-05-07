@@ -7,6 +7,7 @@
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
+#include <semantic/symbol/fmt.hpp>
 #include <semantic/symbol/symbol.hpp>
 
 namespace Fern
@@ -246,7 +247,7 @@ TypeSymbol* Binder::resolve_generic_name(GenericNameExprSyntax* gen, Symbol* par
 
     if (!templ->is_generic_definition())
     {
-        diag.report(DiagnosticCode::Err_TypeNotGeneric, gen->span, format_type_name(templ));
+        diag.report(DiagnosticCode::Err_TypeNotGeneric, gen->span, format_type(templ));
         return nullptr;
     }
 

@@ -3,7 +3,6 @@
 #include <format>
 #include <string>
 #include <string_view>
-#include <sstream>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -64,8 +63,6 @@ enum class SymbolKind
     Local,
 };
 
-std::string_view kind_noun(SymbolKind kind);
-
 #pragma region Symbol Base
 
 struct Symbol
@@ -110,11 +107,6 @@ struct Symbol
         }
         return name;
     }
-
-    virtual std::string format(int indent = 0) const
-    {
-        return std::format("{}{}", std::string(indent, ' '), name);
-    }
 };
 
 #pragma region Namespace Symbol
@@ -146,8 +138,6 @@ struct NamespaceSymbol : Symbol
     }
 
     Symbol* find_member(std::string_view name);
-
-    std::string format(int indent = 0) const override;
 };
 
 #pragma region Type Symbols
@@ -200,8 +190,6 @@ struct NamedTypeSymbol : TypeSymbol
     MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     static Conversion get_conversion(TypeSymbol* from, TypeSymbol* to);
-
-    std::string format(int indent = 0) const override;
 };
 
 struct TypeParamSymbol : TypeSymbol
@@ -211,11 +199,6 @@ struct TypeParamSymbol : TypeSymbol
     NamedTypeSymbol* owningType = nullptr;
 
     TypeParamSymbol() { kind = Kind; }
-
-    std::string format(int indent = 0) const override
-    {
-        return std::format("{}{}", std::string(indent, ' '), name);
-    }
 };
 
 #pragma region Member Symbols
@@ -229,8 +212,6 @@ struct FieldSymbol : Symbol
     std::vector<ResolvedAttribute> resolvedAttributes;
 
     FieldSymbol() { kind = Kind; }
-
-    std::string format(int indent = 0) const override;
 };
 
 struct MethodSymbol : Symbol
@@ -249,15 +230,10 @@ struct MethodSymbol : Symbol
     bool is_literal() const { return callableKind == CallableKind::Literal; }
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
-    std::string format_parameters() const;
-
-    std::string format(int indent = 0) const override;
 
 protected:
     mutable TypeSymbol* returnType = nullptr;
 };
-
-std::string format_type_name(TypeSymbol* type);
 
 struct ParameterSymbol : Symbol
 {
@@ -266,11 +242,6 @@ struct ParameterSymbol : Symbol
     int index = 0;
 
     ParameterSymbol() { kind = Kind; }
-
-    std::string format(int indent = 0) const override
-    {
-        return std::format("{}{}: {}", std::string(indent, ' '), name, format_type_name(type));
-    }
 };
 
 struct LocalSymbol : Symbol
@@ -279,11 +250,6 @@ struct LocalSymbol : Symbol
     TypeSymbol* type = nullptr;
 
     LocalSymbol() { kind = Kind; }
-
-    std::string format(int indent = 0) const override
-    {
-        return std::format("{}{}: {}", std::string(indent, ' '), name, format_type_name(type));
-    }
 };
 
 #pragma region Substituted Symbols

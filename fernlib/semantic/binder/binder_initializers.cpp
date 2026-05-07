@@ -6,6 +6,7 @@
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/symbol/fmt.hpp>
 
 namespace Fern
 {
@@ -133,7 +134,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
         if (!namedType->find_constructor({}).best.method)
         {
-            diag.report(DiagnosticCode::Err_NoDefaultCtor, expr->target->span, format_type_name(namedType));
+            diag.report(DiagnosticCode::Err_NoDefaultCtor, expr->target->span, format_type(namedType));
         }
     }
 
@@ -247,7 +248,7 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = type->find_field(id->name.lexeme);
         if (!field)
         {
-            diag.report(DiagnosticCode::Err_NoSuchMember, target->span, format_type_name(type), id->name.lexeme);
+            diag.report(DiagnosticCode::Err_NoSuchMember, target->span, format_type(type), id->name.lexeme);
             return nullptr;
         }
         return field->type;
@@ -272,7 +273,7 @@ TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymb
         FieldSymbol* field = nestedType->find_field(rightName);
         if (!field)
         {
-            diag.report(DiagnosticCode::Err_NoSuchMember, member->span, format_type_name(nestedType), rightName);
+            diag.report(DiagnosticCode::Err_NoSuchMember, member->span, format_type(nestedType), rightName);
             return nullptr;
         }
         return field->type;

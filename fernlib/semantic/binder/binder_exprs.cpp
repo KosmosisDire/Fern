@@ -5,6 +5,7 @@
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/symbol/fmt.hpp>
 
 namespace Fern
 {
@@ -84,7 +85,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             const auto& constant = result->get_constant();
             if (constant && !constant->range_fits(expected))
             {
-                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->format_range_message(expected));
+                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->intValue, format_type(expected));
                 return fhir.error_expr(expr, expected, result);
             }
             return result;
@@ -106,7 +107,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
                 if (constant->range_fits(expected))
                     return fhir.cast(result->syntax, expected, result, /*isImplicit=*/true);
 
-                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->format_range_message(expected));
+                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->intValue, format_type(expected));
                 return fhir.error_expr(expr, expected, result);
             }
         }
@@ -114,7 +115,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         DiagnosticCode code = (NamedTypeSymbol::get_conversion(result->type, expected).level == Convertibility::Explicit)
             ? DiagnosticCode::Err_NoImplicitConv
             : DiagnosticCode::Err_TypeMismatch;
-        diag.report(code, expr->span, std::string{}, format_type_name(result->type), format_type_name(expected));
+        diag.report(code, expr->span, std::string{}, format_type(result->type), format_type(expected));
         return fhir.error_expr(expr, expected, result);
     }
 
@@ -147,7 +148,7 @@ FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 
     if (auto* tref = result->as<FhirTypeRef>())
     {
-        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, format_type_name(tref->referenced), "type", "value");
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, format_type(tref->referenced), "type", "value");
         return fhir.error_expr(expr, nullptr, tref);
     }
     if (auto* nref = result->as<FhirNamespaceRefExpr>())
@@ -267,7 +268,7 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
         return fhir.cast(expr, targetType, operand, false, conv.method, typeRef);
     }
 
-    diag.report(DiagnosticCode::Err_BadCast, expr->span, std::string{}, format_type_name(operand->type), format_type_name(targetType));
+    diag.report(DiagnosticCode::Err_BadCast, expr->span, std::string{}, format_type(operand->type), format_type(targetType));
     return fhir.error_expr(expr);
 }
 
@@ -292,7 +293,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         auto* namedLeft = leftTypeRef->referenced ? leftTypeRef->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!namedLeft)
         {
-            diag.report(DiagnosticCode::Err_TypeHasNoMembers, expr->span, format_type_name(leftTypeRef->referenced));
+            diag.report(DiagnosticCode::Err_TypeHasNoMembers, expr->span, format_type(leftTypeRef->referenced));
             return fhir.error_expr(expr, nullptr, left);
         }
 
@@ -313,7 +314,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         Symbol* member = namedLeft->find_non_method_member(memberName);
         if (!member)
         {
-            diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type_name(namedLeft), memberName);
+            diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type(namedLeft), memberName);
             return fhir.error_expr(expr);
         }
 
@@ -324,7 +325,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         {
             if (!has_modifier(field->modifiers, Modifier::Static))
             {
-                diag.report(DiagnosticCode::Err_InstanceFieldOnType, expr->span, memberName, format_type_name(namedLeft));
+                diag.report(DiagnosticCode::Err_InstanceFieldOnType, expr->span, memberName, format_type(namedLeft));
                 return fhir.error_expr(expr, field->type);
             }
             return fhir.field_ref(expr, nullptr, field);
@@ -382,7 +383,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
         return fhir.method_group_ref(expr, namedType, memberName, left);
     }
 
-    diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type_name(namedType), memberName);
+    diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type(namedType), memberName);
     return fhir.error_expr(expr);
 }
 
@@ -402,9 +403,9 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         {
             std::string candidates;
             for (auto* m : result.ambiguousCandidates)
-                candidates += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
+                candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
             diag.report(DiagnosticCode::Err_AmbiguousUnaryOp, expr->span,
-                  Fern::format(opToken), format_type_name(namedType), candidates);
+                  Fern::format(opToken), format_type(namedType), candidates);
             return fhir.error_expr(expr);
         }
         if (result.best.is_callable())
@@ -418,7 +419,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
             return fhir.intrinsic(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand}, method);
         }
 
-        diag.report(DiagnosticCode::Err_BadUnaryOp, expr->span, Fern::format(opToken), format_type_name(namedType));
+        diag.report(DiagnosticCode::Err_BadUnaryOp, expr->span, Fern::format(opToken), format_type(namedType));
         return fhir.error_expr(expr);
     }
 
@@ -484,12 +485,12 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
         }
 
         diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
-              Fern::format(opToken), format_type_name(leftType), format_type_name(rightType), suffix);
+              Fern::format(opToken), format_type(leftType), format_type(rightType), suffix);
         return fhir.error_expr(syntax);
     }
 
     diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
-          Fern::format(opToken), format_type_name(leftType), format_type_name(rightType), "");
+          Fern::format(opToken), format_type(leftType), format_type(rightType), "");
     return fhir.error_expr(syntax);
 }
 
@@ -515,9 +516,9 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     {
         std::string candidates;
         for (auto* m : result.ambiguousCandidates)
-            candidates += std::format("\n  op {}({})", Fern::format(opToken), m->format_parameters());
+            candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
         diag.report(DiagnosticCode::Err_AmbiguousBinaryOp, syntax->span,
-              Fern::format(opToken), format_type_name(leftType), format_type_name(rightType), candidates);
+              Fern::format(opToken), format_type(leftType), format_type(rightType), candidates);
         return fhir.error_expr(syntax);
     }
     if (result.best.is_callable())
@@ -570,7 +571,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type_name(objectType));
+            diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(objectType));
             return fhir.error_expr(expr);
         }
 
@@ -579,7 +580,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         {
             std::string candidates;
             for (auto* m : setterResult.ambiguousCandidates)
-                candidates += std::format("\n  {}.op []=({})", format_type_name(namedType), m->format_parameters());
+                candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
             diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
             return fhir.error_expr(expr);
         }
@@ -591,12 +592,12 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
                     ? DiagnosticCode::Err_NoImplicitConv
                     : DiagnosticCode::Err_TypeMismatch;
                 diag.report(code, expr->value->span,
-                      std::string{}, format_type_name(valueType), format_type_name(expectedValueType));
+                      std::string{}, format_type(valueType), format_type(expectedValueType));
             }
             else
             {
                 diag.report(DiagnosticCode::Err_NoIndexSetter, indexExpr->index->span,
-                      format_type_name(namedType), format_type_name(indexType));
+                      format_type(namedType), format_type(indexType));
             }
             return fhir.error_expr(expr);
         }
@@ -648,7 +649,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
     {
-        diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type_name(objectType));
+        diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(objectType));
         return fhir.error_expr(expr);
     }
 
@@ -657,13 +658,13 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     {
         std::string candidates;
         for (auto* m : getterResult.ambiguousCandidates)
-            candidates += std::format("\n  {}.op []({})", format_type_name(namedType), m->format_parameters());
+            candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
         diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
         return fhir.error_expr(expr);
     }
     if (!getterResult.best.is_callable())
     {
-        diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type_name(namedType), format_type_name(indexType));
+        diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type(namedType), format_type(indexType));
         return fhir.error_expr(expr);
     }
 

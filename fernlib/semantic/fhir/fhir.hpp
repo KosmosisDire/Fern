@@ -157,7 +157,6 @@ struct ConstantValue
     }
 
     bool range_fits(TypeSymbol* target) const;
-    std::string format_range_message(TypeSymbol* target) const;
 };
 
 #pragma region Visitor

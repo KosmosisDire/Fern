@@ -20,16 +20,6 @@ bool ConstantValue::range_fits(TypeSymbol* target) const
     return true;
 }
 
-std::string ConstantValue::format_range_message(TypeSymbol* target) const
-{
-    auto* named = target ? target->as<NamedTypeSymbol>() : nullptr;
-    if (named && named->name == "U8")
-        return std::format("value {} is out of range for u8 (0-255)", intValue);
-    if (named && named->name == "I32")
-        return std::format("value {} is out of range for i32 (-2147483648 to 2147483647)", intValue);
-    return std::format("value {} is out of range for {}", intValue, format_type_name(target));
-}
-
 #pragma region Lazy Dispatch
 
 const std::optional<ConstantValue>& FhirExpr::get_constant() const

@@ -1,6 +1,7 @@
 #include <symbol/table.hpp>
 
 #include <ast/ast.hpp>
+#include <symbol/fmt.hpp>
 
 namespace Fern
 {
@@ -447,7 +448,7 @@ std::string SymbolTable::format() const
 
     if (globalNamespace)
     {
-        result += globalNamespace->format();
+        result += format_namespace(globalNamespace, SymbolFormat::tree_dump());
         result += "\n";
     }
 

@@ -1,5 +1,4 @@
 #include "hover.hpp"
-#include "display.hpp"
 
 #include <ast/ast.hpp>
 #include <ast/formatdbg.hpp>
@@ -7,13 +6,13 @@
 #include <semantic/fhir/fhir.hpp>
 #include <semantic/fhir/fmt.hpp>
 #include <semantic/fhir/hittest.hpp>
+#include <semantic/symbol/fmt.hpp>
 #include <semantic/symbol/symbol.hpp>
 
 #include <format>
 #include <string>
 
 using namespace Fern;
-using namespace FernDisplay;
 
 namespace
 {
@@ -26,7 +25,7 @@ struct HoverContent
 
 struct HoverFormatter : FhirVisitor
 {
-    DisplayFormat fmt = DisplayFormat::long_form();
+    SymbolFormat fmt = SymbolFormat::hover_long();
     HoverContent content;
 
     void set_signature(std::string sig)
@@ -133,9 +132,7 @@ struct HoverFormatter : FhirVisitor
     {
         if (n->referenced)
         {
-            std::string result = fmt.has(DisplayOption::IncludeKindKeyword) ? std::string("type ") : std::string{};
-            result += format_type(n->referenced, fmt);
-            set_signature(std::move(result));
+            set_signature(format_type(n->referenced, fmt));
         }
         else
         {
@@ -229,9 +226,7 @@ std::optional<lsp::Hover> compute_hover(
         }
         else if (auto* type = hit.nameTarget ? hit.nameTarget->as<NamedTypeSymbol>() : nullptr)
         {
-            std::string text = formatter.fmt.has(DisplayOption::IncludeKindKeyword) ? std::string("type ") : std::string{};
-            text += format_type(type, formatter.fmt);
-            formatter.set_signature(std::move(text));
+            formatter.set_signature(format_type(type, formatter.fmt));
         }
         else
         {

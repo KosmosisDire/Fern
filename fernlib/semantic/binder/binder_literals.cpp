@@ -8,6 +8,7 @@
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/symbol/fmt.hpp>
 
 namespace Fern
 {
@@ -67,7 +68,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
     {
         diag.report(DiagnosticCode::Err_NoMatchingLiteral, span,
               suffixName,
-              argType ? format_type_name(argType) : "?");
+              argType ? format_type(argType) : "?");
         return nullptr;
     }
 
@@ -86,8 +87,7 @@ MethodSymbol* Binder::resolve_literal_suffix(std::string_view suffixName, TypeSy
     std::string list;
     for (auto* method : candidates)
     {
-        auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
-        list += std::format("\n  {}.{}", parent ? format_type_name(parent) : "?", method->name);
+        list += std::format("\n  {}", format_method(method, SymbolFormat::signature()));
     }
     diag.report(DiagnosticCode::Err_AmbiguousLiteral, span, list);
     return candidates[0];
@@ -109,7 +109,7 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
     {
         const auto& constVal = operand->get_constant();
         if (constVal && !constVal->range_fits(returnType))
-            diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constVal->format_range_message(returnType));
+            diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constVal->intValue, format_type(returnType));
 
         operand->type = returnType;
         return operand;
@@ -326,8 +326,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             else if (elem->type != elementType)
             {
                 diag.report(DiagnosticCode::Err_ArrayMixedTypes, expr->span,
-                      format_type_name(elementType),
-                      format_type_name(elem->type));
+                      format_type(elementType),
+                      format_type(elem->type));
             }
         }
     }
@@ -376,7 +376,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto setterResult = arrayType->find_index_setter(i32Type, elementType);
     if (!setterResult.best.is_callable())
     {
-        diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type_name(elementType));
+        diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type(elementType));
         return fhir.error_expr(expr);
     }
     MethodSymbol* setter = setterResult.best.method;

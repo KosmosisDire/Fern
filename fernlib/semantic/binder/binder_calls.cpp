@@ -7,6 +7,7 @@
 #include <common/cast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/symbol/fmt.hpp>
 
 namespace Fern
 {
@@ -30,7 +31,7 @@ static void report_argument_mismatches(
             ? DiagnosticCode::Err_NoImplicitConv
             : DiagnosticCode::Err_TypeMismatch;
         diag.report(code, argSyntax[i]->span,
-                    prefix, format_type_name(argTypes[i]), format_type_name(param->type));
+                    prefix, format_type(argTypes[i]), format_type(param->type));
     }
 }
 
@@ -69,7 +70,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             std::string candidates;
             for (auto* m : result.ambiguousCandidates)
-                candidates += std::format("\n  {}({})", format_type_name(namedType), m->format_parameters());
+                candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
             diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
             return fhir.error_expr(expr);
         }
@@ -83,7 +84,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
                 }
                 else
                 {
-                    diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type_name(namedType), argTypes.size());
+                    diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type(namedType), argTypes.size());
                 }
             }
             return fhir.error_expr(expr);
@@ -113,7 +114,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             std::string candidates;
             for (auto* m : result.ambiguousCandidates)
-                candidates += std::format("\n  {}.{}({})", format_type_name(targetType), group->name, m->format_parameters());
+                candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
             diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
             return fhir.error_expr(expr);
         }
@@ -128,7 +129,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
                 }
                 else
                 {
-                    diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type_name(targetType), argTypes.size());
+                    diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type(targetType), argTypes.size());
                 }
             }
             return fhir.error_expr(expr);

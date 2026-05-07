@@ -1,4 +1,5 @@
 #include "fmt.hpp"
+#include <semantic/symbol/fmt.hpp>
 #include <semantic/symbol/symbol.hpp>
 
 #include <format>
@@ -52,7 +53,7 @@ std::string FhirPrettyFormatter::method_label(MethodSymbol* method)
 {
     if (!method) return "?";
     auto* parent = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
-    if (parent) return std::format("{}.{}", format_type_name(parent), method->name);
+    if (parent) return std::format("{}.{}", format_type(parent), method->name);
     return method->name;
 }
 
@@ -122,7 +123,7 @@ void FhirPrettyFormatter::visit(FhirConstructionExpr* node)
 {
     auto* ctor = node->call && node->call->callee ? node->call->callee->method : nullptr;
     auto* parent = ctor && ctor->parent ? ctor->parent->as<NamedTypeSymbol>() : nullptr;
-    out << "new " << (parent ? format_type_name(parent) : "?");
+    out << "new " << (parent ? format_type(parent) : "?");
     if (node->call)
         write_args(node->call->arguments);
     else
@@ -140,7 +141,7 @@ void FhirPrettyFormatter::visit(FhirCastExpr* node)
 {
     out << "(";
     write_child(node->operand);
-    out << " as " << (node->type ? format_type_name(node->type) : "?") << ")";
+    out << " as " << (node->type ? format_type(node->type) : "?") << ")";
 }
 
 void FhirPrettyFormatter::visit(FhirErrorExpr* node)
@@ -178,7 +179,7 @@ void FhirPrettyFormatter::visit(FhirMethodRefExpr* node)
 
 void FhirPrettyFormatter::visit(FhirTypeRef* node)
 {
-    out << "&" << (node->referenced ? format_type_name(node->referenced) : "?");
+    out << "&" << (node->referenced ? format_type(node->referenced) : "?");
 }
 
 void FhirPrettyFormatter::visit(FhirBlock* node)
@@ -204,7 +205,7 @@ void FhirPrettyFormatter::visit(FhirVarDeclStmt* node)
 {
     out << "var " << (node->local ? node->local->name : "?");
     if (node->local && node->local->type)
-        out << ": " << format_type_name(node->local->type);
+        out << ": " << format_type(node->local->type);
     if (node->initializer)
     {
         out << " = ";
@@ -272,11 +273,11 @@ std::string FhirPrettyFormatter::format(FhirMethod* method)
         {
             if (i > 0) fmt.out << ", ";
             auto* param = method->symbol->parameters[i];
-            fmt.out << param->name << ": " << format_type_name(param->type);
+            fmt.out << param->name << ": " << format_type(param->type);
         }
         fmt.out << ")";
         if (method->symbol->get_return_type())
-            fmt.out << " -> " << format_type_name(method->symbol->get_return_type());
+            fmt.out << " -> " << format_type(method->symbol->get_return_type());
     }
 
     if (method->body)
@@ -359,7 +360,7 @@ void FhirDebugFormatter::write_field(std::string_view name, std::string_view val
 
 std::string FhirDebugFormatter::type_attr(FhirExpr* expr)
 {
-    return std::format("type: {}", expr && expr->type ? format_type_name(expr->type) : "?");
+    return std::format("type: {}", expr && expr->type ? format_type(expr->type) : "?");
 }
 
 std::string FhirDebugFormatter::symbol_label(Symbol* sym)
@@ -374,8 +375,8 @@ std::string FhirDebugFormatter::method_label(MethodSymbol* method)
     auto* ret = method->get_return_type();
     return std::format("{}({}) -> {}",
                        symbol_label(method),
-                       method->format_parameters(),
-                       ret ? format_type_name(ret) : "void");
+                       format_parameter_list(method),
+                       ret ? format_type(ret) : "void");
 }
 
 #pragma region Debug Expression Visitors
@@ -388,7 +389,7 @@ void FhirDebugFormatter::visit(FhirLiteralExpr* node)
 void FhirDebugFormatter::visit(FhirLocalRefExpr* node)
 {
     std::string local = node->local
-        ? std::format("\"{}\": {}", node->local->name, format_type_name(node->local->type))
+        ? std::format("\"{}\": {}", node->local->name, format_type(node->local->type))
         : std::string("null");
     begin_node(node, std::format("local: {}, {}", local, type_attr(node)));
 }
@@ -396,7 +397,7 @@ void FhirDebugFormatter::visit(FhirLocalRefExpr* node)
 void FhirDebugFormatter::visit(FhirParamRefExpr* node)
 {
     std::string param = node->parameter
-        ? std::format("\"{}\": {}", node->parameter->name, format_type_name(node->parameter->type))
+        ? std::format("\"{}\": {}", node->parameter->name, format_type(node->parameter->type))
         : std::string("null");
     begin_node(node, std::format("param: {}, {}", param, type_attr(node)));
 }
@@ -404,7 +405,7 @@ void FhirDebugFormatter::visit(FhirParamRefExpr* node)
 void FhirDebugFormatter::visit(FhirFieldRefExpr* node)
 {
     std::string field = node->field
-        ? std::format("\"{}\": {}", symbol_label(node->field), format_type_name(node->field->type))
+        ? std::format("\"{}\": {}", symbol_label(node->field), format_type(node->field->type))
         : std::string("null");
     begin_node(node, std::format("field: {}, {}", field, type_attr(node)));
     open_block();
@@ -499,7 +500,7 @@ void FhirDebugFormatter::visit(FhirMethodRefExpr* node)
 
 void FhirDebugFormatter::visit(FhirTypeRef* node)
 {
-    std::string ref = node->referenced ? format_type_name(node->referenced) : "?";
+    std::string ref = node->referenced ? format_type(node->referenced) : "?";
     begin_node(node, std::format("referenced: {}, {}", ref, type_attr(node)));
     open_block();
     write_children("args", node->args);
@@ -519,7 +520,7 @@ void FhirDebugFormatter::visit(FhirBlock* node)
 void FhirDebugFormatter::visit(FhirVarDeclStmt* node)
 {
     std::string local = node->local
-        ? std::format("\"{}\": {}", node->local->name, format_type_name(node->local->type))
+        ? std::format("\"{}\": {}", node->local->name, format_type(node->local->type))
         : std::string("null");
     begin_node(node, std::format("local: {}", local));
     open_block();

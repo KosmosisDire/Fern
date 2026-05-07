@@ -10,8 +10,6 @@ add_executable(fernlsp
     diagnostics.cpp
     hover.hpp
     hover.cpp
-    display.hpp
-    display.cpp
 )
 
 target_link_libraries(fernlsp PRIVATE fernlib lsp)

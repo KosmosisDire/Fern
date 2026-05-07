@@ -58,7 +58,7 @@ DIAG(Err_LiteralWrongArity,             3106, Error,   "literal '{}' must have e
 DIAG(Err_LiteralBadParamType,           3107, Error,   "literal '{}' parameter type '{}' does not allow custom literals")
 
 // Binder: expressions (3200-3299)
-DIAG(Err_ConstantOutOfRange,            3200, Error,   "{}")                                                                                        // CS0031 (rich message built by ConstantValue::format_range_message)
+DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031
 DIAG(Err_TypeMismatch,                  3201, Error,   "{}cannot implicitly convert type '{}' to '{}'")                                             // CS0029
 DIAG(Err_BadSymbolKind,                 3202, Error,   "'{}' is a {} but is used like a {}")                                                        // CS0118 (merges NotAType, NotANamespace, NotAValue, CannotCallNamespace)
 DIAG(Err_NoSuchMember,                  3203, Error,   "'{}' does not contain a definition for '{}'")                                               // CS0117 (merges TypeNoMember, NamespaceNoMember, TypeNoField)
