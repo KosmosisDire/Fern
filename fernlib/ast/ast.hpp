@@ -185,8 +185,18 @@ struct BaseStmtSyntax : BaseSyntax
 struct BaseDeclSyntax : BaseStmtSyntax
 {
     Modifier modifiers = Modifier::None;
+    std::vector<Token> modifierTokens;
     std::vector<AttributeSyntax*> attributes;
     BaseDeclSyntax(int k) : BaseStmtSyntax(k) {}
+
+    const Token* modifier_token(TokenKind kind) const
+    {
+        for (const auto& tok : modifierTokens)
+        {
+            if (tok.kind == kind) return &tok;
+        }
+        return nullptr;
+    }
 };
 
 

@@ -18,7 +18,7 @@ public:
 private:
     const Token* expect(TokenKind kind, std::string_view message);
     void expect_progress(TokenWalker::Checkpoint cp);
-    Modifier parse_modifiers();
+    Modifier parse_modifiers(std::vector<Token>& outTokens);
     void parse_attributes(std::vector<AttributeSyntax*>& out);
     void attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs);
 

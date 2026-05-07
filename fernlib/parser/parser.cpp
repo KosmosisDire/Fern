@@ -109,7 +109,7 @@ void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
     }
 }
 
-Modifier Parser::parse_modifiers()
+Modifier Parser::parse_modifiers(std::vector<Token>& outTokens)
 {
     Modifier mods = Modifier::None;
     while (auto mod = to_modifier(walker.current().kind))
@@ -119,6 +119,7 @@ Modifier Parser::parse_modifiers()
             diag.report(DiagnosticCode::Err_DuplicateModifier, walker.current().span, walker.current().lexeme);
         }
         mods = mods | *mod;
+        outTokens.push_back(walker.current());
         walker.advance();
         skip_newlines(walker);
     }
@@ -223,7 +224,8 @@ BaseDeclSyntax* Parser::parse_declaration()
     parse_attributes(attrs);
 
     Span modSpan = walker.current().span;
-    Modifier mods = parse_modifiers();
+    std::vector<Token> modTokens;
+    Modifier mods = parse_modifiers(modTokens);
 
     BaseDeclSyntax* decl = nullptr;
 
@@ -279,6 +281,7 @@ BaseDeclSyntax* Parser::parse_declaration()
 
     if (decl)
     {
+        decl->modifierTokens = std::move(modTokens);
         attach_declaration_metadata(decl, mods, modSpan, attrs);
     }
     return decl;

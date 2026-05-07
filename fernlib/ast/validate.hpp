@@ -137,42 +137,41 @@ private:
     Diagnostics& diag;
     Scope scope = Scope::Root;
 
-    // TODO: BaseDeclSyntax needs to track per-modifier source tokens so we can highlight modifier spans
     void validate_modifiers(BaseDeclSyntax* node)
     {
         if (!node->is<TypeDeclSyntax>())
         {
-            if (has_modifier(node->modifiers, Modifier::Ref))
+            if (auto* tok = node->modifier_token(TokenKind::Ref))
             {
-                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "ref", "type");
+                diag.report(DiagnosticCode::Err_BadModifierTarget, tok->span, "ref", "type");
             }
-            if (has_modifier(node->modifiers, Modifier::Attr))
+            if (auto* tok = node->modifier_token(TokenKind::Attr))
             {
-                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "attr", "type");
+                diag.report(DiagnosticCode::Err_BadModifierTarget, tok->span, "attr", "type");
             }
         }
 
         auto* callable = node->as<CallableDeclSyntax>();
         bool isCast = callable && callable->callableKind == CallableKind::Cast;
-        bool hasImplicit = has_modifier(node->modifiers, Modifier::Implicit);
-        bool hasExplicit = has_modifier(node->modifiers, Modifier::Explicit);
+        const Token* implicitTok = node->modifier_token(TokenKind::Implicit);
+        const Token* explicitTok = node->modifier_token(TokenKind::Explicit);
 
         if (!isCast)
         {
-            if (hasImplicit)
+            if (implicitTok)
             {
-                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "implicit", "cast");
+                diag.report(DiagnosticCode::Err_BadModifierTarget, implicitTok->span, "implicit", "cast");
             }
-            if (hasExplicit)
+            if (explicitTok)
             {
-                diag.report(DiagnosticCode::Err_BadModifierTarget, node->span, "explicit", "cast");
+                diag.report(DiagnosticCode::Err_BadModifierTarget, explicitTok->span, "explicit", "cast");
             }
         }
-        if (isCast && !hasImplicit && !hasExplicit)
+        if (isCast && !implicitTok && !explicitTok)
         {
             diag.report(DiagnosticCode::Err_CastMissingExplicitness, node->span);
         }
-        if (hasImplicit && hasExplicit)
+        if (implicitTok && explicitTok)
         {
             diag.report(DiagnosticCode::Err_CastBothExplicitness, node->span);
         }
