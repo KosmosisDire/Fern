@@ -1,0 +1,32 @@
+---
+Description: Ambiguous overload selection between equally good constructor candidates
+Expected: compile error
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init (x: f32, y: i32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    init (x: i32, y: f32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2(1, 2)
+        return 0
+    }
+}

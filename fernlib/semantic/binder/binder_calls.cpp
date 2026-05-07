@@ -11,6 +11,29 @@
 namespace Fern
 {
 
+static void report_argument_mismatches(
+    Diagnostics& diag,
+    MethodSymbol* candidate,
+    const std::vector<TypeSymbol*>& argTypes,
+    const std::vector<ExprPtr>& argSyntax)
+{
+    for (size_t i = 0; i < argTypes.size(); ++i)
+    {
+        if (i >= candidate->parameters.size()) continue;
+        auto* param = candidate->parameters[i];
+        if (!param || !param->type) continue;
+        auto level = NamedTypeSymbol::get_conversion(argTypes[i], param->type).level;
+        if (level == Convertibility::Exact || level == Convertibility::Implicit) continue;
+
+        std::string prefix = std::format("argument '{}': ", param->name);
+        DiagnosticCode code = (level == Convertibility::Explicit)
+            ? DiagnosticCode::Err_NoImplicitConv
+            : DiagnosticCode::Err_TypeMismatch;
+        diag.report(code, argSyntax[i]->span,
+                    prefix, format_type_name(argTypes[i]), format_type_name(param->type));
+    }
+}
+
 FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 {
     FhirExpr* callee = bind_expr(expr->callee);
@@ -47,14 +70,21 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             std::string candidates;
             for (auto* m : result.ambiguousCandidates)
                 candidates += std::format("\n  {}({})", format_type_name(namedType), m->format_parameters());
-            diag.report(DiagnosticCode::Err_AmbiguousConstructor, expr->span, candidates);
+            diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
             return fhir.error_expr(expr);
         }
         if (!result.best.method)
         {
             if (!hasErrorArg)
             {
-                diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type_name(namedType), argTypes.size());
+                if (result.bestFailure.method)
+                {
+                    report_argument_mismatches(diag, result.bestFailure.method, argTypes, expr->arguments);
+                }
+                else
+                {
+                    diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type_name(namedType), argTypes.size());
+                }
             }
             return fhir.error_expr(expr);
         }
@@ -84,7 +114,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             std::string candidates;
             for (auto* m : result.ambiguousCandidates)
                 candidates += std::format("\n  {}.{}({})", format_type_name(targetType), group->name, m->format_parameters());
-            diag.report(DiagnosticCode::Err_AmbiguousMethod, expr->span, candidates);
+            diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
             return fhir.error_expr(expr);
         }
         MethodSymbol* method = result.best.method;
@@ -92,7 +122,14 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             if (!hasErrorArg)
             {
-                diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type_name(targetType), argTypes.size());
+                if (result.bestFailure.method)
+                {
+                    report_argument_mismatches(diag, result.bestFailure.method, argTypes, expr->arguments);
+                }
+                else
+                {
+                    diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type_name(targetType), argTypes.size());
+                }
             }
             return fhir.error_expr(expr);
         }

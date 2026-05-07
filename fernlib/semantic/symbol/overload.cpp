@@ -10,6 +10,13 @@ static bool is_better_match(const OverloadMatch& a, const OverloadMatch& b)
     return a.exactCount > b.exactCount;
 }
 
+static bool is_better_failure(const OverloadMatch& a, const OverloadMatch& b)
+{
+    if (a.failCount != b.failCount) return a.failCount < b.failCount;
+    if (a.explicitCount != b.explicitCount) return a.explicitCount > b.explicitCount;
+    return a.exactCount > b.exactCount;
+}
+
 OverloadMatch grade(MethodSymbol* method, const std::vector<TypeSymbol*>& argTypes)
 {
     OverloadMatch match;
@@ -27,6 +34,7 @@ OverloadMatch grade(MethodSymbol* method, const std::vector<TypeSymbol*>& argTyp
         {
             case Convertibility::Exact:    ++match.exactCount; break;
             case Convertibility::Implicit: ++match.implicitCount; break;
+            case Convertibility::Explicit: ++match.explicitCount; ++match.failCount; break;
             default:                       ++match.failCount; break;
         }
     }
@@ -36,9 +44,9 @@ OverloadMatch grade(MethodSymbol* method, const std::vector<TypeSymbol*>& argTyp
 
 static OverloadResult pick_best(const std::vector<OverloadMatch>& pool)
 {
+    OverloadResult result;
     OverloadMatch best = pool[0];
     bool tied = false;
-    std::vector<MethodSymbol*> tiedMethods;
 
     for (size_t i = 1; i < pool.size(); ++i)
     {
@@ -46,26 +54,32 @@ static OverloadResult pick_best(const std::vector<OverloadMatch>& pool)
         {
             best = pool[i];
             tied = false;
-            tiedMethods.clear();
+            result.ambiguousCandidates.clear();
         }
         else if (!is_better_match(best, pool[i]))
         {
             if (!tied)
-                tiedMethods.push_back(best.method);
-            tiedMethods.push_back(pool[i].method);
+                result.ambiguousCandidates.push_back(best.method);
+            result.ambiguousCandidates.push_back(pool[i].method);
             tied = true;
         }
     }
 
     if (tied)
-        return {{}, tiedMethods, true};
+    {
+        result.ambiguous = true;
+        return result;
+    }
 
-    return {best};
+    result.best = best;
+    return result;
 }
 
 OverloadResult resolve(const std::vector<OverloadMatch>& candidates)
 {
-    if (candidates.empty()) return {};
+    OverloadResult result;
+    result.candidates = candidates;
+    if (candidates.empty()) return result;
 
     std::vector<OverloadMatch> applicable;
     for (const auto& c : candidates)
@@ -74,7 +88,21 @@ OverloadResult resolve(const std::vector<OverloadMatch>& candidates)
             applicable.push_back(c);
     }
 
-    return pick_best(applicable.empty() ? candidates : applicable);
+    if (applicable.empty())
+    {
+        OverloadMatch bestFail = candidates[0];
+        for (size_t i = 1; i < candidates.size(); ++i)
+        {
+            if (is_better_failure(candidates[i], bestFail))
+                bestFail = candidates[i];
+        }
+        result.bestFailure = bestFail;
+        return result;
+    }
+
+    OverloadResult picked = pick_best(applicable);
+    picked.candidates = candidates;
+    return picked;
 }
 
 }

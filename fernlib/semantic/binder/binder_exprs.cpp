@@ -111,7 +111,10 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             }
         }
 
-        diag.report(DiagnosticCode::Err_TypeMismatch, expr->span, format_type_name(expected), format_type_name(result->type));
+        DiagnosticCode code = (NamedTypeSymbol::get_conversion(result->type, expected).level == Convertibility::Explicit)
+            ? DiagnosticCode::Err_NoImplicitConv
+            : DiagnosticCode::Err_TypeMismatch;
+        diag.report(code, expr->span, std::string{}, format_type_name(result->type), format_type_name(expected));
         return fhir.error_expr(expr, expected, result);
     }
 
@@ -264,7 +267,7 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
         return fhir.cast(expr, targetType, operand, false, conv.method, typeRef);
     }
 
-    diag.report(DiagnosticCode::Err_BadCast, expr->span, format_type_name(operand->type), format_type_name(targetType));
+    diag.report(DiagnosticCode::Err_BadCast, expr->span, std::string{}, format_type_name(operand->type), format_type_name(targetType));
     return fhir.error_expr(expr);
 }
 
@@ -577,15 +580,18 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
             std::string candidates;
             for (auto* m : setterResult.ambiguousCandidates)
                 candidates += std::format("\n  {}.op []=({})", format_type_name(namedType), m->format_parameters());
-            diag.report(DiagnosticCode::Err_AmbiguousIndex, expr->span, candidates);
+            diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
             return fhir.error_expr(expr);
         }
         if (!setterResult.best.is_callable())
         {
             if (TypeSymbol* expectedValueType = namedType->expected_index_value_type(indexType))
             {
-                diag.report(DiagnosticCode::Err_TypeMismatch, expr->value->span,
-                      format_type_name(expectedValueType), format_type_name(valueType));
+                DiagnosticCode code = (NamedTypeSymbol::get_conversion(valueType, expectedValueType).level == Convertibility::Explicit)
+                    ? DiagnosticCode::Err_NoImplicitConv
+                    : DiagnosticCode::Err_TypeMismatch;
+                diag.report(code, expr->value->span,
+                      std::string{}, format_type_name(valueType), format_type_name(expectedValueType));
             }
             else
             {
@@ -652,7 +658,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
         std::string candidates;
         for (auto* m : getterResult.ambiguousCandidates)
             candidates += std::format("\n  {}.op []({})", format_type_name(namedType), m->format_parameters());
-        diag.report(DiagnosticCode::Err_AmbiguousIndex, expr->span, candidates);
+        diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
         return fhir.error_expr(expr);
     }
     if (!getterResult.best.is_callable())

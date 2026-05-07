@@ -59,12 +59,12 @@ DIAG(Err_LiteralBadParamType,           3107, Error,   "literal '{}' parameter t
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "{}")                                                                                        // CS0031 (rich message built by ConstantValue::format_range_message)
-DIAG(Err_TypeMismatch,                  3201, Error,   "expected '{}', got '{}'")                                                                   // CS0029
+DIAG(Err_TypeMismatch,                  3201, Error,   "{}cannot implicitly convert type '{}' to '{}'")                                             // CS0029
 DIAG(Err_BadSymbolKind,                 3202, Error,   "'{}' is a {} but is used like a {}")                                                        // CS0118 (merges NotAType, NotANamespace, NotAValue, CannotCallNamespace)
 DIAG(Err_NoSuchMember,                  3203, Error,   "'{}' does not contain a definition for '{}'")                                               // CS0117 (merges TypeNoMember, NamespaceNoMember, TypeNoField)
 DIAG(Err_UndefinedName,                 3204, Error,   "the name '{}' does not exist in the current context")                                       // CS0103
 DIAG(Err_ThisOutsideType,               3205, Error,   "'this' can only be used inside a type")                                                     // CS0027
-DIAG(Err_BadCast,                       3206, Error,   "cannot cast from '{}' to '{}'")                                                             // CS0030
+DIAG(Err_BadCast,                       3206, Error,   "{}cannot convert type '{}' to '{}'")                                                        // CS0030
 DIAG(Err_TypeHasNoMembers,              3207, Error,   "type '{}' has no members")
 DIAG(Err_InstanceFieldOnType,           3208, Error,   "cannot access instance field '{}' on type '{}'")                                            // CS0120
 DIAG(Err_TypeArgsOnInstanceMember,      3209, Error,   "type arguments are not supported on instance members")                                      // CS0307
@@ -72,23 +72,22 @@ DIAG(Err_AmbiguousUnaryOp,              3210, Error,   "operator '{}' is ambiguo
 DIAG(Err_BadUnaryOp,                    3211, Error,   "operator '{}' cannot be applied to operand of type '{}'")                                   // CS0023
 DIAG(Err_AmbiguousBinaryOp,             3212, Error,   "operator '{}' is ambiguous on operands of type '{}' and '{}':{}")                           // CS0034
 DIAG(Err_BadBinaryOp,                   3213, Error,   "operator '{}' cannot be applied to operands of type '{}' and '{}'{}")                       // CS0019 (last {} is optional hint suffix, e.g. " (requires '==' operator)")
-DIAG(Err_CannotIndex,                   3214, Error,   "cannot apply indexing with [] to an expression of type '{}'")                               // CS0021
-DIAG(Err_AmbiguousIndex,                3215, Error,   "the index call is ambiguous between the following members:{}")                              // CS0121
-DIAG(Err_NoIndexSetter,                 3216, Error,   "type '{}' cannot be index-assigned by '{}'")
-DIAG(Err_NoIndexGetter,                 3217, Error,   "type '{}' cannot be indexed by '{}'")
+DIAG(Err_CannotIndex,                   3214, Error,   "type '{}' cannot be indexed")                                                               // CS0021
+DIAG(Err_NoIndexSetter,                 3215, Error,   "type '{}' cannot be index-assigned by '{}'")
+DIAG(Err_NoIndexGetter,                 3216, Error,   "type '{}' cannot be indexed by '{}'")
 
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
 DIAG(Err_WrongReturnType,               3301, Error,   "function '{}' expects a return of type '{}'")                                               // CS0029
 
 // Binder: calls (3400-3499)
-DIAG(Err_AmbiguousConstructor,          3400, Error,   "the constructor call is ambiguous between the following members:{}")                        // CS0121
+DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121
 DIAG(Err_NoMatchingConstructor,         3401, Error,   "'{}' does not contain a constructor that takes {} arguments")                               // CS1729
 DIAG(Err_NotCallable,                   3402, Error,   "'{}' cannot be called")
-DIAG(Err_AmbiguousMethod,               3403, Error,   "the call is ambiguous between the following methods or properties:{}")                      // CS0121
-DIAG(Err_NoMatchingMethod,              3404, Error,   "no overload for method '{}' on '{}' takes {} arguments")                                    // CS1501
-DIAG(Err_InstanceMethodNoReceiver,      3405, Error,   "instance method '{}' requires a receiver")                                                  // CS0120
-DIAG(Err_NotCallableExpr,               3406, Error,   "expression cannot be called as a function")                                                 // CS1955
+DIAG(Err_NoMatchingMethod,              3403, Error,   "no overload for method '{}' on '{}' takes {} arguments")                                    // CS1501
+DIAG(Err_InstanceMethodNoReceiver,      3404, Error,   "instance method '{}' requires a receiver")                                                  // CS0120
+DIAG(Err_NotCallableExpr,               3405, Error,   "expression cannot be called as a function")                                                 // CS1955
+DIAG(Err_NoImplicitConv,                3406, Error,   "{}cannot implicitly convert type '{}' to '{}' (an explicit cast exists)")                  // CS0266
 
 // Binder: attributes (3500-3599)
 DIAG(Err_AttrMustBeType,                3500, Error,   "attribute must name a type")

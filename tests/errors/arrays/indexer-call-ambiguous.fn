@@ -1,0 +1,33 @@
+---
+Description: Ambiguous overload selection between equally good constructor candidates
+Expected: compile error
+---
+
+
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    op [](vec: Vector2, index: i32) -> f32
+    {
+        return 0.0
+    }
+
+    op [](vec: Vector2, index: f32) -> f32
+    {
+        return 0.0
+    }
+}
+
+
+type Program
+{
+    fn Main -> i32
+    {
+        var v = Vector2(1, 2)
+        var x = v[0u8]
+        return 0
+    }
+}
