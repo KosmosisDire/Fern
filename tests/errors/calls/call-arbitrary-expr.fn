@@ -1,0 +1,13 @@
+---
+Description: Calling the result of an index expression, which has no name
+Expected: FN3404
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var arr = [1, 2, 3]
+        return arr[0](1)
+    }
+}

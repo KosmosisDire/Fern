@@ -83,11 +83,10 @@ DIAG(Err_ReturnValueRequired,           3301, Error,   "function '{}' must retur
 // Binder: calls (3400-3499)
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121
 DIAG(Err_NoMatchingConstructor,         3401, Error,   "'{}' does not contain a constructor that takes {} arguments")                               // CS1729
-DIAG(Err_NotCallable,                   3402, Error,   "'{}' cannot be called")
-DIAG(Err_NoMatchingMethod,              3403, Error,   "no overload for method '{}' on '{}' takes {} arguments")                                    // CS1501
-DIAG(Err_InstanceMethodNoReceiver,      3404, Error,   "instance method '{}' requires a receiver")                                                  // CS0120
-DIAG(Err_NotCallableExpr,               3405, Error,   "expression cannot be called as a function")                                                 // CS1955
-DIAG(Err_NoImplicitConv,                3406, Error,   "{}cannot implicitly convert type '{}' to '{}' (an explicit cast exists)")                  // CS0266
+DIAG(Err_NoMatchingMethod,              3402, Error,   "no overload for method '{}' on '{}' takes {} arguments")                                    // CS1501
+DIAG(Err_InstanceMethodNoReceiver,      3403, Error,   "instance method '{}' requires a receiver")                                                  // CS0120
+DIAG(Err_NotCallableExpr,               3404, Error,   "expression cannot be called as a function")                                                 // CS1955
+DIAG(Err_NoImplicitConv,                3405, Error,   "{}cannot implicitly convert type '{}' to '{}' (an explicit cast exists)")                  // CS0266
 
 // Binder: attributes (3500-3599)
 DIAG(Err_AttrMustBeType,                3500, Error,   "attribute must name a type")

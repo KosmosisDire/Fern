@@ -1,6 +1,6 @@
 ---
 Description: Function call with wrong number of arguments
-Expected: FN3403
+Expected: FN3402
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: Function returns a float when declared to return i32
-Expected: FN3406
+Expected: FN3405
 ---
 
 type Program

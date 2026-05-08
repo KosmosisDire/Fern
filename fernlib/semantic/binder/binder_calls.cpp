@@ -64,7 +64,9 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto* namedType = tref->referenced ? tref->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            diag.report(DiagnosticCode::Err_NotCallable, expr->callee->span, format_type(tref->referenced));
+            diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span,
+                format_type(tref->referenced),
+                kind_noun(tref->referenced->kind), "method");
             return fhir.error_expr(expr);
         }
 
@@ -108,7 +110,16 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         auto* targetType = group->enclosingScope ? group->enclosingScope->as<NamedTypeSymbol>() : nullptr;
         if (!targetType)
         {
-            diag.report(DiagnosticCode::Err_NotCallable, expr->callee->span, group->name);
+            if (group->enclosingScope)
+            {
+                diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span,
+                    group->enclosingScope->qualified_name(),
+                    kind_noun(group->enclosingScope->kind), "type");
+            }
+            else
+            {
+                diag.report(DiagnosticCode::Err_NotCallableExpr, expr->callee->span);
+            }
             return fhir.error_expr(expr, nullptr, group);
         }
 
@@ -166,12 +177,34 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         return fhir.call(expr, returnType, method, thisRef, std::move(argExprs));
     }
 
-    // Anything else (namespaces, plain values) is not callable
+    // Anything else is not callable
     if (auto* nref = callee->as<FhirNamespaceRefExpr>())
     {
-        std::string name = nref->namespaceSymbol ? nref->namespaceSymbol->name : "?";
+        std::string_view name = "?";
+        if (nref->namespaceSymbol) name = nref->namespaceSymbol->name;
         diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "namespace", "method");
         return fhir.error_expr(expr, nullptr, nref);
+    }
+    if (auto* lref = callee->as<FhirLocalRefExpr>())
+    {
+        std::string_view name = "?";
+        if (lref->local) name = lref->local->name;
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "local", "method");
+        return fhir.error_expr(expr, nullptr, lref);
+    }
+    if (auto* pref = callee->as<FhirParamRefExpr>())
+    {
+        std::string_view name = "?";
+        if (pref->parameter) name = pref->parameter->name;
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "parameter", "method");
+        return fhir.error_expr(expr, nullptr, pref);
+    }
+    if (auto* fref = callee->as<FhirFieldRefExpr>())
+    {
+        std::string_view name = "?";
+        if (fref->field) name = fref->field->name;
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "field", "method");
+        return fhir.error_expr(expr, nullptr, fref);
     }
 
     diag.report(DiagnosticCode::Err_NotCallableExpr, expr->callee->span);

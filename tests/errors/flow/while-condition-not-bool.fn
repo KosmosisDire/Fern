@@ -1,6 +1,6 @@
 ---
 Description: While condition is an integer not a bool
-Expected: FN3406
+Expected: FN3405
 ---
 
 type Program

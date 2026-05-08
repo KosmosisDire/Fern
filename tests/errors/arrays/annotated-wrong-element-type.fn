@@ -1,6 +1,6 @@
 ---
 Description: Array literal element type does not match the annotation
-Expected: FN3406, FN3406
+Expected: FN3405, FN3405
 ---
 
 type Program

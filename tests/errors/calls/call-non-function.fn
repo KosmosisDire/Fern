@@ -1,6 +1,6 @@
 ---
 Description: Calling a value that is not a function
-Expected: FN3402
+Expected: FN3202
 ---
 
 type Program

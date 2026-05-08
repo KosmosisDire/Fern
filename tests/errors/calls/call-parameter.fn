@@ -1,0 +1,17 @@
+---
+Description: Calling a parameter that is not a function
+Expected: FN3202
+---
+
+type Program
+{
+    static fn Bad(p: i32) -> i32
+    {
+        return p(1)
+    }
+
+    fn Main -> i32
+    {
+        return Bad(0)
+    }
+}
