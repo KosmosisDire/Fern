@@ -87,6 +87,56 @@ static bool starts_with_icase(std::string_view s, std::string_view prefix)
     return true;
 }
 
+static std::string to_upper(std::string_view s)
+{
+    std::string out;
+    out.reserve(s.size());
+    for (char c : s)
+    {
+        out.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+    }
+    return out;
+}
+
+static std::vector<std::string_view> split_csv(std::string_view value)
+{
+    std::vector<std::string_view> out;
+    size_t pos = 0;
+    while (pos <= value.size())
+    {
+        size_t comma = value.find(',', pos);
+        if (comma == std::string_view::npos)
+        {
+            comma = value.size();
+        }
+        std::string_view part = trim(value.substr(pos, comma - pos));
+        if (!part.empty())
+        {
+            out.push_back(part);
+        }
+        if (comma == value.size())
+        {
+            break;
+        }
+        pos = comma + 1;
+    }
+    return out;
+}
+
+static std::string join_codes(const std::vector<std::string>& codes)
+{
+    std::string out;
+    for (size_t i = 0; i < codes.size(); ++i)
+    {
+        if (i > 0)
+        {
+            out += ", ";
+        }
+        out += codes[i];
+    }
+    return out;
+}
+
 TestHeader TestRunner::parse_header(std::string_view source)
 {
     TestHeader header;
@@ -134,13 +184,23 @@ TestHeader TestRunner::parse_header(std::string_view source)
         }
     }
 
-    if (starts_with_icase(header.expected, "compile error"))
+    auto parts = split_csv(header.expected);
+    bool anyFn = false;
+    for (auto part : parts)
     {
-        header.expectsError = true;
+        if (starts_with_icase(part, "FN"))
+        {
+            anyFn = true;
+            break;
+        }
     }
-    else if (starts_with_icase(header.expected, "compile warning"))
+    if (anyFn)
     {
-        header.expectsWarning = true;
+        header.expectsCodes = true;
+        for (auto part : parts)
+        {
+            header.expectedCodes.push_back(to_upper(part));
+        }
     }
 
     return header;
@@ -174,49 +234,39 @@ TestResult TestRunner::run_test(const std::string& path, const std::vector<std::
     compilation.add_source(std::move(source), path);
     compilation.compile();
 
-    bool hasError = false;
-    bool hasWarning = false;
     for (const auto& diag : compilation.diag.get_diagnostics())
     {
         auto filePath = diag.location.fileId >= 0 && diag.location.fileId < (int)compilation.get_units().size()
                             ? compilation.get_units()[diag.location.fileId]->sourceFile->path()
                             : std::string_view{path};
         result.diagnostics.push_back(diag.format(filePath));
-
-        if (diag.severity == Diagnostic::Severity::Error)
-        {
-            hasError = true;
-        }
-        else if (diag.severity == Diagnostic::Severity::Warning)
-        {
-            hasWarning = true;
-        }
+        result.actualCodes.push_back(format_id(diag.code));
     }
 
-    if (hasError)
+    if (result.header.expectsCodes)
     {
-        result.actual = "compile error";
-    }
-    else if (hasWarning)
-    {
-        result.actual = "compile warning";
+        std::vector<std::string> expected = result.header.expectedCodes;
+        std::vector<std::string> actual = result.actualCodes;
+        std::sort(expected.begin(), expected.end());
+        std::sort(actual.begin(), actual.end());
+        result.passed = (expected == actual);
+        result.actual = result.actualCodes.empty()
+                            ? std::string{"no diagnostics"}
+                            : join_codes(result.actualCodes);
     }
     else
     {
-        result.actual = "success";
-    }
-
-    if (result.header.expectsError)
-    {
-        result.passed = hasError;
-    }
-    else if (result.header.expectsWarning)
-    {
-        result.passed = hasWarning && !hasError;
-    }
-    else
-    {
-        result.passed = !hasError;
+        result.passed = result.actualCodes.empty();
+        if (result.actualCodes.empty())
+        {
+            result.actual = "success";
+        }
+        else
+        {
+            result.actual = std::format("{} unexpected diagnostic(s): {}",
+                result.actualCodes.size(),
+                join_codes(result.actualCodes));
+        }
     }
 
     return result;

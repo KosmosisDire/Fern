@@ -11,8 +11,8 @@ struct TestHeader
 {
     std::string description;
     std::string expected;
-    bool expectsError = false;
-    bool expectsWarning = false;
+    std::vector<std::string> expectedCodes;
+    bool expectsCodes = false;
 };
 
 struct TestResult
@@ -21,6 +21,7 @@ struct TestResult
     TestHeader header;
     bool passed = false;
     std::string actual;
+    std::vector<std::string> actualCodes;
     std::vector<std::string> diagnostics;
 };
 
