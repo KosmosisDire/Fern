@@ -1,6 +1,6 @@
 ---
 Description: Flat array type assigned a nested array
-Expected: compile error
+Expected: FN3201, FN3201
 ---
 
 type Program

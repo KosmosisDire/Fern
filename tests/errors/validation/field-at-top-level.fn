@@ -1,6 +1,6 @@
 ---
 Description: Field declared at top level outside any type
-Expected: compile error
+Expected: FN2000
 ---
 
 topField: i32

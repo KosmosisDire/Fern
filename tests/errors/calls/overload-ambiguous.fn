@@ -1,6 +1,6 @@
 ---
 Description: Ambiguous overload selection between equally good candidates
-Expected: compile error
+Expected: FN3400
 ---
 
 type Program

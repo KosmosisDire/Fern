@@ -1,6 +1,6 @@
 ---
 Description: Two independent undefined names report as separate errors only
-Expected: compile error
+Expected: FN3204, FN3204
 ---
 
 type Program

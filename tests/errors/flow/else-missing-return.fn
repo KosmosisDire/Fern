@@ -1,6 +1,6 @@
 ---
 Description: Then-branch returns but else-branch does not
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: Member access where the type has no such field
-Expected: compile error
+Expected: FN3203
 ---
 
 type Vector2

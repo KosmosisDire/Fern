@@ -1,6 +1,6 @@
 ---
 Description: Type used directly as a value
-Expected: compile error
+Expected: FN3202
 ---
 
 type Helpers

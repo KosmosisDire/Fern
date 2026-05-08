@@ -1,6 +1,6 @@
 ---
 Description: Suffix used with input type that does not match the declared literal
-Expected: compile error
+Expected: FN3702
 ---
 
 type Measure

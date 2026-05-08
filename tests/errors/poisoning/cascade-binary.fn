@@ -1,6 +1,6 @@
 ---
 Description: Undefined operands in a binary expression should not cascade beyond the resolution error
-Expected: compile error
+Expected: FN3204, FN3204
 ---
 
 type Program

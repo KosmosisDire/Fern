@@ -1,6 +1,6 @@
 ---
 Description: Literal declared with more than one parameter
-Expected: compile error
+Expected: FN3106
 ---
 
 type BadLiteral

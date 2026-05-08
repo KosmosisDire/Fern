@@ -1,6 +1,6 @@
 ---
 Description: Indexing into a value of a type that does not support indexing
-Expected: compile error
+Expected: FN3214
 ---
 
 type Vector2

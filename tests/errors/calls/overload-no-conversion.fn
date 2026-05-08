@@ -1,6 +1,6 @@
 ---
 Description: No matching overload because bool has no implicit cast to f32
-Expected: compile error
+Expected: FN3201
 ---
 
 type Program

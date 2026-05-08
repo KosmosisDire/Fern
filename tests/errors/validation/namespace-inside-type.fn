@@ -1,6 +1,6 @@
 ---
 Description: Namespace declared inside a type
-Expected: compile error
+Expected: FN2001
 ---
 
 type BadType

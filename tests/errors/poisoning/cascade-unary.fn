@@ -1,6 +1,6 @@
 ---
 Description: Unary on undefined value should not report operator not found
-Expected: compile error
+Expected: FN3204
 ---
 
 type Program

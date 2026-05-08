@@ -1,6 +1,6 @@
 ---
 Description: Constructor declared at top level outside any type
-Expected: compile error
+Expected: FN2000
 ---
 
 init()

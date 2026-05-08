@@ -1,6 +1,6 @@
 ---
 Description: Suffix matches literals on multiple types
-Expected: compile error
+Expected: FN3703
 ---
 
 type Measure

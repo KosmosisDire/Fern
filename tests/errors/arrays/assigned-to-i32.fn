@@ -1,6 +1,6 @@
 ---
 Description: Array literal assigned to non-array i32 type
-Expected: compile error
+Expected: FN3201
 ---
 
 type Program

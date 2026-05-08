@@ -1,6 +1,6 @@
 ---
 Description: Bare literal below i32 minimum
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

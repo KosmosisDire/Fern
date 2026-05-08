@@ -1,6 +1,6 @@
 ---
 Description: if(false) then-branch never runs and there is no else
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

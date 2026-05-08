@@ -1,6 +1,6 @@
 ---
 Description: Cast from string to i32 has no conversion
-Expected: compile error
+Expected: FN3206
 ---
 
 type Program

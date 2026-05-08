@@ -1,6 +1,6 @@
 ---
 Description: Empty array literal without type context
-Expected: compile error
+Expected: FN3709
 ---
 
 type Program

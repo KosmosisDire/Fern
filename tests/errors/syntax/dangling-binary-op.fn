@@ -1,6 +1,6 @@
 ---
 Description: Dangling binary operator with no right operand
-Expected: compile error
+Expected: FN1012
 ---
 
 type Program

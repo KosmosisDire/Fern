@@ -1,6 +1,6 @@
 ---
 Description: Cast from bool to f32 has no conversion
-Expected: compile error
+Expected: FN3206
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: Initializer list with values but not handler for those values
-Expected: compile error
+Expected: FN3601
 ---
 
 type Vector2

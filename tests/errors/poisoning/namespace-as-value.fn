@@ -1,6 +1,6 @@
 ---
 Description: Namespace used directly as a value
-Expected: compile error
+Expected: FN3202
 ---
 
 namespace Math

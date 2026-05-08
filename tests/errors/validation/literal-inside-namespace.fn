@@ -1,6 +1,6 @@
 ---
 Description: Literal declared inside a namespace
-Expected: compile error
+Expected: FN2000
 ---
 
 namespace BadNs

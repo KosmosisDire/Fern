@@ -1,6 +1,6 @@
 ---
 Description: Undefined argument should not produce an overload-mismatch error
-Expected: compile error
+Expected: FN3204
 ---
 
 namespace Math

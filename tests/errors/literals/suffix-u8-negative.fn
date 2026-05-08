@@ -1,6 +1,6 @@
 ---
 Description: Negated literal with u8 suffix
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

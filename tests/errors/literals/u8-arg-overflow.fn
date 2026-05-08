@@ -1,6 +1,6 @@
 ---
 Description: Constant expression argument overflows u8 parameter
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

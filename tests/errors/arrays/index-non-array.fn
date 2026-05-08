@@ -1,6 +1,6 @@
 ---
 Description: Indexing into a non-array value
-Expected: compile error
+Expected: FN3214
 ---
 
 type Program

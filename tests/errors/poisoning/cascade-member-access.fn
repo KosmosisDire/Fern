@@ -1,6 +1,6 @@
 ---
 Description: Method call on an undefined receiver should not also report no-such-member
-Expected: compile error
+Expected: FN3204
 ---
 
 type Program

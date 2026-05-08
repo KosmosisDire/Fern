@@ -1,6 +1,6 @@
 ---
 Description: Function defined in a nested namespace
-Expected: compile error
+Expected: FN2000
 ---
 
 namespace Outer

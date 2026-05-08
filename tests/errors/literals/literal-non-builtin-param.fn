@@ -1,6 +1,6 @@
 ---
 Description: Literal declared with a non-builtin parameter type
-Expected: compile error
+Expected: FN3107
 ---
 
 type Other

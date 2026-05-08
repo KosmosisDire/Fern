@@ -1,6 +1,6 @@
 ---
 Description: Literal declared with a return type annotation other than the owning type
-Expected: compile error
+Expected: FN3103
 ---
 
 type BadLiteral

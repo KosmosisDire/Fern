@@ -1,6 +1,6 @@
 ---
 Description: attr modifier applied to a function declaration
-Expected: compile error
+Expected: FN2005
 ---
 
 type Holder

@@ -1,6 +1,6 @@
 ---
 Description: Cast Box<f32> to Container<i32> with mismatched type argument
-Expected: compile error
+Expected: FN3206
 ---
 
 type Box<T>

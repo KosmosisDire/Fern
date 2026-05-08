@@ -1,6 +1,6 @@
 ---
 Description: Index on undefined value should not report cannot-index
-Expected: compile error
+Expected: FN3204
 ---
 
 type Program

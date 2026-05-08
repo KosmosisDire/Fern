@@ -1,6 +1,6 @@
 ---
 Description: Assign an array type reference to a variable inside parentheses
-Expected: compile error
+Expected: FN3202
 ---
 
 

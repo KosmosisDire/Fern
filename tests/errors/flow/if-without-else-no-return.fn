@@ -1,6 +1,6 @@
 ---
 Description: If with no else and no following return for the false branch
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

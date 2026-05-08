@@ -1,6 +1,6 @@
 ---
 Description: Binary operator applied to a type with no matching operator
-Expected: compile error
+Expected: FN3213
 ---
 
 type Vector2

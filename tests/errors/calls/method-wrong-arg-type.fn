@@ -1,6 +1,6 @@
 ---
 Description: Method called with a wrong argument type
-Expected: compile error
+Expected: FN3406
 ---
 
 type Helpers

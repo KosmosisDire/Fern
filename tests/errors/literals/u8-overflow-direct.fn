@@ -1,6 +1,6 @@
 ---
 Description: Direct literal 256 overflows u8
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

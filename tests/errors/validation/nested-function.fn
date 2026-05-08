@@ -1,6 +1,6 @@
 ---
 Description: Function declared inside another function body
-Expected: compile error
+Expected: FN2002
 ---
 
 type NestTest

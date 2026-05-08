@@ -1,6 +1,6 @@
 ---
 Description: Literal with u8 suffix above 255
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

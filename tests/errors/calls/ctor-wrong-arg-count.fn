@@ -1,6 +1,6 @@
 ---
 Description: Constructor called with too many arguments
-Expected: compile error
+Expected: FN3401
 ---
 
 type Vector2

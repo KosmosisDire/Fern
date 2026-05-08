@@ -1,6 +1,6 @@
 ---
 Description: Function declared with a return type has no return at all
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

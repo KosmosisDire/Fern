@@ -1,6 +1,6 @@
 ---
 Description: A variable name used as a cast target
-Expected: compile error
+Expected: FN3202
 ---
 
 type Program

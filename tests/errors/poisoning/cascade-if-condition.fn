@@ -1,6 +1,6 @@
 ---
 Description: Undefined name in if condition should not also report a bool requirement
-Expected: compile error
+Expected: FN3204
 ---
 
 type Program

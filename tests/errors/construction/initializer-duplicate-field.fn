@@ -1,6 +1,6 @@
 ---
 Description: Initializer specifies the same field twice
-Expected: compile error
+Expected: FN3604
 ---
 
 type Vector2

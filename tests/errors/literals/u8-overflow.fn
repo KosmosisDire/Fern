@@ -1,6 +1,6 @@
 ---
 Description: Constant expression exceeds u8 max
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

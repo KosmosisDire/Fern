@@ -1,6 +1,6 @@
 ---
 Description: Bare literal exceeds i32 maximum
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

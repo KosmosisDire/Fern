@@ -1,6 +1,6 @@
 ---
 Description: Code after a while(true) that returns is unreachable
-Expected: compile warning
+Expected: FN4000
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: While loop with non-constant condition cannot guarantee return
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: Member access on namespace where the member does not exist
-Expected: compile error
+Expected: FN3203
 ---
 
 namespace Math

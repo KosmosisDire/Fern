@@ -1,6 +1,6 @@
 ---
 Description: Unary not with space between operator and operand
-Expected: compile error
+Expected: FN1013
 ---
 
 type Program

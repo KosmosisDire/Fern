@@ -1,6 +1,6 @@
 ---
 Description: Initializer field with name and colon but no value
-Expected: compile error
+Expected: FN1015
 ---
 
 type Vector2

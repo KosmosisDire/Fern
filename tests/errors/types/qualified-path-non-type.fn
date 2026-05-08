@@ -1,6 +1,6 @@
 ---
 Description: Qualified path resolves to a field, not a type
-Expected: compile error
+Expected: FN3202
 ---
 
 type Foo

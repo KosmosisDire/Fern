@@ -1,6 +1,6 @@
 ---
 Description: Negative literal does not fit u8
-Expected: compile error
+Expected: FN3200
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: if/else if chain without a final else cannot guarantee return
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

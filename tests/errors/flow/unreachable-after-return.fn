@@ -1,6 +1,6 @@
 ---
 Description: Code following an unconditional return is unreachable
-Expected: compile warning
+Expected: FN4000
 ---
 
 type Program

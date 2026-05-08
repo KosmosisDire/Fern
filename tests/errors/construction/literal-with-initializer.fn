@@ -1,6 +1,6 @@
 ---
 Description: Initializer applied to a literal
-Expected: compile error
+Expected: FN3601
 ---
 
 type Program

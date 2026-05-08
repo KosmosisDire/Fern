@@ -1,6 +1,6 @@
 ---
 Description: Unary minus applied to a bool
-Expected: compile error
+Expected: FN3211
 ---
 
 type Program

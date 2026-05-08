@@ -1,6 +1,6 @@
 ---
 Description: Operator declared at top level outside any type
-Expected: compile error
+Expected: FN2000
 ---
 
 op +(a: i32, b: i32) -> i32

@@ -1,6 +1,6 @@
 ---
 Description: Array indexed with a bool
-Expected: compile error
+Expected: FN3216
 ---
 
 type Program

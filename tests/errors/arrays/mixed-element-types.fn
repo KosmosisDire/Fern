@@ -1,6 +1,6 @@
 ---
 Description: Array literal with mixed numeric element types
-Expected: compile error
+Expected: FN3708
 ---
 
 type Program

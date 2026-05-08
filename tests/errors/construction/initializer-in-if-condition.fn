@@ -1,6 +1,6 @@
 ---
 Description: Bare initializer expression used as if condition
-Expected: compile error
+Expected: FN3201
 ---
 
 type Vector2

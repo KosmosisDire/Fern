@@ -1,6 +1,6 @@
 ---
 Description: Initializer list contains a var declaration
-Expected: compile error
+Expected: FN3606
 ---
 
 type Vector2

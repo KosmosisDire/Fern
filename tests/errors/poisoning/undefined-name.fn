@@ -1,6 +1,6 @@
 ---
 Description: Reference to an undefined name
-Expected: compile error
+Expected: FN3204
 ---
 
 type Program

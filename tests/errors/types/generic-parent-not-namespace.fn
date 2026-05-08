@@ -1,6 +1,6 @@
 ---
 Description: Generic type with multi-segment path where parent is not a namespace
-Expected: compile error
+Expected: FN3203
 ---
 
 type Foo

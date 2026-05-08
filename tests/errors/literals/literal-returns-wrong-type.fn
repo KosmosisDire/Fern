@@ -1,6 +1,6 @@
 ---
 Description: Literal declaration returns a value of the wrong type
-Expected: compile error
+Expected: FN3103
 ---
 
 type BadLiteral

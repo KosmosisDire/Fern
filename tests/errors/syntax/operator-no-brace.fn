@@ -1,6 +1,6 @@
 ---
 Description: Operator declaration with no body
-Expected: compile error
+Expected: FN1007
 ---
 
 type Broken

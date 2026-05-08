@@ -1,6 +1,6 @@
 ---
 Description: Namespace declared inside a function body
-Expected: compile error
+Expected: FN2002
 ---
 
 type NestTest

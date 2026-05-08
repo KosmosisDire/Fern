@@ -1,6 +1,6 @@
 ---
 Description: Calling a value that is not a function
-Expected: compile error
+Expected: FN3402
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: Empty array literal cannot pick between two array overloads
-Expected: compile error
+Expected: FN3400
 ---
 
 type Program

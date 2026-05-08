@@ -1,6 +1,6 @@
 ---
 Description: Literal declared at top level outside any type
-Expected: compile error
+Expected: FN2000
 ---
 
 literal px(value: i32) -> i32

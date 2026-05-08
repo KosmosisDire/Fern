@@ -1,6 +1,6 @@
 ---
 Description: If condition is an integer not a bool
-Expected: compile error
+Expected: FN3406
 ---
 
 type Program

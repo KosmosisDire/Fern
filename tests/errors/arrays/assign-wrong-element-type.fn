@@ -1,6 +1,6 @@
 ---
 Description: Assigning a wrong type through array index
-Expected: compile error
+Expected: FN3406
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: Type with opening brace but no close
-Expected: compile error
+Expected: FN1018
 ---
 
 type Broken

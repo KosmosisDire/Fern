@@ -1,6 +1,6 @@
 ---
 Description: Function declaration with no opening brace
-Expected: compile error
+Expected: FN1007
 ---
 
 type Broken

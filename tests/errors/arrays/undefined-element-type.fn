@@ -1,6 +1,6 @@
 ---
 Description: Array type with undefined element type
-Expected: compile error
+Expected: FN3000
 ---
 
 type Program

@@ -1,6 +1,6 @@
 ---
 Description: while(true) body without return cannot guarantee return
-Expected: compile error
+Expected: FN4001
 ---
 
 type Program

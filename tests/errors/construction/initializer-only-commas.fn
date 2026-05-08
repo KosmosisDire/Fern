@@ -1,6 +1,6 @@
 ---
 Description: Initializer list containing only commas
-Expected: compile error
+Expected: FN1014, FN1014
 ---
 
 type Vector2

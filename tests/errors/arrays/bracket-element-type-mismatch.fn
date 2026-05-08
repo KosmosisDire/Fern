@@ -1,6 +1,6 @@
 ---
 Description: Element type mismatch with bracket array syntax
-Expected: compile error
+Expected: FN3406, FN3406
 ---
 
 type Program

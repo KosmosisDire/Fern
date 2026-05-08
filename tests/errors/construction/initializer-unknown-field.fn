@@ -1,6 +1,6 @@
 ---
 Description: Initializer references a field that does not exist on the type
-Expected: compile error
+Expected: FN3203
 ---
 
 type Vector2
