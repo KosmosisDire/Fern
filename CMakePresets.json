@@ -77,6 +77,29 @@
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
       }
+    },
+    {
+      "name": "linux-fuzz",
+      "displayName": "Linux - Fuzz",
+      "description": "libFuzzer harness with ASan, frontend only (no LLVM, libffi, CLI, or LSP)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/fuzz",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_C_COMPILER": "clang-19",
+        "CMAKE_CXX_COMPILER": "clang++-19",
+        "FERN_BUILD_FUZZER": "ON",
+        "FERN_BUILD_LLVM": "OFF",
+        "FERN_BUILD_LIBFFI": "OFF",
+        "FERN_BUILD_CLI": "OFF",
+        "FERN_BUILD_LSP": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     }
   ],
   "buildPresets": [
@@ -99,6 +122,12 @@
       "name": "linux-release-build",
       "displayName": "Build (Linux Release)",
       "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-fuzz-build",
+      "displayName": "Build (Linux Fuzz)",
+      "configurePreset": "linux-fuzz",
+      "targets": ["fernfuzz"]
     }
   ],
   "testPresets": [

@@ -161,71 +161,22 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(FERN_DEBUG)
 endif()
 
-# ---------------------------------------------------------------------------
-# Fuzzer toolchain. libFuzzer is part of Clang's compiler-rt and is enabled
-# by passing -fsanitize=fuzzer. We pair it with AddressSanitizer and
-# UndefinedBehaviorSanitizer so memory errors and UB surface as crashes.
-# Coverage and sanitizer compile flags are applied globally so fernlib gets
-# instrumented; the libFuzzer entry point (-fsanitize=fuzzer link flag) is
-# added only on the fernfuzz target so it does not clash with other mains.
-# ---------------------------------------------------------------------------
+# Fuzzer toolchain (Linux + Clang only). ASan instrumentation is applied
+# globally; the libFuzzer entry point flag is added on fernfuzz only.
 if(FERN_BUILD_FUZZER)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        message(FATAL_ERROR
+            "FERN_BUILD_FUZZER is Linux only (detected '${CMAKE_SYSTEM_NAME}').")
+    endif()
+
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR
-            "FERN_BUILD_FUZZER requires Clang (libFuzzer ships with Clang's compiler-rt), "
-            "but the detected C++ compiler is "
-            "'${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}'.\n"
-            "Set CC and CXX to clang and clang++ before configuring, "
-            "or set -DFERN_BUILD_FUZZER=OFF.")
+            "FERN_BUILD_FUZZER requires Clang. "
+            "Detected '${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}'.")
     endif()
 
-    if(MSVC)
-        message(FATAL_ERROR
-            "FERN_BUILD_FUZZER requires the GCC style Clang frontend (clang++), "
-            "not clang-cl. Reconfigure with clang.exe / clang++.exe as CC / CXX.")
-    endif()
-
-    # libFuzzer's prebuilt runtime on Windows (clang_rt.fuzzer-x86_64.lib) is
-    # built against the static release MSVC CRT (/MT). The project's prebuilt
-    # LLVM uses the dynamic CRT (/MD), so the fuzzer cannot link both at
-    # once. The fuzzer targets the front end (lexer, parser, binder), which
-    # does not need LLVM, so disable LLVM and libffi here to avoid the
-    # conflict.
-    if(WIN32)
-        set(FERN_BUILD_LLVM   OFF CACHE BOOL "" FORCE)
-        set(FERN_BUILD_LIBFFI OFF CACHE BOOL "" FORCE)
-        message(STATUS
-            "FERN_BUILD_FUZZER: forced FERN_BUILD_LLVM=OFF and "
-            "FERN_BUILD_LIBFFI=OFF on Windows; libFuzzer requires the static "
-            "CRT and the prebuilt LLVM uses the dynamic CRT")
-    endif()
-
-    # libFuzzer's prebuilt runtime is built against the static release CRT
-    # (/MT). Under CMake policy CMP0091 NEW (default since 3.15), CRT
-    # selection is driven by CMAKE_MSVC_RUNTIME_LIBRARY independently of
-    # the build type, so we can force /MT here while still letting users
-    # choose Debug / RelWithDebInfo / Release for the optimization level.
-    if(WIN32)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
-    endif()
-
-    # Default to RelWithDebInfo for fast fuzzing. Users who want full debug
-    # info (no inlining, all variables visible in the debugger) can configure
-    # with -DCMAKE_BUILD_TYPE=Debug; this still produces a /MT binary so it
-    # links against libFuzzer correctly.
-    if(WIN32 AND NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
-        message(STATUS
-            "FERN_BUILD_FUZZER: defaulted CMAKE_BUILD_TYPE=RelWithDebInfo. "
-            "Use -DCMAKE_BUILD_TYPE=Debug for easier debugging.")
-    endif()
-
-    # Keep internal assertions on for fuzzing even when not in a Debug build.
     add_compile_definitions(FERN_DEBUG)
 
-    # Optimization level comes from CMAKE_BUILD_TYPE (Debug = -O0, RelWithDebInfo
-    # = -O2, Release = -O3). We only add the sanitizer + debug info flags
-    # explicitly so they apply regardless of build type.
     add_compile_options(
         -fsanitize=fuzzer-no-link,address
         -fno-omit-frame-pointer
