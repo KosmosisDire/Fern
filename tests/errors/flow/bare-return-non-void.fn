@@ -1,0 +1,17 @@
+---
+Description: Bare return with no value in a function declared to return a value
+Expected: FN3301
+---
+
+type Program
+{
+    fn Bad -> i32
+    {
+        return
+    }
+
+    fn Main -> i32
+    {
+        return Bad()
+    }
+}

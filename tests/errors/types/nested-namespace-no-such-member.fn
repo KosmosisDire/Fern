@@ -1,0 +1,26 @@
+---
+Description: Multi-segment namespace path where the leaf type name does not exist
+Expected: FN3203
+---
+
+namespace Math
+{
+    namespace Trig
+    {
+        type Vector2
+        {
+            x: f32
+            y: f32
+            init{}
+        }
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Math.Trig.NotAType = 5
+        return 0
+    }
+}

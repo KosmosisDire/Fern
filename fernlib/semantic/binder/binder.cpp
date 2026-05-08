@@ -135,25 +135,55 @@ TypeSymbol* Binder::resolve_type_expr(TypeExprSyntax* expr)
             {
                 std::vector<std::string_view> path;
                 collect_type_path(member->left, path);
-                diag.report(DiagnosticCode::Err_UndefinedType, member->left->span, std::format("{}.{}", join_path(path), genRight->name.lexeme));
+                diag.report(DiagnosticCode::Err_UndefinedType, member->left->span, join_path(path));
                 return nullptr;
             }
             return resolve_generic_name(genRight, parentSym);
         }
 
-        Symbol* sym = resolve_namespace_or_type(member);
-        if (!sym)
+        Symbol* parentSym = resolve_namespace_or_type(member->left);
+        if (!parentSym)
         {
             std::vector<std::string_view> path;
-            collect_type_path(member, path);
-            diag.report(DiagnosticCode::Err_UndefinedType, expr->span, join_path(path));
+            collect_type_path(member->left, path);
+            diag.report(DiagnosticCode::Err_UndefinedType, member->left->span, join_path(path));
             return nullptr;
         }
+
+        std::string_view rightName = member->right->name.lexeme;
+        Symbol* sym = nullptr;
+        if (auto* ns = parentSym->as<NamespaceSymbol>())
+        {
+            sym = ns->find_member(rightName);
+        }
+        else if (auto* parentType = parentSym->as<NamedTypeSymbol>())
+        {
+            sym = parentType->find_non_method_member(rightName);
+            if (!sym)
+            {
+                auto methods = parentType->collect_methods(rightName);
+                if (!methods.empty()) sym = methods[0];
+            }
+        }
+        else
+        {
+            diag.report(DiagnosticCode::Err_BadSymbolKind, member->left->span,
+                parentSym->qualified_name(), kind_noun(parentSym->kind), "namespace");
+            return nullptr;
+        }
+
+        if (!sym)
+        {
+            diag.report(DiagnosticCode::Err_NoSuchMember, member->right->span,
+                parentSym->qualified_name(), rightName);
+            return nullptr;
+        }
+
         if (auto* type = sym->as<TypeSymbol>()) return type;
 
-        std::vector<std::string_view> path;
-        collect_type_path(member, path);
-        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->span, join_path(path), kind_noun(sym->kind), "type");
+        diag.report(DiagnosticCode::Err_BadSymbolKind, member->right->span,
+            std::format("{}.{}", parentSym->qualified_name(), rightName),
+            kind_noun(sym->kind), "type");
         return nullptr;
     }
 
@@ -232,16 +262,43 @@ TypeSymbol* Binder::resolve_generic_name(GenericNameExprSyntax* gen, Symbol* par
 
     if (!templ)
     {
-        std::string fullName;
+        Symbol* existing = nullptr;
+        if (!parentScope)
+        {
+            existing = lookup(name).single();
+        }
+        else if (auto* ns = parentScope->as<NamespaceSymbol>())
+        {
+            existing = ns->find_member(name);
+        }
+        else if (auto* parentType = parentScope->as<NamedTypeSymbol>())
+        {
+            existing = parentType->find_non_method_member(name);
+            if (!existing)
+            {
+                auto methods = parentType->collect_methods(name);
+                if (!methods.empty()) existing = methods[0];
+            }
+        }
+
+        if (existing && !existing->as<TypeSymbol>())
+        {
+            std::string fullName = parentScope
+                ? std::format("{}.{}", parentScope->qualified_name(), name)
+                : std::string(name);
+            diag.report(DiagnosticCode::Err_BadSymbolKind, gen->span,
+                fullName, kind_noun(existing->kind), "type");
+            return nullptr;
+        }
+
         if (parentScope)
         {
-            fullName = std::format("{}.{}", parentScope->qualified_name(), name);
+            diag.report(DiagnosticCode::Err_NoSuchMember, gen->span,
+                parentScope->qualified_name(), name);
+            return nullptr;
         }
-        else
-        {
-            fullName = std::string(name);
-        }
-        diag.report(DiagnosticCode::Err_UndefinedType, gen->span, fullName);
+
+        diag.report(DiagnosticCode::Err_UndefinedType, gen->span, std::string(name));
         return nullptr;
     }
 

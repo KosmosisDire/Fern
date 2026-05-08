@@ -1,0 +1,14 @@
+---
+Description: Indexing a bool value, which has no op []
+Expected: FN3214
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b = true
+        var x = b[0]
+        return 0
+    }
+}

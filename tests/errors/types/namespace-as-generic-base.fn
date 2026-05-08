@@ -1,0 +1,23 @@
+---
+Description: A namespace name used as the base of a generic type
+Expected: FN3202
+---
+
+namespace Math
+{
+    type Vector2
+    {
+        x: f32
+        y: f32
+        init{}
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Math<i32> = 5
+        return 0
+    }
+}

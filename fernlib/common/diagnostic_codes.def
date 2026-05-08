@@ -73,12 +73,12 @@ DIAG(Err_BadUnaryOp,                    3211, Error,   "operator '{}' cannot be 
 DIAG(Err_AmbiguousBinaryOp,             3212, Error,   "operator '{}' is ambiguous on operands of type '{}' and '{}':{}")                           // CS0034
 DIAG(Err_BadBinaryOp,                   3213, Error,   "operator '{}' cannot be applied to operands of type '{}' and '{}'{}")                       // CS0019 (last {} is optional hint suffix, e.g. " (requires '==' operator)")
 DIAG(Err_CannotIndex,                   3214, Error,   "type '{}' cannot be indexed")                                                               // CS0021
-DIAG(Err_NoIndexSetter,                 3215, Error,   "type '{}' cannot be index-assigned by '{}'")
-DIAG(Err_NoIndexGetter,                 3216, Error,   "type '{}' cannot be indexed by '{}'")
+DIAG(Err_NoIndexSetter,                 3215, Error,   "no overload of 'op []=' on type '{}' accepts an index of type '{}'")
+DIAG(Err_NoIndexGetter,                 3216, Error,   "no overload of 'op []' on type '{}' accepts an index of type '{}'")
 
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
-DIAG(Err_WrongReturnType,               3301, Error,   "function '{}' expects a return of type '{}'")                                               // CS0029
+DIAG(Err_ReturnValueRequired,           3301, Error,   "function '{}' must return a value of type '{}'")                                            // CS0126
 
 // Binder: calls (3400-3499)
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121

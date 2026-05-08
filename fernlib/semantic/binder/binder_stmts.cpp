@@ -65,7 +65,7 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     }
     else if (TypeSymbol* retType = method->get_return_type())
     {
-        diag.report(DiagnosticCode::Err_WrongReturnType, stmt->span, method->name, format_type(retType));
+        diag.report(DiagnosticCode::Err_ReturnValueRequired, stmt->span, method->name, format_type(retType));
     }
 
     out.push_back(fhir.return_stmt(stmt, value));

@@ -1,0 +1,23 @@
+---
+Description: Generic type access on a namespace where the type name does not exist
+Expected: FN3203
+---
+
+namespace Math
+{
+    type Vector2
+    {
+        x: f32
+        y: f32
+        init{}
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Math.NotAType<i32> = 5
+        return 0
+    }
+}

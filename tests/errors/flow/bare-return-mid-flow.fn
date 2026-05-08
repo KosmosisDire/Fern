@@ -1,0 +1,21 @@
+---
+Description: Bare return inside an if-branch of a function declared to return a value
+Expected: FN3301
+---
+
+type Program
+{
+    fn Bad(cond: bool) -> i32
+    {
+        if cond
+        {
+            return
+        }
+        return 0
+    }
+
+    fn Main -> i32
+    {
+        return Bad(true)
+    }
+}

@@ -1,0 +1,14 @@
+---
+Description: Indexing an f32 value, which has no op []
+Expected: FN3214
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        var f = 1.0
+        var x = f[0]
+        return 0
+    }
+}

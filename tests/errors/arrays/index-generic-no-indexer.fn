@@ -1,0 +1,24 @@
+---
+Description: Indexing an instantiated generic type that has no op []
+Expected: FN3214
+---
+
+type Box<T>
+{
+    value: T
+
+    init(v: T)
+    {
+        this.value = v
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var b = Box<i32>(5)
+        var x = b[0]
+        return 0
+    }
+}

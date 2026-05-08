@@ -1,0 +1,19 @@
+---
+Description: Type member access in type position where the member does not exist
+Expected: FN3203
+---
+
+type Foo
+{
+    x: i32
+    init{}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var a: Foo.Bar = 5
+        return 0
+    }
+}

@@ -1,0 +1,18 @@
+---
+Description: A method name used as the base of a generic type
+Expected: FN3202
+---
+
+type Program
+{
+    static fn foo() -> i32
+    {
+        return 0
+    }
+
+    fn Main -> i32
+    {
+        var a: foo<i32> = 5
+        return 0
+    }
+}

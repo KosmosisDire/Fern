@@ -1,0 +1,18 @@
+---
+Description: Return with a value in a function that has no return type annotation. Probes whether FN3300 is still reachable now that annotations are required.
+Expected: FN3300
+---
+
+type Program
+{
+    fn Bad
+    {
+        return 5
+    }
+
+    fn Main -> i32
+    {
+        Bad()
+        return 0
+    }
+}

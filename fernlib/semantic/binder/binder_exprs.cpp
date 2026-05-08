@@ -587,7 +587,11 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         }
         if (!setterResult.best.is_callable())
         {
-            if (TypeSymbol* expectedValueType = namedType->expected_index_value_type(indexType))
+            if (setterResult.candidates.empty())
+            {
+                diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(namedType));
+            }
+            else if (TypeSymbol* expectedValueType = namedType->expected_index_value_type(indexType))
             {
                 DiagnosticCode code = (NamedTypeSymbol::get_conversion(valueType, expectedValueType).level == Convertibility::Explicit)
                     ? DiagnosticCode::Err_NoImplicitConv
@@ -665,7 +669,14 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     }
     if (!getterResult.best.is_callable())
     {
-        diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type(namedType), format_type(indexType));
+        if (getterResult.candidates.empty())
+        {
+            diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(namedType));
+        }
+        else
+        {
+            diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type(namedType), format_type(indexType));
+        }
         return fhir.error_expr(expr);
     }
 

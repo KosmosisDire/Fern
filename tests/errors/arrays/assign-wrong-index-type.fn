@@ -1,0 +1,21 @@
+---
+Description: Type has op []= defined but no overload accepts the given index type
+Expected: FN3215
+---
+
+type Container
+{
+    init{}
+
+    op []=(self: Container, index: i32, value: f32) {}
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var c = Container{}
+        c["hello"] = 1.0
+        return 0
+    }
+}
