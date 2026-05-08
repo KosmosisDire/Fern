@@ -544,7 +544,8 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         FhirExpr* index = bind_value_expr(indexExpr->index);
         FhirExpr* value = bind_value_expr(expr->value);
 
-        if ((object && object->is_error()) || (index && index->is_error()) || (value && value->is_error()))
+        if (!object || !index || !value
+            || object->is_error() || index->is_error() || value->is_error())
         {
             return fhir.error_expr(expr);
         }
@@ -638,7 +639,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
     FhirExpr* object = bind_value_expr(expr->object);
     FhirExpr* index = bind_value_expr(expr->index);
 
-    if ((object && object->is_error()) || (index && index->is_error()))
+    if (!object || !index || object->is_error() || index->is_error())
     {
         return fhir.error_expr(expr);
     }
