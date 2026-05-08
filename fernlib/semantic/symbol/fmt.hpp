@@ -74,6 +74,20 @@ struct SymbolFormat
         return copy;
     }
 
+    // Strips flags that only apply to a type definition (members, attributes,
+    // modifiers, the kind keyword, instantiations list). Use this when emitting
+    // a type as a reference so we never recurse into the referenced type's
+    // body, which would otherwise loop on signatures like `fn foo() -> Self`.
+    SymbolFormat without_def_only() const
+    {
+        return without(
+            SymbolFormatOption::IncludeKindKeyword |
+            SymbolFormatOption::IncludeMembers |
+            SymbolFormatOption::IncludeInstantiations |
+            SymbolFormatOption::IncludeAttributes |
+            SymbolFormatOption::IncludeModifiers);
+    }
+
     static SymbolFormat diagnostic();
     static SymbolFormat signature();
     static SymbolFormat hover_short();

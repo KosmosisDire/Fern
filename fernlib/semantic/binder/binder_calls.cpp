@@ -1,6 +1,5 @@
 #include "binder.hpp"
 
-#include <cassert>
 #include <format>
 
 #include <ast/ast.hpp>
@@ -63,7 +62,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     if (auto* tref = callee->as<FhirTypeRef>())
     {
         auto* namedType = tref->referenced ? tref->referenced->as<NamedTypeSymbol>() : nullptr;
-        assert(namedType && "construction callee must not be null");
+        if (!namedType)
+        {
+            diag.report(DiagnosticCode::Err_NotCallable, expr->callee->span, format_type(tref->referenced));
+            return fhir.error_expr(expr);
+        }
 
         auto result = namedType->find_constructor(argTypes);
         if (result.ambiguous && !hasErrorArg)

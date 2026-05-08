@@ -138,14 +138,7 @@ std::string format_type(TypeSymbol* type, const SymbolFormat& fmt)
         prefix = "type ";
     }
 
-    SymbolFormat inner = fmt;
-    inner.options = static_cast<SymbolFormatOption>(
-        static_cast<uint32_t>(fmt.options) &
-        ~(static_cast<uint32_t>(SymbolFormatOption::IncludeKindKeyword) |
-          static_cast<uint32_t>(SymbolFormatOption::IncludeMembers) |
-          static_cast<uint32_t>(SymbolFormatOption::IncludeInstantiations) |
-          static_cast<uint32_t>(SymbolFormatOption::IncludeAttributes) |
-          static_cast<uint32_t>(SymbolFormatOption::IncludeModifiers)));
+    SymbolFormat inner = fmt.without_def_only();
 
     std::string name;
     if (fmt.has(SymbolFormatOption::UseBuiltinAliases) && named && named->parent)
@@ -253,7 +246,7 @@ std::string format_local(LocalSymbol* local, const SymbolFormat& fmt)
     if (fmt.has(SymbolFormatOption::IncludeTypeOnLocals))
     {
         result += ": ";
-        result += format_type(local->type, fmt.without(SymbolFormatOption::IncludeKindKeyword));
+        result += format_type(local->type, fmt.without_def_only());
     }
     return result;
 }
@@ -270,7 +263,7 @@ std::string format_parameter(ParameterSymbol* param, const SymbolFormat& fmt)
     if (fmt.has(SymbolFormatOption::IncludeTypeOnParameters))
     {
         result += ": ";
-        result += format_type(param->type, fmt.without(SymbolFormatOption::IncludeKindKeyword));
+        result += format_type(param->type, fmt.without_def_only());
     }
     return result;
 }
@@ -278,7 +271,7 @@ std::string format_parameter(ParameterSymbol* param, const SymbolFormat& fmt)
 std::string format_parameter_list(MethodSymbol* method, const SymbolFormat& fmt)
 {
     if (!method) return "";
-    SymbolFormat inner = fmt.without(SymbolFormatOption::IncludeKindKeyword);
+    SymbolFormat inner = fmt.without_def_only();
     std::string result;
     for (size_t i = 0; i < method->parameters.size(); ++i)
     {
@@ -319,7 +312,7 @@ std::string format_field(FieldSymbol* field, const SymbolFormat& fmt)
     ss << field->name;
     if (fmt.has(SymbolFormatOption::IncludeTypeOnFields))
     {
-        ss << ": " << format_type(field->type, fmt.without(SymbolFormatOption::IncludeKindKeyword));
+        ss << ": " << format_type(field->type, fmt.without_def_only());
     }
     return ss.str();
 }
@@ -450,7 +443,7 @@ std::string format_method(MethodSymbol* method, const SymbolFormat& fmt)
 
     ss << format_method_kind_and_name(method, fmt);
 
-    SymbolFormat innerType = fmt.without(SymbolFormatOption::IncludeKindKeyword);
+    SymbolFormat innerType = fmt.without_def_only();
     ss << "(";
     for (size_t i = 0; i < method->parameters.size(); ++i)
     {
