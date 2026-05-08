@@ -33,7 +33,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/debug/bin/ferncli.exe",
-            "args": ["${input:cliFile}"],
+            "args": ["${input:cliCommand}", "${input:cliPath}"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
@@ -49,9 +49,16 @@
             "default": "scratch.fn"
         },
         {
-            "id": "cliFile",
+            "id": "cliCommand",
+            "type": "pickString",
+            "options": ["run", "test"],
+            "default": "run",
+            "description": "Subcommand"
+        },
+        {
+            "id": "cliPath",
             "type": "promptString",
-            "description": "Path to .fn file",
+            "description": "File path (for 'run') or folder path (for 'test')",
             "default": "scratch.fn"
         }
     ]
