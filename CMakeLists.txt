@@ -273,6 +273,8 @@ else()
     set(LIBFFI_AVAILABLE FALSE)
 endif()
 
+include(cmake/FetchFastFloat.cmake)
+
 add_subdirectory(fernlib)
 
 if(FERN_BUILD_CLI)

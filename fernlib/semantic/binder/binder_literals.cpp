@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <charconv>
+#include <fast_float/fast_float.h>
 #include <format>
+#include <string>
 #include <system_error>
 
 #include <ast/ast.hpp>
@@ -161,7 +163,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
             double value = 0;
             const char* first = expr->token.lexeme.data();
             const char* last = first + expr->token.lexeme.size();
-            auto [ptr, ec] = std::from_chars(first, last, value);
+            auto [ptr, ec] = fast_float::from_chars(first, last, value);
             if (ec == std::errc::result_out_of_range)
                 report_out_of_range();
             else if (ec == std::errc{})

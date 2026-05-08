@@ -64,6 +64,8 @@ set_target_properties(fernlib PROPERTIES
     CXX_STANDARD 20
 )
 
+target_link_libraries(fernlib PRIVATE fast_float)
+
 if(LLVM_AVAILABLE)
     set(LLVM_LINK_COMPONENTS
         Core Support IRReader Target TargetParser CodeGen MC X86
