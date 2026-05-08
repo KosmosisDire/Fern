@@ -1,8 +1,8 @@
 set(FERNLIB_SOURCES
 
     # global common
-    ${CMAKE_SOURCE_DIR}/common/logger.cpp
-    # ${CMAKE_SOURCE_DIR}/common/source_mutator.cpp
+    ${PROJECT_SOURCE_DIR}/common/logger.cpp
+    # ${PROJECT_SOURCE_DIR}/common/source_mutator.cpp
 
     # common
     common/compilation.cpp
@@ -55,7 +55,7 @@ add_library(fernlib STATIC ${FERNLIB_SOURCES})
 target_include_directories(fernlib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/semantic
-    ${CMAKE_SOURCE_DIR}/common
+    ${PROJECT_SOURCE_DIR}/common
 )
 
 set_target_properties(fernlib PROPERTIES

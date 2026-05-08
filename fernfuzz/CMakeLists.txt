@@ -6,7 +6,7 @@ add_executable(fernfuzz ${FERNFUZZ_SOURCES})
 
 set_target_properties(fernfuzz PROPERTIES
     CXX_STANDARD 20
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
 )
 
 target_link_libraries(fernfuzz PRIVATE fernlib)
@@ -28,7 +28,7 @@ endif()
 # fernfuzz -dict=fern.dict corpus/
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/fern.dict
-    ${CMAKE_BINARY_DIR}/bin/fern.dict
+    ${PROJECT_BINARY_DIR}/bin/fern.dict
     COPYONLY
 )
 
