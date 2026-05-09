@@ -14,15 +14,15 @@ namespace Fern
 static void report_argument_mismatches(
     Diagnostics& diag,
     MethodSymbol* candidate,
-    const std::vector<TypeSymbol*>& argTypes,
+    const std::vector<OverloadArg>& args,
     const std::vector<ExprPtr>& argSyntax)
 {
-    for (size_t i = 0; i < argTypes.size(); ++i)
+    for (size_t i = 0; i < args.size(); ++i)
     {
         if (i >= candidate->parameters.size()) continue;
         auto* param = candidate->parameters[i];
         if (!param || !param->type) continue;
-        auto level = NamedTypeSymbol::get_conversion(argTypes[i], param->type).level;
+        auto level = NamedTypeSymbol::get_conversion(args[i], param->type).level;
         if (level == Convertibility::Exact || level == Convertibility::Implicit) continue;
 
         std::string prefix = std::format("argument '{}': ", param->name);
@@ -30,7 +30,7 @@ static void report_argument_mismatches(
             ? DiagnosticCode::Err_NoImplicitConv
             : DiagnosticCode::Err_TypeMismatch;
         diag.report(code, argSyntax[i]->span,
-                    prefix, format_type(argTypes[i]), format_type(param->type));
+                    prefix, format_type(args[i].type), format_type(param->type));
     }
 }
 
@@ -39,7 +39,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     FhirExpr* callee = bind_expr(expr->callee);
 
     std::vector<FhirExpr*> argExprs;
-    std::vector<TypeSymbol*> argTypes;
+    std::vector<OverloadArg> args;
     bool hasErrorArg = false;
     for (auto* arg : expr->arguments)
     {
@@ -48,11 +48,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         if (bound && bound->is_error())
         {
             hasErrorArg = true;
-            argTypes.push_back(nullptr);
+            args.push_back({});
         }
         else
         {
-            argTypes.push_back(bound ? bound->type : nullptr);
+            args.push_back(OverloadArg(bound));
         }
     }
 
@@ -70,7 +70,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        auto result = namedType->find_constructor(argTypes);
+        auto result = namedType->find_constructor(args);
         if (result.ambiguous && !hasErrorArg)
         {
             std::string candidates;
@@ -85,11 +85,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             {
                 if (result.bestFailure.method)
                 {
-                    report_argument_mismatches(diag, result.bestFailure.method, argTypes, expr->arguments);
+                    report_argument_mismatches(diag, result.bestFailure.method, args, expr->arguments);
                 }
                 else
                 {
-                    diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type(namedType), argTypes.size());
+                    diag.report(DiagnosticCode::Err_NoMatchingConstructor, expr->span, format_type(namedType), args.size());
                 }
             }
             return fhir.error_expr(expr);
@@ -123,7 +123,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             return fhir.error_expr(expr, nullptr, group);
         }
 
-        auto result = targetType->find_method(group->name, argTypes);
+        auto result = targetType->find_method(group->name, args);
         if (result.ambiguous && !hasErrorArg)
         {
             std::string candidates;
@@ -139,11 +139,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             {
                 if (result.bestFailure.method)
                 {
-                    report_argument_mismatches(diag, result.bestFailure.method, argTypes, expr->arguments);
+                    report_argument_mismatches(diag, result.bestFailure.method, args, expr->arguments);
                 }
                 else
                 {
-                    diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type(targetType), argTypes.size());
+                    diag.report(DiagnosticCode::Err_NoMatchingMethod, expr->span, group->name, format_type(targetType), args.size());
                 }
             }
             return fhir.error_expr(expr);

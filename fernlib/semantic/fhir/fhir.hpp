@@ -8,6 +8,8 @@
 #include <vector>
 #include <source/span.hpp>
 
+#include <semantic/symbol/overload.hpp>
+
 namespace Fern
 {
 
@@ -569,6 +571,16 @@ public:
 
     void visit(FhirTypeRef* node) override { on_visit(node); node->visit_children(this); }
 };
+
+#pragma region Overload Helpers
+
+inline OverloadArg::OverloadArg(FhirExpr* expr)
+{
+    if (!expr) return;
+    type = expr->type;
+    const auto& c = expr->get_constant();
+    constant = c ? &*c : nullptr;
+}
 
 }
 

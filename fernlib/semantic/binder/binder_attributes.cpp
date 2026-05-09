@@ -58,13 +58,12 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
         if (auto* callExpr = attr->value->as<CallExprSyntax>())
         {
-            std::vector<TypeSymbol*> argTypes;
+            std::vector<OverloadArg> args;
             for (auto* arg : callExpr->arguments)
             {
-                auto* fhir = bind_value_expr(arg);
-                argTypes.push_back(fhir ? fhir->type : nullptr);
+                args.push_back(OverloadArg(bind_value_expr(arg)));
             }
-            ctor = attrType->find_constructor(argTypes).best.method;
+            ctor = attrType->find_constructor(args).best.method;
         }
         else if (auto* initExpr = attr->value->as<InitializerExprSyntax>())
         {
@@ -76,24 +75,21 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
 
             if (auto* innerCall = initExpr->target->as<CallExprSyntax>())
             {
-                std::vector<TypeSymbol*> argTypes;
+                std::vector<OverloadArg> args;
                 for (auto* arg : innerCall->arguments)
                 {
-                    auto* boundArg = bind_value_expr(arg);
-                    argTypes.push_back(boundArg ? boundArg->type : nullptr);
+                    args.push_back(OverloadArg(bind_value_expr(arg)));
                 }
-                ctor = attrType->find_constructor(argTypes).best.method;
+                ctor = attrType->find_constructor(args).best.method;
             }
             else
             {
-                std::vector<TypeSymbol*> emptyArgs;
-                ctor = attrType->find_constructor(emptyArgs).best.method;
+                ctor = attrType->find_constructor({}).best.method;
             }
         }
         else
         {
-            std::vector<TypeSymbol*> emptyArgs;
-            ctor = attrType->find_constructor(emptyArgs).best.method;
+            ctor = attrType->find_constructor({}).best.method;
             if (!ctor)
             {
                 diag.report(DiagnosticCode::Err_AttrNeedsParameterlessCtor, attr->span, attrType->name);

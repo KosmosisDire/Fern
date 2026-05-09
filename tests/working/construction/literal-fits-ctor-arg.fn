@@ -1,0 +1,23 @@
+---
+Description: Integer literal that fits a u8 constructor argument is implicitly converted
+Expected: 200
+---
+
+type Wrapped
+{
+    value: u8
+
+    init(v: u8)
+    {
+        this.value = v
+    }
+}
+
+type Program
+{
+    fn Main -> i32
+    {
+        var w = Wrapped(200)
+        return (i32)w.value
+    }
+}

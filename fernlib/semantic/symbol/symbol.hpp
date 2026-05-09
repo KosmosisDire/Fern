@@ -178,18 +178,21 @@ struct NamedTypeSymbol : TypeSymbol
 
     FieldSymbol* find_field(std::string_view name);
     std::vector<MethodSymbol*> collect_methods(std::string_view name);
-    OverloadResult find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes);
-    OverloadResult find_constructor(const std::vector<TypeSymbol*>& argTypes);
+    OverloadResult find_method(std::string_view name, const std::vector<OverloadArg>& args);
+    OverloadResult find_constructor(const std::vector<OverloadArg>& args);
     NamedTypeSymbol* find_nested_type(std::string_view name);
     Symbol* find_non_method_member(std::string_view name);
-    OverloadResult find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType);
-    OverloadResult find_unary_operator(TokenKind opKind, TypeSymbol* operandType);
-    OverloadResult find_index_getter(TypeSymbol* indexType);
-    OverloadResult find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType);
+    OverloadResult find_binary_operator(TokenKind opKind, const OverloadArg& left, const OverloadArg& right);
+    OverloadResult find_unary_operator(TokenKind opKind, const OverloadArg& operand);
+    OverloadResult find_index_getter(const OverloadArg& receiver, const OverloadArg& index);
+    OverloadResult find_index_setter(const OverloadArg& receiver, const OverloadArg& index, const OverloadArg& value);
     TypeSymbol* expected_index_value_type(TypeSymbol* indexType);
     MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     static Conversion get_conversion(TypeSymbol* from, TypeSymbol* to);
+    // Overload for arg-with-constant: upgrades Explicit to Implicit when arg
+    // is an integer literal whose value fits target.
+    static Conversion get_conversion(const OverloadArg& arg, TypeSymbol* to);
 };
 
 struct TypeParamSymbol : TypeSymbol

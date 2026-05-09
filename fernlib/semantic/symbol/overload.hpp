@@ -5,8 +5,20 @@
 namespace Fern
 {
 
+struct ConstantValue;
+struct FhirExpr;
 struct MethodSymbol;
 struct TypeSymbol;
+
+struct OverloadArg
+{
+    TypeSymbol* type = nullptr;
+    const ConstantValue* constant = nullptr;
+
+    OverloadArg() = default;
+    OverloadArg(TypeSymbol* type, const ConstantValue* constant) : type(type), constant(constant) {}
+    explicit OverloadArg(FhirExpr* expr);
+};
 
 struct OverloadMatch
 {
@@ -30,7 +42,7 @@ struct OverloadResult
 
 namespace Overload
 {
-    OverloadMatch grade(MethodSymbol* method, const std::vector<TypeSymbol*>& argTypes);
+    OverloadMatch grade(MethodSymbol* method, const std::vector<OverloadArg>& args);
     OverloadResult resolve(const std::vector<OverloadMatch>& candidates);
 }
 

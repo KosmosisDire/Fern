@@ -91,11 +91,13 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             return result;
         }
 
+        // return as an implicit cast if possible
         if (auto* castResult = try_implicit_cast(result, expected, expr->span))
         {
             return castResult;
         }
 
+        // Surface the specific out-of-range error before the generic conversion error.
         auto* expectedNamed = expected->as<NamedTypeSymbol>();
         auto* resultNamed = result->type->as<NamedTypeSymbol>();
         if (expectedNamed && expectedNamed->is_integer() &&
@@ -104,9 +106,6 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             const auto& constant = result->get_constant();
             if (constant)
             {
-                if (constant->range_fits(expected))
-                    return fhir.cast(result->syntax, expected, result, /*isImplicit=*/true);
-
                 diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->intValue, format_type(expected));
                 return fhir.error_expr(expr, expected, result);
             }
@@ -126,7 +125,7 @@ FhirCastExpr* Binder::try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, 
 {
     if (!expr || !expr->type || !targetType) return nullptr;
 
-    auto conv = NamedTypeSymbol::get_conversion(expr->type, targetType);
+    auto conv = NamedTypeSymbol::get_conversion(OverloadArg(expr), targetType);
     if (conv.level == Convertibility::Implicit)
         return fhir.cast(expr->syntax, targetType, expr, true, conv.method);
 
@@ -398,7 +397,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
     if (namedType)
     {
         TokenKind opToken = unary_op_to_token(expr->op);
-        auto result = namedType->find_unary_operator(opToken, operandType);
+        auto result = namedType->find_unary_operator(opToken, OverloadArg(operand));
         if (result.ambiguous)
         {
             std::string candidates;
@@ -456,10 +455,10 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
 
     if (baseToken != TokenKind::Invalid)
     {
-        auto baseResult = namedType->find_binary_operator(baseToken, leftType, rightType);
+        auto baseResult = namedType->find_binary_operator(baseToken, OverloadArg(lhs), OverloadArg(rhs));
         bool hasBase = baseResult.best.is_callable();
         bool hasEqual = (baseToken == TokenKind::Equal) ||
-                        namedType->find_binary_operator(TokenKind::Equal, leftType, rightType).best.is_callable();
+                        namedType->find_binary_operator(TokenKind::Equal, OverloadArg(lhs), OverloadArg(rhs)).best.is_callable();
 
         if (hasBase && hasEqual)
         {
@@ -511,7 +510,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         return fhir.intrinsic(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
     }
 
-    auto result = namedType->find_binary_operator(opToken, leftType, rightType);
+    auto result = namedType->find_binary_operator(opToken, OverloadArg(lhs), OverloadArg(rhs));
     if (result.ambiguous)
     {
         std::string candidates;
@@ -576,7 +575,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
             return fhir.error_expr(expr);
         }
 
-        auto setterResult = namedType->find_index_setter(indexType, valueType);
+        auto setterResult = namedType->find_index_setter(OverloadArg(object), OverloadArg(index), OverloadArg(value));
         if (setterResult.ambiguous)
         {
             std::string candidates;
@@ -658,7 +657,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
         return fhir.error_expr(expr);
     }
 
-    auto getterResult = namedType->find_index_getter(indexType);
+    auto getterResult = namedType->find_index_getter(OverloadArg(object), OverloadArg(index));
     if (getterResult.ambiguous)
     {
         std::string candidates;

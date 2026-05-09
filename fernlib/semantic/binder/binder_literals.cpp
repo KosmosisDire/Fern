@@ -273,8 +273,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
             auto* countLit = fhir.literal(expr, i32Type);
             countLit->value = ConstantValue::make_int(0);
 
-            std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
-            auto ctorResult = expectedNamed->find_constructor(ctorArgTypes);
+            std::vector<OverloadArg> ctorArgs = {OverloadArg(countLit)};
+            auto ctorResult = expectedNamed->find_constructor(ctorArgs);
             if (!ctorResult.best.method)
             {
                 diag.report(DiagnosticCode::Err_ArrayMissingI32Ctor, expr->span);
@@ -357,8 +357,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto* countLit = fhir.literal(expr, i32Type);
     countLit->value = ConstantValue::make_int(count);
 
-    std::vector<TypeSymbol*> ctorArgTypes = {i32Type};
-    auto ctorResult = arrayType->find_constructor(ctorArgTypes);
+    std::vector<OverloadArg> ctorArgs = {OverloadArg(countLit)};
+    auto ctorResult = arrayType->find_constructor(ctorArgs);
     if (!ctorResult.best.method)
     {
         diag.report(DiagnosticCode::Err_ArrayMissingI32Ctor, expr->span);
@@ -375,7 +375,10 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
     pending->push_back(fhir.var_decl(expr, tempLocal, createExpr));
 
-    auto setterResult = arrayType->find_index_setter(i32Type, elementType);
+    OverloadArg receiverArg = { arrayType, nullptr };
+    OverloadArg indexArg = { i32Type, nullptr };
+    OverloadArg valueArg = { elementType, nullptr };
+    auto setterResult = arrayType->find_index_setter(receiverArg, indexArg, valueArg);
     if (!setterResult.best.is_callable())
     {
         diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type(elementType));

@@ -1,6 +1,8 @@
 #include "symbol.hpp"
 #include "table.hpp"
 
+#include <semantic/fhir/fhir.hpp>
+
 namespace Fern
 {
 
@@ -98,7 +100,7 @@ Symbol* NamedTypeSymbol::find_non_method_member(std::string_view name)
 
 #pragma region Overloaded Lookup
 
-OverloadResult NamedTypeSymbol::find_method(std::string_view name, const std::vector<TypeSymbol*>& argTypes)
+OverloadResult NamedTypeSymbol::find_method(std::string_view name, const std::vector<OverloadArg>& args)
 {
     if (table) table->ensure_members_populated(this);
 
@@ -107,15 +109,15 @@ OverloadResult NamedTypeSymbol::find_method(std::string_view name, const std::ve
     {
         if (method->callableKind != CallableKind::Function || method->name != name)
             continue;
-        if (method->parameters.size() != argTypes.size())
+        if (method->parameters.size() != args.size())
             continue;
-        candidates.push_back(Overload::grade(method, argTypes));
+        candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_constructor(const std::vector<TypeSymbol*>& argTypes)
+OverloadResult NamedTypeSymbol::find_constructor(const std::vector<OverloadArg>& args)
 {
     if (table) table->ensure_members_populated(this);
 
@@ -124,73 +126,73 @@ OverloadResult NamedTypeSymbol::find_constructor(const std::vector<TypeSymbol*>&
     {
         if (!method->is_constructor())
             continue;
-        if (method->parameters.size() != argTypes.size())
+        if (method->parameters.size() != args.size())
             continue;
-        candidates.push_back(Overload::grade(method, argTypes));
+        candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_binary_operator(TokenKind opKind, TypeSymbol* leftType, TypeSymbol* rightType)
+OverloadResult NamedTypeSymbol::find_binary_operator(TokenKind opKind, const OverloadArg& left, const OverloadArg& right)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<TypeSymbol*> argTypes = {leftType, rightType};
+    std::vector<OverloadArg> args = {left, right};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 2)
             continue;
-        candidates.push_back(Overload::grade(method, argTypes));
+        candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_unary_operator(TokenKind opKind, TypeSymbol* operandType)
+OverloadResult NamedTypeSymbol::find_unary_operator(TokenKind opKind, const OverloadArg& operand)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<TypeSymbol*> argTypes = {operandType};
+    std::vector<OverloadArg> args = {operand};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 1)
             continue;
-        candidates.push_back(Overload::grade(method, argTypes));
+        candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_index_getter(TypeSymbol* indexType)
+OverloadResult NamedTypeSymbol::find_index_getter(const OverloadArg& receiver, const OverloadArg& index)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<TypeSymbol*> argTypes = {this, indexType};
+    std::vector<OverloadArg> args = {receiver, index};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != TokenKind::IndexOp || method->parameters.size() != 2)
             continue;
-        candidates.push_back(Overload::grade(method, argTypes));
+        candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_index_setter(TypeSymbol* indexType, TypeSymbol* valueType)
+OverloadResult NamedTypeSymbol::find_index_setter(const OverloadArg& receiver, const OverloadArg& index, const OverloadArg& value)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<TypeSymbol*> argTypes = {this, indexType, valueType};
+    std::vector<OverloadArg> args = {receiver, index, value};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 3)
             continue;
-        candidates.push_back(Overload::grade(method, argTypes));
+        candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
@@ -261,6 +263,22 @@ Conversion NamedTypeSymbol::get_conversion(TypeSymbol* from, TypeSymbol* to)
     if (method) return {Convertibility::Explicit, method};
 
     return {};
+}
+
+Conversion NamedTypeSymbol::get_conversion(const OverloadArg& arg, TypeSymbol* to)
+{
+    Conversion conv = get_conversion(arg.type, to);
+    if (conv.level != Convertibility::Explicit) return conv;
+    if (!arg.constant || arg.constant->kind != ConstantValue::Kind::Int) return conv;
+
+    auto* sourceNamed = arg.type ? arg.type->as<NamedTypeSymbol>() : nullptr;
+    auto* targetNamed = to ? to->as<NamedTypeSymbol>() : nullptr;
+    if (!sourceNamed || !sourceNamed->is_integer()) return conv;
+    if (!targetNamed || !targetNamed->is_integer()) return conv;
+
+    if (arg.constant->range_fits(to))
+        conv.level = Convertibility::Implicit;
+    return conv;
 }
 
 }
