@@ -17,7 +17,7 @@ SemanticContext::SemanticContext(AllocArena& arena, Diagnostics& diag)
     : arena(arena)
     , diag(diag)
 {
-    rootBinder = std::make_unique<RootBinder>(*this, arena);
+    rootBinder = std::make_unique<RootBinder>(*this);
 }
 
 SemanticContext::~SemanticContext() = default;

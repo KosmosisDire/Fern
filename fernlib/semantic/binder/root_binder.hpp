@@ -11,8 +11,8 @@ namespace Fern
 class RootBinder : public Binder
 {
 public:
-    RootBinder(SemanticContext& context, AllocArena& arena)
-        : Binder(context, arena)
+    RootBinder(SemanticContext& context)
+        : Binder(context)
     {
     }
 

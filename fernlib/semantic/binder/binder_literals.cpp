@@ -177,7 +177,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
             if (raw.find('\\') == std::string_view::npos)
                 node->value = ConstantValue::make_string(raw);
             else
-                node->value = ConstantValue::make_string(arena.alloc_string(process_escape_sequences(raw, expr->span)));
+                node->value = ConstantValue::make_string(context.arena.alloc_string(process_escape_sequences(raw, expr->span)));
         }
         else if (expr->token.kind == TokenKind::LiteralMultilineString)
         {
@@ -231,7 +231,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
             }
 
             auto processed = process_escape_sequences(result, expr->span);
-            node->value = ConstantValue::make_string(arena.alloc_string(processed));
+            node->value = ConstantValue::make_string(context.arena.alloc_string(processed));
         }
         else if (expr->token.kind == TokenKind::LiteralRawString)
             node->value = ConstantValue::make_string(expr->token.lexeme.substr(1, expr->token.lexeme.size() - 2));

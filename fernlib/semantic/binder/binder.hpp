@@ -70,7 +70,7 @@ struct FhirTypeRef;
 class Binder
 {
 public:
-    Binder(SemanticContext& context, AllocArena& arena);
+    Binder(SemanticContext& context);
     virtual ~Binder() = default;
 
     LookupResult lookup(std::string_view name);
@@ -89,7 +89,6 @@ protected:
     Binder* next = nullptr;
 
     SemanticContext& context;
-    AllocArena& arena;
     Diagnostics& diag;
     FhirBuilder fhir;
 

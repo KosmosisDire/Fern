@@ -24,20 +24,18 @@ static std::string join_path(std::span<const std::string_view> path)
     return result;
 }
 
-Binder::Binder(SemanticContext& context, AllocArena& arena)
+Binder::Binder(SemanticContext& context)
     : context(context)
-    , arena(arena)
     , diag(context.diag)
-    , fhir(arena)
+    , fhir(context.arena)
 {
 }
 
 Binder::Binder(Binder& parent)
     : next(&parent)
     , context(parent.context)
-    , arena(parent.arena)
     , diag(parent.diag)
-    , fhir(parent.arena)
+    , fhir(parent.context.arena)
 {
 }
 
