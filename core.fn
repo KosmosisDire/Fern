@@ -5,6 +5,7 @@ attr type BuiltinType{}
 attr type AllowCustomLiterals{}
 attr type NumericInt{}
 attr type NumericFloat{}
+attr type Intrinsic{}
 
 @BuiltinType @AllowCustomLiterals @NumericFloat
 type F32
@@ -14,19 +15,22 @@ type F32
     literal f32(from: i32) {}
     literal f32(from: f32) {}
 
+    @Intrinsic
     implicit cast(from: i32) -> f32 {}
+    @Intrinsic
     implicit cast(from: u8) -> f32 {}
+    @Intrinsic
     explicit cast(from: f32) -> i32 {}
 
-    op -(value: f32) -> f32 {}
-    op +(value: f32) -> f32 {}
-    op +(left: f32, right: f32) -> f32 {}
-    op -(left: f32, right: f32) -> f32 {}
-    op *(left: f32, right: f32) -> f32 {}
-    op /(left: f32, right: f32) -> f32 {}
-    op ==(left: f32, right: f32) -> bool {}
-    op >(left: f32, right: f32) -> bool {}
-    op <(left: f32, right: f32) -> bool {}
+    @Intrinsic op -(value: f32) -> f32 {}
+    @Intrinsic op +(value: f32) -> f32 {}
+    @Intrinsic op +(left: f32, right: f32) -> f32 {}
+    @Intrinsic op -(left: f32, right: f32) -> f32 {}
+    @Intrinsic op *(left: f32, right: f32) -> f32 {}
+    @Intrinsic op /(left: f32, right: f32) -> f32 {}
+    @Intrinsic op ==(left: f32, right: f32) -> bool {}
+    @Intrinsic op >(left: f32, right: f32) -> bool {}
+    @Intrinsic op <(left: f32, right: f32) -> bool {}
 }
 
 @BuiltinType @AllowCustomLiterals @NumericInt
@@ -36,19 +40,22 @@ type I32
 
     literal i32(from: i32) {}
 
+    @Intrinsic
     implicit cast(from: u8) -> i32 {}
+    @Intrinsic
     explicit cast(from: f32) -> i32 {}
+    @Intrinsic
     explicit cast(from: bool) -> i32 {}
 
-    op -(value: i32) -> i32 {}
-    op +(value: i32) -> i32 {}
-    op +(left: i32, right: i32) -> i32 {}
-    op -(left: i32, right: i32) -> i32 {}
-    op *(left: i32, right: i32) -> i32 {}
-    op /(left: i32, right: i32) -> i32 {}
-    op ==(left: i32, right: i32) -> bool {}
-    op >(left: i32, right: i32) -> bool {}
-    op <(left: i32, right: i32) -> bool {}
+    @Intrinsic op -(value: i32) -> i32 {}
+    @Intrinsic op +(value: i32) -> i32 {}
+    @Intrinsic op +(left: i32, right: i32) -> i32 {}
+    @Intrinsic op -(left: i32, right: i32) -> i32 {}
+    @Intrinsic op *(left: i32, right: i32) -> i32 {}
+    @Intrinsic op /(left: i32, right: i32) -> i32 {}
+    @Intrinsic op ==(left: i32, right: i32) -> bool {}
+    @Intrinsic op >(left: i32, right: i32) -> bool {}
+    @Intrinsic op <(left: i32, right: i32) -> bool {}
 }
 
 @BuiltinType
@@ -56,12 +63,13 @@ type Bool
 {
     value: bool
 
+    @Intrinsic
     explicit cast(from: i32) -> bool {}
 
-    op !(value: bool) -> bool {}
-    op ==(left: bool, right: bool) -> bool {}
-    op &&(left: bool, right: bool) -> bool {}
-    op ||(left: bool, right: bool) -> bool {}
+    @Intrinsic op !(value: bool) -> bool {}
+    @Intrinsic op ==(left: bool, right: bool) -> bool {}
+    @Intrinsic op &&(left: bool, right: bool) -> bool {}
+    @Intrinsic op ||(left: bool, right: bool) -> bool {}
 }
 
 @BuiltinType
@@ -89,16 +97,18 @@ type U8
 
     literal u8(from: i32) {}
 
+    @Intrinsic
     explicit cast(from: i32) -> u8 {}
+    @Intrinsic
     explicit cast(from: f32) -> u8 {}
 
-    op +(left: u8, right: u8) -> u8 {}
-    op -(left: u8, right: u8) -> u8 {}
-    op *(left: u8, right: u8) -> u8 {}
-    op /(left: u8, right: u8) -> u8 {}
-    op ==(left: u8, right: u8) -> bool {}
-    op >(left: u8, right: u8) -> bool {}
-    op <(left: u8, right: u8) -> bool {}
+    @Intrinsic op +(left: u8, right: u8) -> u8 {}
+    @Intrinsic op -(left: u8, right: u8) -> u8 {}
+    @Intrinsic op *(left: u8, right: u8) -> u8 {}
+    @Intrinsic op /(left: u8, right: u8) -> u8 {}
+    @Intrinsic op ==(left: u8, right: u8) -> bool {}
+    @Intrinsic op >(left: u8, right: u8) -> bool {}
+    @Intrinsic op <(left: u8, right: u8) -> bool {}
 }
 
 @BuiltinType @AllowCustomLiterals
@@ -106,9 +116,9 @@ type Char
 {
     value: char
 
-    op ==(left: char, right: char) -> bool {}
-    op >(left: char, right: char) -> bool {}
-    op <(left: char, right: char) -> bool {}
+    @Intrinsic op ==(left: char, right: char) -> bool {}
+    @Intrinsic op >(left: char, right: char) -> bool {}
+    @Intrinsic op <(left: char, right: char) -> bool {}
 }
 
 @BuiltinType @AllowCustomLiterals

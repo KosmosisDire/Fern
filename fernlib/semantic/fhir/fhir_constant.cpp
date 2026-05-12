@@ -29,7 +29,7 @@ const std::optional<ConstantValue>& FhirExpr::get_constant() const
 
     if (auto* lit = as<FhirLiteralExpr>())
         constantCache = lit->compute_constant();
-    else if (auto* intr = as<FhirIntrinsicExpr>())
+    else if (auto* intr = as<FhirOpExpr>())
         constantCache = intr->compute_constant();
     else if (auto* cast = as<FhirCastExpr>())
         constantCache = cast->compute_constant();
@@ -100,7 +100,7 @@ static std::optional<ConstantValue> eval_bool_binary(IntrinsicOp op, bool a, boo
 
 #pragma region Intrinsic
 
-std::optional<ConstantValue> FhirIntrinsicExpr::compute_constant() const
+std::optional<ConstantValue> FhirOpExpr::compute_constant() const
 {
     for (auto* arg : args)
     {

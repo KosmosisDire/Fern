@@ -70,7 +70,11 @@ var x = __init_0;
 
 ## Implicit casting
 
-`try_implicit_cast` checks for `Convertibility::Implicit` and wraps in a `FhirCastExpr`. Integer constants narrow silently if the value fits. `coerce_to_param` applies this at call sites.
+`try_implicit_cast` checks for `Convertibility::Implicit` and wraps in a `FhirCastExpr` that carries the resolved cast method. Integer constants narrow silently if the value fits. `coerce_to_param` applies this at call sites. Whether the cast is a primitive intrinsic or runs the method body is decided downstream by checking the `@Intrinsic` attribute on the method.
+
+## Operator binding
+
+`bind_unary` and `bind_binary_op` always produce a `FhirOpExpr` that carries the resolved operator method and the op kind. Whether the operator is a primitive intrinsic or runs the method body is decided downstream by checking the `@Intrinsic` attribute on the method.
 
 ## Compound comparisons
 

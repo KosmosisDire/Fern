@@ -71,10 +71,10 @@ struct FhirBuilder
         return node;
     }
 
-    FhirIntrinsicExpr* intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicOp op,
-                                 std::initializer_list<FhirExpr*> args, MethodSymbol* method = nullptr)
+    FhirOpExpr* op(BaseSyntax* syntax, TypeSymbol* type, IntrinsicOp op,
+                   std::initializer_list<FhirExpr*> args, MethodSymbol* method = nullptr)
     {
-        auto* node = arena.alloc<FhirIntrinsicExpr>();
+        auto* node = arena.alloc<FhirOpExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
@@ -132,7 +132,7 @@ struct FhirBuilder
         return node;
     }
 
-    FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, bool isImplicit, MethodSymbol* method = nullptr, FhirTypeRef* typeRef = nullptr)
+    FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, MethodSymbol* method, FhirTypeRef* typeRef = nullptr)
     {
         auto* node = arena.alloc<FhirCastExpr>();
         node->syntax = syntax;
@@ -141,7 +141,6 @@ struct FhirBuilder
         node->operand = operand;
         node->typeRef = typeRef;
         node->method = method;
-        node->isImplicit = isImplicit;
         return node;
     }
 

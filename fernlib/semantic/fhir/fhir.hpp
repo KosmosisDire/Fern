@@ -34,7 +34,7 @@ struct FhirLocalRefExpr;
 struct FhirParamRefExpr;
 struct FhirFieldRefExpr;
 struct FhirThisExpr;
-struct FhirIntrinsicExpr;
+struct FhirOpExpr;
 struct FhirCallExpr;
 struct FhirConstructionExpr;
 struct FhirAssignExpr;
@@ -173,7 +173,7 @@ public:
     virtual void visit(FhirParamRefExpr* node) = 0;
     virtual void visit(FhirFieldRefExpr* node) = 0;
     virtual void visit(FhirThisExpr* node) = 0;
-    virtual void visit(FhirIntrinsicExpr* node) = 0;
+    virtual void visit(FhirOpExpr* node) = 0;
     virtual void visit(FhirCallExpr* node) = 0;
     virtual void visit(FhirConstructionExpr* node) = 0;
     virtual void visit(FhirAssignExpr* node) = 0;
@@ -307,9 +307,9 @@ struct FhirThisExpr : FhirExpr
     FHIR_NODE(FhirThisExpr, FhirExpr)
 };
 
-struct FhirIntrinsicExpr : FhirExpr
+struct FhirOpExpr : FhirExpr
 {
-    FHIR_NODE(FhirIntrinsicExpr, FhirExpr)
+    FHIR_NODE(FhirOpExpr, FhirExpr)
 
     IntrinsicOp op = IntrinsicOp::Add;
     MethodSymbol* method = nullptr;
@@ -420,7 +420,6 @@ struct FhirCastExpr : FhirExpr
     FhirExpr* operand = nullptr;
     FhirTypeRef* typeRef = nullptr;
     MethodSymbol* method = nullptr;
-    bool isImplicit = false;
 
     std::optional<ConstantValue> compute_constant() const;
 
@@ -552,7 +551,7 @@ public:
     void visit(FhirParamRefExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirFieldRefExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirThisExpr* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FhirIntrinsicExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirOpExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirCallExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirConstructionExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirAssignExpr* node) override { on_visit(node); node->visit_children(this); }

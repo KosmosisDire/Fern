@@ -64,7 +64,7 @@ struct HoverFormatter : FhirVisitor
         set_signature(std::format("this: {}", format_type(n->type, fmt)));
     }
 
-    void visit(FhirIntrinsicExpr* n) override
+    void visit(FhirOpExpr* n) override
     {
         if (n->method) set_signature(format_method(n->method, fmt));
         else set_signature(format_type(n->type, fmt));

@@ -28,9 +28,9 @@ The `*RefExpr` always wraps the user written reference even in error cases. `Fhi
 
 All four `*RefExpr` nodes inherit `FhirExpr`. Their `type` field is null because they are not values at runtime. The convention is that `bind_value_expr` rejects them when they appear in value slots. `FhirTypeRef` and `FhirMethodRefExpr` may eventually carry real value types if I add that later.
 
-## Intrinsics
+## Operators
 
-`FhirIntrinsicExpr` represents builtin operations (arithmetic, comparison, logical) on primitive types. These won't go through method dispatch since codegen can emit them directly as machine instructions. User-defined operators on non-builtin types produce `FhirCallExpr` instead.
+`FhirOpExpr` represents any operator expression (arithmetic, comparison, logical, unary). Always carries the resolved operator method and the op kind. Whether the operator is a primitive intrinsic or runs the method body is decided downstream by checking the `@Intrinsic` attribute on the method.
 
 ## Error Recovery
 

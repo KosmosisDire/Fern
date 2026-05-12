@@ -85,7 +85,7 @@ void FhirPrettyFormatter::visit(FhirThisExpr* node)
     out << "this";
 }
 
-void FhirPrettyFormatter::visit(FhirIntrinsicExpr* node)
+void FhirPrettyFormatter::visit(FhirOpExpr* node)
 {
     if (node->args.size() == 2)
     {
@@ -418,7 +418,7 @@ void FhirDebugFormatter::visit(FhirThisExpr* node)
     begin_node(node, type_attr(node));
 }
 
-void FhirDebugFormatter::visit(FhirIntrinsicExpr* node)
+void FhirDebugFormatter::visit(FhirOpExpr* node)
 {
     std::string method = node->method ? std::format(", method: {}", method_label(node->method)) : "";
     begin_node(node, std::format("op: {}{}, {}", Fern::format(node->op), method, type_attr(node)));
@@ -457,10 +457,7 @@ void FhirDebugFormatter::visit(FhirAssignExpr* node)
 void FhirDebugFormatter::visit(FhirCastExpr* node)
 {
     std::string method = node->method ? std::format(", method: {}", method_label(node->method)) : "";
-    begin_node(node, std::format("implicit: {}{}, {}",
-                                  node->isImplicit ? "true" : "false",
-                                  method,
-                                  type_attr(node)));
+    begin_node(node, std::format("{}{}", type_attr(node), method));
     open_block();
     write_child("operand", node->operand, true);
     write_child("typeRef", node->typeRef);

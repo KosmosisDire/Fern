@@ -127,7 +127,7 @@ FhirCastExpr* Binder::try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, 
 
     auto conv = NamedTypeSymbol::get_conversion(OverloadArg(expr), targetType);
     if (conv.level == Convertibility::Implicit)
-        return fhir.cast(expr->syntax, targetType, expr, true, conv.method);
+        return fhir.cast(expr->syntax, targetType, expr, conv.method);
 
     return nullptr;
 }
@@ -264,7 +264,7 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
     auto conv = NamedTypeSymbol::get_conversion(operand->type, targetType);
     if (conv.level == Convertibility::Implicit || conv.level == Convertibility::Explicit)
     {
-        return fhir.cast(expr, targetType, operand, false, conv.method, typeRef);
+        return fhir.cast(expr, targetType, operand, conv.method, typeRef);
     }
 
     diag.report(DiagnosticCode::Err_BadCast, expr->span, std::string{}, format_type(operand->type), format_type(targetType));
@@ -411,18 +411,14 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         {
             MethodSymbol* method = result.best.method;
             operand = coerce_to_param(operand, method->parameters[0]->type);
-            if (!namedType->is_builtin())
-            {
-                return fhir.call(expr, method->get_return_type(), method, {operand});
-            }
-            return fhir.intrinsic(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand}, method);
+            return fhir.op(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand}, method);
         }
 
         diag.report(DiagnosticCode::Err_BadUnaryOp, expr->span, Fern::format(opToken), format_type(namedType));
         return fhir.error_expr(expr);
     }
 
-    return fhir.intrinsic(expr, operandType, to_intrinsic_op(expr->op), {operand});
+    return fhir.op(expr, operandType, to_intrinsic_op(expr->op), {operand});
 }
 
 FhirExpr* Binder::bind_binary(BinaryExprSyntax* expr)
@@ -466,7 +462,7 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
             lhs = coerce_to_param(lhs, baseMethod->parameters[0]->type);
             rhs = coerce_to_param(rhs, baseMethod->parameters[1]->type);
             TypeSymbol* boolType = context.resolve_type_name("bool");
-            return fhir.intrinsic(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
+            return fhir.op(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
         }
 
         std::string suffix;
@@ -507,7 +503,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     auto* namedType = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
     {
-        return fhir.intrinsic(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
+        return fhir.op(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
     }
 
     auto result = namedType->find_binary_operator(opToken, OverloadArg(lhs), OverloadArg(rhs));
@@ -525,11 +521,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         MethodSymbol* method = result.best.method;
         lhs = coerce_to_param(lhs, method->parameters[0]->type);
         rhs = coerce_to_param(rhs, method->parameters[1]->type);
-        if (!namedType->is_builtin())
-        {
-            return fhir.call(syntax, method->get_return_type(), method, {lhs, rhs});
-        }
-        return fhir.intrinsic(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
+        return fhir.op(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
     }
 
     return try_synthesize_compound_comparison(op, opToken, namedType, leftType, rightType, lhs, rhs, syntax);
