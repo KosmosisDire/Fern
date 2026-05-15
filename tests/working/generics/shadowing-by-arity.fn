@@ -32,7 +32,7 @@ type Tag<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var t0 = Tag(1)
         var t1 = Tag<i32>(2, 11)

@@ -14,7 +14,7 @@ ref type RefType
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var r = RefType(5)
         return r.value

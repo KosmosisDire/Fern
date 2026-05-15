@@ -30,7 +30,7 @@ type Container<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var floatBox = Box<f32>(3.14)
         var b = (Container<i32>)floatBox

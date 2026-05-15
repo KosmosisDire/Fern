@@ -7,7 +7,7 @@ type Program
 {
     static fn TakeU8(x: u8) {}
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         TakeU8(200 + 60)
         return 0

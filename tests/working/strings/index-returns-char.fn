@@ -5,7 +5,7 @@ Expected: true
 
 type Program
 {
-    fn Main -> bool
+    static fn Main -> bool
     {
         var greeting = "Hello"
         return greeting[0] == 'H'

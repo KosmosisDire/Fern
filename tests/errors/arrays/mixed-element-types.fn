@@ -5,7 +5,7 @@ Expected: FN3708
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var mixed = [1, 2.0, 3]
         return 0

@@ -5,7 +5,7 @@ Expected: 5.0
 
 type Program
 {
-    fn Main -> f32
+    static fn Main -> f32
     {
         var x: i32 = 5
         return (f32)x

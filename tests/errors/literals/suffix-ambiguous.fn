@@ -27,7 +27,7 @@ type OtherMeasure
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var v = 10.0px
         return 0

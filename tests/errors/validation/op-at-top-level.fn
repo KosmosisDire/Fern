@@ -10,7 +10,7 @@ op +(a: i32, b: i32) -> i32
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         return 0
     }

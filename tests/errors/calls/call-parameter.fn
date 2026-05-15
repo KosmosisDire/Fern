@@ -10,7 +10,7 @@ type Program
         return p(1)
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         return Bad(0)
     }

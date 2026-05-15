@@ -63,7 +63,7 @@ type Page
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var p = Page
         {

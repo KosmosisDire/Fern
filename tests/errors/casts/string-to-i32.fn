@@ -5,7 +5,7 @@ Expected: FN3206
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a = (i32)"hello"
         return 0

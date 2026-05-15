@@ -19,7 +19,7 @@ type Label
 
 type Program
 {
-    fn Main -> bool
+    static fn Main -> bool
     {
         var s = "Hello"l
         return s.text == "Hello"

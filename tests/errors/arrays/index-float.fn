@@ -5,7 +5,7 @@ Expected: FN3214
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var f = 1.0
         var x = f[0]

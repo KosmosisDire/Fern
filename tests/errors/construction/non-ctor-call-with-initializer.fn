@@ -10,7 +10,7 @@ type Program
         return 0
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var l = Helper() { x: 1.0 }
         return 0

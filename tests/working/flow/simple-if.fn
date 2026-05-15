@@ -5,7 +5,7 @@ Expected: 1
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var x = 0
         if true

@@ -13,7 +13,7 @@ type Vector2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a = Vector2 { var x = 1.0 }
         return 0

@@ -5,7 +5,7 @@ Expected: 255
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var bytes: u8[] = [1u8, 2u8, 3u8]
         bytes[1] = 255u8

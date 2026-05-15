@@ -14,7 +14,7 @@ attr type AttrType
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a = AttrType(8)
         return a.value

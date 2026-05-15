@@ -15,7 +15,7 @@ type Box<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var b = Box<i32>(5)
         var x = b[0]

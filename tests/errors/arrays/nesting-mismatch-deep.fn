@@ -5,7 +5,7 @@ Expected: FN3201, FN3201
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var d: i32[] = [[1, 2], [3, 4]]
         return 0

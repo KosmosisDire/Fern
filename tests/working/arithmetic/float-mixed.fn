@@ -5,7 +5,7 @@ Expected: 2.5
 
 type Program
 {
-    fn Main -> f32
+    static fn Main -> f32
     {
         return 1.5 * 2.0 - 0.5
     }

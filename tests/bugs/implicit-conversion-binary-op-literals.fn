@@ -5,7 +5,7 @@ Expected: 52
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var r = 10 + 42.0
         return (i32)r

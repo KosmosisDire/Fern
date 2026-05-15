@@ -5,7 +5,7 @@ Expected: FN3405
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         if (1)
         {

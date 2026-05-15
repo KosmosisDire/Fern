@@ -5,7 +5,7 @@ Expected: FN3216
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var arr = [1, 2, 3]
         var bad = arr[1.0]

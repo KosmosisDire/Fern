@@ -37,7 +37,7 @@ type Pair<A, B>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var pob = Pair<Box<i32>, Box<f32>>(Box<i32>(1), Box<f32>(2.0))
         return pob.First().Get()

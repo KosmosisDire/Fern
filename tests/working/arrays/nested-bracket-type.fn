@@ -5,7 +5,7 @@ Expected: 40
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var grid: i32[][] = [[10, 20], [30, 40]]
         return grid[1][1]

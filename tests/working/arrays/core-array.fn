@@ -5,7 +5,7 @@ Expected: 3
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var arr = Core.Array<i32>(5)
         arr[0] = 1

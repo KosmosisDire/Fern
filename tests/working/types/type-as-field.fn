@@ -31,7 +31,7 @@ type Particle
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var p = Particle(Vector3(5.0, 0.0, 0.0), 1.0)
         return (i32)p.position.x

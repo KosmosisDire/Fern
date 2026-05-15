@@ -5,7 +5,7 @@ Expected: 5
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var name = "World"
         var len = 0

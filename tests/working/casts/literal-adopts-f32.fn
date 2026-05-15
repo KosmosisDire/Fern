@@ -10,7 +10,7 @@ type Program
         return x
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var r = Process(10)
         return (i32)r

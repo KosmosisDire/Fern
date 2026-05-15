@@ -7,7 +7,7 @@ type Program
 {
     static fn Process(x: f32) {}
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         Process(true)
         return 0

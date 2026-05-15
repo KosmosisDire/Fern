@@ -20,7 +20,7 @@ type Program
         return 8
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var e: i32 = 5
         var b: u8 = 2

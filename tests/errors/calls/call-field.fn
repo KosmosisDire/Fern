@@ -15,7 +15,7 @@ type Box
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var b = Box(5)
         return b.value(1)

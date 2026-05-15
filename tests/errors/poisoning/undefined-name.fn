@@ -5,7 +5,7 @@ Expected: FN3204
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var x = totally_undefined
         return 0

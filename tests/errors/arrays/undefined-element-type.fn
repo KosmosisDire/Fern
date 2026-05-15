@@ -5,7 +5,7 @@ Expected: FN3000
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a: Foo[] = [1]
         return 0

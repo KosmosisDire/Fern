@@ -13,7 +13,7 @@ type Point<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var p = Point<i32> { x: 5, y: 6 }
         return p.x

@@ -5,7 +5,7 @@ Expected: 42.0
 
 type Program
 {
-    fn Main -> f32
+    static fn Main -> f32
     {
         return 42f32
     }

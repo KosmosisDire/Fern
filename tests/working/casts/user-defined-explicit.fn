@@ -20,7 +20,7 @@ type Wrapper
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var w = Wrapper(7)
         var v = (i32)w

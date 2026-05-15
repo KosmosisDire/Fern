@@ -10,7 +10,7 @@ type Program
         return 42
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var r: f32 = GetI32()
         return (i32)r

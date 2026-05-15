@@ -5,7 +5,7 @@ Expected: 3
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var s = """
             line one

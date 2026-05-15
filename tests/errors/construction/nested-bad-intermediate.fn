@@ -17,7 +17,7 @@ type Rect
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var r = Rect { style.nonexistent.r: 1.0 }
         return 0

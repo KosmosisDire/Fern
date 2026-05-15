@@ -12,7 +12,7 @@ type Container
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var c = Container{}
         c["hello"] = 1.0

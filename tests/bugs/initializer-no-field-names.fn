@@ -13,7 +13,7 @@ type Vector2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         -- TODO: This is not an error yet, but once we implement
         -- custom initializer list value handlers, this will error

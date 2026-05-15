@@ -11,7 +11,7 @@ ref type Vec2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var points = [Vec2(1.0, 2.0), Vec2(3.0, 4.0), Vec2(5.0, 6.0)]
         points[0] = Vec2(10.0, 20.0)

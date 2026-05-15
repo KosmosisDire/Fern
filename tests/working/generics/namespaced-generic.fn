@@ -25,7 +25,7 @@ namespace Collections
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var kv = Collections.KeyValue<i32, f32>(7, 1.5)
         return kv.Key()

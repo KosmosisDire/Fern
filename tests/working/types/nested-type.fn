@@ -17,7 +17,7 @@ type Container
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var i = Container.Inner(7)
         return i.value

@@ -5,7 +5,7 @@ Expected: false
 
 type Program
 {
-    fn Main -> bool
+    static fn Main -> bool
     {
         return !true
     }

@@ -25,7 +25,7 @@ type Outer<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var o = Outer<i32>(Inner<i32>(42))
         return o.child.value

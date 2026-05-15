@@ -5,7 +5,7 @@ Expected: 200
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var v: u8 = 1000 - 800
         return (i32)v

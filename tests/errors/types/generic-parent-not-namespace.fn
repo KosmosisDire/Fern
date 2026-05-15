@@ -11,7 +11,7 @@ type Foo
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a: Foo.Bar<i32> = 5
         return 0

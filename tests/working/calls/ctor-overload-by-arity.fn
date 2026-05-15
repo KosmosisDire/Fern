@@ -20,7 +20,7 @@ type Box
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var b0 = Box()
         var b1 = Box(10)

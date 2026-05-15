@@ -15,7 +15,7 @@ type Program
         return 2
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var b: u8 = 5
         return Combine(b, b)

@@ -32,7 +32,7 @@ type Vec2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var v = 3.0x + 4.0y
         return (i32)(v.x + v.y)

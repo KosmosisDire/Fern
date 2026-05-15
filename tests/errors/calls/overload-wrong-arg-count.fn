@@ -10,7 +10,7 @@ type Program
         return a
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         return Combine(5)
     }

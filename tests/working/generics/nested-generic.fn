@@ -20,7 +20,7 @@ type Box<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var bb = Box<Box<i32>>(Box<i32>(42))
         return bb.Get().Get()

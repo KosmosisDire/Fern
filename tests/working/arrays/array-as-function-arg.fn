@@ -17,7 +17,7 @@ type Program
         return total
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         return Sum([100, 200, 300])
     }

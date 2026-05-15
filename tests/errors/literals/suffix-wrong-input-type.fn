@@ -16,7 +16,7 @@ type Measure
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var v = "hello"px
         return 0

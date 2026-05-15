@@ -20,7 +20,7 @@ type Box<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var counter = Box<i32>(5)
         while counter.Get() > 0

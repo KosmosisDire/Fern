@@ -22,7 +22,7 @@ type Vector2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var d = Vector2(1.0, 2.0).Dot(Vector2(1.0, 2.0))
         return (i32)d

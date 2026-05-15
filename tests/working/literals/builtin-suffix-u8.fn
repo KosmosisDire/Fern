@@ -5,7 +5,7 @@ Expected: 255
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var v = 255u8
         return (i32)v

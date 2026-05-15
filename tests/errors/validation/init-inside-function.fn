@@ -15,7 +15,7 @@ type NestTest
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         return 0
     }

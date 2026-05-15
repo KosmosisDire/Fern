@@ -5,7 +5,7 @@ Expected: 13
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var escaped = "hello \"world\""
         return escaped.length

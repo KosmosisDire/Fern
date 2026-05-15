@@ -10,7 +10,7 @@ type Program
         return 0
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a: foo<i32> = 5
         return 0

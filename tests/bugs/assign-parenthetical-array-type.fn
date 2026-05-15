@@ -6,7 +6,7 @@ Expected: FN3202
 
 type Program
 {
-    fn Main
+    static fn Main
     {
         var t = (i32[])
     }

@@ -5,7 +5,7 @@ Expected: 42
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a = 0
         var b = 0

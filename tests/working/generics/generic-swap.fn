@@ -27,7 +27,7 @@ type Duo<L, R>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var d1 = Duo<i32, f32>(1, 2.0)
         var d2 = d1.Swap()

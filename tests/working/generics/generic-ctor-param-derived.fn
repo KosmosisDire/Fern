@@ -27,7 +27,7 @@ type Edge<T>
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var e = Edge<i32>(Node<i32>(1), Node<i32>(2))
         return e.from.value

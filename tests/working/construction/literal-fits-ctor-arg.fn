@@ -15,7 +15,7 @@ type Wrapped
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var w = Wrapped(200)
         return (i32)w.value

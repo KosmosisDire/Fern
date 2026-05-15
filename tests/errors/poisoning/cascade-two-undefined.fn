@@ -10,7 +10,7 @@ type Program
         return a + b
     }
 
-    fn Main -> i32
+    static fn Main -> i32
     {
         var x = TakesTwo(undefined_1, undefined_2)
         return 0

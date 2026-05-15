@@ -84,7 +84,7 @@ type Vector2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var v1 = 1.0x + 2.0y + 3.0z
         var v2 = 4.0x + 5.0y

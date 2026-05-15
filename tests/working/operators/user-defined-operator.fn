@@ -27,7 +27,7 @@ type Vector2
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         var a = Vector2(1.0, 2.0)
         var b = Vector2(3.0, 4.0)

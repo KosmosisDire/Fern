@@ -5,7 +5,7 @@ Expected: FN4000
 
 type Program
 {
-    fn Main -> i32
+    static fn Main -> i32
     {
         return 1
         var x = 10
