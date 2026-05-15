@@ -231,6 +231,7 @@ struct MethodSymbol : Symbol
     bool is_constructor() const { return callableKind == CallableKind::Constructor; }
     bool is_operator() const { return callableKind == CallableKind::Operator; }
     bool is_literal() const { return callableKind == CallableKind::Literal; }
+    bool is_intrinsic() const;
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 

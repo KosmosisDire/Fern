@@ -7,6 +7,7 @@
 
 #include <arena.hpp>
 #include <common/diagnostic.hpp>
+#include <flir/context.hpp>
 #include <semantic/context.hpp>
 #include <source/file.hpp>
 #include <token/token.hpp>
@@ -28,6 +29,7 @@ class Compilation
 public:
     Compilation()
         : semanticContext(arena, diag)
+        , flirContext(arena, diag)
     {
     }
 
@@ -38,6 +40,9 @@ public:
     SemanticContext& semantic() { return semanticContext; }
     const SemanticContext& semantic() const { return semanticContext; }
 
+    FlirContext& flir() { return flirContext; }
+    const FlirContext& flir() const { return flirContext; }
+
     const auto& get_units() const { return units; }
 
     Diagnostics diag;
@@ -45,6 +50,7 @@ public:
 private:
     AllocArena arena;
     SemanticContext semanticContext;
+    FlirContext flirContext;
     std::vector<std::unique_ptr<CompilationUnit>> units;
     bool compiled = false;
 };

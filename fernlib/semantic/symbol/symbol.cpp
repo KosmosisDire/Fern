@@ -92,6 +92,16 @@ bool NamedTypeSymbol::is_numeric() const
     return is_integer() || is_float();
 }
 
+bool MethodSymbol::is_intrinsic() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.Intrinsic")
+            return true;
+    }
+    return false;
+}
+
 bool NamedTypeSymbol::allows_custom_literals() const
 {
     for (const auto& attr : resolvedAttributes)

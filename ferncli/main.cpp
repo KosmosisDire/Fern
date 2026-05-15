@@ -36,6 +36,12 @@ static int run_compile(int argc, char* argv[], int firstFile)
         LOG(LogChannel::Debug) << Fern::FhirDebugFormatter::format(method) << "\n";
     }
 
+    LOG(LogChannel::Debug) << "---- FLIR ----\n";
+    for (auto* method : compilation.flir().methods)
+    {
+        LOG(LogChannel::Debug) << Fern::FlirPrettyFormatter::format(method) << "\n";
+    }
+
     for (const auto& diag : compilation.diag.get_diagnostics())
     {
         auto filePath = diag.location.fileId >= 0 && diag.location.fileId < (int)compilation.get_units().size()

@@ -87,6 +87,12 @@ void Compilation::compile()
         FlowAnalyzer::analyze(method, diag);
     }
 
+    for (auto* method : semanticContext.methods)
+    {
+        if (method && method->symbol)
+            flirContext.lower_single_method(semanticContext, method->symbol);
+    }
+
     compiled = true;
 }
 

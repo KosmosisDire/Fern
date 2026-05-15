@@ -33,6 +33,11 @@ set(FERNLIB_SOURCES
     semantic/fhir/fmt.cpp
     semantic/fhir/hittest.cpp
 
+    # flir
+    flir/context.cpp
+    flir/fmt.cpp
+    flir/lower.cpp
+
     # source
     source/file.cpp
     source/span.cpp
