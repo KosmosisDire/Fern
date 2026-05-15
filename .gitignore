@@ -2,7 +2,7 @@ experiments/
 spec/
 tools/
 roslyn/
-scratch.fn
+scratch*.fn
 corpus*/
 crash-*
 logs/
