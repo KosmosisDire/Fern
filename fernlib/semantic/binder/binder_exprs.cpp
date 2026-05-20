@@ -462,7 +462,13 @@ FhirExpr* Binder::try_synthesize_compound_comparison(
             lhs = coerce_to_param(lhs, baseMethod->parameters[0]->type);
             rhs = coerce_to_param(rhs, baseMethod->parameters[1]->type);
             TypeSymbol* boolType = context.resolve_type_name("bool");
-            return fhir.op(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
+            if (opToken == TokenKind::NotEqual)
+            {
+                auto* baseExpr = fhir.op(syntax, boolType, IntrinsicOp::Equal, {lhs, rhs}, baseMethod);
+                return fhir.op(syntax, boolType, IntrinsicOp::Not, {baseExpr});
+            }
+            auto* baseExpr = fhir.op(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
+            return baseExpr;
         }
 
         std::string suffix;
