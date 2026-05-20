@@ -2,6 +2,7 @@
 
 #include <fern.hpp>
 #include <semantic/fhir/fmt.hpp>
+#include <flir/fmt.hpp>
 
 #include <string_view>
 
