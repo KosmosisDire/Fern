@@ -56,6 +56,7 @@ DIAG(Err_DuplicateMember,               3104, Error,   "duplicate {} on type '{}
 DIAG(Err_OperatorMissingSelfParam,      3105, Error,   "operator '{}' must have at least one parameter of containing type '{}'")                    // CS0563
 DIAG(Err_LiteralWrongArity,             3106, Error,   "literal '{}' must have exactly 1 parameter")
 DIAG(Err_LiteralBadParamType,           3107, Error,   "literal '{}' parameter type '{}' does not allow custom literals")
+DIAG(Err_OperatorPairMissing,           3108, Error,   "operator '{}' on type '{}' requires a matching '{}' operator")
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031

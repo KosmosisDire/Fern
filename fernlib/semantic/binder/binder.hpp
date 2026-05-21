@@ -127,7 +127,6 @@ protected:
     FhirExpr* bind_unary(UnaryExprSyntax* expr);
     FhirExpr* bind_binary(BinaryExprSyntax* expr);
     FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
-    FhirExpr* try_synthesize_compound_comparison(BinaryOp op, TokenKind opToken, NamedTypeSymbol* namedType, TypeSymbol* leftType, TypeSymbol* rightType, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
     FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
     FhirExpr* bind_index(IndexExprSyntax* expr);
 

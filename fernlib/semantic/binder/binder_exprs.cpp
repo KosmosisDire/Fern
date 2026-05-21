@@ -428,73 +428,6 @@ FhirExpr* Binder::bind_binary(BinaryExprSyntax* expr)
     return bind_binary_op(expr->op, lhs, rhs, expr);
 }
 
-FhirExpr* Binder::try_synthesize_compound_comparison(
-    BinaryOp op, TokenKind opToken, NamedTypeSymbol* namedType,
-    TypeSymbol* leftType, TypeSymbol* rightType,
-    FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax)
-{
-    // For compound comparison operators (>=, <=, !=), try to synthesize them
-    // from their base operators: >= from > and ==, <= from < and ==, != from ==
-    TokenKind baseToken = TokenKind::Invalid;
-    if (opToken == TokenKind::GreaterEqual)
-    {
-        baseToken = TokenKind::Greater;
-    }
-    else if (opToken == TokenKind::LessEqual)
-    {
-        baseToken = TokenKind::Less;
-    }
-    else if (opToken == TokenKind::NotEqual)
-    {
-        baseToken = TokenKind::Equal;
-    }
-
-    if (baseToken != TokenKind::Invalid)
-    {
-        auto baseResult = namedType->find_binary_operator(baseToken, OverloadArg(lhs), OverloadArg(rhs));
-        bool hasBase = baseResult.best.is_callable();
-        bool hasEqual = (baseToken == TokenKind::Equal) ||
-                        namedType->find_binary_operator(TokenKind::Equal, OverloadArg(lhs), OverloadArg(rhs)).best.is_callable();
-
-        if (hasBase && hasEqual)
-        {
-            MethodSymbol* baseMethod = baseResult.best.method;
-            lhs = coerce_to_param(lhs, baseMethod->parameters[0]->type);
-            rhs = coerce_to_param(rhs, baseMethod->parameters[1]->type);
-            TypeSymbol* boolType = context.resolve_type_name("bool");
-            if (opToken == TokenKind::NotEqual)
-            {
-                auto* baseExpr = fhir.op(syntax, boolType, IntrinsicOp::Equal, {lhs, rhs}, baseMethod);
-                return fhir.op(syntax, boolType, IntrinsicOp::Not, {baseExpr});
-            }
-            auto* baseExpr = fhir.op(syntax, boolType, to_intrinsic_op(op), {lhs, rhs}, baseMethod);
-            return baseExpr;
-        }
-
-        std::string suffix;
-        if (!hasBase && !hasEqual)
-        {
-            suffix = std::format(" (requires '{}' and '==' operators)", Fern::format(baseToken));
-        }
-        else if (!hasBase)
-        {
-            suffix = std::format(" (requires '{}' operator)", Fern::format(baseToken));
-        }
-        else
-        {
-            suffix = " (requires '==' operator)";
-        }
-
-        diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
-              Fern::format(opToken), format_type(leftType), format_type(rightType), suffix);
-        return fhir.error_expr(syntax);
-    }
-
-    diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
-          Fern::format(opToken), format_type(leftType), format_type(rightType), "");
-    return fhir.error_expr(syntax);
-}
-
 FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax)
 {
     bool lhsError = lhs && lhs->is_error();
@@ -530,7 +463,9 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         return fhir.op(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
     }
 
-    return try_synthesize_compound_comparison(op, opToken, namedType, leftType, rightType, lhs, rhs, syntax);
+    diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
+          Fern::format(opToken), format_type(leftType), format_type(rightType), "");
+    return fhir.error_expr(syntax);
 }
 
 FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)

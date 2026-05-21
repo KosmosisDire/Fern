@@ -366,6 +366,45 @@ void BinderPipeline::validate_signatures()
         }
 
         check_duplicate_methods(type);
+        check_operator_pairs(type);
+    }
+}
+
+void BinderPipeline::check_operator_pairs(NamedTypeSymbol* type)
+{
+    // Operators that must be defined together
+    static constexpr std::pair<TokenKind, TokenKind> pairs[] = {
+        {TokenKind::Equal,     TokenKind::NotEqual},
+        {TokenKind::Less,      TokenKind::Greater},
+        {TokenKind::LessEqual, TokenKind::GreaterEqual},
+    };
+
+    auto find_operator = [&](TokenKind kind) -> MethodSymbol*
+    {
+        for (auto* method : type->methods)
+        {
+            if (method->is_operator() && method->operatorKind == kind)
+                return method;
+        }
+        return nullptr;
+    };
+
+    for (const auto& [a, b] : pairs)
+    {
+        auto* hasA = find_operator(a);
+        auto* hasB = find_operator(b);
+        if (hasA && !hasB)
+        {
+            Span loc = hasA->syntax ? hasA->syntax->span : Span{};
+            context.diag.report(DiagnosticCode::Err_OperatorPairMissing, loc,
+                  Fern::format(a), format_type(type), Fern::format(b));
+        }
+        else if (hasB && !hasA)
+        {
+            Span loc = hasB->syntax ? hasB->syntax->span : Span{};
+            context.diag.report(DiagnosticCode::Err_OperatorPairMissing, loc,
+                  Fern::format(b), format_type(type), Fern::format(a));
+        }
     }
 }
 
