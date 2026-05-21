@@ -115,6 +115,25 @@ void FlirPrettyFormatter::visit(FlirAlloc* node)
     out << "alloc " << (node->allocType ? format_type(node->allocType) : "?");
 }
 
+void FlirPrettyFormatter::visit(FlirSequence* node)
+{
+    out << "seq {\n";
+    ++indent;
+    for (auto* stmt : node->sideEffects)
+    {
+        write_indent();
+        write_child(stmt);
+        out << "\n";
+    }
+    write_indent();
+    out << "yield ";
+    write_child(node->value);
+    out << "\n";
+    --indent;
+    write_indent();
+    out << "}";
+}
+
 #pragma region Pretty Statement Visitors
 
 void FlirPrettyFormatter::visit(FlirBlock* node)
@@ -377,6 +396,15 @@ void FlirDebugFormatter::visit(FlirAlloc* node)
 {
     std::string target = node->allocType ? format_type(node->allocType) : "?";
     begin_node(node, std::format("allocType: {}, {}", target, type_attr(node)));
+}
+
+void FlirDebugFormatter::visit(FlirSequence* node)
+{
+    begin_node(node, type_attr(node));
+    open_block();
+    write_children("sideEffects", node->sideEffects, true);
+    write_child("value", node->value);
+    close_block();
 }
 
 #pragma region Debug Statement Visitors

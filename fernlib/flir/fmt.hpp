@@ -50,6 +50,7 @@ public:
     void visit(FlirIntrinsic* node) override;
     void visit(FlirCast* node) override;
     void visit(FlirAlloc* node) override;
+    void visit(FlirSequence* node) override;
 
     void visit(FlirBlock* node) override;
     void visit(FlirAssign* node) override;
@@ -117,6 +118,7 @@ public:
     void visit(FlirIntrinsic* node) override;
     void visit(FlirCast* node) override;
     void visit(FlirAlloc* node) override;
+    void visit(FlirSequence* node) override;
 
     void visit(FlirBlock* node) override;
     void visit(FlirAssign* node) override;

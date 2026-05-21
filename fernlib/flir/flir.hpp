@@ -29,6 +29,7 @@ struct FlirCall;
 struct FlirIntrinsic;
 struct FlirCast;
 struct FlirAlloc;
+struct FlirSequence;
 
 struct FlirBlock;
 struct FlirAssign;
@@ -55,6 +56,7 @@ public:
     virtual void visit(FlirIntrinsic* node) = 0;
     virtual void visit(FlirCast* node) = 0;
     virtual void visit(FlirAlloc* node) = 0;
+    virtual void visit(FlirSequence* node) = 0;
 
     virtual void visit(FlirBlock* node) = 0;
     virtual void visit(FlirAssign* node) = 0;
@@ -198,6 +200,23 @@ struct FlirAlloc : FlirExpr
     TypeSymbol* allocType = nullptr;
 };
 
+// Runs sideEffects in order and returns value
+// Used by lowering when one statement in FHIR becomes multiple FLIR statements and an expression.
+struct FlirSequence : FlirExpr
+{
+    FLIR_NODE(FlirSequence, FlirExpr)
+
+    std::vector<FlirStmt*> sideEffects;
+    FlirExpr* value = nullptr;
+
+    void visit_children(FlirVisitor* v) override
+    {
+        for (auto* s : sideEffects)
+            if (s) s->accept(v);
+        if (value) value->accept(v);
+    }
+};
+
 #pragma region Statements
 
 struct FlirBlock : FlirStmt
@@ -310,6 +329,7 @@ public:
     void visit(FlirIntrinsic* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirCast* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirAlloc* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirSequence* node) override { on_visit(node); node->visit_children(this); }
 
     void visit(FlirBlock* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirAssign* node) override { on_visit(node); node->visit_children(this); }

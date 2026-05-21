@@ -97,6 +97,17 @@ struct FlirBuilder
         return node;
     }
 
+    FlirSequence* sequence(BaseSyntax* syntax, std::vector<FlirStmt*> sideEffects, FlirExpr* value)
+    {
+        auto* node = arena.alloc<FlirSequence>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = value ? value->type : nullptr;
+        node->sideEffects = std::move(sideEffects);
+        node->value = value;
+        return node;
+    }
+
 #pragma region Statements
 
     FlirBlock* block(BaseSyntax* syntax)
