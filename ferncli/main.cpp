@@ -40,7 +40,7 @@ static int run_compile(int argc, char* argv[], int firstFile)
     LOG(LogChannel::Debug) << "---- FLIR ----\n";
     for (auto* method : compilation.flir().methods)
     {
-        LOG(LogChannel::Debug) << Fern::FlirPrettyFormatter::format(method) << "\n";
+        LOG(LogChannel::Debug) << Fern::FlirDebugFormatter::format(method) << "\n";
     }
 
     for (const auto& diag : compilation.diag.get_diagnostics())

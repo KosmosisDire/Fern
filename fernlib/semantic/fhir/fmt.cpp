@@ -144,6 +144,14 @@ void FhirPrettyFormatter::visit(FhirCastExpr* node)
     out << " as " << (node->type ? format_type(node->type) : "?") << ")";
 }
 
+void FhirPrettyFormatter::visit(FhirIndexExpr* node)
+{
+    write_child(node->object);
+    out << "[";
+    write_child(node->index);
+    out << "]";
+}
+
 void FhirPrettyFormatter::visit(FhirErrorExpr* node)
 {
     out << "ERROR(";
@@ -461,6 +469,17 @@ void FhirDebugFormatter::visit(FhirCastExpr* node)
     open_block();
     write_child("operand", node->operand, true);
     write_child("typeRef", node->typeRef);
+    close_block();
+}
+
+void FhirDebugFormatter::visit(FhirIndexExpr* node)
+{
+    std::string getter = node->getter ? std::format(", getter: {}", method_label(node->getter)) : "";
+    std::string setter = node->setter ? std::format(", setter: {}", method_label(node->setter)) : "";
+    begin_node(node, std::format("{}{}{}", type_attr(node), getter, setter));
+    open_block();
+    write_child("object", node->object, true);
+    write_child("index", node->index);
     close_block();
 }
 

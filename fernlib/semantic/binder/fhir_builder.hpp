@@ -144,6 +144,19 @@ struct FhirBuilder
         return node;
     }
 
+    FhirIndexExpr* index_expr(BaseSyntax* syntax, TypeSymbol* type, FhirExpr* object, FhirExpr* index, MethodSymbol* getter, MethodSymbol* setter = nullptr)
+    {
+        auto* node = arena.alloc<FhirIndexExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = type;
+        node->object = object;
+        node->index = index;
+        node->getter = getter;
+        node->setter = setter;
+        return node;
+    }
+
     FhirErrorExpr* error_expr(BaseSyntax* syntax, TypeSymbol* type = nullptr, FhirExpr* inner = nullptr)
     {
         auto* node = arena.alloc<FhirErrorExpr>();

@@ -607,7 +607,8 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         MethodSymbol* method = setterResult.best.method;
         index = coerce_to_param(index, method->parameters[1]->type);
         value = coerce_to_param(value, method->parameters[2]->type);
-        return fhir.call(expr, method->get_return_type(), method, {object, index, value});
+        auto* indexTarget = fhir.index_expr(indexExpr, method->get_return_type(), object, index, nullptr, method);
+        return fhir.assign(expr, indexTarget, value);
     }
 
     FhirExpr* writeTarget = bind_value_expr(expr->target);
@@ -679,7 +680,7 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
 
     MethodSymbol* method = getterResult.best.method;
     index = coerce_to_param(index, method->parameters[1]->type);
-    return fhir.call(expr, method->get_return_type(), method, {object, index});
+    return fhir.index_expr(expr, method->get_return_type(), object, index, method);
 }
 
 }

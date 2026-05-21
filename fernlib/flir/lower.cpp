@@ -84,15 +84,25 @@ void FlirLowerer::lower_var_decl(FhirVarDeclStmt* stmt, std::vector<FlirStmt*>& 
 
 void FlirLowerer::lower_expr_stmt(FhirExprStmt* stmt, std::vector<FlirStmt*>& out)
 {
-    auto* assign = stmt->expression ? stmt->expression->as<FhirAssignExpr>() : nullptr;
-    if (assign)
+    if (auto* assign = stmt->expression ? stmt->expression->as<FhirAssignExpr>() : nullptr)
     {
-        auto* target = lower_expr(assign->target);
-        auto* value = lower_expr(assign->value);
-        out.push_back(builder.assign(assign->syntax, target, value));
+        lower_assign_stmt(assign, out);
         return;
     }
     out.push_back(builder.expr_stmt(stmt->syntax, lower_expr(stmt->expression)));
+}
+
+void FlirLowerer::lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt*>& out)
+{
+    if (auto* indexTarget = assign->target ? assign->target->as<FhirIndexExpr>() : nullptr;
+        indexTarget && indexTarget->setter)
+    {
+        lower_index_assign(indexTarget, assign->value, assign->syntax, assign->type, out);
+        return;
+    }
+    auto* target = lower_expr(assign->target);
+    auto* value = lower_expr(assign->value);
+    out.push_back(builder.assign(assign->syntax, target, value));
 }
 
 void FlirLowerer::lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out)
@@ -157,6 +167,7 @@ FlirExpr* FlirLowerer::lower_expr(FhirExpr* expr)
     if (auto* e = expr->as<FhirConstructionExpr>()) return lower_construction(e);
     if (auto* e = expr->as<FhirAssignExpr>())       return lower_assign(e);
     if (auto* e = expr->as<FhirCastExpr>())         return lower_cast(e);
+    if (auto* e = expr->as<FhirIndexExpr>())        return lower_index(e);
 
     return nullptr;
 }
@@ -247,6 +258,22 @@ FlirExpr* FlirLowerer::lower_cast(FhirCastExpr* expr)
         return builder.call(expr->syntax, expr->type, expr->method, nullptr, { operand });
     }
     return builder.cast(expr->syntax, expr->type, operand);
+}
+
+FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
+{
+    auto* object = lower_expr(expr->object);
+    auto* index = lower_expr(expr->index);
+    return builder.call(expr->syntax, expr->type, expr->getter, nullptr, { object, index });
+}
+
+void FlirLowerer::lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr, BaseSyntax* syntax, TypeSymbol* type, std::vector<FlirStmt*>& out)
+{
+    auto* object = lower_expr(target->object);
+    auto* index = lower_expr(target->index);
+    auto* value = lower_expr(valueExpr);
+    auto* call = builder.call(syntax, type, target->setter, nullptr, { object, index, value });
+    out.push_back(builder.expr_stmt(syntax, call));
 }
 
 #pragma region Local Helpers
