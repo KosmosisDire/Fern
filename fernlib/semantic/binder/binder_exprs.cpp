@@ -397,7 +397,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
     if (namedType)
     {
         TokenKind opToken = unary_op_to_token(expr->op);
-        auto result = namedType->find_unary_operator(opToken, OverloadArg(operand));
+        auto result = namedType->find_unary_operator(opToken);
         if (result.ambiguous)
         {
             std::string candidates;
@@ -445,7 +445,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         return fhir.op(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
     }
 
-    auto result = namedType->find_binary_operator(opToken, OverloadArg(lhs), OverloadArg(rhs));
+    auto result = namedType->find_binary_operator(opToken, OverloadArg(rhs));
     if (result.ambiguous)
     {
         std::string candidates;
@@ -470,108 +470,55 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
 
 FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
 {
-    if (auto* indexExpr = expr->target->as<IndexExprSyntax>())
-    {
-        FhirExpr* object = bind_value_expr(indexExpr->object);
-        FhirExpr* index = bind_value_expr(indexExpr->index);
-        FhirExpr* value = bind_value_expr(expr->value);
+    FhirExpr* writeTarget;
+    if (auto* idxSyntax = expr->target->as<IndexExprSyntax>())
+        writeTarget = bind_index(idxSyntax, IndexContext::Write);
+    else
+        writeTarget = bind_value_expr(expr->target);
 
-        if (!object || !index || !value
-            || object->is_error() || index->is_error() || value->is_error())
-        {
-            return fhir.error_expr(expr);
-        }
-
-        if (expr->op != AssignOp::Simple)
-        {
-            FhirExpr* readTarget = bind_index(indexExpr);
-            BinaryOp binOp = BinaryOp::Add;
-            switch (expr->op)
-            {
-                case AssignOp::Add: binOp = BinaryOp::Add; break;
-                case AssignOp::Sub: binOp = BinaryOp::Sub; break;
-                case AssignOp::Mul: binOp = BinaryOp::Mul; break;
-                case AssignOp::Div: binOp = BinaryOp::Div; break;
-                default: break;
-            }
-            value = bind_binary_op(binOp, readTarget, value, expr);
-        }
-
-        TypeSymbol* objectType = object ? object->type : nullptr;
-        TypeSymbol* indexType = index ? index->type : nullptr;
-        TypeSymbol* valueType = value ? value->type : nullptr;
-
-        auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
-        if (!namedType)
-        {
-            diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(objectType));
-            return fhir.error_expr(expr);
-        }
-
-        auto setterResult = namedType->find_index_setter(OverloadArg(object), OverloadArg(index), OverloadArg(value));
-        if (setterResult.ambiguous)
-        {
-            std::string candidates;
-            for (auto* m : setterResult.ambiguousCandidates)
-                candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
-            diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
-            return fhir.error_expr(expr);
-        }
-        if (!setterResult.best.is_callable())
-        {
-            if (setterResult.candidates.empty())
-            {
-                diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(namedType));
-            }
-            else if (TypeSymbol* expectedValueType = namedType->expected_index_value_type(indexType))
-            {
-                DiagnosticCode code = (NamedTypeSymbol::get_conversion(valueType, expectedValueType).level == Convertibility::Explicit)
-                    ? DiagnosticCode::Err_NoImplicitConv
-                    : DiagnosticCode::Err_TypeMismatch;
-                diag.report(code, expr->value->span,
-                      std::string{}, format_type(valueType), format_type(expectedValueType));
-            }
-            else
-            {
-                diag.report(DiagnosticCode::Err_NoIndexSetter, indexExpr->index->span,
-                      format_type(namedType), format_type(indexType));
-            }
-            return fhir.error_expr(expr);
-        }
-
-        MethodSymbol* method = setterResult.best.method;
-        index = coerce_to_param(index, method->parameters[1]->type);
-        value = coerce_to_param(value, method->parameters[2]->type);
-        auto* indexTarget = fhir.index_expr(indexExpr, method->get_return_type(), object, index, nullptr, method);
-        return fhir.assign(expr, indexTarget, value);
-    }
-
-    FhirExpr* writeTarget = bind_value_expr(expr->target);
     TypeSymbol* targetType = writeTarget ? writeTarget->type : nullptr;
     FhirExpr* value = bind_value_expr(expr->value, targetType);
 
-    // Compound assignments (+=, -=, etc.) desugar to target = target op value,
-    // binding the target twice: once for reading the current value, once for the write
+    if (!writeTarget || writeTarget->is_error() || !value || value->is_error())
+        return fhir.error_expr(expr);
+
+    auto* idx = writeTarget->as<FhirIndexExpr>();
+
+    if (idx && !idx->setter)
+    {
+        TypeSymbol* objType = idx->object ? idx->object->type : nullptr;
+        TypeSymbol* idxType = idx->index ? idx->index->type : nullptr;
+        diag.report(DiagnosticCode::Err_NoIndexSetter, expr->target->span,
+              format_type(objType), format_type(idxType));
+        return fhir.error_expr(expr);
+    }
+
     if (expr->op != AssignOp::Simple)
     {
-        FhirExpr* readTarget = bind_value_expr(expr->target);
-
-        BinaryOp binOp = BinaryOp::Add;
-        switch (expr->op)
+        // Compound assignment reads the target before writing, so an index
+        // target needs both a getter and a setter.
+        if (idx && !idx->getter)
         {
-            case AssignOp::Add: binOp = BinaryOp::Add; break;
-            case AssignOp::Sub: binOp = BinaryOp::Sub; break;
-            case AssignOp::Mul: binOp = BinaryOp::Mul; break;
-            case AssignOp::Div: binOp = BinaryOp::Div; break;
-            default: break;
+            TypeSymbol* objType = idx->object ? idx->object->type : nullptr;
+            TypeSymbol* idxType = idx->index ? idx->index->type : nullptr;
+            diag.report(DiagnosticCode::Err_NoIndexGetter, expr->target->span,
+                  format_type(objType), format_type(idxType));
+            return fhir.error_expr(expr);
         }
-        value = bind_binary_op(binOp, readTarget, value, expr);
+
+        BinaryOp binOp = assign_op_to_binary_op(expr->op);
+        FhirExpr* opResult = bind_binary_op(binOp, writeTarget, value, expr);
+        if (!opResult || opResult->is_error()) return fhir.error_expr(expr);
+        auto* binFhir = opResult->as<FhirOpExpr>();
+        if (!binFhir) return fhir.error_expr(expr);
+        FhirExpr* coercedValue = binFhir->args.size() >= 2 ? binFhir->args[1] : value;
+        return fhir.compound_assign(expr, writeTarget, binFhir->op, binFhir->method, coercedValue);
     }
 
     return fhir.assign(expr, writeTarget, value);
 }
 
-FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
+FhirExpr* Binder::bind_index(IndexExprSyntax* expr, IndexContext ctx)
 {
     FhirExpr* object = bind_value_expr(expr->object);
     FhirExpr* index = bind_value_expr(expr->index);
@@ -581,8 +528,8 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
         return fhir.error_expr(expr);
     }
 
-    TypeSymbol* objectType = object ? object->type : nullptr;
-    TypeSymbol* indexType = index ? index->type : nullptr;
+    TypeSymbol* objectType = object->type;
+    TypeSymbol* indexType = index->type;
 
     auto* namedType = objectType ? objectType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
@@ -591,31 +538,47 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr)
         return fhir.error_expr(expr);
     }
 
-    auto getterResult = namedType->find_index_getter(OverloadArg(object), OverloadArg(index));
-    if (getterResult.ambiguous)
+    auto getterResult = namedType->find_index_getter(OverloadArg(index));
+    auto setterResult = namedType->find_index_setter(OverloadArg(index));
+
+    auto report_ambiguous = [&](const OverloadResult& r)
     {
         std::string candidates;
-        for (auto* m : getterResult.ambiguousCandidates)
+        for (auto* m : r.ambiguousCandidates)
             candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
         diag.report(DiagnosticCode::Err_AmbiguousCall, expr->span, candidates);
-        return fhir.error_expr(expr);
-    }
-    if (!getterResult.best.is_callable())
+    };
+
+    if (getterResult.ambiguous) { report_ambiguous(getterResult); return fhir.error_expr(expr); }
+    if (setterResult.ambiguous) { report_ambiguous(setterResult); return fhir.error_expr(expr); }
+
+    MethodSymbol* getter = getterResult.best.is_callable() ? getterResult.best.method : nullptr;
+    MethodSymbol* setter = setterResult.best.is_callable() ? setterResult.best.method : nullptr;
+
+    // No indexer methods declared on this type at all.
+    if (getterResult.candidates.empty() && setterResult.candidates.empty())
     {
-        if (getterResult.candidates.empty())
-        {
-            diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(namedType));
-        }
-        else
-        {
-            diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type(namedType), format_type(indexType));
-        }
+        diag.report(DiagnosticCode::Err_CannotIndex, expr->span, format_type(namedType));
         return fhir.error_expr(expr);
     }
 
-    MethodSymbol* method = getterResult.best.method;
-    index = coerce_to_param(index, method->parameters[1]->type);
-    return fhir.index_expr(expr, method->get_return_type(), object, index, method);
+    if (ctx == IndexContext::Read && !getter)
+    {
+        diag.report(DiagnosticCode::Err_NoIndexGetter, expr->index->span, format_type(namedType), format_type(indexType));
+        return fhir.error_expr(expr);
+    }
+
+    if (ctx == IndexContext::Write && !getter && !setter)
+    {
+        diag.report(DiagnosticCode::Err_NoIndexSetter, expr->index->span, format_type(namedType), format_type(indexType));
+        return fhir.error_expr(expr);
+    }
+
+    MethodSymbol* primary = getter ? getter : setter;
+    TypeSymbol* exprType = getter ? getter->get_return_type() : setter->parameters[2]->type;
+    index = coerce_to_param(index, primary->parameters[1]->type);
+
+    return fhir.index_expr(expr, exprType, object, index, getter, setter);
 }
 
 }

@@ -375,10 +375,8 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
     pending->push_back(fhir.var_decl(expr, tempLocal, createExpr));
 
-    OverloadArg receiverArg = { arrayType, nullptr };
     OverloadArg indexArg = { i32Type, nullptr };
-    OverloadArg valueArg = { elementType, nullptr };
-    auto setterResult = arrayType->find_index_setter(receiverArg, indexArg, valueArg);
+    auto setterResult = arrayType->find_index_setter(indexArg);
     if (!setterResult.best.is_callable())
     {
         diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type(elementType));

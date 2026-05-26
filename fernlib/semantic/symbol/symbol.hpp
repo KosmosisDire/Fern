@@ -182,11 +182,10 @@ struct NamedTypeSymbol : TypeSymbol
     OverloadResult find_constructor(const std::vector<OverloadArg>& args);
     NamedTypeSymbol* find_nested_type(std::string_view name);
     Symbol* find_non_method_member(std::string_view name);
-    OverloadResult find_binary_operator(TokenKind opKind, const OverloadArg& left, const OverloadArg& right);
-    OverloadResult find_unary_operator(TokenKind opKind, const OverloadArg& operand);
-    OverloadResult find_index_getter(const OverloadArg& receiver, const OverloadArg& index);
-    OverloadResult find_index_setter(const OverloadArg& receiver, const OverloadArg& index, const OverloadArg& value);
-    TypeSymbol* expected_index_value_type(TypeSymbol* indexType);
+    OverloadResult find_binary_operator(TokenKind opKind, const OverloadArg& other);
+    OverloadResult find_unary_operator(TokenKind opKind);
+    OverloadResult find_index_getter(const OverloadArg& index);
+    OverloadResult find_index_setter(const OverloadArg& index);
     MethodSymbol* find_implicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     MethodSymbol* find_explicit_cast(TypeSymbol* fromType, TypeSymbol* toType);
     static Conversion get_conversion(TypeSymbol* from, TypeSymbol* to);

@@ -42,10 +42,12 @@ private:
     FlirExpr* lower_call(FhirCallExpr* expr);
     FlirExpr* lower_construction(FhirConstructionExpr* expr);
     FlirExpr* lower_assign(FhirAssignExpr* expr);
+    FlirExpr* lower_compound_assign(FhirCompoundAssignExpr* expr);
     FlirExpr* lower_cast(FhirCastExpr* expr);
     FlirExpr* lower_index(FhirIndexExpr* expr);
-    void lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr, BaseSyntax* syntax, TypeSymbol* type, std::vector<FlirStmt*>& out);
+    void lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr, BaseSyntax* syntax, std::vector<FlirStmt*>& out);
 
+    //TODO: Is there a better way to pass statements that an out, like with a sequence expr?
     void lower_var_decl(FhirVarDeclStmt* stmt, std::vector<FlirStmt*>& out);
     void lower_expr_stmt(FhirExprStmt* stmt, std::vector<FlirStmt*>& out);
     void lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt*>& out);

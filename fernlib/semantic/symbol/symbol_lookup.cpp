@@ -134,85 +134,73 @@ OverloadResult NamedTypeSymbol::find_constructor(const std::vector<OverloadArg>&
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_binary_operator(TokenKind opKind, const OverloadArg& left, const OverloadArg& right)
+OverloadResult NamedTypeSymbol::find_binary_operator(TokenKind opKind, const OverloadArg& other)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<OverloadArg> args = {left, right};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 2)
             continue;
+        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
+        std::vector<OverloadArg> args = { selfPlaceholder, other };
         candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_unary_operator(TokenKind opKind, const OverloadArg& operand)
+OverloadResult NamedTypeSymbol::find_unary_operator(TokenKind opKind)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<OverloadArg> args = {operand};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 1)
             continue;
+        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
+        std::vector<OverloadArg> args = { selfPlaceholder };
         candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_index_getter(const OverloadArg& receiver, const OverloadArg& index)
+OverloadResult NamedTypeSymbol::find_index_getter(const OverloadArg& index)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<OverloadArg> args = {receiver, index};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != TokenKind::IndexOp || method->parameters.size() != 2)
             continue;
+        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
+        std::vector<OverloadArg> args = { selfPlaceholder, index };
         candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_index_setter(const OverloadArg& receiver, const OverloadArg& index, const OverloadArg& value)
+OverloadResult NamedTypeSymbol::find_index_setter(const OverloadArg& index)
 {
     if (table) table->ensure_members_populated(this);
 
-    std::vector<OverloadArg> args = {receiver, index, value};
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
         if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 3)
             continue;
+        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
+        OverloadArg valuePlaceholder{ method->parameters[2]->type, nullptr };
+        std::vector<OverloadArg> args = { selfPlaceholder, index, valuePlaceholder };
         candidates.push_back(Overload::grade(method, args));
     }
 
     return Overload::resolve(candidates);
-}
-
-// TODO: returns the first matching setter's value type. 
-// We should support overloads at some point.
-TypeSymbol* NamedTypeSymbol::expected_index_value_type(TypeSymbol* indexType)
-{
-    if (table) table->ensure_members_populated(this);
-
-    for (auto* method : methods)
-    {
-        if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 3)
-            continue;
-        auto conv = get_conversion(indexType, method->parameters[1]->type);
-        if (conv.level == Convertibility::Exact || conv.level == Convertibility::Implicit)
-            return method->parameters[2]->type;
-    }
-    return nullptr;
 }
 
 #pragma region Conversion Lookup

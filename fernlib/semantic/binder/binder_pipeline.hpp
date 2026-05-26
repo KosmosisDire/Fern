@@ -31,6 +31,7 @@ private:
     NamedTypeSymbol* define_type(TypeDeclSyntax* typeDecl, Symbol* parent);
     void check_duplicate_methods(NamedTypeSymbol* type);
     void check_operator_pairs(NamedTypeSymbol* type);
+    void check_indexer_signatures(NamedTypeSymbol* type);
 };
 
 }

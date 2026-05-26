@@ -98,6 +98,11 @@ struct HoverFormatter : FhirVisitor
         set_signature(std::format("(cast) -> {}", format_type(n->type, fmt)));
     }
 
+    void visit(FhirCompoundAssignExpr* n) override
+    {
+        set_signature(std::format("(compound assign) -> {}", format_type(n->type, fmt)));
+    }
+
     void visit(FhirIndexExpr* n) override
     {
         set_signature(std::format("(index) -> {}", format_type(n->type, fmt)));

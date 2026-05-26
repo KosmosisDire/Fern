@@ -137,6 +137,13 @@ void FhirPrettyFormatter::visit(FhirAssignExpr* node)
     write_child(node->value);
 }
 
+void FhirPrettyFormatter::visit(FhirCompoundAssignExpr* node)
+{
+    write_child(node->target);
+    out << " " << op_symbol(node->op) << "= ";
+    write_child(node->value);
+}
+
 void FhirPrettyFormatter::visit(FhirCastExpr* node)
 {
     out << "(";
@@ -456,6 +463,16 @@ void FhirDebugFormatter::visit(FhirConstructionExpr* node)
 void FhirDebugFormatter::visit(FhirAssignExpr* node)
 {
     begin_node(node, type_attr(node));
+    open_block();
+    write_child("target", node->target, true);
+    write_child("value", node->value);
+    close_block();
+}
+
+void FhirDebugFormatter::visit(FhirCompoundAssignExpr* node)
+{
+    std::string method = node->method ? std::format(", method: {}", method_label(node->method)) : "";
+    begin_node(node, std::format("op: {}{}, {}", Fern::format(node->op), method, type_attr(node)));
     open_block();
     write_child("target", node->target, true);
     write_child("value", node->value);

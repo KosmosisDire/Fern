@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -277,6 +278,18 @@ constexpr TokenKind binary_op_to_token(BinaryOp op)
         case BinaryOp::NotEqual:     return TokenKind::NotEqual;
         case BinaryOp::And:          return TokenKind::And;
         case BinaryOp::Or:           return TokenKind::Or;
+    }
+}
+
+constexpr BinaryOp assign_op_to_binary_op(AssignOp op)
+{
+    switch (op)
+    {
+        case AssignOp::Add:    return BinaryOp::Add;
+        case AssignOp::Sub:    return BinaryOp::Sub;
+        case AssignOp::Mul:    return BinaryOp::Mul;
+        case AssignOp::Div:    return BinaryOp::Div;
+        case AssignOp::Simple: throw std::runtime_error("Cannot convert simple assignment to binary operator");
     }
 }
 

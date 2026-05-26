@@ -89,7 +89,8 @@ void FlirLowerer::lower_expr_stmt(FhirExprStmt* stmt, std::vector<FlirStmt*>& ou
         lower_assign_stmt(assign, out);
         return;
     }
-    out.push_back(builder.expr_stmt(stmt->syntax, lower_expr(stmt->expression)));
+    auto* lowered = lower_expr(stmt->expression);
+    out.push_back(builder.expr_stmt(stmt->syntax, lowered));
 }
 
 void FlirLowerer::lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt*>& out)
@@ -97,7 +98,7 @@ void FlirLowerer::lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt
     if (auto* indexTarget = assign->target ? assign->target->as<FhirIndexExpr>() : nullptr;
         indexTarget && indexTarget->setter)
     {
-        lower_index_assign(indexTarget, assign->value, assign->syntax, assign->type, out);
+        lower_index_assign(indexTarget, assign->value, assign->syntax, out);
         return;
     }
     auto* target = lower_expr(assign->target);
@@ -166,6 +167,7 @@ FlirExpr* FlirLowerer::lower_expr(FhirExpr* expr)
     if (auto* e = expr->as<FhirCallExpr>())         return lower_call(e);
     if (auto* e = expr->as<FhirConstructionExpr>()) return lower_construction(e);
     if (auto* e = expr->as<FhirAssignExpr>())       return lower_assign(e);
+    if (auto* e = expr->as<FhirCompoundAssignExpr>()) return lower_compound_assign(e);
     if (auto* e = expr->as<FhirCastExpr>())         return lower_cast(e);
     if (auto* e = expr->as<FhirIndexExpr>())        return lower_index(e);
 
@@ -206,11 +208,7 @@ FlirExpr* FlirLowerer::lower_op(FhirOpExpr* expr)
     for (auto* a : expr->args)
         args.push_back(lower_expr(a));
 
-    if (expr->method && !expr->method->is_intrinsic())
-    {
-        return builder.call(expr->syntax, expr->type, expr->method, nullptr, std::move(args));
-    }
-    return builder.intrinsic(expr->syntax, expr->type, expr->op, std::move(args));
+    return builder.call_or_intrinsic(expr->syntax, expr->type, expr->op, expr->method, std::move(args));
 }
 
 FlirExpr* FlirLowerer::lower_call(FhirCallExpr* expr)
@@ -244,11 +242,85 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
     return builder.call(expr->syntax, type, ctor, alloc, std::move(args));
 }
 
-// FhirAssignExpr yields the assigned value; FlirAssign is a statement with no
-// value. The common case (assign in statement position) is handled directly in
-// lower_expr_stmt. Assign as a value expression needs a stmt out-stream on the
-// lowerer to emit the side-effect.
+// TODO: Assigns will no longer be expressions in the future
 FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr*) { return nullptr; }
+
+
+// TODO: We should not be using load_local as the target of an assign. 
+// Need to refactor hwo assignment works
+FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
+{
+    BaseSyntax* syntax = expr->syntax;
+    TypeSymbol* type = expr->type;
+    std::vector<FlirStmt*> sideEffects;
+    FlirExpr* loweredValue = lower_expr(expr->value);
+
+    TypeSymbol* rhsType = expr->value ? expr->value->type : nullptr;
+
+    if (auto* idx = expr->target->as<FhirIndexExpr>())
+    {
+        TypeSymbol* elementType = idx->getter ? idx->getter->get_return_type() : type;
+        TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
+
+        auto* tmpObj = builder.local(currentMethod, "$tmp_obj", idx->object ? idx->object->type : nullptr);
+        auto* tmpIdx = builder.local(currentMethod, "$tmp_idx", idx->index ? idx->index->type : nullptr);
+        auto* tmpRhs = builder.local(currentMethod, "$tmp_rhs", rhsType);
+        auto* tmpVal = builder.local(currentMethod, "$tmp_val", elementType);
+
+        sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpObj), lower_expr(idx->object)));
+        sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpIdx), lower_expr(idx->index)));
+        sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpRhs), loweredValue));
+
+        auto* readGetter = builder.call(syntax, elementType, idx->getter, nullptr,
+            { builder.load_local(syntax, tmpObj), builder.load_local(syntax, tmpIdx) });
+        auto* binResult = builder.call_or_intrinsic(syntax, elementType, expr->op, expr->method, { readGetter, builder.load_local(syntax, tmpRhs) });
+        sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), binResult));
+
+        auto* setterCall = builder.call(syntax, setterReturn, idx->setter, nullptr,
+            { builder.load_local(syntax, tmpObj), builder.load_local(syntax, tmpIdx), builder.load_local(syntax, tmpVal) });
+        sideEffects.push_back(builder.expr_stmt(syntax, setterCall));
+
+        return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
+    }
+
+    if (auto* field = expr->target->as<FhirFieldRefExpr>())
+    {
+        auto* tmpRhs = builder.local(currentMethod, "$tmp_rhs", rhsType);
+        auto* tmpVal = builder.local(currentMethod, "$tmp_val", type);
+
+        FlirLocal* tmpObj = nullptr;
+        if (field->thisRef)
+        {
+            tmpObj = builder.local(currentMethod, "$tmp_obj", field->thisRef->type);
+            sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpObj), lower_expr(field->thisRef)));
+        }
+
+        sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpRhs), loweredValue));
+
+        auto* readField = builder.load_field(syntax, tmpObj ? builder.load_local(syntax, tmpObj) : nullptr, field->field);
+        auto* binResult = builder.call_or_intrinsic(syntax, type, expr->op, expr->method, { readField, builder.load_local(syntax, tmpRhs) });
+        sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), binResult));
+
+        auto* writeField = builder.load_field(syntax, tmpObj ? builder.load_local(syntax, tmpObj) : nullptr, field->field);
+        sideEffects.push_back(builder.assign(syntax, writeField, builder.load_local(syntax, tmpVal)));
+
+        return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
+    }
+
+    auto* tmpRhs = builder.local(currentMethod, "$tmp_rhs", rhsType);
+    auto* tmpVal = builder.local(currentMethod, "$tmp_val", type);
+
+    sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpRhs), loweredValue));
+
+    auto* read = lower_expr(expr->target);
+    auto* binResult = builder.call_or_intrinsic(syntax, type, expr->op, expr->method, { read, builder.load_local(syntax, tmpRhs) });
+    sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), binResult));
+
+    auto* write = lower_expr(expr->target);
+    sideEffects.push_back(builder.assign(syntax, write, builder.load_local(syntax, tmpVal)));
+
+    return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
+}
 
 FlirExpr* FlirLowerer::lower_cast(FhirCastExpr* expr)
 {
@@ -267,12 +339,13 @@ FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
     return builder.call(expr->syntax, expr->type, expr->getter, nullptr, { object, index });
 }
 
-void FlirLowerer::lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr, BaseSyntax* syntax, TypeSymbol* type, std::vector<FlirStmt*>& out)
+void FlirLowerer::lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr, BaseSyntax* syntax, std::vector<FlirStmt*>& out)
 {
     auto* object = lower_expr(target->object);
     auto* index = lower_expr(target->index);
     auto* value = lower_expr(valueExpr);
-    auto* call = builder.call(syntax, type, target->setter, nullptr, { object, index, value });
+    TypeSymbol* setterReturn = target->setter ? target->setter->get_return_type() : nullptr;
+    auto* call = builder.call(syntax, setterReturn, target->setter, nullptr, { object, index, value });
     out.push_back(builder.expr_stmt(syntax, call));
 }
 

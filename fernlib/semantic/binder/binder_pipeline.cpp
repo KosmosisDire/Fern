@@ -367,6 +367,7 @@ void BinderPipeline::validate_signatures()
 
         check_duplicate_methods(type);
         check_operator_pairs(type);
+        check_indexer_signatures(type);
     }
 }
 
@@ -404,6 +405,64 @@ void BinderPipeline::check_operator_pairs(NamedTypeSymbol* type)
             Span loc = hasB->syntax ? hasB->syntax->span : Span{};
             context.diag.report(DiagnosticCode::Err_OperatorPairMissing, loc,
                   Fern::format(b), format_type(type), Fern::format(a));
+        }
+    }
+}
+
+
+// At most one setter per index type.
+// If a getter and setter share index type, their value types must match.
+void BinderPipeline::check_indexer_signatures(NamedTypeSymbol* type)
+{
+    auto signature_matches = [](MethodSymbol* a, MethodSymbol* b) -> bool
+    {
+        if (a->parameters.size() < 2 || b->parameters.size() < 2) return false;
+        return a->parameters[0]->type == b->parameters[0]->type
+            && a->parameters[1]->type == b->parameters[1]->type;
+    };
+
+    std::vector<MethodSymbol*> getters;
+    std::vector<MethodSymbol*> setters;
+    for (auto* method : type->methods)
+    {
+        if (!method->is_operator()) continue;
+        if (method->operatorKind == TokenKind::IndexOp) getters.push_back(method);
+        else if (method->operatorKind == TokenKind::IndexSetOp) setters.push_back(method);
+    }
+
+    std::vector<bool> isDuplicate(setters.size(), false);
+    for (size_t i = 0; i < setters.size(); ++i)
+    {
+        for (size_t j = i + 1; j < setters.size(); ++j)
+        {
+            if (signature_matches(setters[i], setters[j]))
+            {
+                Span loc = setters[j]->syntax ? setters[j]->syntax->span : Span{};
+                context.diag.report(DiagnosticCode::Err_DuplicateIndexSetter, loc, format_type(type), format_type(setters[i]->parameters[1]->type));
+                isDuplicate[j] = true;
+            }
+        }
+    }
+
+    // Only check the canonical setter for each signature against the getter.
+    // Duplicates already produced their own diagnostic; don't pile a mismatch
+    // error on top of them.
+    for (auto* getter : getters)
+    {
+        for (size_t i = 0; i < setters.size(); ++i)
+        {
+            if (isDuplicate[i]) continue;
+            auto* setter = setters[i];
+            if (!signature_matches(getter, setter)) continue;
+            if (setter->parameters.size() < 3) continue;
+            TypeSymbol* getterValue = getter->get_return_type();
+            TypeSymbol* setterValue = setter->parameters[2]->type;
+            if (getterValue && setterValue && getterValue != setterValue)
+            {
+                Span loc = setter->syntax ? setter->syntax->span : Span{};
+                context.diag.report(DiagnosticCode::Err_IndexerTypeMismatch, loc,
+                      format_type(type), format_type(getterValue), format_type(setterValue));
+            }
         }
     }
 }

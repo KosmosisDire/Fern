@@ -45,6 +45,12 @@ struct NamedTypeSymbol;
 struct NamespaceSymbol;
 struct TypeSymbol;
 
+enum class IndexContext
+{
+    Read,
+    Write
+};
+
 // Result of a name lookup. A single non method symbol, or one to many
 // methods sharing a name in the same scope. Method names are the only
 // lookup that can yield multiple candidates per name. The list never
@@ -128,7 +134,7 @@ protected:
     FhirExpr* bind_binary(BinaryExprSyntax* expr);
     FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax);
     FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
-    FhirExpr* bind_index(IndexExprSyntax* expr);
+    FhirExpr* bind_index(IndexExprSyntax* expr, IndexContext ctx = IndexContext::Read);
 
 #pragma region Literal Binding
 

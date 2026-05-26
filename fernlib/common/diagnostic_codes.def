@@ -57,6 +57,8 @@ DIAG(Err_OperatorMissingSelfParam,      3105, Error,   "operator '{}' must have 
 DIAG(Err_LiteralWrongArity,             3106, Error,   "literal '{}' must have exactly 1 parameter")
 DIAG(Err_LiteralBadParamType,           3107, Error,   "literal '{}' parameter type '{}' does not allow custom literals")
 DIAG(Err_OperatorPairMissing,           3108, Error,   "operator '{}' on type '{}' requires a matching '{}' operator")
+DIAG(Err_DuplicateIndexSetter,          3109, Error,   "type '{}' has multiple '[]=' setters with the same index type '{}'")                                                            // CS0102
+DIAG(Err_IndexerTypeMismatch,           3110, Error,   "indexer on type '{}' has mismatched types: getter returns '{}' but setter expects '{}'")
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031
@@ -74,8 +76,8 @@ DIAG(Err_BadUnaryOp,                    3211, Error,   "operator '{}' cannot be 
 DIAG(Err_AmbiguousBinaryOp,             3212, Error,   "operator '{}' is ambiguous on operands of type '{}' and '{}':{}")                           // CS0034
 DIAG(Err_BadBinaryOp,                   3213, Error,   "operator '{}' cannot be applied to operands of type '{}' and '{}'{}")                       // CS0019 (last {} is optional hint suffix, e.g. " (requires '==' operator)")
 DIAG(Err_CannotIndex,                   3214, Error,   "type '{}' cannot be indexed")                                                               // CS0021
-DIAG(Err_NoIndexSetter,                 3215, Error,   "no overload of 'op []=' on type '{}' accepts an index of type '{}'")
-DIAG(Err_NoIndexGetter,                 3216, Error,   "no overload of 'op []' on type '{}' accepts an index of type '{}'")
+DIAG(Err_NoIndexSetter,                 3215, Error,   "no indexed setter on '{}' accepts an index of type '{}'")
+DIAG(Err_NoIndexGetter,                 3216, Error,   "no indexed getter on '{}' accepts an index of type '{}'")
 
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
@@ -85,6 +87,7 @@ DIAG(Err_ReturnValueRequired,           3301, Error,   "function '{}' must retur
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121
 DIAG(Err_NoMatchingConstructor,         3401, Error,   "'{}' does not contain a constructor that takes {} arguments")                               // CS1729
 DIAG(Err_NoMatchingMethod,              3402, Error,   "no overload for method '{}' on '{}' takes {} arguments")                                    // CS1501
+//TODO: This error message is quite cryptic
 DIAG(Err_InstanceMethodNoReceiver,      3403, Error,   "instance method '{}' requires a receiver")                                                  // CS0120
 DIAG(Err_NotCallableExpr,               3404, Error,   "expression cannot be called as a function")                                                 // CS1955
 DIAG(Err_NoImplicitConv,                3405, Error,   "{}cannot implicitly convert type '{}' to '{}' (an explicit cast exists)")                  // CS0266
