@@ -49,8 +49,7 @@ std::string FlirPrettyFormatter::method_label(MethodSymbol* method)
 std::string FlirPrettyFormatter::local_label(FlirLocal* local)
 {
     if (!local) return "?";
-    if (local->name.empty()) return std::format("$l{}", local->index);
-    if (local->name.front() == '$') return std::format("{}_{}", local->name, local->index);
+    if (local->name.empty()) return std::format("${}", local->index);
     return std::string(local->name);
 }
 
@@ -340,13 +339,7 @@ std::string FlirDebugFormatter::method_label(MethodSymbol* method)
 std::string FlirDebugFormatter::local_label(FlirLocal* local)
 {
     if (!local) return "null";
-    std::string name;
-    if (local->name.empty())
-        name = std::format("$l{}", local->index);
-    else if (local->name.front() == '$')
-        name = std::format("{}_{}", local->name, local->index);
-    else
-        name = std::string(local->name);
+    std::string name = local->name.empty() ? std::format("$l{}", local->index) : std::string(local->name);
     return std::format("\"{}\": {}", name, local->type ? format_type(local->type) : "?");
 }
 

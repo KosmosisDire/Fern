@@ -59,9 +59,9 @@ Every binder holds a reference to the single `Diagnostics` object owned by `Comp
 Initializer lists and array literals inject setup statements before their containing expression. They call `pending_statements()` which walks to the innermost `BlockBinder`. For example `var x = Foo { x = 1 }` becomes:
 
 ```
-var __init_0 = Foo();
-__init_0.x = 1;
-var x = __init_0;
+var $init_0 = Foo();
+$init_0.x = 1;
+var x = $init_0;
 ```
 
 ## Bidirectional type flow

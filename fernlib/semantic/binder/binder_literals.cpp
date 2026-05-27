@@ -369,7 +369,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     auto* createExpr = fhir.construction(expr, arrayType, synthTypeRef, ctorResult.best.method, {countLit});
 
     auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = std::format("__arr_{}", (*counter)++);
+    tempPtr->name = std::format("$arr_{}", (*counter)++);
     tempPtr->type = arrayType;
     auto* tempLocal = context.symbols.own(std::move(tempPtr));
 

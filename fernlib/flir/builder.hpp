@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -190,6 +191,19 @@ struct FlirBuilder
         node->name = name;
         node->type = type;
         node->index = static_cast<int>(method->locals.size());
+        method->locals.push_back(node);
+        return node;
+    }
+
+    // Synthetic locals get a $ prefix, and index appended to make sure they are unique
+    FlirLocal* synthetic_local(FlirMethod* method, std::string_view hint, TypeSymbol* type)
+    {
+        int index = static_cast<int>(method->locals.size());
+        std::string_view name = arena.alloc_string(std::format("${}_{}", hint, index));
+        auto* node = arena.alloc<FlirLocal>();
+        node->name = name;
+        node->type = type;
+        node->index = index;
         method->locals.push_back(node);
         return node;
     }

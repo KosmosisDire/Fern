@@ -160,10 +160,10 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     }
 
     // Initializer lists with field assignments are lowered to:
-    //   var __init_N = Constructor(...)
-    //   __init_N.field1 = value1
-    //   __init_N.field2 = value2
-    //   ... expression result is __init_N
+    //   var $init_N = Constructor(...)
+    //   $init_N.field1 = value1
+    //   $init_N.field2 = value2
+    //   ... expression result is $init_N
     auto* pending = pending_statements();
     int* counter = temp_counter();
     if (!pending || !counter)
@@ -173,7 +173,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
     }
 
     auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = std::format("__init_{}", (*counter)++);
+    tempPtr->name = std::format("$init_{}", (*counter)++);
     tempPtr->type = namedType;
     auto* tempLocal = context.symbols.own(std::move(tempPtr));
 

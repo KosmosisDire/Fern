@@ -262,10 +262,10 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
         TypeSymbol* elementType = idx->getter ? idx->getter->get_return_type() : type;
         TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
 
-        auto* tmpObj = builder.local(currentMethod, "$tmp_obj", idx->object ? idx->object->type : nullptr);
-        auto* tmpIdx = builder.local(currentMethod, "$tmp_idx", idx->index ? idx->index->type : nullptr);
-        auto* tmpRhs = builder.local(currentMethod, "$tmp_rhs", rhsType);
-        auto* tmpVal = builder.local(currentMethod, "$tmp_val", elementType);
+        auto* tmpObj = builder.synthetic_local(currentMethod, "tmp_obj", idx->object ? idx->object->type : nullptr);
+        auto* tmpIdx = builder.synthetic_local(currentMethod, "tmp_idx", idx->index ? idx->index->type : nullptr);
+        auto* tmpRhs = builder.synthetic_local(currentMethod, "tmp_rhs", rhsType);
+        auto* tmpVal = builder.synthetic_local(currentMethod, "tmp_val", elementType);
 
         sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpObj), lower_expr(idx->object)));
         sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpIdx), lower_expr(idx->index)));
@@ -285,13 +285,13 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
     if (auto* field = expr->target->as<FhirFieldRefExpr>())
     {
-        auto* tmpRhs = builder.local(currentMethod, "$tmp_rhs", rhsType);
-        auto* tmpVal = builder.local(currentMethod, "$tmp_val", type);
+        auto* tmpRhs = builder.synthetic_local(currentMethod, "tmp_rhs", rhsType);
+        auto* tmpVal = builder.synthetic_local(currentMethod, "tmp_val", type);
 
         FlirLocal* tmpObj = nullptr;
         if (field->thisRef)
         {
-            tmpObj = builder.local(currentMethod, "$tmp_obj", field->thisRef->type);
+            tmpObj = builder.synthetic_local(currentMethod, "tmp_obj", field->thisRef->type);
             sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpObj), lower_expr(field->thisRef)));
         }
 
@@ -307,8 +307,8 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
         return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
     }
 
-    auto* tmpRhs = builder.local(currentMethod, "$tmp_rhs", rhsType);
-    auto* tmpVal = builder.local(currentMethod, "$tmp_val", type);
+    auto* tmpRhs = builder.synthetic_local(currentMethod, "tmp_rhs", rhsType);
+    auto* tmpVal = builder.synthetic_local(currentMethod, "tmp_val", type);
 
     sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpRhs), loweredValue));
 
