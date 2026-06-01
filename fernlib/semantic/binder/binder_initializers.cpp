@@ -52,30 +52,53 @@ FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
     return bind_value_expr(expr->target);
 }
 
-FhirExpr* Binder::build_field_ref_chain(FhirExpr* receiver, BaseExprSyntax* target)
+// Walk a field syntax and collect the chain of FieldSymbols. 
+// Returns false and reports diagnostics if any link is not a field on the expected type.
+static bool collect_field_path(Binder* binder, BaseExprSyntax* target, NamedTypeSymbol* type,
+                               std::vector<FieldSymbol*>& path_out, Diagnostics& diag)
 {
     if (auto* id = target->as<IdentifierExprSyntax>())
     {
-        TypeSymbol* recvType = receiver ? receiver->type : nullptr;
-        auto* namedRecv = recvType ? recvType->as<NamedTypeSymbol>() : nullptr;
-        auto* field = namedRecv ? namedRecv->find_field(id->name.lexeme) : nullptr;
-        return fhir.field_ref(id, receiver, field);
+        FieldSymbol* field = type->find_field(id->name.lexeme);
+        if (!field)
+        {
+            diag.report(DiagnosticCode::Err_NoSuchMember, target->span, format_type(type), id->name.lexeme);
+            return false;
+        }
+        path_out.push_back(field);
+        return true;
     }
 
     if (auto* member = target->as<MemberAccessExprSyntax>())
     {
-        FhirExpr* left = build_field_ref_chain(receiver, member->left);
-        TypeSymbol* leftType = left ? left->type : nullptr;
-        auto* namedLeft = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
-        auto* field = (namedLeft && member->right) ? namedLeft->find_field(member->right->name.lexeme) : nullptr;
-        return fhir.field_ref(member, left, field);
+        if (!collect_field_path(binder, member->left, type, path_out, diag))
+            return false;
+
+        TypeSymbol* parentType = path_out.back()->type;
+        auto* nestedType = parentType ? parentType->as<NamedTypeSymbol>() : nullptr;
+        if (!nestedType)
+        {
+            diag.report(DiagnosticCode::Err_InitMemberOnNonStruct, member->span);
+            return false;
+        }
+
+        if (!member->right)
+        {
+            diag.report(DiagnosticCode::Err_InitTargetBadShape, member->span);
+            return false;
+        }
+
+        return collect_field_path(binder, member->right, nestedType, path_out, diag);
     }
 
-    return nullptr;
+    diag.report(DiagnosticCode::Err_InitTargetBadShape, target->span);
+    return false;
 }
 
+// Binds an initializer expression like `Foo { a: 1, b.c: 2 }`
 FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 {
+    // Expect a type or constructor call before the list
     if (!expr->target)
     {
         diag.report(DiagnosticCode::Err_InitListNoType, expr->span);
@@ -95,6 +118,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
     NamedTypeSymbol* namedType = nullptr;
 
+    // Try as a call, like `Foo(1, 2) { ... }`
     if (auto* callExpr = expr->target->as<CallExprSyntax>())
     {
         FhirExpr* callResult = bind_call(callExpr);
@@ -110,7 +134,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         TypeSymbol* callType = callResult->type;
         namedType = callType ? callType->as<NamedTypeSymbol>() : nullptr;
     }
-    else
+    else // just bind and see if it is a type reference like `Foo { ... }`
     {
         FhirExpr* targetExpr = bind_expr(expr->target);
         if (!targetExpr || targetExpr->is_error())
@@ -159,34 +183,10 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         return bind_initializer_target(expr);
     }
 
-    // Initializer lists with field assignments are lowered to:
-    //   var $init_N = Constructor(...)
-    //   $init_N.field1 = value1
-    //   $init_N.field2 = value2
-    //   ... expression result is $init_N
-    auto* pending = pending_statements();
-    int* counter = temp_counter();
-    if (!pending || !counter)
-    {
-        diag.report(DiagnosticCode::Err_InitListOutsideMethod, expr->span);
-        return fhir.error_expr(expr);
-    }
+    FhirExpr* construction = bind_initializer_target(expr);
 
-    auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = std::format("$init_{}", (*counter)++);
-    tempPtr->type = namedType;
-    auto* tempLocal = context.symbols.own(std::move(tempPtr));
-
-    pending->push_back(fhir.var_decl(expr, tempLocal, bind_initializer_target(expr)));
-
-    bind_initializer_fields(expr, namedType, *pending, fhir.local_ref(expr, tempLocal));
-
-    return fhir.local_ref(expr, tempLocal);
-}
-
-void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver)
-{
-    std::vector<std::string> boundFieldPaths;
+    std::vector<FhirInitializerEntry> entries;
+    std::vector<std::string> seenPaths;
     for (auto* member : expr->members)
     {
         auto* fieldInit = member->as<FieldInitSyntax>();
@@ -199,88 +199,36 @@ void Binder::bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbo
             continue;
         }
 
-        TypeSymbol* fieldType = nullptr;
-        if (fieldInit->target &&
-            (fieldInit->target->is<IdentifierExprSyntax>() ||
-             fieldInit->target->is<MemberAccessExprSyntax>()))
+        std::string pathStr = format_field_path(fieldInit->target);
+        if (!pathStr.empty())
         {
-            fieldType = bind_field_init_target(fieldInit->target, namedType);
-        }
-
-        if (fieldInit->value)
-        {
-            if (receiver)
+            auto it = std::find(seenPaths.begin(), seenPaths.end(), pathStr);
+            if (it != seenPaths.end())
             {
-                FhirExpr* fieldTarget = build_field_ref_chain(receiver, fieldInit->target);
-                out.push_back(fhir.expr_stmt(fieldInit, fhir.assign(fieldInit, fieldTarget, bind_value_expr(fieldInit->value, fieldType))));
+                diag.report(DiagnosticCode::Err_DuplicateInitField, fieldInit->target->span, pathStr);
+                continue;
             }
-            else
-            {
-                bind_value_expr(fieldInit->value, fieldType);
-            }
+            seenPaths.push_back(std::move(pathStr));
         }
+
+        std::vector<FieldSymbol*> path;
+        if (!fieldInit->target || !collect_field_path(this, fieldInit->target, namedType, path, diag))
+        {
+            if (fieldInit->value) bind_value_expr(fieldInit->value);
+            continue;
+        }
+
+        TypeSymbol* fieldType = path.back()->type;
+        FhirExpr* value = fieldInit->value ? bind_value_expr(fieldInit->value, fieldType) : nullptr;
+        if (!value) continue;
+
+        FhirInitializerEntry entry;
+        entry.path = std::move(path);
+        entry.value = value;
+        entries.push_back(std::move(entry));
     }
 
-    for (auto* member : expr->members)
-    {
-        auto* fieldInit = member->as<FieldInitSyntax>();
-        if (!fieldInit) continue;
-
-        std::string path = format_field_path(fieldInit->target);
-        if (path.empty()) continue;
-
-        auto it = std::find(boundFieldPaths.begin(), boundFieldPaths.end(), path);
-        if (it != boundFieldPaths.end())
-        {
-            diag.report(DiagnosticCode::Err_DuplicateInitField, fieldInit->target->span, path);
-        }
-        else
-        {
-            boundFieldPaths.push_back(std::move(path));
-        }
-    }
-}
-
-TypeSymbol* Binder::bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type)
-{
-    if (auto* id = target->as<IdentifierExprSyntax>())
-    {
-        FieldSymbol* field = type->find_field(id->name.lexeme);
-        if (!field)
-        {
-            diag.report(DiagnosticCode::Err_NoSuchMember, target->span, format_type(type), id->name.lexeme);
-            return nullptr;
-        }
-        return field->type;
-    }
-
-    if (auto* member = target->as<MemberAccessExprSyntax>())
-    {
-        TypeSymbol* leftType = bind_field_init_target(member->left, type);
-        if (!leftType)
-        {
-            return nullptr;
-        }
-
-        auto* nestedType = leftType->as<NamedTypeSymbol>();
-        if (!nestedType)
-        {
-            diag.report(DiagnosticCode::Err_InitMemberOnNonStruct, member->span);
-            return nullptr;
-        }
-
-        std::string_view rightName = member->right ? member->right->name.lexeme : std::string_view{};
-        FieldSymbol* field = nestedType->find_field(rightName);
-        if (!field)
-        {
-            diag.report(DiagnosticCode::Err_NoSuchMember, member->span, format_type(nestedType), rightName);
-            return nullptr;
-        }
-        return field->type;
-    }
-
-    diag.report(DiagnosticCode::Err_InitTargetBadShape, target->span);
-    return nullptr;
+    return fhir.initializer_expr(expr, namedType, construction, std::move(entries));
 }
 
 }

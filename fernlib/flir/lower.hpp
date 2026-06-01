@@ -46,6 +46,7 @@ private:
     FlirExpr* lower_cast(FhirCastExpr* expr);
     FlirExpr* lower_index(FhirIndexExpr* expr);
     void lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr, BaseSyntax* syntax, std::vector<FlirStmt*>& out);
+    FlirExpr* lower_initializer(FhirInitializerExpr* expr);
 
     //TODO: Is there a better way to pass statements that an out, like with a sequence expr?
     void lower_var_decl(FhirVarDeclStmt* stmt, std::vector<FlirStmt*>& out);

@@ -159,6 +159,25 @@ void FhirPrettyFormatter::visit(FhirIndexExpr* node)
     out << "]";
 }
 
+void FhirPrettyFormatter::visit(FhirInitializerExpr* node)
+{
+    write_child(node->construction);
+    out << " { ";
+    for (size_t i = 0; i < node->entries.size(); ++i)
+    {
+        if (i > 0) out << ", ";
+        const auto& entry = node->entries[i];
+        for (size_t j = 0; j < entry.path.size(); ++j)
+        {
+            if (j > 0) out << ".";
+            out << (entry.path[j] ? entry.path[j]->name : "?");
+        }
+        out << " = ";
+        write_child(entry.value);
+    }
+    out << " }";
+}
+
 void FhirPrettyFormatter::visit(FhirErrorExpr* node)
 {
     out << "ERROR(";
@@ -497,6 +516,36 @@ void FhirDebugFormatter::visit(FhirIndexExpr* node)
     open_block();
     write_child("object", node->object, true);
     write_child("index", node->index);
+    close_block();
+}
+
+void FhirDebugFormatter::visit(FhirInitializerExpr* node)
+{
+    begin_node(node, type_attr(node));
+    open_block();
+    write_child("construction", node->construction, true);
+    write_indent();
+    out << "entries: [";
+    if (!node->entries.empty())
+    {
+        out << "\n";
+        ++indent;
+        for (const auto& entry : node->entries)
+        {
+            write_indent();
+            out << "path: ";
+            for (size_t i = 0; i < entry.path.size(); ++i)
+            {
+                if (i > 0) out << ".";
+                out << (entry.path[i] ? entry.path[i]->name : "?");
+            }
+            out << ",\n";
+            write_child("value", entry.value);
+        }
+        --indent;
+        write_indent();
+    }
+    out << "]\n";
     close_block();
 }
 

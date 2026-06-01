@@ -54,6 +54,7 @@ public:
     void visit(FhirCompoundAssignExpr* node) override;
     void visit(FhirCastExpr* node) override;
     void visit(FhirIndexExpr* node) override;
+    void visit(FhirInitializerExpr* node) override;
     void visit(FhirErrorExpr* node) override;
     void visit(FhirNamespaceRefExpr* node) override;
     void visit(FhirMethodGroupRefExpr* node) override;
@@ -129,6 +130,7 @@ public:
     void visit(FhirCompoundAssignExpr* node) override;
     void visit(FhirCastExpr* node) override;
     void visit(FhirIndexExpr* node) override;
+    void visit(FhirInitializerExpr* node) override;
     void visit(FhirErrorExpr* node) override;
     void visit(FhirNamespaceRefExpr* node) override;
     void visit(FhirMethodGroupRefExpr* node) override;

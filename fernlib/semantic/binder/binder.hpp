@@ -152,9 +152,6 @@ protected:
 
     FhirExpr* bind_initializer(InitializerExprSyntax* expr);
     FhirExpr* bind_initializer_target(InitializerExprSyntax* expr);
-    FhirExpr* build_field_ref_chain(FhirExpr* receiver, BaseExprSyntax* target);
-    void bind_initializer_fields(InitializerExprSyntax* expr, NamedTypeSymbol* namedType, std::vector<FhirStmt*>& out, FhirExpr* receiver);
-    TypeSymbol* bind_field_init_target(BaseExprSyntax* target, NamedTypeSymbol* type);
 
 };
 

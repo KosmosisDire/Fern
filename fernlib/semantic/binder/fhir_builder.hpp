@@ -157,6 +157,17 @@ struct FhirBuilder
         return node;
     }
 
+    FhirInitializerExpr* initializer_expr(BaseSyntax* syntax, TypeSymbol* type, FhirExpr* construction, std::vector<FhirInitializerEntry> entries)
+    {
+        auto* node = arena.alloc<FhirInitializerExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = type;
+        node->construction = construction;
+        node->entries = std::move(entries);
+        return node;
+    }
+
     FhirErrorExpr* error_expr(BaseSyntax* syntax, TypeSymbol* type = nullptr, FhirExpr* inner = nullptr)
     {
         auto* node = arena.alloc<FhirErrorExpr>();

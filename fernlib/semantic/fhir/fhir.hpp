@@ -41,6 +41,7 @@ struct FhirAssignExpr;
 struct FhirCompoundAssignExpr;
 struct FhirCastExpr;
 struct FhirIndexExpr;
+struct FhirInitializerExpr;
 struct FhirErrorExpr;
 struct FhirNamespaceRefExpr;
 struct FhirMethodGroupRefExpr;
@@ -182,6 +183,7 @@ public:
     virtual void visit(FhirCompoundAssignExpr* node) = 0;
     virtual void visit(FhirCastExpr* node) = 0;
     virtual void visit(FhirIndexExpr* node) = 0;
+    virtual void visit(FhirInitializerExpr* node) = 0;
     virtual void visit(FhirErrorExpr* node) = 0;
     virtual void visit(FhirNamespaceRefExpr* node) = 0;
     virtual void visit(FhirMethodGroupRefExpr* node) = 0;
@@ -385,10 +387,6 @@ struct FhirCallExpr : FhirExpr
     }
 };
 
-// Wraps a constructor call in instance allocation. The inner `call` carries
-// the resolved constructor and arguments. Its `callee.thisRef` is null because
-// the new instance does not exist as a value until codegen.
-// Constructors only ever appear inside this nested call.
 struct FhirConstructionExpr : FhirExpr
 {
     FHIR_NODE(FhirConstructionExpr, FhirExpr)
@@ -463,6 +461,27 @@ struct FhirIndexExpr : FhirExpr
     {
         if (object) object->accept(v);
         if (index) index->accept(v);
+    }
+};
+
+struct FhirInitializerEntry
+{
+    std::vector<FieldSymbol*> path;
+    FhirExpr* value = nullptr;
+};
+
+struct FhirInitializerExpr : FhirExpr
+{
+    FHIR_NODE(FhirInitializerExpr, FhirExpr)
+
+    FhirExpr* construction = nullptr;
+    std::vector<FhirInitializerEntry> entries;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        if (construction) construction->accept(v);
+        for (auto& entry : entries)
+            if (entry.value) entry.value->accept(v);
     }
 };
 
@@ -594,6 +613,7 @@ public:
     void visit(FhirCompoundAssignExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirCastExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirIndexExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirInitializerExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirErrorExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirNamespaceRefExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirMethodGroupRefExpr* node) override { on_visit(node); node->visit_children(this); }

@@ -170,6 +170,7 @@ FlirExpr* FlirLowerer::lower_expr(FhirExpr* expr)
     if (auto* e = expr->as<FhirCompoundAssignExpr>()) return lower_compound_assign(e);
     if (auto* e = expr->as<FhirCastExpr>())         return lower_cast(e);
     if (auto* e = expr->as<FhirIndexExpr>())        return lower_index(e);
+    if (auto* e = expr->as<FhirInitializerExpr>())  return lower_initializer(e);
 
     return nullptr;
 }
@@ -347,6 +348,34 @@ void FlirLowerer::lower_index_assign(FhirIndexExpr* target, FhirExpr* valueExpr,
     TypeSymbol* setterReturn = target->setter ? target->setter->get_return_type() : nullptr;
     auto* call = builder.call(syntax, setterReturn, target->setter, nullptr, { object, index, value });
     out.push_back(builder.expr_stmt(syntax, call));
+}
+
+// Lowers Foo { a = 1, b.c = 2 } to a Sequence that holds the constructed
+// instance in a temp, writes each entry's value to its field chain off the
+// temp, then yields the temp.
+FlirExpr* FlirLowerer::lower_initializer(FhirInitializerExpr* expr)
+{
+    BaseSyntax* syntax = expr->syntax;
+    TypeSymbol* type = expr->type;
+
+    auto* tmp = builder.local(currentMethod, "$init", type);
+
+    std::vector<FlirStmt*> sideEffects;
+    sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmp), lower_expr(expr->construction)));
+
+    for (const auto& entry : expr->entries)
+    {
+        if (entry.path.empty() || !entry.value) continue;
+        FlirExpr* chain = builder.load_local(syntax, tmp);
+        for (auto* field : entry.path)
+        {
+            chain = builder.load_field(syntax, chain, field);
+        }
+        auto* value = lower_expr(entry.value);
+        sideEffects.push_back(builder.assign(syntax, chain, value));
+    }
+
+    return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmp));
 }
 
 #pragma region Local Helpers
