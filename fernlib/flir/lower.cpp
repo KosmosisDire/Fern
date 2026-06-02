@@ -264,7 +264,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
     if (auto* idx = targetExpr->as<FhirIndexExpr>())
     {
-        TypeSymbol* elementType = idx->getter ? idx->getter->get_return_type() : type;
+        TypeSymbol* elementType = idx->type;
         TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
 
         auto* tmpObj = builder.synthetic_local(currentMethod, "tmp_obj", idx->object ? idx->object->type : nullptr);
