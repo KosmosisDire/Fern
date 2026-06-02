@@ -236,7 +236,6 @@ struct FhirBuilder
         auto* node = arena.alloc<FhirCompoundAssignExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
-        // TODO: assignments wil later no longer be expressions so they will not have a type
         node->type = op ? op->type : nullptr;
         node->binaryOp = op;
         return node;

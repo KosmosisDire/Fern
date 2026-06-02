@@ -243,9 +243,34 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
     return builder.call(expr->syntax, type, ctor, alloc, std::move(args));
 }
 
-// TODO: Assigns will no longer be expressions in the future
-FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr*) { return nullptr; }
+FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr* expr)
+{
+    BaseSyntax* syntax = expr->syntax;
+    TypeSymbol* type = expr->type;
 
+    std::vector<FlirStmt*> sideEffects;
+
+    FlirExpr* loweredValue = lower_expr(expr->value);
+    auto* tmpVal = builder.synthetic_local(currentMethod, "tmp_val", type);
+    sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), loweredValue));
+
+    if (auto* idx = expr->target ? expr->target->as<FhirIndexExpr>() : nullptr; idx && idx->setter)
+    {
+        auto* object = lower_expr(idx->object);
+        auto* index = lower_expr(idx->index);
+        TypeSymbol* setterReturn = idx->setter->get_return_type();
+        auto* setterCall = builder.call(syntax, setterReturn, idx->setter, nullptr,
+            { object, index, builder.load_local(syntax, tmpVal) });
+        sideEffects.push_back(builder.expr_stmt(syntax, setterCall));
+    }
+    else
+    {
+        auto* target = lower_expr(expr->target);
+        sideEffects.push_back(builder.assign(syntax, target, builder.load_local(syntax, tmpVal)));
+    }
+
+    return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
+}
 
 // TODO: We should not be using load_local as the target of an assign. 
 // Need to refactor hwo assignment works
