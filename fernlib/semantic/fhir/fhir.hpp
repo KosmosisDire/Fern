@@ -419,15 +419,16 @@ struct FhirCompoundAssignExpr : FhirExpr
 {
     FHIR_NODE(FhirCompoundAssignExpr, FhirExpr)
 
-    FhirExpr* target = nullptr;
-    IntrinsicOp op = IntrinsicOp::Add;
-    MethodSymbol* method = nullptr;
-    FhirExpr* value = nullptr;
+    FhirOpExpr* binaryOp = nullptr;
+
+    FhirExpr* target() const { return binaryOp && !binaryOp->args.empty() ? binaryOp->args[0] : nullptr; }
+    FhirExpr* value()  const { return binaryOp && binaryOp->args.size() > 1 ? binaryOp->args[1] : nullptr; }
 
     void visit_children(FhirVisitor* v) override
     {
-        if (target) target->accept(v);
-        if (value) value->accept(v);
+        // Bypass the op node since it is data only and doesn't represent an actual operation here.
+        if (!binaryOp) return;
+        for (auto* arg : binaryOp->args) if (arg) arg->accept(v);
     }
 };
 

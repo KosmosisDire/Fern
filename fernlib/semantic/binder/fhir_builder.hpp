@@ -231,17 +231,14 @@ struct FhirBuilder
         return node;
     }
 
-    FhirCompoundAssignExpr* compound_assign(BaseSyntax* syntax, FhirExpr* target, IntrinsicOp op, MethodSymbol* method, FhirExpr* value)
+    FhirCompoundAssignExpr* compound_assign(BaseSyntax* syntax, FhirOpExpr* op)
     {
         auto* node = arena.alloc<FhirCompoundAssignExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         // TODO: assignments wil later no longer be expressions so they will not have a type
-        node->type = value ? value->type : nullptr;
-        node->target = target;
-        node->op = op;
-        node->method = method;
-        node->value = value;
+        node->type = op ? op->type : nullptr;
+        node->binaryOp = op;
         return node;
     }
 

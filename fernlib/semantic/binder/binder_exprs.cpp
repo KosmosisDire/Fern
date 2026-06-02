@@ -511,8 +511,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         if (!opResult || opResult->is_error()) return fhir.error_expr(expr);
         auto* binFhir = opResult->as<FhirOpExpr>();
         if (!binFhir) return fhir.error_expr(expr);
-        FhirExpr* coercedValue = binFhir->args.size() >= 2 ? binFhir->args[1] : value;
-        return fhir.compound_assign(expr, writeTarget, binFhir->op, binFhir->method, coercedValue);
+        return fhir.compound_assign(expr, binFhir);
     }
 
     return fhir.assign(expr, writeTarget, value);

@@ -253,12 +253,16 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 {
     BaseSyntax* syntax = expr->syntax;
     TypeSymbol* type = expr->type;
+    auto* binOp = expr->binaryOp;
+    FhirExpr* targetExpr = expr->target();
+    FhirExpr* valueExpr = expr->value();
+
     std::vector<FlirStmt*> sideEffects;
-    FlirExpr* loweredValue = lower_expr(expr->value);
+    FlirExpr* loweredValue = lower_expr(valueExpr);
 
-    TypeSymbol* rhsType = expr->value ? expr->value->type : nullptr;
+    TypeSymbol* rhsType = valueExpr ? valueExpr->type : nullptr;
 
-    if (auto* idx = expr->target->as<FhirIndexExpr>())
+    if (auto* idx = targetExpr->as<FhirIndexExpr>())
     {
         TypeSymbol* elementType = idx->getter ? idx->getter->get_return_type() : type;
         TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
@@ -274,7 +278,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
         auto* readGetter = builder.call(syntax, elementType, idx->getter, nullptr,
             { builder.load_local(syntax, tmpObj), builder.load_local(syntax, tmpIdx) });
-        auto* binResult = builder.call_or_intrinsic(syntax, elementType, expr->op, expr->method, { readGetter, builder.load_local(syntax, tmpRhs) });
+        auto* binResult = builder.call_or_intrinsic(syntax, elementType, binOp->op, binOp->method, { readGetter, builder.load_local(syntax, tmpRhs) });
         sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), binResult));
 
         auto* setterCall = builder.call(syntax, setterReturn, idx->setter, nullptr,
@@ -284,7 +288,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
         return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
     }
 
-    if (auto* field = expr->target->as<FhirFieldRefExpr>())
+    if (auto* field = targetExpr->as<FhirFieldRefExpr>())
     {
         auto* tmpRhs = builder.synthetic_local(currentMethod, "tmp_rhs", rhsType);
         auto* tmpVal = builder.synthetic_local(currentMethod, "tmp_val", type);
@@ -299,7 +303,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
         sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpRhs), loweredValue));
 
         auto* readField = builder.load_field(syntax, tmpObj ? builder.load_local(syntax, tmpObj) : nullptr, field->field);
-        auto* binResult = builder.call_or_intrinsic(syntax, type, expr->op, expr->method, { readField, builder.load_local(syntax, tmpRhs) });
+        auto* binResult = builder.call_or_intrinsic(syntax, type, binOp->op, binOp->method, { readField, builder.load_local(syntax, tmpRhs) });
         sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), binResult));
 
         auto* writeField = builder.load_field(syntax, tmpObj ? builder.load_local(syntax, tmpObj) : nullptr, field->field);
@@ -313,11 +317,11 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
     sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpRhs), loweredValue));
 
-    auto* read = lower_expr(expr->target);
-    auto* binResult = builder.call_or_intrinsic(syntax, type, expr->op, expr->method, { read, builder.load_local(syntax, tmpRhs) });
+    auto* read = lower_expr(targetExpr);
+    auto* binResult = builder.call_or_intrinsic(syntax, type, binOp->op, binOp->method, { read, builder.load_local(syntax, tmpRhs) });
     sideEffects.push_back(builder.assign(syntax, builder.load_local(syntax, tmpVal), binResult));
 
-    auto* write = lower_expr(expr->target);
+    auto* write = lower_expr(targetExpr);
     sideEffects.push_back(builder.assign(syntax, write, builder.load_local(syntax, tmpVal)));
 
     return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
