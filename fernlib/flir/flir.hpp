@@ -32,7 +32,8 @@ struct FlirAlloc;
 struct FlirSequence;
 
 struct FlirBlock;
-struct FlirAssign;
+struct FlirStoreLocal;
+struct FlirStoreField;
 struct FlirExprStmt;
 struct FlirIf;
 struct FlirLoop;
@@ -59,7 +60,8 @@ public:
     virtual void visit(FlirSequence* node) = 0;
 
     virtual void visit(FlirBlock* node) = 0;
-    virtual void visit(FlirAssign* node) = 0;
+    virtual void visit(FlirStoreLocal* node) = 0;
+    virtual void visit(FlirStoreField* node) = 0;
     virtual void visit(FlirExprStmt* node) = 0;
     virtual void visit(FlirIf* node) = 0;
     virtual void visit(FlirLoop* node) = 0;
@@ -232,17 +234,30 @@ struct FlirBlock : FlirStmt
     }
 };
 
-struct FlirAssign : FlirStmt
+struct FlirStoreLocal : FlirStmt
 {
-    FLIR_NODE(FlirAssign, FlirStmt)
+    FLIR_NODE(FlirStoreLocal, FlirStmt)
 
-    // Valid target kinds: FlirLoadLocal, FlirLoadField.
-    FlirExpr* target = nullptr;
+    FlirLocal* local = nullptr;
     FlirExpr* value = nullptr;
 
     void visit_children(FlirVisitor* v) override
     {
-        if (target) target->accept(v);
+        if (value) value->accept(v);
+    }
+};
+
+struct FlirStoreField : FlirStmt
+{
+    FLIR_NODE(FlirStoreField, FlirStmt)
+
+    FlirExpr* base = nullptr;
+    FieldSymbol* field = nullptr;
+    FlirExpr* value = nullptr;
+
+    void visit_children(FlirVisitor* v) override
+    {
+        if (base) base->accept(v);
         if (value) value->accept(v);
     }
 };
@@ -332,7 +347,8 @@ public:
     void visit(FlirSequence* node) override { on_visit(node); node->visit_children(this); }
 
     void visit(FlirBlock* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FlirAssign* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirStoreLocal* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirStoreField* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirExprStmt* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirIf* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirLoop* node) override { on_visit(node); node->visit_children(this); }

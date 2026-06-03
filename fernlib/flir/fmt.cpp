@@ -153,10 +153,16 @@ void FlirPrettyFormatter::visit(FlirBlock* node)
     out << "}";
 }
 
-void FlirPrettyFormatter::visit(FlirAssign* node)
+void FlirPrettyFormatter::visit(FlirStoreLocal* node)
 {
-    write_child(node->target);
-    out << " = ";
+    out << local_label(node->local) << " = ";
+    write_child(node->value);
+}
+
+void FlirPrettyFormatter::visit(FlirStoreField* node)
+{
+    write_child(node->base);
+    out << "." << (node->field ? node->field->name : "?") << " = ";
     write_child(node->value);
 }
 
@@ -417,11 +423,22 @@ void FlirDebugFormatter::visit(FlirBlock* node)
     close_block();
 }
 
-void FlirDebugFormatter::visit(FlirAssign* node)
+void FlirDebugFormatter::visit(FlirStoreLocal* node)
 {
-    begin_node(node);
+    begin_node(node, std::format("local: {}", local_label(node->local)));
     open_block();
-    write_child("target", node->target, true);
+    write_child("value", node->value);
+    close_block();
+}
+
+void FlirDebugFormatter::visit(FlirStoreField* node)
+{
+    std::string field = node->field
+        ? std::format("\"{}\": {}", symbol_label(node->field), format_type(node->field->type))
+        : std::string("null");
+    begin_node(node, std::format("field: {}", field));
+    open_block();
+    write_child("base", node->base, true);
     write_child("value", node->value);
     close_block();
 }

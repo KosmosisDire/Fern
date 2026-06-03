@@ -126,12 +126,23 @@ struct FlirBuilder
         return node;
     }
 
-    FlirAssign* assign(BaseSyntax* syntax, FlirExpr* target, FlirExpr* value)
+    FlirStoreLocal* store_local(BaseSyntax* syntax, FlirLocal* local, FlirExpr* value)
     {
-        auto* node = arena.alloc<FlirAssign>();
+        auto* node = arena.alloc<FlirStoreLocal>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
-        node->target = target;
+        node->local = local;
+        node->value = value;
+        return node;
+    }
+
+    FlirStoreField* store_field(BaseSyntax* syntax, FlirExpr* base, FieldSymbol* field, FlirExpr* value)
+    {
+        auto* node = arena.alloc<FlirStoreField>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->base = base;
+        node->field = field;
         node->value = value;
         return node;
     }

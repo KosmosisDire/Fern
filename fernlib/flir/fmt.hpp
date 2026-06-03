@@ -53,7 +53,8 @@ public:
     void visit(FlirSequence* node) override;
 
     void visit(FlirBlock* node) override;
-    void visit(FlirAssign* node) override;
+    void visit(FlirStoreLocal* node) override;
+    void visit(FlirStoreField* node) override;
     void visit(FlirExprStmt* node) override;
     void visit(FlirIf* node) override;
     void visit(FlirLoop* node) override;
@@ -121,7 +122,8 @@ public:
     void visit(FlirSequence* node) override;
 
     void visit(FlirBlock* node) override;
-    void visit(FlirAssign* node) override;
+    void visit(FlirStoreLocal* node) override;
+    void visit(FlirStoreField* node) override;
     void visit(FlirExprStmt* node) override;
     void visit(FlirIf* node) override;
     void visit(FlirLoop* node) override;
