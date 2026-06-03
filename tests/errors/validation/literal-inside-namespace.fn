@@ -1,6 +1,6 @@
 ---
-Description: Literal declared inside a namespace
-Expected: FN2000
+Description: Literal inside a namespace, with usage
+Expected: FN2000, FN3203
 ---
 
 namespace BadNs
@@ -15,6 +15,6 @@ type Program
 {
     static fn Main -> i32
     {
-        return 0
+        return BadNs.px
     }
 }

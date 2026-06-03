@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 #include <source/span.hpp>
 #include <token/token.hpp>
@@ -46,6 +47,7 @@ struct ReturnStmtSyntax;
 struct ExpressionStmtSyntax;
 struct IfStmtSyntax;
 struct WhileStmtSyntax;
+struct ErrorStmtSyntax;
 
 // Declarations
 struct BaseDeclSyntax;
@@ -56,6 +58,7 @@ struct TypeDeclSyntax;
 struct FieldDeclSyntax;
 struct FieldInitSyntax;
 struct NamespaceDeclSyntax;
+struct ErrorDeclSyntax;
 
 // Root
 struct RootSyntax;
@@ -113,6 +116,7 @@ public:
     virtual void visit(ExpressionStmtSyntax* node) = 0;
     virtual void visit(IfStmtSyntax* node) = 0;
     virtual void visit(WhileStmtSyntax* node) = 0;
+    virtual void visit(ErrorStmtSyntax* node) = 0;
 
     // Declarations
     virtual void visit(ParameterDeclSyntax* node) = 0;
@@ -122,6 +126,7 @@ public:
     virtual void visit(FieldDeclSyntax* node) = 0;
     virtual void visit(FieldInitSyntax* node) = 0;
     virtual void visit(NamespaceDeclSyntax* node) = 0;
+    virtual void visit(ErrorDeclSyntax* node) = 0;
 
     // Root
     virtual void visit(RootSyntax* node) = 0;
@@ -152,7 +157,23 @@ struct BaseSyntax
     virtual void accept(AstVisitor* visitor) = 0;
 
     template<typename T>
-    bool is() const { return kind == T::Kind; }
+    bool is() const
+    {
+        if constexpr (std::is_same_v<T, BaseDeclSyntax>)
+        {
+            return is<VariableDeclSyntax>() ||
+                   is<CallableDeclSyntax>() ||
+                   is<TypeDeclSyntax>() ||
+                   is<FieldDeclSyntax>() ||
+                   is<NamespaceDeclSyntax>() ||
+                   is<ParameterDeclSyntax>() ||
+                   is<ErrorDeclSyntax>();
+        }
+        else
+        {
+            return kind == T::Kind;
+        }
+    }
 
     template<typename T>
     T* as() { return is<T>() ? static_cast<T*>(this) : nullptr; }
@@ -390,6 +411,15 @@ struct WhileStmtSyntax : BaseStmtSyntax
     BlockSyntax* body = nullptr;
 };
 
+// Wraps a node the parser rejected as misplaced or malformed at statement position.
+// Diagnostic is already emitted; binder skips this node without re-reporting.
+struct ErrorStmtSyntax : BaseStmtSyntax
+{
+    SYNTAX_NODE(ErrorStmt, BaseStmtSyntax)
+
+    BaseSyntax* wrapped = nullptr;
+};
+
 #pragma region Declarations
 
 // name: type (in parameter list)
@@ -460,6 +490,15 @@ struct NamespaceDeclSyntax : BaseDeclSyntax
     bool isFileLevel = false;
     ExprPtr name = nullptr;
     std::vector<DeclPtr> declarations;
+};
+
+// Wraps a declaration the parser rejected as misplaced for its enclosing context.
+// Diagnostic is already emitted; binder skips this node without re-reporting.
+struct ErrorDeclSyntax : BaseDeclSyntax
+{
+    SYNTAX_NODE(ErrorDecl, BaseDeclSyntax)
+
+    BaseSyntax* wrapped = nullptr;
 };
 
 #pragma region Root
@@ -611,6 +650,12 @@ public:
         if (node->body) node->body->accept(this);
     }
 
+    void visit(ErrorStmtSyntax* node) override
+    {
+        on_visit(node);
+        if (node->wrapped) node->wrapped->accept(this);
+    }
+
     void visit(ParameterDeclSyntax* node) override
     {
         on_visit(node);
@@ -659,6 +704,12 @@ public:
         if (node->name) node->name->accept(this);
         for (auto& decl : node->declarations)
             if (decl) decl->accept(this);
+    }
+
+    void visit(ErrorDeclSyntax* node) override
+    {
+        on_visit(node);
+        if (node->wrapped) node->wrapped->accept(this);
     }
 
     void visit(RootSyntax* node) override

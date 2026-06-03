@@ -1,0 +1,20 @@
+---
+Description: Function inside a namespace, with usage
+Expected: FN2000, FN3203
+---
+
+namespace BadNs
+{
+    fn Foo() -> i32
+    {
+        return 2
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return BadNs.Foo()
+    }
+}

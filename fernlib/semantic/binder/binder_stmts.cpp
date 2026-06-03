@@ -45,6 +45,10 @@ void Binder::bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     {
         out.push_back(fhir.expr_stmt(exprStmt, bind_value_expr(exprStmt->expression)));
     }
+    else if (stmt->is<ErrorStmtSyntax>())
+    {
+        // parser already emitted a diagnostic, drop without re-reporting
+    }
 }
 
 void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)

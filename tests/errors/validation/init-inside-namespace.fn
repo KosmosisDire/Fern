@@ -1,6 +1,6 @@
 ---
-Description: Constructor declared inside a namespace
-Expected: FN2000
+Description: Constructor inside a namespace, with usage
+Expected: FN2000, FN3202
 ---
 
 namespace BadNs
@@ -14,6 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
+        var x = BadNs()
         return 0
     }
 }

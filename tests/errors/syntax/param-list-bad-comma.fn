@@ -1,0 +1,17 @@
+---
+Description: Bad token in a parameter list, with usage
+Expected: FN1018
+---
+
+type Program
+{
+    static fn Add(a: i32, , b: i32) -> i32
+    {
+        return a + b
+    }
+
+    static fn Main -> i32
+    {
+        return Add(1, 2)
+    }
+}

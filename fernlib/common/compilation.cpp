@@ -5,7 +5,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <ast/validate.hpp>
 #include <binder/binder_pipeline.hpp>
 #include <lexer/lexer.hpp>
 #include <parser/parser.hpp>
@@ -64,12 +63,6 @@ void Compilation::compile()
         TokenWalker walker(unit->tokens);
         Parser parser(walker, arena, diag);
         unit->ast = parser.parse();
-    }
-
-    for (auto& unit : units)
-    {
-        AstValidator validator(diag);
-        validator.validate(unit->ast);
     }
 
     BinderPipeline binder(semanticContext);

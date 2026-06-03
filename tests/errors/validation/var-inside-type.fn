@@ -1,0 +1,18 @@
+---
+Description: Var inside a type body
+Expected: FN2001
+---
+
+type Holder
+{
+    init{}
+    var bad = 5
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

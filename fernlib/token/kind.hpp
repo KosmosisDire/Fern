@@ -215,6 +215,18 @@ constexpr bool is_literal(TokenKind k)
            k == TokenKind::LiteralChar;
 }
 
+constexpr bool is_expression_start(TokenKind k)
+{
+    return k == TokenKind::Identifier ||
+           k == TokenKind::LeftParen ||
+           k == TokenKind::LeftBracket ||
+           k == TokenKind::This ||
+           k == TokenKind::Plus ||
+           k == TokenKind::Minus ||
+           k == TokenKind::Not ||
+           is_literal(k);
+}
+
 constexpr bool is_operator_token(TokenKind k)
 {
     return k == TokenKind::Plus ||

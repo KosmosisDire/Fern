@@ -1,17 +1,17 @@
 ---
-Description: Field inside a namespace, with usage
+Description: Var inside a namespace, with usage
 Expected: FN2000, FN3203
 ---
 
 namespace BadNs
 {
-    orphanField: i32
+    var orphan = 5
 }
 
 type Program
 {
     static fn Main -> i32
     {
-        return BadNs.orphanField
+        return BadNs.orphan
     }
 }

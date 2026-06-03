@@ -2,6 +2,8 @@
 
 #include <format>
 
+#include <parser/errors.hpp>
+
 namespace Fern
 {
 
@@ -126,6 +128,7 @@ Modifier Parser::parse_modifiers(std::vector<Token>& outTokens)
     return mods;
 }
 
+// TODO: we need to make a builder for AST nodes to supply helpers and reduce boilerplate
 void Parser::attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs)
 {
     decl->modifiers = decl->modifiers | mods;
@@ -138,6 +141,7 @@ void Parser::attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Sp
     {
         decl->span = decl->attributes.front()->span.merge(decl->span);
     }
+    validate_modifier(decl, diag);
 }
 
 
@@ -197,7 +201,7 @@ RootSyntax* Parser::parse()
         auto* decl = parse_declaration();
         if (decl)
         {
-            program->declarations.push_back(decl);
+            program->declarations.push_back(expect_namespace_member(decl, diag, arena));
         }
         skip_statement_terminators(walker);
     }
@@ -455,7 +459,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
             auto* member = parse_declaration();
             if (member)
             {
-                typeDecl->declarations.push_back(member);
+                typeDecl->declarations.push_back(expect_type_member(member, diag, arena));
             }
             skip_statement_terminators(walker);
         }
@@ -531,19 +535,27 @@ void Parser::parse_parameter_list(ParameterListSyntax& out, Span& span)
 
     while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
     {
-        if (is_statement_keyword(walker.current().kind))
+        if (!walker.check(TokenKind::Identifier))
         {
+            diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected parameter name");
+            while (!walker.check(TokenKind::Comma) &&
+                   !walker.check(TokenKind::RightParen) &&
+                   !walker.is_at_end())
+            {
+                walker.advance();
+            }
+            if (walker.check(TokenKind::Comma))
+            {
+                walker.advance();
+                skip_newlines(walker);
+                continue;
+            }
             break;
         }
 
-        auto* param = parse_parameter_decl();
-        if (param)
+        if (auto* param = parse_parameter_decl())
         {
             out.list.push_back(param);
-        }
-        else
-        {
-            break;
         }
         skip_newlines(walker);
 
@@ -795,7 +807,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
             auto* decl = parse_declaration();
             if (decl)
             {
-                nsDecl->declarations.push_back(decl);
+                nsDecl->declarations.push_back(expect_namespace_member(decl, diag, arena));
             }
             skip_statement_terminators(walker);
         }
@@ -813,7 +825,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
             auto* decl = parse_declaration();
             if (decl)
             {
-                nsDecl->declarations.push_back(decl);
+                nsDecl->declarations.push_back(expect_namespace_member(decl, diag, arena));
                 span = span.merge(decl->span);
             }
             skip_statement_terminators(walker);
@@ -846,12 +858,6 @@ BaseStmtSyntax* Parser::parse_statement()
         return parse_while();
     }
 
-    if (walker.check(TokenKind::At) || is_modifier(walker.current().kind) ||
-        is_declaration_keyword(walker.current().kind))
-    {
-        return parse_declaration();
-    }
-
     if (walker.check(TokenKind::Var))
     {
         return parse_variable_decl();
@@ -862,21 +868,46 @@ BaseStmtSyntax* Parser::parse_statement()
         return parse_block();
     }
 
-    auto* expr = parse_expression();
-    if (expr)
+    if (walker.check(TokenKind::At) || is_modifier(walker.current().kind) ||
+        is_declaration_keyword(walker.current().kind))
     {
-        auto* stmt = arena.alloc<ExpressionStmtSyntax>();
-        stmt->expression = expr;
-        stmt->span = expr->span;
-        return stmt;
+        auto* result = expect_function_body_stmt(parse_declaration(), diag, arena);
+        if (auto* var = result ? result->as<VariableDeclSyntax>() : nullptr)
+        {
+            validate_local(var, diag);
+        }
+        return result;
+    }
+
+    if (walker.check(TokenKind::Identifier) && walker.peek(1).kind == TokenKind::Colon)
+    {
+        if (auto* field = parse_field_decl())
+        {
+            return make_error_stmt(field, DiagnosticCode::Err_BadFunctionBodyContent, diag, arena);
+        }
+    }
+
+    if (is_expression_start(walker.current().kind))
+    {
+        if (auto* expr = parse_expression())
+        {
+            auto* stmt = arena.alloc<ExpressionStmtSyntax>();
+            stmt->expression = expr;
+            stmt->span = expr->span;
+            return stmt;
+        }
     }
 
     if (!is_terminator(walker.current().kind) &&
         !walker.check(TokenKind::RightBrace) &&
         !walker.is_at_end())
     {
-        diag.report(DiagnosticCode::Err_UnexpectedToken, walker.current().span, walker.current().lexeme);
+        Token bad = walker.current();
+        diag.report(DiagnosticCode::Err_UnexpectedToken, bad.span, bad.lexeme);
         walker.advance();
+        auto* err = arena.alloc<ErrorStmtSyntax>();
+        err->span = bad.span;
+        return err;
     }
 
     return nullptr;
