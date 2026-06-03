@@ -5,7 +5,7 @@ Expected: FN3301
 
 type Program
 {
-    fn Bad(cond: bool) -> i32
+    static fn Bad(cond: bool) -> i32
     {
         if cond
         {

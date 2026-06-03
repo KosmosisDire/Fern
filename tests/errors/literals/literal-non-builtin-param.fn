@@ -12,7 +12,10 @@ type BadLiteral
 {
     init{}
 
-    literal also_nope(value: Other) {}
+    literal also_nope(value: Other)
+    {
+        return BadLiteral{}
+    }
 }
 
 type Program

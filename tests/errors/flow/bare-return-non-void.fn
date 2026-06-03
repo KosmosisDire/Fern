@@ -5,7 +5,7 @@ Expected: FN3301
 
 type Program
 {
-    fn Bad -> i32
+    static fn Bad -> i32
     {
         return
     }

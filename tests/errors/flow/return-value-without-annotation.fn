@@ -5,7 +5,7 @@ Expected: FN3300
 
 type Program
 {
-    fn Bad
+    static fn Bad
     {
         return 5
     }

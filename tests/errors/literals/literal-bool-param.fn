@@ -7,7 +7,10 @@ type BadLiteral
 {
     init{}
 
-    literal nope(value: bool) {}
+    literal nope(value: bool)
+    {
+        return BadLiteral{}
+    }
 }
 
 type Program

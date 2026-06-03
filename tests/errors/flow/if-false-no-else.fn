@@ -5,7 +5,7 @@ Expected: FN4001
 
 type Program
 {
-    fn Bad -> i32
+    static fn Bad -> i32
     {
         if false
         {
