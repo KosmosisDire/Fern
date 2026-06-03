@@ -285,14 +285,14 @@ struct FhirLocalRefExpr : FhirExpr
 {
     FHIR_NODE(FhirLocalRefExpr, FhirExpr)
 
-    LocalSymbol* local = nullptr;
+    LocalSymbol* symbol = nullptr;
 };
 
 struct FhirParamRefExpr : FhirExpr
 {
     FHIR_NODE(FhirParamRefExpr, FhirExpr)
 
-    ParameterSymbol* parameter = nullptr;
+    ParameterSymbol* symbol = nullptr;
 };
 
 struct FhirFieldRefExpr : FhirExpr
@@ -300,7 +300,7 @@ struct FhirFieldRefExpr : FhirExpr
     FHIR_NODE(FhirFieldRefExpr, FhirExpr)
 
     FhirExpr* thisRef = nullptr;
-    FieldSymbol* field = nullptr;
+    FieldSymbol* symbol = nullptr;
 
     void visit_children(FhirVisitor* v) override
     {

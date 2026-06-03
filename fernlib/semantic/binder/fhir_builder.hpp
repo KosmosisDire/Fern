@@ -37,7 +37,7 @@ struct FhirBuilder
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = local ? local->type : nullptr;
-        node->local = local;
+        node->symbol = local;
         return node;
     }
 
@@ -47,7 +47,7 @@ struct FhirBuilder
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = param ? param->type : nullptr;
-        node->parameter = param;
+        node->symbol = param;
         return node;
     }
 
@@ -58,7 +58,7 @@ struct FhirBuilder
         node->span = syntax ? syntax->span : Span{};
         node->type = field ? field->type : nullptr;
         node->thisRef = thisRef;
-        node->field = field;
+        node->symbol = field;
         return node;
     }
 

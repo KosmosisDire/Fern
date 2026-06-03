@@ -46,17 +46,17 @@ struct HoverFormatter : FhirVisitor
 
     void visit(FhirLocalRefExpr* n) override
     {
-        set_local_or_type(n->local);
+        set_local_or_type(n->symbol);
     }
 
     void visit(FhirParamRefExpr* n) override
     {
-        set_signature(format_parameter(n->parameter, fmt));
+        set_signature(format_parameter(n->symbol, fmt));
     }
 
     void visit(FhirFieldRefExpr* n) override
     {
-        set_signature(format_field(n->field, fmt));
+        set_signature(format_field(n->symbol, fmt));
     }
 
     void visit(FhirThisExpr* n) override

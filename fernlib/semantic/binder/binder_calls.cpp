@@ -188,21 +188,21 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     if (auto* lref = callee->as<FhirLocalRefExpr>())
     {
         std::string_view name = "?";
-        if (lref->local) name = lref->local->name;
+        if (lref->symbol) name = lref->symbol->name;
         diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "local", "method");
         return fhir.error_expr(expr, nullptr, lref);
     }
     if (auto* pref = callee->as<FhirParamRefExpr>())
     {
         std::string_view name = "?";
-        if (pref->parameter) name = pref->parameter->name;
+        if (pref->symbol) name = pref->symbol->name;
         diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "parameter", "method");
         return fhir.error_expr(expr, nullptr, pref);
     }
     if (auto* fref = callee->as<FhirFieldRefExpr>())
     {
         std::string_view name = "?";
-        if (fref->field) name = fref->field->name;
+        if (fref->symbol) name = fref->symbol->name;
         diag.report(DiagnosticCode::Err_BadSymbolKind, expr->callee->span, name, "field", "method");
         return fhir.error_expr(expr, nullptr, fref);
     }

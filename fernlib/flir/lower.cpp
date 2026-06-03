@@ -174,18 +174,18 @@ FlirExpr* FlirLowerer::lower_literal(FhirLiteralExpr* expr)
 
 FlirExpr* FlirLowerer::lower_local_ref(FhirLocalRefExpr* expr)
 {
-    return builder.load_local(expr->syntax, flir.lookup_local_symbol(expr->local));
+    return builder.load_local(expr->syntax, flir.lookup_local_symbol(expr->symbol));
 }
 
 FlirExpr* FlirLowerer::lower_param_ref(FhirParamRefExpr* expr)
 {
-    return builder.load_local(expr->syntax, flir.lookup_param_symbol(expr->parameter));
+    return builder.load_local(expr->syntax, flir.lookup_param_symbol(expr->symbol));
 }
 
 FlirExpr* FlirLowerer::lower_field_ref(FhirFieldRefExpr* expr)
 {
     auto* base = lower_expr(expr->thisRef);
-    return builder.load_field(expr->syntax, base, expr->field);
+    return builder.load_field(expr->syntax, base, expr->symbol);
 }
 
 FlirExpr* FlirLowerer::lower_this(FhirThisExpr* expr)
@@ -304,13 +304,13 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
         sideEffects.push_back(builder.store_local(syntax, tmpRhs, loweredValue));
 
-        auto* readField = builder.load_field(syntax, tmpObj ? builder.load_local(syntax, tmpObj) : nullptr, field->field);
+        auto* readField = builder.load_field(syntax, tmpObj ? builder.load_local(syntax, tmpObj) : nullptr, field->symbol);
         auto* binResult = builder.call_or_intrinsic(syntax, type, binOp->op, binOp->method, { readField, builder.load_local(syntax, tmpRhs) });
         sideEffects.push_back(builder.store_local(syntax, tmpVal, binResult));
 
         sideEffects.push_back(builder.store_field(syntax,
             tmpObj ? builder.load_local(syntax, tmpObj) : nullptr,
-            field->field,
+            field->symbol,
             builder.load_local(syntax, tmpVal)));
 
         return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmpVal));
@@ -353,18 +353,18 @@ void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syn
 
     if (auto* local = target->as<FhirLocalRefExpr>())
     {
-        out.push_back(builder.store_local(syntax, flir.lookup_local_symbol(local->local), value));
+        out.push_back(builder.store_local(syntax, flir.lookup_local_symbol(local->symbol), value));
         return;
     }
     if (auto* param = target->as<FhirParamRefExpr>())
     {
-        out.push_back(builder.store_local(syntax, flir.lookup_param_symbol(param->parameter), value));
+        out.push_back(builder.store_local(syntax, flir.lookup_param_symbol(param->symbol), value));
         return;
     }
     if (auto* field = target->as<FhirFieldRefExpr>())
     {
         auto* base = lower_expr(field->thisRef);
-        out.push_back(builder.store_field(syntax, base, field->field, value));
+        out.push_back(builder.store_field(syntax, base, field->symbol, value));
         return;
     }
     if (auto* idx = target->as<FhirIndexExpr>(); idx && idx->setter)

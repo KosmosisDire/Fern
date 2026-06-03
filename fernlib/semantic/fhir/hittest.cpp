@@ -129,9 +129,9 @@ FhirHitResult FhirHitTest::find(FhirNode* root, uint32_t line, uint32_t col)
             }
         }
     }
-    else if (auto* fieldRef = result.node->as<FhirFieldRefExpr>())
+    else if (auto* field = result.node->as<FhirFieldRefExpr>())
     {
-        setIfPrefix(fieldRef->syntax, fieldRef->field);
+        setIfPrefix(field->syntax, field->symbol);
     }
 
     return result;

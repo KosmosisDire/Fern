@@ -66,18 +66,18 @@ void FhirPrettyFormatter::visit(FhirLiteralExpr* node)
 
 void FhirPrettyFormatter::visit(FhirLocalRefExpr* node)
 {
-    out << (node->local ? node->local->name : "?");
+    out << (node->symbol ? node->symbol->name : "?");
 }
 
 void FhirPrettyFormatter::visit(FhirParamRefExpr* node)
 {
-    out << (node->parameter ? node->parameter->name : "?");
+    out << (node->symbol ? node->symbol->name : "?");
 }
 
 void FhirPrettyFormatter::visit(FhirFieldRefExpr* node)
 {
     write_child(node->thisRef);
-    out << "." << (node->field ? node->field->name : "?");
+    out << "." << (node->symbol ? node->symbol->name : "?");
 }
 
 void FhirPrettyFormatter::visit(FhirThisExpr* node)
@@ -422,24 +422,24 @@ void FhirDebugFormatter::visit(FhirLiteralExpr* node)
 
 void FhirDebugFormatter::visit(FhirLocalRefExpr* node)
 {
-    std::string local = node->local
-        ? std::format("\"{}\": {}", node->local->name, format_type(node->local->type))
+    std::string local = node->symbol
+        ? std::format("\"{}\": {}", node->symbol->name, format_type(node->symbol->type))
         : std::string("null");
     begin_node(node, std::format("local: {}, {}", local, type_attr(node)));
 }
 
 void FhirDebugFormatter::visit(FhirParamRefExpr* node)
 {
-    std::string param = node->parameter
-        ? std::format("\"{}\": {}", node->parameter->name, format_type(node->parameter->type))
+    std::string param = node->symbol
+        ? std::format("\"{}\": {}", node->symbol->name, format_type(node->symbol->type))
         : std::string("null");
     begin_node(node, std::format("param: {}, {}", param, type_attr(node)));
 }
 
 void FhirDebugFormatter::visit(FhirFieldRefExpr* node)
 {
-    std::string field = node->field
-        ? std::format("\"{}\": {}", symbol_label(node->field), format_type(node->field->type))
+    std::string field = node->symbol
+        ? std::format("\"{}\": {}", symbol_label(node->symbol), format_type(node->symbol->type))
         : std::string("null");
     begin_node(node, std::format("field: {}, {}", field, type_attr(node)));
     open_block();
