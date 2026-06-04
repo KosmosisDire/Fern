@@ -11,6 +11,7 @@ Parser::Parser(TokenWalker& walker, AllocArena& arena, Diagnostics& diag)
     : walker(walker)
     , arena(arena)
     , diag(diag)
+    , builder(arena)
 {
 }
 
@@ -98,10 +99,7 @@ void Parser::parse_attributes(std::vector<AttributeSyntax*>& out)
         auto* value = parse_postfix();
         if (value)
         {
-            auto* attr = arena.alloc<AttributeSyntax>();
-            attr->value = value;
-            attr->span = span.merge(value->span);
-            out.push_back(attr);
+            out.push_back(builder.attribute(value, span.merge(value->span)));
         }
         else
         {
@@ -127,23 +125,6 @@ Modifier Parser::parse_modifiers(std::vector<Token>& outTokens)
     }
     return mods;
 }
-
-// TODO: we need to make a builder for AST nodes to supply helpers and reduce boilerplate
-void Parser::attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs)
-{
-    decl->modifiers = decl->modifiers | mods;
-    decl->attributes = std::move(attrs);
-    if (mods != Modifier::None)
-    {
-        decl->span = modSpan.merge(decl->span);
-    }
-    if (!decl->attributes.empty())
-    {
-        decl->span = decl->attributes.front()->span.merge(decl->span);
-    }
-    validate_modifier(decl, diag);
-}
-
 
 static bool scan_type_arg_list(const TokenWalker& walker, size_t offset)
 {
@@ -285,8 +266,8 @@ BaseDeclSyntax* Parser::parse_declaration()
 
     if (decl)
     {
-        decl->modifierTokens = std::move(modTokens);
-        attach_declaration_metadata(decl, mods, modSpan, attrs);
+        builder.attach_metadata(decl, mods, modSpan, modTokens, attrs);
+        validate_modifier(decl, diag);
     }
     return decl;
 }
@@ -340,10 +321,7 @@ VariableDeclSyntax* Parser::parse_variable_decl()
         walker.advance();
         skip_newlines(walker);
         var->type = parse_type();
-        if (var->type)
-        {
-            span = span.merge(var->type->span);
-        }
+        builder.merge_if(span, var->type);
     }
 
     skip_newlines(walker);
@@ -391,10 +369,7 @@ ParameterDeclSyntax* Parser::parse_parameter_decl()
         walker.advance();
         skip_newlines(walker);
         param->type = parse_type();
-        if (param->type)
-        {
-            span = span.merge(param->type->span);
-        }
+        builder.merge_if(span, param->type);
     }
 
     param->span = span;
@@ -442,10 +417,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
             }
         }
 
-        if (auto* token = expect(TokenKind::Greater, "expected '>' after type parameters"))
-        {
-            span = span.merge(token->span);
-        }
+        builder.merge_if(span, expect(TokenKind::Greater, "expected '>' after type parameters"));
         skip_newlines(walker);
     }
 
@@ -464,10 +436,7 @@ TypeDeclSyntax* Parser::parse_type_decl()
             skip_statement_terminators(walker);
         }
 
-        if (auto* token = expect(TokenKind::RightBrace, "expected '}' after type body"))
-        {
-            span = span.merge(token->span);
-        }
+        builder.merge_if(span, expect(TokenKind::RightBrace, "expected '}' after type body"));
     }
     else
     {
@@ -498,10 +467,7 @@ FieldDeclSyntax* Parser::parse_field_decl()
         walker.advance();
         skip_newlines(walker);
         field->type = parse_type();
-        if (field->type)
-        {
-            span = span.merge(field->type->span);
-        }
+        builder.merge_if(span, field->type);
     }
 
     if (walker.check(TokenKind::Assign))
@@ -509,10 +475,7 @@ FieldDeclSyntax* Parser::parse_field_decl()
         walker.advance();
         skip_newlines(walker);
         field->initializer = parse_expression();
-        if (field->initializer)
-        {
-            span = span.merge(field->initializer->span);
-        }
+        builder.merge_if(span, field->initializer);
     }
 
     field->span = span;
@@ -589,10 +552,7 @@ TypeExprSyntax* Parser::parse_return_type(Span& span)
     skip_newlines(walker);
 
     auto* type = parse_type();
-    if (type)
-    {
-        span = span.merge(type->span);
-    }
+    builder.merge_if(span, type);
     return type;
 }
 
@@ -781,10 +741,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
 
     if (auto* name = expect(TokenKind::Identifier, "expected name after 'namespace'"))
     {
-        auto* ident = arena.alloc<IdentifierExprSyntax>();
-        ident->name = *name;
-        ident->span = name->span;
-        BaseExprSyntax* nameExpr = ident;
+        BaseExprSyntax* nameExpr = builder.identifier(*name);
 
         while (walker.check(TokenKind::Dot))
         {
@@ -812,10 +769,7 @@ NamespaceDeclSyntax* Parser::parse_namespace_decl()
             skip_statement_terminators(walker);
         }
 
-        if (auto* token = expect(TokenKind::RightBrace, "expected '}' after namespace body"))
-        {
-            span = span.merge(token->span);
-        }
+        builder.merge_if(span, expect(TokenKind::RightBrace, "expected '}' after namespace body"));
     }
     else
     {
@@ -891,10 +845,7 @@ BaseStmtSyntax* Parser::parse_statement()
     {
         if (auto* expr = parse_expression())
         {
-            auto* stmt = arena.alloc<ExpressionStmtSyntax>();
-            stmt->expression = expr;
-            stmt->span = expr->span;
-            return stmt;
+            return builder.expr_stmt(expr);
         }
     }
 
@@ -905,9 +856,7 @@ BaseStmtSyntax* Parser::parse_statement()
         Token bad = walker.current();
         diag.report(DiagnosticCode::Err_UnexpectedToken, bad.span, bad.lexeme);
         walker.advance();
-        auto* err = arena.alloc<ErrorStmtSyntax>();
-        err->span = bad.span;
-        return err;
+        return builder.error_stmt(bad.span);
     }
 
     return nullptr;
@@ -923,10 +872,7 @@ ReturnStmtSyntax* Parser::parse_return_stmt()
     if (!is_at_statement_boundary(walker))
     {
         stmt->value = parse_expression();
-        if (stmt->value)
-        {
-            span = span.merge(stmt->value->span);
-        }
+        builder.merge_if(span, stmt->value);
     }
 
     stmt->span = span;
@@ -952,23 +898,11 @@ BaseExprSyntax* Parser::parse_assignment()
     auto assignOp = to_assign_op(walker.current().kind);
     if (assignOp)
     {
-        auto* assign = arena.alloc<AssignmentExprSyntax>();
-        assign->target = left;
-        assign->op = *assignOp;
-
         walker.advance();
         skip_newlines(walker);
 
-        assign->value = parse_assignment();
-
-        Span span = left->span;
-        if (assign->value)
-        {
-            span = span.merge(assign->value->span);
-        }
-        assign->span = span;
-
-        return assign;
+        auto* value = parse_assignment();
+        return builder.assignment(left, *assignOp, value);
     }
 
     return left;
@@ -984,12 +918,9 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
 
     if (walker.check(TokenKind::LiteralSuffix))
     {
-        auto* suffixExpr = arena.alloc<LiteralSuffixExprSyntax>();
-        suffixExpr->operand = left;
-        suffixExpr->suffix = walker.current();
-        suffixExpr->span = left->span.merge(walker.current().span);
+        Token suffixTok = walker.current();
         walker.advance();
-        left = suffixExpr;
+        left = builder.literal_suffix(left, suffixTok);
     }
 
     while (true)
@@ -1045,19 +976,7 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
                   Fern::format(opKind));
         }
 
-        auto* binary = arena.alloc<BinaryExprSyntax>();
-        binary->left = left;
-        binary->op = *binaryOp;
-        binary->right = right;
-
-        Span span = left->span;
-        if (right)
-        {
-            span = span.merge(right->span);
-        }
-        binary->span = span;
-
-        left = binary;
+        left = builder.binary(left, *binaryOp, right);
     }
 
     return left;
@@ -1079,24 +998,13 @@ BaseExprSyntax* Parser::parse_unary()
             diag.report(DiagnosticCode::Err_UnaryOpDetached, walker.current().span);
         }
 
-        Span opSpan = walker.current().span;
+        Span span = walker.current().span;
         walker.advance();
         skip_newlines(walker);
 
         auto* operand = parse_unary();
-
-        auto* unary = arena.alloc<UnaryExprSyntax>();
-        unary->op = *unaryOp;
-        unary->operand = operand;
-
-        Span span = opSpan;
-        if (operand)
-        {
-            span = span.merge(operand->span);
-        }
-        unary->span = span;
-
-        return unary;
+        builder.merge_if(span, operand);
+        return builder.unary(*unaryOp, operand, span);
     }
 
     return parse_postfix();
@@ -1140,10 +1048,7 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     }
 
     Span span = callee->span;
-    if (auto* token = expect(TokenKind::RightParen, "expected ')' after arguments"))
-    {
-        span = span.merge(token->span);
-    }
+    builder.merge_if(span, expect(TokenKind::RightParen, "expected ')' after arguments"));
     call->span = span;
 
     return call;
@@ -1180,8 +1085,6 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
         if ((expr->is<IdentifierExprSyntax>() || expr->is<MemberAccessExprSyntax>()) &&
             walker.check(TokenKind::Colon))
         {
-            auto* fieldInit = arena.alloc<FieldInitSyntax>();
-            fieldInit->target = expr;
             Span fieldSpan = expr->span;
 
             walker.advance();
@@ -1193,28 +1096,19 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
                 is_statement_keyword(walker.current().kind))
             {
                 diag.report(DiagnosticCode::Err_ExpectedValueAfterColon, walker.current().span);
-                fieldInit->span = fieldSpan;
-                out.push_back(fieldInit);
+                out.push_back(builder.field_init(expr, nullptr, fieldSpan));
                 advance_past_field(walker);
                 expect_progress(cp);
                 continue;
             }
 
-            fieldInit->value = parse_expression();
-            if (fieldInit->value)
-            {
-                fieldSpan = fieldSpan.merge(fieldInit->value->span);
-            }
-
-            fieldInit->span = fieldSpan;
-            out.push_back(fieldInit);
+            auto* value = parse_expression();
+            builder.merge_if(fieldSpan, value);
+            out.push_back(builder.field_init(expr, value, fieldSpan));
         }
         else
         {
-            auto* childStmt = arena.alloc<ExpressionStmtSyntax>();
-            childStmt->expression = expr;
-            childStmt->span = expr->span;
-            out.push_back(childStmt);
+            out.push_back(builder.expr_stmt(expr));
         }
 
         skip_newlines(walker);
@@ -1240,10 +1134,7 @@ InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
 
     parse_initializer_members(init->members);
 
-    if (auto* token = expect(TokenKind::RightBrace, "expected '}' after initializer list"))
-    {
-        span = span.merge(token->span);
-    }
+    builder.merge_if(span, expect(TokenKind::RightBrace, "expected '}' after initializer list"));
 
     init->span = span;
 
@@ -1254,15 +1145,9 @@ MemberAccessExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
 {
     walker.advance();
 
-    auto* memberAccess = arena.alloc<MemberAccessExprSyntax>();
-    memberAccess->left = left;
-
     if (walker.check(TokenKind::Identifier))
     {
-        auto* right = parse_simple_name();
-        memberAccess->right = right;
-        memberAccess->span = left->span.merge(right->span);
-        return memberAccess;
+        return builder.member_access(left, parse_simple_name());
     }
 
     diag.report(DiagnosticCode::Err_ExpectedMemberAfterDot, walker.current().span);
@@ -1272,8 +1157,7 @@ MemberAccessExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
         walker.advance();
     }
 
-    memberAccess->span = left->span;
-    return memberAccess;
+    return builder.member_access(left, nullptr);
 }
 
 BaseExprSyntax* Parser::parse_postfix()
@@ -1307,17 +1191,11 @@ BaseExprSyntax* Parser::parse_postfix()
             walker.advance();
             skip_newlines(walker);
 
-            auto* indexExpr = arena.alloc<IndexExprSyntax>();
-            indexExpr->object = left;
-            indexExpr->index = parse_expression();
+            auto* indexValue = parse_expression();
             skip_newlines(walker);
 
-            if (auto* rb = expect(TokenKind::RightBracket, "expected ']' after index expression"))
-            {
-                bracketSpan = bracketSpan.merge(rb->span);
-            }
-            indexExpr->span = bracketSpan;
-            left = indexExpr;
+            builder.merge_if(bracketSpan, expect(TokenKind::RightBracket, "expected ']' after index expression"));
+            left = builder.index(left, indexValue, bracketSpan);
         }
         else if (walker.check(TokenKind::LeftBrace) && !inCondition)
         {
@@ -1342,11 +1220,9 @@ BaseExprSyntax* Parser::parse_primary()
 
     if (is_literal(walker.current().kind))
     {
-        auto* lit = arena.alloc<LiteralExprSyntax>();
-        lit->token = walker.current();
-        lit->span = lit->token.span;
+        Token tok = walker.current();
         walker.advance();
-        return lit;
+        return builder.literal(tok);
     }
 
     if (walker.check(TokenKind::LeftParen))
@@ -1378,15 +1254,9 @@ BaseExprSyntax* Parser::parse_primary()
             walker.advance();
             span = span.merge(closingSpan);
 
-            auto* cast = arena.alloc<CastExprSyntax>();
-            cast->type = maybeType;
-            cast->operand = parse_unary();
-            cast->span = span;
-            if (cast->operand)
-            {
-                cast->span = cast->span.merge(cast->operand->span);
-            }
-            return cast;
+            auto* operand = parse_unary();
+            builder.merge_if(span, operand);
+            return builder.cast(maybeType, operand, span);
         }
 
         walker.restore(tokenCP);
@@ -1401,24 +1271,15 @@ BaseExprSyntax* Parser::parse_primary()
         inCondition = wasInCondition;
         skip_newlines(walker);
 
-        if (auto* token = expect(TokenKind::RightParen, "expected ')' after expression"))
-        {
-            span = span.merge(token->span);
-        }
-
-        auto* paren = arena.alloc<ParenExprSyntax>();
-        paren->expression = inner;
-        paren->span = span;
-        return paren;
+        builder.merge_if(span, expect(TokenKind::RightParen, "expected ')' after expression"));
+        return builder.paren(inner, span);
     }
 
     if (walker.check(TokenKind::This))
     {
-        auto* thisExpr = arena.alloc<ThisExprSyntax>();
-        thisExpr->token = walker.current();
-        thisExpr->span = walker.current().span;
+        Token tok = walker.current();
         walker.advance();
-        return thisExpr;
+        return builder.this_expr(tok);
     }
 
     if (walker.check(TokenKind::LeftBracket))
@@ -1449,10 +1310,7 @@ BaseExprSyntax* Parser::parse_primary()
             }
         }
 
-        if (auto* token = expect(TokenKind::RightBracket, "expected ']' after array literal"))
-        {
-            span = span.merge(token->span);
-        }
+        builder.merge_if(span, expect(TokenKind::RightBracket, "expected ']' after array literal"));
         arrayLit->span = span;
 
         return arrayLit;
@@ -1561,10 +1419,7 @@ BlockSyntax* Parser::parse_block()
         expect_progress(cp);
     }
 
-    if (auto* token = expect(TokenKind::RightBrace, "expected '}' after block"))
-    {
-        span = span.merge(token->span);
-    }
+    builder.merge_if(span, expect(TokenKind::RightBrace, "expected '}' after block"));
     block->span = span;
 
     return block;
@@ -1614,19 +1469,13 @@ SimpleNameExprSyntax* Parser::parse_simple_name()
             }
         }
 
-        if (auto* token = expect(TokenKind::Greater, "expected '>' after type arguments"))
-        {
-            span = span.merge(token->span);
-        }
+        builder.merge_if(span, expect(TokenKind::Greater, "expected '>' after type arguments"));
 
         gen->span = span;
         return gen;
     }
 
-    auto* ident = arena.alloc<IdentifierExprSyntax>();
-    ident->name = nameTok;
-    ident->span = span;
-    return ident;
+    return builder.identifier(nameTok);
 }
 
 TypeExprSyntax* Parser::parse_type()
@@ -1649,10 +1498,7 @@ TypeExprSyntax* Parser::parse_type()
         Span closingSpan = walker.current().span;
         walker.advance();
 
-        auto* arrType = arena.alloc<ArrayTypeExprSyntax>();
-        arrType->elementType = type;
-        arrType->span = type->span.merge(closingSpan);
-        type = arrType;
+        type = builder.array_type(type, type->span.merge(closingSpan));
     }
 
     return type;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ast/ast.hpp>
+#include <ast/builder.hpp>
 #include <arena.hpp>
 #include <common/diagnostic.hpp>
 #include <token/walker.hpp>
@@ -20,7 +21,6 @@ private:
     void expect_progress(TokenWalker::Checkpoint cp);
     Modifier parse_modifiers(std::vector<Token>& outTokens);
     void parse_attributes(std::vector<AttributeSyntax*>& out);
-    void attach_declaration_metadata(BaseDeclSyntax* decl, Modifier mods, Span modSpan, std::vector<AttributeSyntax*>& attrs);
 
     // Declarations
     BaseDeclSyntax* parse_declaration();
@@ -66,6 +66,7 @@ private:
     TokenWalker& walker;
     AllocArena& arena;
     Diagnostics& diag;
+    AstBuilder builder;
     bool inCondition = false;
 };
 
