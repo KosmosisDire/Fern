@@ -11,6 +11,10 @@
             "patterns": [
                 {
                     "name": "comment.block.fern",
+                    "match": "^[ \\t]*---[ \\t]+.+?[ \\t]+---[ \\t]*$"
+                },
+                {
+                    "name": "comment.block.fern",
                     "begin": "---",
                     "end": "---"
                 },
