@@ -59,7 +59,7 @@ public:
     Symbol* lookup(std::initializer_list<std::string_view> path);
     Symbol* lookup_from(Symbol* start, std::span<const std::string_view> path);
 
-    std::string format() const;
+    std::string format(std::span<const uint32_t> dumpFiles = {}) const;
 
 private:
     std::vector<std::unique_ptr<Symbol>> allSymbols;

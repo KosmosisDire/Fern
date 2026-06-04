@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -101,7 +102,7 @@ std::string_view kind_noun(SymbolKind kind);
 
 std::string format_symbol(Symbol* sym, const SymbolFormat& fmt = SymbolFormat::diagnostic());
 std::string format_type(TypeSymbol* type, const SymbolFormat& fmt = SymbolFormat::diagnostic());
-std::string format_namespace(NamespaceSymbol* ns, const SymbolFormat& fmt = SymbolFormat::diagnostic());
+std::string format_namespace(NamespaceSymbol* ns, const SymbolFormat& fmt = SymbolFormat::diagnostic(), std::span<const uint32_t> dumpFiles = {});
 std::string format_method(MethodSymbol* method, const SymbolFormat& fmt = SymbolFormat::diagnostic());
 std::string format_field(FieldSymbol* field, const SymbolFormat& fmt = SymbolFormat::diagnostic());
 std::string format_local(LocalSymbol* local, const SymbolFormat& fmt = SymbolFormat::diagnostic());

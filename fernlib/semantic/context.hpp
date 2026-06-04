@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -51,7 +53,7 @@ struct SemanticContext
     TypeSymbol* resolve_type_name(Token name);
     TypeSymbol* resolve_type_name(std::string_view alias);
 
-    std::string format() const;
+    std::string format(std::span<const uint32_t> dumpFiles = {}) const;
 
 private:
     FhirMethod* bind_method(MethodSymbol* method);

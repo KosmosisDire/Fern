@@ -1,8 +1,10 @@
 #include "fmt.hpp"
 
+#include <ast/ast.hpp>
 #include <semantic/builtin_aliases.hpp>
 #include <semantic/symbol/symbol.hpp>
 
+#include <algorithm>
 #include <format>
 #include <sstream>
 #include <string>
@@ -319,7 +321,33 @@ std::string format_field(FieldSymbol* field, const SymbolFormat& fmt)
 
 #pragma region Namespace
 
-std::string format_namespace(NamespaceSymbol* ns, const SymbolFormat& fmt)
+namespace
+{
+
+// With a dump whitelist active, a symbol is hidden when its declaration file is
+// not on the list. An empty whitelist shows everything.
+bool file_hidden(std::span<const uint32_t> dumpFiles, Symbol* sym)
+{
+    if (dumpFiles.empty()) return false;
+    if (!sym || !sym->syntax) return true;
+    uint32_t fileId = sym->syntax->span.fileId;
+    return std::find(dumpFiles.begin(), dumpFiles.end(), fileId) == dumpFiles.end();
+}
+
+// True when the namespace or any descendant holds a type that is not hidden.
+bool namespace_has_visible(NamespaceSymbol* ns, std::span<const uint32_t> dumpFiles)
+{
+    if (!ns) return false;
+    for (auto* type : ns->types)
+        if (!file_hidden(dumpFiles, type)) return true;
+    for (const auto& [name, sub] : ns->namespaces)
+        if (namespace_has_visible(sub, dumpFiles)) return true;
+    return false;
+}
+
+}
+
+std::string format_namespace(NamespaceSymbol* ns, const SymbolFormat& fmt, std::span<const uint32_t> dumpFiles)
 {
     if (!ns) return "?";
 
@@ -336,10 +364,12 @@ std::string format_namespace(NamespaceSymbol* ns, const SymbolFormat& fmt)
         inner.indent = fmt.indent + 4;
         for (const auto& [name, sub] : ns->namespaces)
         {
-            ss << format_namespace(sub, inner) << "\n";
+            if (!dumpFiles.empty() && !namespace_has_visible(sub, dumpFiles)) continue;
+            ss << format_namespace(sub, inner, dumpFiles) << "\n";
         }
         for (auto* type : ns->types)
         {
+            if (file_hidden(dumpFiles, type)) continue;
             ss << format_type(type, inner) << "\n";
         }
         ss << pad << "}";

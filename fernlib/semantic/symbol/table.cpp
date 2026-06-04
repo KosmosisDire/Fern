@@ -441,14 +441,14 @@ Symbol* SymbolTable::lookup_from(Symbol* start, std::span<const std::string_view
 
 #pragma region Format
 
-std::string SymbolTable::format() const
+std::string SymbolTable::format(std::span<const uint32_t> dumpFiles) const
 {
     std::string result;
     result += "---- Symbols ----\n";
 
     if (globalNamespace)
     {
-        result += format_namespace(globalNamespace, SymbolFormat::tree_dump());
+        result += format_namespace(globalNamespace, SymbolFormat::tree_dump(), dumpFiles);
         result += "\n";
     }
 

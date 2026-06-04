@@ -42,9 +42,9 @@ TypeSymbol* SemanticContext::resolve_type_name(Token name)
     return nullptr;
 }
 
-std::string SemanticContext::format() const
+std::string SemanticContext::format(std::span<const uint32_t> dumpFiles) const
 {
-    return symbols.format();
+    return symbols.format(dumpFiles);
 }
 
 Binder& SemanticContext::namespace_binder(NamespaceSymbol* ns)
