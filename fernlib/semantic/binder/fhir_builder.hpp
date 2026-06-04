@@ -168,6 +168,20 @@ struct FhirBuilder
         return node;
     }
 
+    FhirArrayLiteralExpr* array_literal(BaseSyntax* syntax, TypeSymbol* arrayType, TypeSymbol* elementType,
+                                        std::vector<FhirExpr*> elements, MethodSymbol* ctor, MethodSymbol* setter)
+    {
+        auto* node = arena.alloc<FhirArrayLiteralExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = arrayType;
+        node->elementType = elementType;
+        node->elements = std::move(elements);
+        node->ctor = ctor;
+        node->setter = setter;
+        return node;
+    }
+
     FhirErrorExpr* error_expr(BaseSyntax* syntax, TypeSymbol* type = nullptr, FhirExpr* inner = nullptr)
     {
         auto* node = arena.alloc<FhirErrorExpr>();

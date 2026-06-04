@@ -163,6 +163,7 @@ FlirExpr* FlirLowerer::lower_expr(FhirExpr* expr)
     if (auto* e = expr->as<FhirCastExpr>())         return lower_cast(e);
     if (auto* e = expr->as<FhirIndexExpr>())        return lower_index(e);
     if (auto* e = expr->as<FhirInitializerExpr>())  return lower_initializer(e);
+    if (auto* e = expr->as<FhirArrayLiteralExpr>()) return lower_array_literal(e);
 
     return nullptr;
 }
@@ -378,9 +379,7 @@ void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syn
     }
 }
 
-// Lowers Foo { a = 1, b.c = 2 } to a Sequence that holds the constructed
-// instance in a temp, writes each entry's value to its field chain off the
-// temp, then yields the temp.
+// Lowers Foo { a: 1, b.c: 2 } to a sequence of field stores into a temp
 FlirExpr* FlirLowerer::lower_initializer(FhirInitializerExpr* expr)
 {
     BaseSyntax* syntax = expr->syntax;
@@ -401,6 +400,36 @@ FlirExpr* FlirLowerer::lower_initializer(FhirInitializerExpr* expr)
         }
         auto* value = lower_expr(entry.value);
         sideEffects.push_back(builder.store_field(syntax, base, entry.path.back(), value));
+    }
+
+    return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmp));
+}
+
+// Lowers [a, b, c] to a sequence of indexed setters into an intermediate array
+FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
+{
+    BaseSyntax* syntax = expr->syntax;
+    TypeSymbol* type = expr->type;
+    TypeSymbol* i32Type = semantic.resolve_type_name("i32");
+    int count = static_cast<int>(expr->elements.size());
+
+    auto* tmp = builder.local(currentMethod, "$arr", type);
+
+    auto* alloc = builder.alloc_expr(syntax, type);
+    auto* countConst = builder.constant(syntax, i32Type, ConstantValue::make_int(count));
+    auto* ctorCall = builder.call(syntax, type, expr->ctor, alloc, { countConst });
+
+    std::vector<FlirStmt*> sideEffects;
+    sideEffects.push_back(builder.store_local(syntax, tmp, ctorCall));
+
+    TypeSymbol* setterReturn = expr->setter ? expr->setter->get_return_type() : nullptr;
+    for (int i = 0; i < count; ++i)
+    {
+        auto* indexConst = builder.constant(syntax, i32Type, ConstantValue::make_int(i));
+        auto* value = lower_expr(expr->elements[i]);
+        auto* setCall = builder.call(syntax, setterReturn, expr->setter, nullptr,
+            { builder.load_local(syntax, tmp), indexConst, value });
+        sideEffects.push_back(builder.expr_stmt(syntax, setCall));
     }
 
     return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmp));

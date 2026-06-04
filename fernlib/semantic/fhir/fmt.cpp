@@ -178,6 +178,17 @@ void FhirPrettyFormatter::visit(FhirInitializerExpr* node)
     out << " }";
 }
 
+void FhirPrettyFormatter::visit(FhirArrayLiteralExpr* node)
+{
+    out << "[";
+    for (size_t i = 0; i < node->elements.size(); ++i)
+    {
+        if (i > 0) out << ", ";
+        write_child(node->elements[i]);
+    }
+    out << "]";
+}
+
 void FhirPrettyFormatter::visit(FhirErrorExpr* node)
 {
     out << "ERROR(";
@@ -548,6 +559,17 @@ void FhirDebugFormatter::visit(FhirInitializerExpr* node)
         write_indent();
     }
     out << "]\n";
+    close_block();
+}
+
+void FhirDebugFormatter::visit(FhirArrayLiteralExpr* node)
+{
+    std::string element = std::format("element: {}", node->elementType ? format_type(node->elementType) : "?");
+    std::string ctor = node->ctor ? std::format(", ctor: {}", method_label(node->ctor)) : "";
+    std::string setter = node->setter ? std::format(", setter: {}", method_label(node->setter)) : "";
+    begin_node(node, std::format("{}{}{}, {}", element, ctor, setter, type_attr(node)));
+    open_block();
+    write_children("elements", node->elements);
     close_block();
 }
 

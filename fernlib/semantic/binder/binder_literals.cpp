@@ -260,42 +260,6 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 
 FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected)
 {
-    if (expr->elements.empty())
-    {
-        auto* expectedNamed = expected ? expected->as<NamedTypeSymbol>() : nullptr;
-        if (expectedNamed && expectedNamed->genericOrigin &&
-            expectedNamed->genericOrigin->name == "Array" &&
-            !expectedNamed->typeArguments.empty())
-        {
-            TypeSymbol* elementType = expectedNamed->typeArguments[0];
-            TypeSymbol* i32Type = context.resolve_type_name("i32");
-
-            auto* countLit = fhir.literal(expr, i32Type);
-            countLit->value = ConstantValue::make_int(0);
-
-            std::vector<OverloadArg> ctorArgs = {OverloadArg(countLit)};
-            auto ctorResult = expectedNamed->find_constructor(ctorArgs);
-            if (!ctorResult.best.method)
-            {
-                diag.report(DiagnosticCode::Err_ArrayMissingI32Ctor, expr->span);
-                return fhir.error_expr(expr);
-            }
-
-            auto* synthTypeRef = fhir.type_ref(expr, expectedNamed);
-            return fhir.construction(expr, expectedNamed, synthTypeRef, ctorResult.best.method, {countLit});
-        }
-
-        return nullptr;
-    }
-
-    auto* pending = pending_statements();
-    int* counter = temp_counter();
-    if (!pending || !counter)
-    {
-        diag.report(DiagnosticCode::Err_ArrayLiteralOutsideMethod, expr->span);
-        return fhir.error_expr(expr);
-    }
-
     TypeSymbol* expectedElementType = nullptr;
     auto* expectedNamed = expected ? expected->as<NamedTypeSymbol>() : nullptr;
     if (expectedNamed && expectedNamed->genericOrigin &&
@@ -306,6 +270,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     }
 
     std::vector<FhirExpr*> elements;
+    elements.reserve(expr->elements.size());
     for (auto* elem : expr->elements)
     {
         elements.push_back(bind_value_expr(elem, expectedElementType));
@@ -336,6 +301,9 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
 
     if (!elementType)
     {
+        // Empty literal with no expected type is reported by the declaration.
+        if (expr->elements.empty())
+            return nullptr;
         if (!hasErrorElement)
         {
             diag.report(DiagnosticCode::Err_ArrayCannotInferElement, expr->span);
@@ -352,10 +320,9 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     context.symbols.ensure_members_populated(arrayType);
 
     TypeSymbol* i32Type = context.resolve_type_name("i32");
-    int count = static_cast<int>(elements.size());
 
     auto* countLit = fhir.literal(expr, i32Type);
-    countLit->value = ConstantValue::make_int(count);
+    countLit->value = ConstantValue::make_int(static_cast<int>(elements.size()));
 
     std::vector<OverloadArg> ctorArgs = {OverloadArg(countLit)};
     auto ctorResult = arrayType->find_constructor(ctorArgs);
@@ -365,36 +332,20 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
         return fhir.error_expr(expr);
     }
 
-    auto* synthTypeRef = fhir.type_ref(expr, arrayType);
-    auto* createExpr = fhir.construction(expr, arrayType, synthTypeRef, ctorResult.best.method, {countLit});
-
-    auto tempPtr = std::make_unique<LocalSymbol>();
-    tempPtr->name = std::format("$arr_{}", (*counter)++);
-    tempPtr->type = arrayType;
-    auto* tempLocal = context.symbols.own(std::move(tempPtr));
-
-    pending->push_back(fhir.var_decl(expr, tempLocal, createExpr));
-
-    OverloadArg indexArg = { i32Type, nullptr };
-    auto setterResult = arrayType->find_index_setter(indexArg);
-    if (!setterResult.best.is_callable())
+    MethodSymbol* setter = nullptr;
+    if (!elements.empty())
     {
-        diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type(elementType));
-        return fhir.error_expr(expr);
-    }
-    MethodSymbol* setter = setterResult.best.method;
-
-    for (int i = 0; i < count; ++i)
-    {
-        auto* indexLit = fhir.literal(expr, i32Type);
-        indexLit->value = ConstantValue::make_int(i);
-
-        auto* setCall = fhir.call(expr, setter->get_return_type(), setter,
-                                  {fhir.local_ref(expr, tempLocal), indexLit, elements[i]});
-        pending->push_back(fhir.expr_stmt(expr, setCall));
+        OverloadArg indexArg = { i32Type, nullptr };
+        auto setterResult = arrayType->find_index_setter(indexArg);
+        if (!setterResult.best.is_callable())
+        {
+            diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type(elementType));
+            return fhir.error_expr(expr);
+        }
+        setter = setterResult.best.method;
     }
 
-    return fhir.local_ref(expr, tempLocal);
+    return fhir.array_literal(expr, arrayType, elementType, std::move(elements), ctorResult.best.method, setter);
 }
 
 }

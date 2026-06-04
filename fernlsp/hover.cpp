@@ -113,6 +113,11 @@ struct HoverFormatter : FhirVisitor
         set_signature(std::format("(initializer) -> {}", format_type(n->type, fmt)));
     }
 
+    void visit(FhirArrayLiteralExpr* n) override
+    {
+        set_signature(std::format("(array literal) -> {}", format_type(n->type, fmt)));
+    }
+
     void visit(FhirErrorExpr* n) override
     {
         if (n->inner)

@@ -46,6 +46,7 @@ private:
     FlirExpr* lower_cast(FhirCastExpr* expr);
     FlirExpr* lower_index(FhirIndexExpr* expr);
     FlirExpr* lower_initializer(FhirInitializerExpr* expr);
+    FlirExpr* lower_array_literal(FhirArrayLiteralExpr* expr);
 
     void lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syntax, std::vector<FlirStmt*>& out);
 

@@ -42,6 +42,7 @@ struct FhirCompoundAssignExpr;
 struct FhirCastExpr;
 struct FhirIndexExpr;
 struct FhirInitializerExpr;
+struct FhirArrayLiteralExpr;
 struct FhirErrorExpr;
 struct FhirNamespaceRefExpr;
 struct FhirMethodGroupRefExpr;
@@ -184,6 +185,7 @@ public:
     virtual void visit(FhirCastExpr* node) = 0;
     virtual void visit(FhirIndexExpr* node) = 0;
     virtual void visit(FhirInitializerExpr* node) = 0;
+    virtual void visit(FhirArrayLiteralExpr* node) = 0;
     virtual void visit(FhirErrorExpr* node) = 0;
     virtual void visit(FhirNamespaceRefExpr* node) = 0;
     virtual void visit(FhirMethodGroupRefExpr* node) = 0;
@@ -486,6 +488,22 @@ struct FhirInitializerExpr : FhirExpr
     }
 };
 
+struct FhirArrayLiteralExpr : FhirExpr
+{
+    FHIR_NODE(FhirArrayLiteralExpr, FhirExpr)
+
+    TypeSymbol* elementType = nullptr;
+    std::vector<FhirExpr*> elements;
+    MethodSymbol* ctor = nullptr;
+    MethodSymbol* setter = nullptr;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        for (auto* elem : elements)
+            if (elem) elem->accept(v);
+    }
+};
+
 struct FhirErrorExpr : FhirExpr
 {
     FHIR_NODE(FhirErrorExpr, FhirExpr)
@@ -615,6 +633,7 @@ public:
     void visit(FhirCastExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirIndexExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirInitializerExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirArrayLiteralExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirErrorExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirNamespaceRefExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirMethodGroupRefExpr* node) override { on_visit(node); node->visit_children(this); }
