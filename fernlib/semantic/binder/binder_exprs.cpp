@@ -445,7 +445,8 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         return fhir.op(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
     }
 
-    auto result = namedType->find_binary_operator(opToken, OverloadArg(rhs));
+    auto* rightNamed = rightType ? rightType->as<NamedTypeSymbol>() : nullptr;
+    auto result = namedType->find_binary_operator(opToken, OverloadArg(lhs), OverloadArg(rhs), rightNamed);
     if (result.ambiguous)
     {
         std::string candidates;

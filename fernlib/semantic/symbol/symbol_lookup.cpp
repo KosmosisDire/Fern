@@ -3,6 +3,8 @@
 
 #include <semantic/fhir/fhir.hpp>
 
+#include <algorithm>
+
 namespace Fern
 {
 
@@ -134,19 +136,31 @@ OverloadResult NamedTypeSymbol::find_constructor(const std::vector<OverloadArg>&
     return Overload::resolve(candidates);
 }
 
-OverloadResult NamedTypeSymbol::find_binary_operator(TokenKind opKind, const OverloadArg& other)
+static void collect_binary_operators(NamedTypeSymbol* type, TokenKind opKind, std::vector<MethodSymbol*>& out)
 {
-    if (table) table->ensure_members_populated(this);
+    if (!type) return;
+    if (type->table) type->table->ensure_members_populated(type);
 
-    std::vector<OverloadMatch> candidates;
-    for (auto* method : methods)
+    for (auto* method : type->methods)
     {
         if (!method->is_operator() || method->operatorKind != opKind || method->parameters.size() != 2)
             continue;
-        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
-        std::vector<OverloadArg> args = { selfPlaceholder, other };
-        candidates.push_back(Overload::grade(method, args));
+        if (std::find(out.begin(), out.end(), method) == out.end())
+            out.push_back(method);
     }
+}
+
+OverloadResult NamedTypeSymbol::find_binary_operator(TokenKind opKind, const OverloadArg& left, const OverloadArg& right, NamedTypeSymbol* rightType)
+{
+    std::vector<MethodSymbol*> ops;
+    collect_binary_operators(this, opKind, ops);
+    collect_binary_operators(rightType, opKind, ops);
+
+    std::vector<OverloadArg> args = { left, right };
+    std::vector<OverloadMatch> candidates;
+    candidates.reserve(ops.size());
+    for (auto* method : ops)
+        candidates.push_back(Overload::grade(method, args));
 
     return Overload::resolve(candidates);
 }
