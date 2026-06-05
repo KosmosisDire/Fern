@@ -965,6 +965,7 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
             break;
         }
 
+        Span opSpan = walker.current().span;
         walker.advance();
         skip_newlines(walker);
 
@@ -972,7 +973,7 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
         if (!right)
         {
             diag.report(DiagnosticCode::Err_ExpectedExprAfterOp,
-                  walker.current().span,
+                  opSpan.at_end(),
                   Fern::format(opKind));
         }
 

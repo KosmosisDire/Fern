@@ -464,8 +464,8 @@ MethodSymbol* Binder::break_operator_tie(const std::vector<MethodSymbol*>& candi
 
 FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax, TypeSymbol* expected)
 {
-    bool lhsError = lhs && lhs->is_error();
-    bool rhsError = rhs && rhs->is_error();
+    bool lhsError = !lhs || lhs->is_error();
+    bool rhsError = !rhs || rhs->is_error();
     if (lhsError || rhsError) return fhir.error_expr(syntax);
 
     TypeSymbol* leftType = lhs ? lhs->type : nullptr;
