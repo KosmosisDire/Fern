@@ -45,10 +45,17 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     {
         FhirExpr* bound = bind_value_expr(arg);
         argExprs.push_back(bound);
+        auto* arrLit = arg->as<ArrayLiteralExprSyntax>();
         if (bound && bound->is_error())
         {
             hasErrorArg = true;
             args.push_back({});
+        }
+        else if (arrLit && arrLit->elements.empty())
+        {
+            OverloadArg emptyArg;
+            emptyArg.emptyArray = true;
+            args.push_back(emptyArg);
         }
         else
         {

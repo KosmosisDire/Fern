@@ -269,6 +269,14 @@ Conversion NamedTypeSymbol::get_conversion(TypeSymbol* from, TypeSymbol* to)
 
 Conversion NamedTypeSymbol::get_conversion(const OverloadArg& arg, TypeSymbol* to)
 {
+    if (arg.emptyArray)
+    {
+        auto* targetNamed = to ? to->as<NamedTypeSymbol>() : nullptr;
+        if (targetNamed && targetNamed->genericOrigin && targetNamed->genericOrigin->name == "Array")
+            return {Convertibility::Implicit, nullptr};
+        return {};
+    }
+
     Conversion conv = get_conversion(arg.type, to);
     if (conv.level != Convertibility::Explicit) return conv;
     if (!arg.constant || arg.constant->kind != ConstantValue::Kind::Int) return conv;

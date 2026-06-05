@@ -1,0 +1,19 @@
+---
+Description: Empty array literal is ambiguous between two array constructor overloads
+Expected: FN3400
+---
+
+type Holder
+{
+    init(a: Core.Array<i32>) {}
+    init(a: Core.Array<f32>) {}
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var h = Holder([])
+        return 0
+    }
+}

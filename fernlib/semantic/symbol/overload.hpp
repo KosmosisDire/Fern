@@ -15,6 +15,8 @@ struct OverloadArg
 {
     TypeSymbol* type = nullptr;
     const ConstantValue* constant = nullptr;
+    // An empty array literal has no element type yet, so it is viable for any array parameter.
+    bool emptyArray = false;
 
     OverloadArg() = default;
     OverloadArg(TypeSymbol* type, const ConstantValue* constant) : type(type), constant(constant) {}
