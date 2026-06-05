@@ -1,0 +1,29 @@
+---
+Description: Invalid generic instantiation should error at the use site, not at the template body
+Expected: FN3003
+---
+
+-- FN3003 is a placeholder for a future "invalid generic instantiation" diagnostic.
+-- Box<bool> is invalid because bool has no op + used by Add. The error should point
+-- at the instantiation site (var b2 = Box<bool>(true)), not at the body of Add.
+
+type Box<T>
+{
+    value: T
+    init(v: T) { this.value = v }
+
+    fn Add(f: T) -> T
+    {
+        return value + f
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var b = Box<i32>(10)
+        var b2 = Box<bool>(true)
+        return b.Add(42)
+    }
+}
