@@ -254,6 +254,13 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
     if (!targetType)
         return fhir.error_expr(expr);
 
+    if (!expr->operand)
+    {
+        // A cast with no operand is a type used as a value
+        diag.report(DiagnosticCode::Err_BadSymbolKind, expr->type->span, format_type(targetType), "type", "value");
+        return fhir.error_expr(expr);
+    }
+
     FhirExpr* operand = bind_value_expr(expr->operand);
     if (!operand || operand->is_error())
         return fhir.error_expr(expr);
