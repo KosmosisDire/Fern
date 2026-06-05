@@ -54,7 +54,7 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
     else if (auto* unary = expr->as<UnaryExprSyntax>())
         result = bind_unary(unary);
     else if (auto* bin = expr->as<BinaryExprSyntax>())
-        result = bind_binary(bin);
+        result = bind_binary(bin, expected);
     else if (auto* assign = expr->as<AssignmentExprSyntax>())
         result = bind_assignment(assign);
     else if (auto* call = expr->as<CallExprSyntax>())
@@ -421,14 +421,48 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
     return fhir.op(expr, operandType, to_intrinsic_op(expr->op), {operand});
 }
 
-FhirExpr* Binder::bind_binary(BinaryExprSyntax* expr)
+FhirExpr* Binder::bind_binary(BinaryExprSyntax* expr, TypeSymbol* expected)
 {
     FhirExpr* lhs = bind_value_expr(expr->left);
     FhirExpr* rhs = bind_value_expr(expr->right);
-    return bind_binary_op(expr->op, lhs, rhs, expr);
+    return bind_binary_op(expr->op, lhs, rhs, expr, expected);
 }
 
-FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax)
+// Breaks an ambiguous binary operator: prefer a candidate whose result matches the
+// expected type, then prefer the operator owned by the left operand's type.
+MethodSymbol* Binder::break_operator_tie(const std::vector<MethodSymbol*>& candidates, TypeSymbol* expected, TypeSymbol* leftType)
+{
+    std::vector<MethodSymbol*> pool = candidates;
+
+    if (expected)
+    {
+        std::vector<MethodSymbol*> byReturn;
+        for (auto* method : pool)
+        {
+            auto level = NamedTypeSymbol::get_conversion(method->get_return_type(), expected).level;
+            if (level == Convertibility::Exact || level == Convertibility::Implicit)
+                byReturn.push_back(method);
+        }
+        if (byReturn.size() == 1) return byReturn.front();
+        if (!byReturn.empty()) pool = byReturn;
+    }
+
+    MethodSymbol* leftOwned = nullptr;
+    int leftCount = 0;
+    for (auto* method : pool)
+    {
+        if (method->parent == leftType)
+        {
+            leftOwned = method;
+            ++leftCount;
+        }
+    }
+    if (leftCount == 1) return leftOwned;
+
+    return nullptr;
+}
+
+FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax, TypeSymbol* expected)
 {
     bool lhsError = lhs && lhs->is_error();
     bool rhsError = rhs && rhs->is_error();
@@ -447,6 +481,20 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
 
     auto* rightNamed = rightType ? rightType->as<NamedTypeSymbol>() : nullptr;
     auto result = namedType->find_binary_operator(opToken, OverloadArg(lhs), OverloadArg(rhs), rightNamed);
+
+    MethodSymbol* method = nullptr;
+    if (result.ambiguous)
+        method = break_operator_tie(result.ambiguousCandidates, expected, leftType);
+    else if (result.best.is_callable())
+        method = result.best.method;
+
+    if (method)
+    {
+        lhs = coerce_to_param(lhs, method->parameters[0]->type);
+        rhs = coerce_to_param(rhs, method->parameters[1]->type);
+        return fhir.op(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
+    }
+
     if (result.ambiguous)
     {
         std::string candidates;
@@ -455,13 +503,6 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
         diag.report(DiagnosticCode::Err_AmbiguousBinaryOp, syntax->span,
               Fern::format(opToken), format_type(leftType), format_type(rightType), candidates);
         return fhir.error_expr(syntax);
-    }
-    if (result.best.is_callable())
-    {
-        MethodSymbol* method = result.best.method;
-        lhs = coerce_to_param(lhs, method->parameters[0]->type);
-        rhs = coerce_to_param(rhs, method->parameters[1]->type);
-        return fhir.op(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
     }
 
     diag.report(DiagnosticCode::Err_BadBinaryOp, syntax->span,
