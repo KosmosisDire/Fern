@@ -58,13 +58,30 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
     if (stmt->value)
     {
         TypeSymbol* retType = method->get_return_type();
-        value = bind_value_expr(stmt->value, retType);
 
-        if (!retType && value && value->type)
+        if (method->is_literal())
         {
-            auto callable = as<CallableDeclSyntax>(method->syntax);
-            Span loc = callable ? callable->name.span.merge(callable->parameters.span) : Span{};
-            diag.report(DiagnosticCode::Err_ReturnValueNoType, loc, method->name);
+            // A custom literal declaration must return its containing type
+            value = bind_value_expr(stmt->value);
+            if (value && !value->is_error() && retType && value->type && value->type != retType)
+            {
+                if (auto* cast = try_implicit_cast(value, retType, stmt->value->span))
+                    value = cast;
+                else
+                    diag.report(DiagnosticCode::Err_LiteralReturnType, stmt->value->span,
+                          method->name, format_type(retType), format_type(value->type));
+            }
+        }
+        else
+        {
+            value = bind_value_expr(stmt->value, retType);
+
+            if (!retType && value && value->type)
+            {
+                auto callable = as<CallableDeclSyntax>(method->syntax);
+                Span loc = callable ? callable->name.span.merge(callable->parameters.span) : Span{};
+                diag.report(DiagnosticCode::Err_ReturnValueNoType, loc, method->name);
+            }
         }
     }
     else if (TypeSymbol* retType = method->get_return_type())
