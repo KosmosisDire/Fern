@@ -1,3 +1,0 @@
-One decision in here I am unsure about is how to handle the MemberAccess vs QualifiedName difference. For now I am reverting it back to a unified representation since it causes less code duplication. But it does also make it slightly easier for types to be represented incorrectly. Either way I think the parser needs to simply be improved and the edge cases of types handled somehow. It is just a question of how lenient the parser is, and whether it is restricted (purposefully) by the type system to only be able to parse types in type spaces. 
-
-It could also matter for things like deciding whether something inside of parethesis _could_ be a type in which case we would parse as a cast expression. Do we parse `(Program.Add)(1, 2)` as a cast expression? Etc.
