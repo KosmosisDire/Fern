@@ -172,7 +172,7 @@ void FhirPrettyFormatter::visit(FhirInitializerExpr* node)
             if (j > 0) out << ".";
             out << (entry.path[j] ? entry.path[j]->name : "?");
         }
-        out << " = ";
+        out << ": ";
         write_child(entry.value);
     }
     out << " }";

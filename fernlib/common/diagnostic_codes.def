@@ -102,7 +102,6 @@ DIAG(Err_AttrNeedsParameterlessCtor,    3503, Error,   "'{}' must contain a para
 DIAG(Err_InitListNoType,                3600, Error,   "cannot infer type for initializer list, use an explicit type name")
 DIAG(Err_InitListBadTarget,             3601, Error,   "initializer lists can only be applied to a type or constructor call")
 DIAG(Err_NoDefaultCtor,                 3602, Error,   "type '{}' has no default constructor")
-DIAG(Err_InitListOutsideMethod,         3603, Error,   "initializer lists are not yet supported outside of method bodies")
 DIAG(Err_DuplicateInitField,            3604, Error,   "duplicate field '{}' in initializer")
 DIAG(Err_InitMemberOnNonStruct,         3605, Error,   "cannot access member on non-struct type")
 DIAG(Err_InitTargetBadShape,            3606, Error,   "initializer target must be a field name or member access")                                  // CS0747
@@ -115,7 +114,6 @@ DIAG(Err_AmbiguousLiteral,              3703, Error,   "literal call is ambiguou
 DIAG(Err_LiteralOutOfRange,             3704, Error,   "literal '{}' is out of range")                                                              // CS1021/CS0594
 DIAG(Err_CharLiteralLength,             3705, Error,   "character literal must contain exactly one character")                                      // CS1011/CS1012
 DIAG(Err_ArrayMissingI32Ctor,           3706, Error,   "Core.Array has no constructor taking i32")
-DIAG(Err_ArrayLiteralOutsideMethod,     3707, Error,   "array literals are not supported outside of method bodies")
 DIAG(Err_ArrayMixedTypes,               3708, Error,   "array literal has mixed element types: '{}' and '{}'")
 DIAG(Err_ArrayCannotInferElement,       3709, Error,   "type cannot be inferred for array, consider adding a type annotation or explicit constructor")  // CS0826 (also covers empty array with no annotation)
 DIAG(Err_ArrayMissingSetter,            3710, Error,   "Core.Array has no 'op []=' for element type '{}'")

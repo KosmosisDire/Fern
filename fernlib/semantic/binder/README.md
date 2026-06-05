@@ -8,8 +8,8 @@ The binders:
 - **RootBinder**: chain terminator. Resolves primitive aliases and global types.
 - **NamespaceBinder**: namespace members.
 - **TypeBinder**: type members, type params, generic substitutions.
-- **MethodBinder**: method parameters, tempCounter.
-- **BlockBinder**: locals, pendingStmts.
+- **MethodBinder**: method parameters.
+- **BlockBinder**: locals.
 
 Subclasses are pure scope contributors. They override `lookup_in_single_binder` and optional virtual accessors. Binding logic lives on `Binder` and reaches scope state through those accessors.
 
@@ -41,7 +41,7 @@ mBinder.bind_block(callable->body);
 Each binder overrides what it contributes. Defaults walk the chain.
 
 - `containing_method`, `containing_type`, `containing_namespace`, `type_param_substitutions` expose scope.
-- `pending_statements`, `temp_counter`, `current_block_scope` expose body state.
+- `current_block_scope` exposes body state.
 - `lookup_in_single_binder` contributes names.
 
 `lookup(name)` walks `next` and returns the first match.
@@ -54,15 +54,9 @@ Every binder holds a reference to the single `Diagnostics` object owned by `Comp
 
 `resolve_type_expr` and `resolve_generic_type` live on `Binder`. They read `containing_type`, `containing_namespace`, `type_param_substitutions` via virtual accessors. Works for declaration resolution and body resolution.
 
-## Pending statements
+## Initializer and array literals
 
-Initializer lists and array literals inject setup statements before their containing expression. They call `pending_statements()` which walks to the innermost `BlockBinder`. For example `var x = Foo { x = 1 }` becomes:
-
-```
-var $init_0 = Foo();
-$init_0.x = 1;
-var x = $init_0;
-```
+`Foo { x: 1 }` and `[a, b, c]` bind to single FHIR nodes (`FhirInitializerExpr`, `FhirArrayLiteralExpr`). The structural desugar into a temp plus setup statements happens later in FHIR to FLIR lowering, not here.
 
 ## Bidirectional type flow
 

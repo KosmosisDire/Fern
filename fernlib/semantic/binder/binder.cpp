@@ -382,7 +382,6 @@ FhirBlock* Binder::bind_block(BlockSyntax* block)
     auto* node = fhir.block(block);
 
     BlockBinder inner(*this);
-    inner.set_pending_statements(&node->statements);
 
     for (auto* stmt : block->statements)
     {

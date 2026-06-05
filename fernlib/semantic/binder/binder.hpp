@@ -102,8 +102,6 @@ protected:
     virtual NamedTypeSymbol* containing_type() { return next ? next->containing_type() : nullptr; }
     virtual NamespaceSymbol* containing_namespace() { return next ? next->containing_namespace() : nullptr; }
     virtual const std::unordered_map<std::string, TypeSymbol*>* type_param_substitutions() { return next ? next->type_param_substitutions() : nullptr; }
-    virtual std::vector<FhirStmt*>* pending_statements() { return next ? next->pending_statements() : nullptr; }
-    virtual int* temp_counter() { return next ? next->temp_counter() : nullptr; }
     virtual Scope* current_block_scope() { return next ? next->current_block_scope() : nullptr; }
 
     virtual LookupResult lookup_in_single_binder(std::string_view name) = 0;
