@@ -1059,53 +1059,38 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
 {
     while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
     {
-        if (is_statement_keyword(walker.current().kind))
-        {
-            break;
-        }
-
         auto cp = walker.checkpoint();
-
-        if (walker.check(TokenKind::Comma))
-        {
-            diag.report(DiagnosticCode::Err_UnexpectedCommaInInit, walker.current().span);
-            walker.advance();
-            advance_past_field(walker);
-            expect_progress(cp);
-            continue;
-        }
 
         auto* expr = parse_postfix();
         if (!expr)
         {
+            // Not a field name or value here, e.g. a stray comma or a statement keyword.
+            diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected a field name or value");
+            while (!walker.check(TokenKind::RightBrace) && !walker.check(TokenKind::Comma) && !walker.is_at_end())
+                walker.advance();
             advance_past_field(walker);
             expect_progress(cp);
             continue;
         }
 
-        if ((expr->is<IdentifierExprSyntax>() || expr->is<MemberAccessExprSyntax>()) &&
-            walker.check(TokenKind::Colon))
+        bool isFieldName = expr->is<IdentifierExprSyntax>() || expr->is<MemberAccessExprSyntax>();
+        if (isFieldName && walker.check(TokenKind::Colon))
         {
             Span fieldSpan = expr->span;
 
             walker.advance();
             skip_newlines(walker);
 
-            if (walker.check(TokenKind::Comma) ||
-                walker.check(TokenKind::RightBrace) ||
-                is_terminator(walker.current().kind) ||
-                is_statement_keyword(walker.current().kind))
-            {
-                diag.report(DiagnosticCode::Err_ExpectedValueAfterColon, walker.current().span);
-                out.push_back(builder.field_init(expr, nullptr, fieldSpan));
-                advance_past_field(walker);
-                expect_progress(cp);
-                continue;
-            }
-
             auto* value = parse_expression();
+            if (!value)
+                diag.report(DiagnosticCode::Err_ExpectedValueAfterColon, walker.current().span);
             builder.merge_if(fieldSpan, value);
             out.push_back(builder.field_init(expr, value, fieldSpan));
+        }
+        else if (isFieldName)
+        {
+            // A field name must be followed by ': value'.
+            expect(TokenKind::Colon, "expected ':' after field name");
         }
         else
         {

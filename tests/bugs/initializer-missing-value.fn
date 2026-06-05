@@ -1,13 +1,12 @@
 ---
-Description: Initializer list containing only commas
-Expected: FN1018, FN1018, FN1018
+Description: Initializer field name with no colon
+Expected: FN1015
 ---
 
 type Vector2
 {
     x: f32
     y: f32
-
     init{}
 }
 
@@ -15,7 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var a = Vector2 { , , , }
+        var v = Vector2 { x: }
         return 0
     }
 }
