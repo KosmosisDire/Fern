@@ -1,83 +1,13 @@
 # Binder
 
-Produces FHIR from the AST. Hierarchy of binders, one per scope. `lookup(name)` walks the chain from innermost out.
+Turns the AST into FHIR (Fern High-level IR). This resolves names, does types checking, and every expression comes out with a resolved symbol and type.
 
-The binders:
 
-- **Binder**: abstract base. Chain, accessors, binding logic.
-- **RootBinder**: chain terminator. Resolves primitive aliases and global types.
-- **NamespaceBinder**: namespace members.
-- **TypeBinder**: type members, type params, generic substitutions.
-- **MethodBinder**: method parameters.
-- **BlockBinder**: locals.
+The scope binders form a chain, one node per lexical scope: block, method, type, namespace, root. Name lookup walks the chain from the innermost scope outward and takes the first match.
 
-Subclasses are pure scope contributors. They override `lookup_in_single_binder` and optional virtual accessors. Binding logic lives on `Binder` and reaches scope state through those accessors.
+The chain splits into two roles:
 
-## Pipeline
+- The main binder (in `core/`) holds the actual binding logic and the scopes inherit from it.
+- The scope binders (in `scopes/`) are binders which provide specialized functions for looking up names within their scope. They are very simple. The point is that we no longer have to worry about tracking or passing scope context down the tree to change how we look stuff up in different scopes
 
-`BinderPipeline` drives the phases. `Compilation::compile()` constructs one and calls:
 
-1. `declare_symbols` walks the AST and produces symbols.
-2. `resolve_signatures` resolves field, parameter, return types.
-3. `resolve_attributes` binds attribute argument expressions.
-4. `bind_methods` produces FHIR for every method body.
-5. `validate_signatures` runs duplicate and operator checks.
-
-IDE callers use `SemanticContext::bind_single_method(method)` instead.
-
-## Chain construction
-
-Binder chains live on `SemanticContext`, built lazily.
-
-```cpp
-Binder& mBinder = semanticContext.method_binder(method);
-mBinder.bind_block(callable->body);
-```
-
-`namespace_binder`, `type_binder`, `method_binder` each build their parent and cache. `BlockBinder` is not cached because it owns per call state.
-
-## Accessors and lookup
-
-Each binder overrides what it contributes. Defaults walk the chain.
-
-- `containing_method`, `containing_type`, `containing_namespace`, `type_param_substitutions` expose scope.
-- `current_block_scope` exposes body state.
-- `lookup_in_single_binder` contributes names.
-
-`lookup(name)` walks `next` and returns the first match.
-
-## Diagnostics
-
-Every binder holds a reference to the single `Diagnostics` object owned by `Compilation`. `Binder` stores `diag` and forwards error calls like `diag.report(DiagnosticCode::Err_X, span, args...)` directly.
-
-## Type resolution
-
-`resolve_type_expr` and `resolve_generic_type` live on `Binder`. They read `containing_type`, `containing_namespace`, `type_param_substitutions` via virtual accessors. Works for declaration resolution and body resolution.
-
-## Initializer and array literals
-
-`Foo { x: 1 }` and `[a, b, c]` bind to single FHIR nodes (`FhirInitializerExpr`, `FhirArrayLiteralExpr`). The structural desugar into a temp plus setup statements happens later in FHIR to FLIR lowering, not here.
-
-## Bidirectional type flow
-
-`bind_expr` takes an optional `expected` type that flows downward. Matches pass through. Mismatches try an implicit cast. Integer constants get range checked. Drives suffixed literal disambiguation and array literal element inference.
-
-## Implicit casting
-
-`try_implicit_cast` checks for `Convertibility::Implicit` and wraps in a `FhirCastExpr` that carries the resolved cast method. Integer constants narrow silently if the value fits. `coerce_to_param` applies this at call sites. Whether the cast is a primitive intrinsic or runs the method body is decided downstream by checking the `@Intrinsic` attribute on the method.
-
-## Operator binding
-
-`bind_unary` and `bind_binary_op` always produce a `FhirOpExpr` that carries the resolved operator method and the op kind. Whether the operator is a primitive intrinsic or runs the method body is decided downstream by checking the `@Intrinsic` attribute on the method.
-
-## Compound comparisons
-
-`>=`, `<=`, `!=` are synthesized. `>` plus `==` gives `>=`. `<` plus `==` gives `<=`. `==` gives `!=`.
-
-## File naming
-
-TODO: Too many things named binder for fucks sake
-- `binder.hpp/cpp` is the `Binder` base class.
-- `*_binder.hpp/cpp` is a concrete scope binder. One file per class.
-- `binder_*.cpp` is a slice of `Binder` method definitions grouped by topic (exprs, calls, literals, stmts, attributes, initializers). Declared in `binder.hpp`.
-- `binder_pipeline.hpp/cpp` is the phase driver `BinderPipeline`, not part of the chain.

@@ -1,6 +1,6 @@
 #include "binder.hpp"
 
-#include "scope.hpp"
+#include <semantic/binder/scopes/scope.hpp>
 
 #include <format>
 

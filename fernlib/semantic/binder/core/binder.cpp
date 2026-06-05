@@ -1,6 +1,6 @@
 #include "binder.hpp"
 
-#include "block_binder.hpp"
+#include <semantic/binder/scopes/block_binder.hpp>
 
 #include <format>
 #include <span>

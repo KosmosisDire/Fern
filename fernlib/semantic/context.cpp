@@ -1,12 +1,12 @@
 #include <semantic/context.hpp>
 
 #include <ast/ast.hpp>
-#include <semantic/binder/binder.hpp>
-#include <semantic/binder/fhir_builder.hpp>
-#include <semantic/binder/method_binder.hpp>
-#include <semantic/binder/namespace_binder.hpp>
-#include <semantic/binder/root_binder.hpp>
-#include <semantic/binder/type_binder.hpp>
+#include <semantic/binder/core/binder.hpp>
+#include <semantic/binder/core/fhir_builder.hpp>
+#include <semantic/binder/scopes/method_binder.hpp>
+#include <semantic/binder/scopes/namespace_binder.hpp>
+#include <semantic/binder/scopes/root_binder.hpp>
+#include <semantic/binder/scopes/type_binder.hpp>
 #include <semantic/builtin_aliases.hpp>
 #include <semantic/fhir/fhir.hpp>
 

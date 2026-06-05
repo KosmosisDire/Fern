@@ -1,6 +1,6 @@
 #pragma once
 
-#include "binder.hpp"
+#include <semantic/binder/core/binder.hpp>
 #include "scope.hpp"
 
 namespace Fern

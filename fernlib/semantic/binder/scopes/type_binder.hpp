@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "binder.hpp"
+#include <semantic/binder/core/binder.hpp>
 
 namespace Fern
 {

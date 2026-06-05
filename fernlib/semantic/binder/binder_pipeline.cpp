@@ -4,7 +4,7 @@
 #include <format>
 
 #include <ast/ast.hpp>
-#include <semantic/binder/binder.hpp>
+#include <semantic/binder/core/binder.hpp>
 #include <semantic/context.hpp>
 #include <semantic/symbol/fmt.hpp>
 #include <semantic/symbol/symbol.hpp>
