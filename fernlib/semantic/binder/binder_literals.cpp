@@ -111,7 +111,10 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
     {
         const auto& constVal = operand->get_constant();
         if (constVal && !constVal->range_fits(returnType))
+        {
             diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constVal->intValue, format_type(returnType));
+            return fhir.error_expr(expr, returnType, operand);
+        }
 
         operand->type = returnType;
         return operand;
