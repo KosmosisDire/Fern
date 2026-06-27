@@ -181,6 +181,14 @@ struct AstBuilder
         return node;
     }
 
+    ErrorExprSyntax* error_expr(BaseSyntax* wrapped, Span span)
+    {
+        auto* node = arena.alloc<ErrorExprSyntax>();
+        node->wrapped = wrapped;
+        node->span = span;
+        return node;
+    }
+
 #pragma region Declarations
 
     void attach_metadata(BaseDeclSyntax* decl,

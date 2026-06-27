@@ -63,10 +63,30 @@ private:
     // Types
     TypeExprSyntax* parse_type();
 
+    // Trace brace scope for parsing conditions (and maybe other stuff in the future)
+    // Modifies the parser passed into it, uses RAII to track a scope
+    struct BraceInitScope
+    {
+        Parser& parser;
+        bool previous;
+
+        explicit BraceInitScope(Parser& owner)
+            : parser(owner), previous(owner.inCondition)
+        {
+            parser.inCondition = false;
+        }
+
+        ~BraceInitScope()
+        {
+            parser.inCondition = previous;
+        }
+    };
+
     TokenWalker& walker;
     AllocArena& arena;
     Diagnostics& diag;
     AstBuilder builder;
+    // Set while parsing a condition so a top-level '{' ends it as the body.
     bool inCondition = false;
 };
 

@@ -8,7 +8,7 @@ type Program
     static fn Main -> i32
     {
         var x = 0
-        while x < 5
+        while (x < 5)
         {
             x = x + 1
         }

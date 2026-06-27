@@ -1,0 +1,15 @@
+---
+Description: partially parenthesized if condition is reported once without cascading
+Expected: FN1019
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        if (true) && (false)
+        {
+        }
+        return 0
+    }
+}

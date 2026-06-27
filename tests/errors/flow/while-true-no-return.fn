@@ -7,7 +7,7 @@ type Program
 {
     static fn Bad -> i32
     {
-        while true
+        while (true)
         {
             var x = 1
         }

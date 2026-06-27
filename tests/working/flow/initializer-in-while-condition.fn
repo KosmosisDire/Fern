@@ -1,0 +1,29 @@
+---
+Description: Initializer in a parenthesized while condition implicitly converted to bool
+Expected: 0
+---
+
+type Flag
+{
+    value: bool
+
+    init{}
+
+    implicit cast(from: Flag) -> bool
+    {
+        return from.value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var result = 0
+        while (Flag { value: false })
+        {
+            result = 1
+        }
+        return result
+    }
+}

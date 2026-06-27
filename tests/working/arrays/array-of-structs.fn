@@ -18,7 +18,7 @@ type Program
 
         var total = 0.0
         var i = 0
-        while i < points.Length()
+        while (i < points.Length())
         {
             total = total + points[i].x
             i = i + 1

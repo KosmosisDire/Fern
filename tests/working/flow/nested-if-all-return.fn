@@ -9,9 +9,9 @@ type Program
     {
         var a = true
         var b = false
-        if a
+        if (a)
         {
-            if b
+            if (b)
             {
                 return 1
             }

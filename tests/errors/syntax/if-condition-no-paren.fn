@@ -1,0 +1,24 @@
+---
+Description: if without parens is reported once and the first brace is taken as the body
+Expected: FN1019
+---
+
+type User
+{
+    init(name: string)
+    {
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var count = 0
+        if User("name")
+        {
+            count = 1
+        }
+        return count
+    }
+}

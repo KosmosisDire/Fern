@@ -14,9 +14,9 @@ type Program
         """
         var i = 0
         var lines = 1
-        while i < s.length
+        while (i < s.length)
         {
-            if s[i] == '\n'
+            if (s[i] == '\n')
             {
                 lines += 1
             }

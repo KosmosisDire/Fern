@@ -13,7 +13,7 @@ type Program
         arr[2] = 30
         var total = 0
         var i = 0
-        while i < arr.Length()
+        while (i < arr.Length())
         {
             total = total + arr[i]
             i = i + 1

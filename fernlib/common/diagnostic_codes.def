@@ -30,6 +30,7 @@ DIAG(Err_ExpectedValueAfterColon,       1015, Error,   "expected value after ':'
 DIAG(Err_ExpectedMemberAfterDot,        1016, Error,   "expected member name after '.'")                                                            // CS1001
 DIAG(Err_ExpectedElseBody,              1017, Error,   "expected '{{' or 'if' after 'else'")
 DIAG(Err_SyntaxError,                   1018, Error,   "{}")                                                                                        // CS1003 (generic passthrough used by Parser::expect)
+DIAG(Err_UnparenthesizedCondition,      1019, Error,   "condition must be parenthesized")
 
 // AST validation
 DIAG(Err_BadNamespaceContent,           2000, Error,   "namespaces can only contain types and other namespaces")                                    // CS0116

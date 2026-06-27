@@ -7,7 +7,7 @@ type Program
 {
     static fn Bad(cond: bool) -> i32
     {
-        if cond
+        if (cond)
         {
             return 1
         }

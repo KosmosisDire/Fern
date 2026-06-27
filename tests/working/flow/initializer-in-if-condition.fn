@@ -1,0 +1,25 @@
+---
+Description: Initializer in a parenthesized if condition via member access
+Expected: 1
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+
+    init{}
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var result = 0
+        if (Vector2 { x: 1.0, y: 2.0 }.x > 0.0)
+        {
+            result = 1
+        }
+        return result
+    }
+}

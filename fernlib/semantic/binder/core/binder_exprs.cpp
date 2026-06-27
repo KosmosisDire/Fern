@@ -75,6 +75,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         result = bind_array_literal(arrayLit, expected);
     else if (auto* suffixExpr = expr->as<LiteralSuffixExprSyntax>())
         result = bind_suffixed_literal(suffixExpr, expected);
+    else if (expr->is<ErrorExprSyntax>())
+        result = fhir.error_expr(expr);
 
     if (result && result->is_error()) return result;
 

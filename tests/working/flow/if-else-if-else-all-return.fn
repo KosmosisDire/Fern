@@ -9,11 +9,11 @@ type Program
     {
         var a = false
         var b = true
-        if a
+        if (a)
         {
             return 1
         }
-        else if b
+        else if (b)
         {
             return 2
         }

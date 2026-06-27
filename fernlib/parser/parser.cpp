@@ -1019,6 +1019,8 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     walker.advance();
     skip_newlines(walker);
 
+    BraceInitScope braceScope(*this);
+
     while (!walker.check(TokenKind::RightParen) && !walker.is_at_end())
     {
         if (is_statement_keyword(walker.current().kind))
@@ -1177,6 +1179,7 @@ BaseExprSyntax* Parser::parse_postfix()
             walker.advance();
             skip_newlines(walker);
 
+            BraceInitScope braceScope(*this);
             auto* indexValue = parse_expression();
             skip_newlines(walker);
 
@@ -1251,10 +1254,8 @@ BaseExprSyntax* Parser::parse_primary()
         walker.advance();
         skip_newlines(walker);
 
-        bool wasInCondition = inCondition;
-        inCondition = false;
+        BraceInitScope braceScope(*this);
         auto* inner = parse_expression();
-        inCondition = wasInCondition;
         skip_newlines(walker);
 
         builder.merge_if(span, expect(TokenKind::RightParen, "expected ')' after expression"));
@@ -1275,6 +1276,8 @@ BaseExprSyntax* Parser::parse_primary()
 
         walker.advance();
         skip_newlines(walker);
+
+        BraceInitScope braceScope(*this);
 
         while (!walker.check(TokenKind::RightBracket) && !walker.is_at_end())
         {
@@ -1314,16 +1317,28 @@ IfStmtSyntax* Parser::parse_if()
     skip_newlines(walker);
 
     inCondition = true;
-    ifStmt->condition = parse_expression();
+    auto* condition = parse_expression();
     inCondition = false;
     skip_newlines(walker);
+
+    // The whole condition must be parenthesized
+    auto* paren = condition ? condition->as<ParenExprSyntax>() : nullptr;
+    if (paren)
+    {
+        ifStmt->condition = paren->expression;
+    }
+    else
+    {
+        diag.report(DiagnosticCode::Err_UnparenthesizedCondition, condition ? condition->span : span);
+        ifStmt->condition = condition ? builder.error_expr(condition, condition->span) : nullptr;
+    }
 
     if (walker.check(TokenKind::LeftBrace))
     {
         ifStmt->thenBody = parse_block();
         span = span.merge(ifStmt->thenBody->span);
     }
-    else
+    else if (paren)
     {
         diag.report(DiagnosticCode::Err_ExpectedOpenBrace, ifStmt->condition ? ifStmt->condition->span : span);
     }
@@ -1365,16 +1380,28 @@ WhileStmtSyntax* Parser::parse_while()
     skip_newlines(walker);
 
     inCondition = true;
-    whileStmt->condition = parse_expression();
+    auto* condition = parse_expression();
     inCondition = false;
     skip_newlines(walker);
+
+    // The whole condition must be parenthesized
+    auto* paren = condition ? condition->as<ParenExprSyntax>() : nullptr;
+    if (paren)
+    {
+        whileStmt->condition = paren->expression;
+    }
+    else
+    {
+        diag.report(DiagnosticCode::Err_UnparenthesizedCondition, condition ? condition->span : span);
+        whileStmt->condition = condition ? builder.error_expr(condition, condition->span) : nullptr;
+    }
 
     if (walker.check(TokenKind::LeftBrace))
     {
         whileStmt->body = parse_block();
         span = span.merge(whileStmt->body->span);
     }
-    else
+    else if (paren)
     {
         diag.report(DiagnosticCode::Err_ExpectedOpenBrace, whileStmt->condition ? whileStmt->condition->span : span);
     }

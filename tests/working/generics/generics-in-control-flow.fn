@@ -23,7 +23,7 @@ type Program
     static fn Main -> i32
     {
         var counter = Box<i32>(5)
-        while counter.Get() > 0
+        while (counter.Get() > 0)
         {
             counter = Box<i32>(counter.Get() - 1)
         }

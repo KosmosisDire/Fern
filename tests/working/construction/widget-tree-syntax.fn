@@ -25,7 +25,9 @@ type Text
     fontWeight: i32
     color: Color
 
-    init{}
+    init(text: string)
+    {
+    }
 }
 
 type Spacer
@@ -71,14 +73,17 @@ type Program
             {
                 Column
                 {
-                    spacing: 16.0,
-                    padding: 24.0
+                    spacing = 16.0
+                    padding = 24.0
 
                     Card
                     {
-                        background: Color(1.0, 1.0, 1.0, 1.0)
-
-                        Text() { fontSize: 20.0, fontWeight: 700 }
+                        background = Color(1.0, 1.0, 1.0, 1.0)
+                        Text("Hello there")
+                        {
+                            fontSize = 20.0
+                            fontWeight = 700
+                        }
                         Spacer(0.0)
                     }
                 }
