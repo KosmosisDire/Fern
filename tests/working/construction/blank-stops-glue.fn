@@ -1,0 +1,27 @@
+---
+Description: a blank line stops a following block from gluing onto the call as an initializer
+Expected: 0
+---
+
+type Logger
+{
+    init{}
+
+    fn Log()
+    {
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var log = Logger()
+        log.Log()
+        
+        {
+            log.Log()
+        }
+        return 0
+    }
+}

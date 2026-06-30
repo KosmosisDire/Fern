@@ -1,0 +1,26 @@
+---
+Description: without a blank line a following block glues onto the call as an initializer
+Expected: FN3601
+---
+
+type Logger
+{
+    init{}
+
+    fn Log()
+    {
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var log = Logger()
+        log.Log()
+        {
+            log.Log()
+        }
+        return 0
+    }
+}

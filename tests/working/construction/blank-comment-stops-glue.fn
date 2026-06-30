@@ -1,0 +1,28 @@
+---
+Description: a whitespace blank line followed by a comment still stops the block from gluing
+Expected: 0
+---
+
+type Logger
+{
+    init{}
+
+    fn Log()
+    {
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var log = Logger()
+        log.Log()
+        
+        -- Hello
+        {
+            log.Log()
+        }
+        return 0
+    }
+}

@@ -44,6 +44,22 @@ static void skip_newlines(TokenWalker& walker)
     }
 }
 
+// Skips newlines and reports whether a blank line was crossed. Comments never make a line blank.
+static bool skip_newlines_blank_aware(TokenWalker& walker)
+{
+    bool blank = false;
+    while (walker.current().kind == TokenKind::Newline)
+    {
+        const Span& span = walker.current().span;
+        if (span.endLine - span.startLine >= 2)
+        {
+            blank = true;
+        }
+        walker.advance();
+    }
+    return blank;
+}
+
 static void skip_statement_terminators(TokenWalker& walker)
 {
     while (walker.current().kind == TokenKind::Newline ||
@@ -1159,10 +1175,12 @@ BaseExprSyntax* Parser::parse_postfix()
     while (true)
     {
         auto cp = walker.checkpoint();
-        bool skippedNewline = walker.current().kind == TokenKind::Newline;
-        if (skippedNewline)
+
+        // A blank line separates statements so a trailing '.', '(', '[' or '{' does not glue across it.
+        if (skip_newlines_blank_aware(walker))
         {
-            skip_newlines(walker);
+            walker.restore(cp);
+            break;
         }
 
         if (walker.check(TokenKind::Dot))

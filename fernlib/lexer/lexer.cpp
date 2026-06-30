@@ -137,7 +137,9 @@ Token Lexer::scan_token()
     char c = walker.peek();
     if (c == '\r' || c == '\n')
     {
-        while (walker.peek() == '\r' || walker.peek() == '\n')
+        // Absorb horizontal whitespace too so a blank line stays a single multi-line Newline.
+        while (walker.peek() == '\r' || walker.peek() == '\n' ||
+               walker.peek() == ' '  || walker.peek() == '\t')
         {
             walker.advance();
         }
