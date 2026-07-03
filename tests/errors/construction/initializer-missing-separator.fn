@@ -1,5 +1,5 @@
 ---
-Description: Initializer field name with no colon
+Description: Initializer members on one line with no comma or newline between them
 Expected: FN1018
 ---
 
@@ -14,7 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = Vector2 { x 1.0 }
+        var v = Vector2 { x = 1.0 y = 2.0 }
         return 0
     }
 }

@@ -75,7 +75,6 @@ type Program
                 {
                     spacing = 16.0
                     padding = 24.0
-
                     Card
                     {
                         background = Color(1.0, 1.0, 1.0, 1.0)

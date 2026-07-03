@@ -11,7 +11,7 @@ type Measure
 
     literal %(value: i32)
     {
-        return Measure { value: value, isPercent: true }
+        return Measure { value = value, isPercent = true }
     }
 }
 

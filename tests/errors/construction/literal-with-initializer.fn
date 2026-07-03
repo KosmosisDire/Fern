@@ -7,7 +7,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var k = true { x: 1.0 }
+        var k = true { x = 1.0 }
         return 0
     }
 }

@@ -1,6 +1,6 @@
 ---
-Description: Initializer field with '=' but no value
-Expected: FN1015
+Description: Initializer field uses ':' instead of '='
+Expected: FN1018
 ---
 
 type Vector2
@@ -14,7 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = Vector2 { x = }
+        var v = Vector2 { x: 1.0 }
         return 0
     }
 }

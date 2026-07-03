@@ -1,5 +1,5 @@
 ---
-Description: Initializer field with name and colon but no value
+Description: Initializer field with name and '=' but no value
 Expected: FN1015
 ---
 
@@ -14,7 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = Vector2 { x: , y: 2.0 }
+        var v = Vector2 { x = , y = 2.0 }
         return 0
     }
 }

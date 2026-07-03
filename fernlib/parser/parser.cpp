@@ -69,16 +69,6 @@ static void skip_statement_terminators(TokenWalker& walker)
     }
 }
 
-static void advance_past_field(TokenWalker& walker)
-{
-    skip_newlines(walker);
-    if (walker.check(TokenKind::Comma))
-    {
-        walker.advance();
-        skip_newlines(walker);
-    }
-}
-
 static bool has_space_before(const Span& left, const Span& op)
 {
     return left.endLine != op.startLine || left.endColumn != op.startColumn;
@@ -1075,24 +1065,46 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
 
 void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
 {
+    bool first = true;
     while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
     {
         auto cp = walker.checkpoint();
 
+        // Members are separated by a newline or comma, consumed before each member.
+        bool sawSeparator = walker.check(TokenKind::Newline) || walker.check(TokenKind::Comma);
+        skip_newlines(walker);
+        if (walker.check(TokenKind::Comma))
+        {
+            walker.advance();
+            skip_newlines(walker);
+        }
+
+        if (walker.check(TokenKind::RightBrace) || walker.is_at_end())
+        {
+            break;
+        }
+
         auto* expr = parse_postfix();
         if (!expr)
         {
-            // Not a field name or value here, e.g. a stray comma or a statement keyword.
+            // Not a field name or value here, e.g. a stray colon or a statement keyword.
             diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected a field name or value");
             while (!walker.check(TokenKind::RightBrace) && !walker.check(TokenKind::Comma) && !walker.is_at_end())
                 walker.advance();
-            advance_past_field(walker);
+            first = false;
             expect_progress(cp);
             continue;
         }
 
-        bool isFieldName = expr->is<IdentifierExprSyntax>() || expr->is<MemberAccessExprSyntax>();
-        if (isFieldName && walker.check(TokenKind::Colon))
+        if (!first && !sawSeparator)
+        {
+            diag.report(DiagnosticCode::Err_SyntaxError, expr->span, "expected ',' or newline between initializer members");
+        }
+        first = false;
+
+        // A field assignment is an lvalue target followed by '='. Anything else is a child object.
+        bool isAssignTarget = expr->is<IdentifierExprSyntax>() || expr->is<MemberAccessExprSyntax>();
+        if (isAssignTarget && walker.check(TokenKind::Assign))
         {
             Span fieldSpan = expr->span;
 
@@ -1101,26 +1113,13 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
 
             auto* value = parse_expression();
             if (!value)
-                diag.report(DiagnosticCode::Err_ExpectedValueAfterColon, walker.current().span);
+                diag.report(DiagnosticCode::Err_ExpectedValueAfterAssign, walker.current().span);
             builder.merge_if(fieldSpan, value);
             out.push_back(builder.field_init(expr, value, fieldSpan));
-        }
-        else if (isFieldName)
-        {
-            // A field name must be followed by ': value'.
-            expect(TokenKind::Colon, "expected ':' after field name");
         }
         else
         {
             out.push_back(builder.expr_stmt(expr));
-        }
-
-        skip_newlines(walker);
-
-        if (walker.check(TokenKind::Comma))
-        {
-            walker.advance();
-            skip_newlines(walker);
         }
 
         expect_progress(cp);

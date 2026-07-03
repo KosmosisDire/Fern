@@ -15,7 +15,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var p = Point<i32> { x: 5, y: 6 }
+        var p = Point<i32> { x = 5, y = 6 }
         return p.x
     }
 }

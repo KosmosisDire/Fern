@@ -20,7 +20,7 @@ type Program
     static fn Main -> i32
     {
         var result = 0
-        while (Flag { value: false })
+        while (Flag { value = false })
         {
             result = 1
         }

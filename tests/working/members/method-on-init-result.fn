@@ -20,7 +20,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = Vector2 { x: 1.0, y: 2.0 }.Get()
+        var v = Vector2 { x = 1.0, y = 2.0 }.Get()
         return (i32)v
     }
 }

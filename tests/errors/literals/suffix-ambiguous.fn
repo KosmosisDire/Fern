@@ -10,7 +10,7 @@ type Measure
 
     literal px(value: f32)
     {
-        return Measure { value: value }
+        return Measure { value = value }
     }
 }
 
@@ -21,7 +21,7 @@ type OtherMeasure
 
     literal px(value: f32)
     {
-        return OtherMeasure { value: value }
+        return OtherMeasure { value = value }
     }
 }
 

@@ -14,7 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = Vector2 { x: 1.0, z: 3.0 }
+        var v = Vector2 { x = 1.0, z = 3.0 }
         return 0
     }
 }

@@ -18,8 +18,8 @@ type Program
         var a = Vector2
         -- a comment here
         {
-            x: 1.0,
-            y: 2.0
+            x = 1.0,
+            y = 2.0
         }
         return (i32)a.x
     }

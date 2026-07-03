@@ -23,10 +23,10 @@ type Program
     {
         var r = Rect
         {
-            pos.x: 1.0,
-            pos.y: 2.0,
-            size.x: 10.0,
-            size.y: 20.0
+            pos.x = 1.0,
+            pos.y = 2.0,
+            size.x = 10.0,
+            size.y = 20.0
         }
         return (i32)r.pos.x
     }
