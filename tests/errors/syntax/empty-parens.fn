@@ -1,0 +1,13 @@
+---
+Description: Empty parenthesized expression should error
+Expected: FN1018
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x = ()
+        return 0
+    }
+}

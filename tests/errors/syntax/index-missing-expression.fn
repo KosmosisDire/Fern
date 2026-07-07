@@ -1,0 +1,14 @@
+---
+Description: Index access with empty brackets should error
+Expected: FN1018
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a = [1, 2, 3]
+        var x = a[]
+        return 0
+    }
+}

@@ -50,7 +50,7 @@ private:
     BaseExprSyntax* parse_binary(Precedence minPrec = Precedence::None);
     BaseExprSyntax* parse_unary();
     BaseExprSyntax* parse_primary();
-    CallExprSyntax* parse_call(BaseExprSyntax* callee);
+    BaseExprSyntax* parse_call(BaseExprSyntax* callee);
     void parse_object_builder_members(std::vector<StmtPtr>& out);
     ObjectBuilderExprSyntax* parse_object_builder(BaseExprSyntax* target = nullptr);
     MemberAccessExprSyntax* parse_member_access(BaseExprSyntax* left);
@@ -62,6 +62,7 @@ private:
 
     // Types
     TypeExprSyntax* parse_type();
+    TypeExprSyntax* expect_type(std::string_view message);
 
     // Trace brace scope for parsing conditions (and maybe other stuff in the future)
     // Modifies the parser passed into it, uses RAII to track a scope

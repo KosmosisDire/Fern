@@ -398,7 +398,7 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 {
     FhirExpr* operand = bind_value_expr(expr->operand);
-    if (operand && operand->is_error()) return fhir.error_expr(expr);
+    if (!operand || operand->is_error()) return fhir.error_expr(expr);
 
     TypeSymbol* operandType = operand ? operand->type : nullptr;
 

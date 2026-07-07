@@ -1,0 +1,15 @@
+---
+Description: Call with broken argument list should only report the syntax error, not an overload cascade
+Expected: FN1018
+---
+
+type Program
+{
+    static fn Take(a: i32, b: i32) {}
+
+    static fn Main -> i32
+    {
+        Take(1,
+        return 0
+    }
+}

@@ -258,15 +258,21 @@ BaseDeclSyntax* Parser::parse_declaration()
     }
     else
     {
-        if (!attrs.empty())
-        {
-            diag.report(DiagnosticCode::Err_ExpectedDeclaration, walker.current().span);
-        }
         if (mods != Modifier::None)
         {
             diag.report(DiagnosticCode::Err_ModifiersWithoutDecl, walker.current().span);
         }
+        else
+        {
+            diag.report(DiagnosticCode::Err_ExpectedDeclaration, walker.current().span);
+        }
+
+        // One error per junk line, then resync at the next statement boundary
         walker.advance();
+        while (!is_at_statement_boundary(walker))
+        {
+            walker.advance();
+        }
         return nullptr;
     }
 
@@ -326,7 +332,7 @@ VariableDeclSyntax* Parser::parse_variable_decl()
     {
         walker.advance();
         skip_newlines(walker);
-        var->type = parse_type();
+        var->type = expect_type("expected a type after ':'");
         builder.merge_if(span, var->type);
     }
 
@@ -374,7 +380,7 @@ ParameterDeclSyntax* Parser::parse_parameter_decl()
     {
         walker.advance();
         skip_newlines(walker);
-        param->type = parse_type();
+        param->type = expect_type("expected a type after ':'");
         builder.merge_if(span, param->type);
     }
 
@@ -472,7 +478,7 @@ FieldDeclSyntax* Parser::parse_field_decl()
     {
         walker.advance();
         skip_newlines(walker);
-        field->type = parse_type();
+        field->type = expect_type("expected a type after ':'");
         builder.merge_if(span, field->type);
     }
 
@@ -557,7 +563,7 @@ TypeExprSyntax* Parser::parse_return_type(Span& span)
     walker.advance();
     skip_newlines(walker);
 
-    auto* type = parse_type();
+    auto* type = expect_type("expected a return type after '->'");
     builder.merge_if(span, type);
     return type;
 }
@@ -904,10 +910,16 @@ BaseExprSyntax* Parser::parse_assignment()
     auto assignOp = to_assign_op(walker.current().kind);
     if (assignOp)
     {
+        TokenKind opKind = walker.current().kind;
+        Span opSpan = walker.current().span;
         walker.advance();
         skip_newlines(walker);
 
         auto* value = parse_assignment();
+        if (!value)
+        {
+            diag.report(DiagnosticCode::Err_ExpectedExprAfterOp, opSpan.at_end(), Fern::format(opKind));
+        }
         return builder.assignment(left, *assignOp, value);
     }
 
@@ -1010,6 +1022,10 @@ BaseExprSyntax* Parser::parse_unary()
         skip_newlines(walker);
 
         auto* operand = parse_unary();
+        if (!operand)
+        {
+            diag.report(DiagnosticCode::Err_ExpectedExprAfterOp, span.at_end(), Fern::format(opKind));
+        }
         builder.merge_if(span, operand);
         return builder.unary(*unaryOp, operand, span);
     }
@@ -1017,7 +1033,7 @@ BaseExprSyntax* Parser::parse_unary()
     return parse_postfix();
 }
 
-CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
+BaseExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
 {
     auto* call = arena.alloc<CallExprSyntax>();
     call->callee = callee;
@@ -1057,9 +1073,15 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     }
 
     Span span = callee->span;
-    builder.merge_if(span, expect(TokenKind::RightParen, "expected ')' after arguments"));
+    const Token* rparen = expect(TokenKind::RightParen, "expected ')' after arguments");
+    builder.merge_if(span, rparen);
     call->span = span;
 
+    if (!rparen)
+    {
+        // Stop a broken call from binding with a partial argument list
+        return builder.error_expr(call, span);
+    }
     return call;
 }
 
@@ -1211,6 +1233,10 @@ BaseExprSyntax* Parser::parse_postfix()
 
             BraceInitScope braceScope(*this);
             auto* indexValue = parse_expression();
+            if (!indexValue)
+            {
+                diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected an index expression");
+            }
             skip_newlines(walker);
 
             builder.merge_if(bracketSpan, expect(TokenKind::RightBracket, "expected ']' after index expression"));
@@ -1286,6 +1312,10 @@ BaseExprSyntax* Parser::parse_primary()
 
         BraceInitScope braceScope(*this);
         auto* inner = parse_expression();
+        if (!inner)
+        {
+            diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected an expression after '('");
+        }
         skip_newlines(walker);
 
         builder.merge_if(span, expect(TokenKind::RightParen, "expected ')' after expression"));
@@ -1544,6 +1574,16 @@ TypeExprSyntax* Parser::parse_type()
         type = builder.array_type(type, type->span.merge(closingSpan));
     }
 
+    return type;
+}
+
+TypeExprSyntax* Parser::expect_type(std::string_view message)
+{
+    auto* type = parse_type();
+    if (!type)
+    {
+        diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, message);
+    }
     return type;
 }
 
