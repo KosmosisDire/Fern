@@ -99,28 +99,30 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
             return castResult;
         }
 
-        // Surface the specific out-of-range error before the generic conversion error.
-        auto* expectedNamed = expected->as<NamedTypeSymbol>();
-        auto* resultNamed = result->type->as<NamedTypeSymbol>();
-        if (expectedNamed && expectedNamed->is_integer() &&
-            resultNamed && resultNamed->is_integer())
-        {
-            const auto& constant = result->get_constant();
-            if (constant)
-            {
-                diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, constant->intValue, format_type(expected));
-                return fhir.error_expr(expr, expected, result);
-            }
-        }
-
-        DiagnosticCode code = (NamedTypeSymbol::get_conversion(result->type, expected).level == Convertibility::Explicit)
-            ? DiagnosticCode::Err_NoImplicitConv
-            : DiagnosticCode::Err_TypeMismatch;
-        diag.report(code, expr->span, std::string{}, format_type(result->type), format_type(expected));
+        const auto& constant = result->get_constant();
+        report_conversion_failure(result->type, expected, constant ? &*constant : nullptr, expr->span);
         return fhir.error_expr(expr, expected, result);
     }
 
     return result;
+}
+
+// reports the specific out of range error for integer constants, otherwise the generic conversion error
+void Binder::report_conversion_failure(TypeSymbol* from, TypeSymbol* to, const ConstantValue* constant, const Span& span, std::string prefix)
+{
+    auto* fromNamed = from ? from->as<NamedTypeSymbol>() : nullptr;
+    auto* toNamed = to ? to->as<NamedTypeSymbol>() : nullptr;
+    if (fromNamed && fromNamed->is_integer() && toNamed && toNamed->is_integer()
+        && constant && constant->kind == ConstantValue::Kind::Int)
+    {
+        diag.report(DiagnosticCode::Err_ConstantOutOfRange, span, constant->intValue, format_type(to));
+        return;
+    }
+
+    DiagnosticCode code = (NamedTypeSymbol::get_conversion(from, to).level == Convertibility::Explicit)
+        ? DiagnosticCode::Err_NoImplicitConv
+        : DiagnosticCode::Err_TypeMismatch;
+    diag.report(code, span, prefix, format_type(from), format_type(to));
 }
 
 FhirCastExpr* Binder::try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span)

@@ -11,8 +11,7 @@
 namespace Fern
 {
 
-static void report_argument_mismatches(
-    Diagnostics& diag,
+void Binder::report_argument_mismatches(
     MethodSymbol* candidate,
     const std::vector<OverloadArg>& args,
     const std::vector<ExprPtr>& argSyntax)
@@ -26,11 +25,7 @@ static void report_argument_mismatches(
         if (level == Convertibility::Exact || level == Convertibility::Implicit) continue;
 
         std::string prefix = std::format("argument '{}': ", param->name);
-        DiagnosticCode code = (level == Convertibility::Explicit)
-            ? DiagnosticCode::Err_NoImplicitConv
-            : DiagnosticCode::Err_TypeMismatch;
-        diag.report(code, argSyntax[i]->span,
-                    prefix, format_type(args[i].type), format_type(param->type));
+        report_conversion_failure(args[i].type, param->type, args[i].constant, argSyntax[i]->span, prefix);
     }
 }
 
@@ -92,7 +87,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             {
                 if (result.bestFailure.method)
                 {
-                    report_argument_mismatches(diag, result.bestFailure.method, args, expr->arguments);
+                    report_argument_mismatches(result.bestFailure.method, args, expr->arguments);
                 }
                 else
                 {
@@ -146,7 +141,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             {
                 if (result.bestFailure.method)
                 {
-                    report_argument_mismatches(diag, result.bestFailure.method, args, expr->arguments);
+                    report_argument_mismatches(result.bestFailure.method, args, expr->arguments);
                 }
                 else
                 {

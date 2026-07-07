@@ -122,6 +122,7 @@ protected:
     FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirCastExpr* try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span);
     FhirExpr* coerce_to_param(FhirExpr* arg, TypeSymbol* paramType);
+    void report_conversion_failure(TypeSymbol* from, TypeSymbol* to, const ConstantValue* constant, const Span& span, std::string prefix = {});
     FhirExpr* bind_identifier(IdentifierExprSyntax* expr);
     FhirExpr* bind_this(ThisExprSyntax* expr);
     FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
@@ -146,6 +147,7 @@ protected:
 #pragma region Call Binding
 
     FhirExpr* bind_call(CallExprSyntax* expr);
+    void report_argument_mismatches(MethodSymbol* candidate, const std::vector<OverloadArg>& args, const std::vector<ExprPtr>& argSyntax);
 
 #pragma region Object Builder Binding
 
