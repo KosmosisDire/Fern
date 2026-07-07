@@ -1,5 +1,5 @@
 ---
-Description: Initializer list contains a var declaration
+Description: Object builder contains a keyword instead of a field name
 Expected: FN1018
 ---
 
@@ -15,7 +15,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var a = Vector2 { var x = 1.0 }
+        var a = Vector2 { return 1.0 }
         return 0
     }
 }

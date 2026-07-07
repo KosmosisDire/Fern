@@ -168,7 +168,7 @@ public:
         out << "}";
     }
 
-    void visit(InitializerExprSyntax* node) override
+    void visit(ObjectBuilderExprSyntax* node) override
     {
         begin_node(node);
         out << "\n";

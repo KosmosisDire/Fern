@@ -157,9 +157,9 @@ struct FhirBuilder
         return node;
     }
 
-    FhirInitializerExpr* initializer_expr(BaseSyntax* syntax, TypeSymbol* type, FhirExpr* construction, std::vector<FhirInitializerEntry> entries)
+    FhirObjectBuilderExpr* object_builder_expr(BaseSyntax* syntax, TypeSymbol* type, FhirExpr* construction, std::vector<FhirObjectBuilderEntry> entries)
     {
-        auto* node = arena.alloc<FhirInitializerExpr>();
+        auto* node = arena.alloc<FhirObjectBuilderExpr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;

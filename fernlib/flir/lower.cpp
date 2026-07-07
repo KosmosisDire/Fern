@@ -162,7 +162,7 @@ FlirExpr* FlirLowerer::lower_expr(FhirExpr* expr)
     if (auto* e = expr->as<FhirCompoundAssignExpr>()) return lower_compound_assign(e);
     if (auto* e = expr->as<FhirCastExpr>())         return lower_cast(e);
     if (auto* e = expr->as<FhirIndexExpr>())        return lower_index(e);
-    if (auto* e = expr->as<FhirInitializerExpr>())  return lower_initializer(e);
+    if (auto* e = expr->as<FhirObjectBuilderExpr>())  return lower_object_builder(e);
     if (auto* e = expr->as<FhirArrayLiteralExpr>()) return lower_array_literal(e);
 
     return nullptr;
@@ -379,8 +379,8 @@ void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syn
     }
 }
 
-// Lowers Foo { a: 1, b.c: 2 } to a sequence of field stores into a temp
-FlirExpr* FlirLowerer::lower_initializer(FhirInitializerExpr* expr)
+// Lowers Foo { a = 1, b.c = 2 } to a sequence of field stores into a temp
+FlirExpr* FlirLowerer::lower_object_builder(FhirObjectBuilderExpr* expr)
 {
     BaseSyntax* syntax = expr->syntax;
     TypeSymbol* type = expr->type;

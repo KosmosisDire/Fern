@@ -1,0 +1,20 @@
+---
+Description: Object builder members on one line with no comma or newline between them
+Expected: FN1018
+---
+
+type Vector2
+{
+    x: f32
+    y: f32
+    init{}
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = Vector2 { x = 1.0 y = 2.0 }
+        return 0
+    }
+}

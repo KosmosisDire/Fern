@@ -51,8 +51,8 @@ private:
     BaseExprSyntax* parse_unary();
     BaseExprSyntax* parse_primary();
     CallExprSyntax* parse_call(BaseExprSyntax* callee);
-    void parse_initializer_members(std::vector<StmtPtr>& out);
-    InitializerExprSyntax* parse_initializer(BaseExprSyntax* target = nullptr);
+    void parse_object_builder_members(std::vector<StmtPtr>& out);
+    ObjectBuilderExprSyntax* parse_object_builder(BaseExprSyntax* target = nullptr);
     MemberAccessExprSyntax* parse_member_access(BaseExprSyntax* left);
     SimpleNameExprSyntax* parse_simple_name();
     BaseExprSyntax* parse_postfix();

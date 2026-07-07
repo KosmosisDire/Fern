@@ -23,7 +23,7 @@ struct BlockSyntax;
 struct CallExprSyntax;
 struct IdentifierExprSyntax;
 struct IfStmtSyntax;
-struct InitializerExprSyntax;
+struct ObjectBuilderExprSyntax;
 struct LiteralExprSyntax;
 struct MemberAccessExprSyntax;
 struct CallableDeclSyntax;
@@ -147,10 +147,10 @@ protected:
 
     FhirExpr* bind_call(CallExprSyntax* expr);
 
-#pragma region Initializer Binding
+#pragma region Object Builder Binding
 
-    FhirExpr* bind_initializer(InitializerExprSyntax* expr);
-    FhirExpr* bind_initializer_target(InitializerExprSyntax* expr);
+    FhirExpr* bind_object_builder(ObjectBuilderExprSyntax* expr);
+    FhirExpr* bind_object_builder_target(ObjectBuilderExprSyntax* expr);
 
 };
 

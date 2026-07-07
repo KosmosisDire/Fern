@@ -1,12 +1,13 @@
 ---
-Description: Initializer field uses ':' instead of '='
-Expected: FN1018
+Description: Object builder containing only commas
+Expected: FN1018, FN1018, FN1018
 ---
 
 type Vector2
 {
     x: f32
     y: f32
+
     init{}
 }
 
@@ -14,7 +15,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = Vector2 { x: 1.0 }
+        var a = Vector2 { , , , }
         return 0
     }
 }

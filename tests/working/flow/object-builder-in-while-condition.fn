@@ -1,5 +1,5 @@
 ---
-Description: Initializer in a parenthesized while condition implicitly converted to bool
+Description: Object builder in a parenthesized while condition implicitly converted to bool
 Expected: 0
 ---
 

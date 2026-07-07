@@ -1,5 +1,5 @@
 ---
-Description: Initializer-list children syntax used to build a widget hierarchy
+Description: Object builder children syntax used to build a widget hierarchy
 Expected: 0
 ---
 

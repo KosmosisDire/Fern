@@ -1,5 +1,5 @@
 ---
-Description: Empty initializer list
+Description: Empty object builder
 Expected: 0
 ---
 

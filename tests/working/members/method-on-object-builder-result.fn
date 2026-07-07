@@ -1,5 +1,5 @@
 ---
-Description: Method call directly on initializer result
+Description: Method call directly on object builder result
 Expected: 1
 ---
 

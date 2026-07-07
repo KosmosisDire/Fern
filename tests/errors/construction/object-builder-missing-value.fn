@@ -1,13 +1,12 @@
 ---
-Description: Initializer list contains a keyword instead of a field name
-Expected: FN1018
+Description: Object builder field with name and '=' but no value
+Expected: FN1015
 ---
 
 type Vector2
 {
     x: f32
     y: f32
-
     init{}
 }
 
@@ -15,7 +14,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var a = Vector2 { return 1.0 }
+        var v = Vector2 { x = , y = 2.0 }
         return 0
     }
 }

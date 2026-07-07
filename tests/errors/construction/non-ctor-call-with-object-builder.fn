@@ -1,5 +1,5 @@
 ---
-Description: Initializer applied to a non-constructor call result
+Description: Object builder applied to a non-constructor call result
 Expected: FN3601
 ---
 

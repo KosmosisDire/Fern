@@ -1,5 +1,5 @@
 ---
-Description: Constructor call followed by initializer that overrides a field
+Description: Constructor call followed by object builder that overrides a field
 Expected: 3
 ---
 

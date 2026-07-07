@@ -1,5 +1,5 @@
 ---
-Description: Initializer specifies the same field twice
+Description: Object builder specifies the same field twice
 Expected: FN3604
 ---
 

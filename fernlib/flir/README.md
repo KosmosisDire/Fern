@@ -12,7 +12,7 @@ The lowering pass walks FHIR top-down and emits FLIR. Notable rewrites:
 - Index access `a[i]` becomes a getter call and an index store `a[i] = v` becomes a setter call. There is no index node in FLIR.
 - Assignment becomes a sequence that stores the value into a temp, writes the temp to the target, then yields the temp, so an assignment is an expression with a value.
 - Compound assignment `x += y` becomes read target, apply the operator, store back, sequenced through temps. The object and index of an indexed or field target are evaluated once into temps so they do not run twice.
-- An initializer `Foo { a: 1, b.c: 2 }` becomes a construct into a temp followed by a field store per entry, walking the path, yielding the temp.
+- An object builder `Foo { a = 1, b.c = 2 }` becomes a construct into a temp followed by a field store per entry, walking the path, yielding the temp.
 - An array literal `[a, b, c]` becomes an alloc plus a constructor call sized to the element count, then one indexed setter call per element, yielding the temp.
 - A cast becomes a `FlirCall` when it runs a user defined cast method, or a primitive `FlirCast` when it is intrinsic.
 - An operator becomes a `FlirIntrinsic` when intrinsic, or a `FlirCall` to the operator method otherwise.

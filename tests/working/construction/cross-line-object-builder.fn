@@ -1,5 +1,5 @@
 ---
-Description: Initializer list with trailing comma
+Description: Object builder spanning multiple lines
 Expected: 1
 ---
 
@@ -15,7 +15,11 @@ type Program
 {
     static fn Main -> i32
     {
-        var a = Vector2 { x = 1.0, y = 2.0, }
+        var a = Vector2
+        {
+            x = 1.0,
+            y = 2.0
+        }
         return (i32)a.x
     }
 }

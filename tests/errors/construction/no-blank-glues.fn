@@ -1,5 +1,5 @@
 ---
-Description: without a blank line a following block glues onto the call as an initializer
+Description: without a blank line a following block glues onto the call as an object builder
 Expected: FN3601
 ---
 

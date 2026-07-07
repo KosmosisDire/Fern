@@ -1,5 +1,5 @@
 ---
-Description: Initializer list with values but not handler for those values
+Description: Object builder with values but not handler for those values
 Expected: FN3601
 ---
 
@@ -16,7 +16,7 @@ type Program
     static fn Main -> i32
     {
         -- TODO: This is not an error yet, but once we implement
-        -- custom initializer list value handlers, this will error
+        -- custom object builder value handlers, this will error
         var a = Vector2 { 1.0, 2.0 }
         return 0
     }

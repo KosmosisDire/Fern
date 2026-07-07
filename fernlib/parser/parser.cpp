@@ -1063,7 +1063,7 @@ CallExprSyntax* Parser::parse_call(BaseExprSyntax* callee)
     return call;
 }
 
-void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
+void Parser::parse_object_builder_members(std::vector<StmtPtr>& out)
 {
     bool first = true;
     while (!walker.check(TokenKind::RightBrace) && !walker.is_at_end())
@@ -1098,7 +1098,7 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
 
         if (!first && !sawSeparator)
         {
-            diag.report(DiagnosticCode::Err_SyntaxError, expr->span, "expected ',' or newline between initializer members");
+            diag.report(DiagnosticCode::Err_SyntaxError, expr->span, "expected ',' or newline between object builder members");
         }
         first = false;
 
@@ -1126,22 +1126,22 @@ void Parser::parse_initializer_members(std::vector<StmtPtr>& out)
     }
 }
 
-InitializerExprSyntax* Parser::parse_initializer(BaseExprSyntax* target)
+ObjectBuilderExprSyntax* Parser::parse_object_builder(BaseExprSyntax* target)
 {
-    auto* init = arena.alloc<InitializerExprSyntax>();
-    init->target = target;
+    auto* objectBuilder = arena.alloc<ObjectBuilderExprSyntax>();
+    objectBuilder->target = target;
     Span span = target ? target->span : walker.current().span;
 
     walker.advance();
     skip_newlines(walker);
 
-    parse_initializer_members(init->members);
+    parse_object_builder_members(objectBuilder->members);
 
-    builder.merge_if(span, expect(TokenKind::RightBrace, "expected '}' after initializer list"));
+    builder.merge_if(span, expect(TokenKind::RightBrace, "expected '}' after object builder"));
 
-    init->span = span;
+    objectBuilder->span = span;
 
-    return init;
+    return objectBuilder;
 }
 
 MemberAccessExprSyntax* Parser::parse_member_access(BaseExprSyntax* left)
@@ -1205,7 +1205,7 @@ BaseExprSyntax* Parser::parse_postfix()
         }
         else if (walker.check(TokenKind::LeftBrace) && !inCondition)
         {
-            left = parse_initializer(left);
+            left = parse_object_builder(left);
         }
         else
         {

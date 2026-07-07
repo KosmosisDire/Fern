@@ -1,5 +1,5 @@
 ---
-Description: Initializer dot-notation references a non-existent intermediate field
+Description: Object builder dot-notation references a non-existent intermediate field
 Expected: FN3203
 ---
 

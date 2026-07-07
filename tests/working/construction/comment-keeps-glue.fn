@@ -1,5 +1,5 @@
 ---
-Description: a comment line between a type and its initializer does not count as a blank line
+Description: a comment line between a type and its object builder does not count as a blank line
 Expected: 1
 ---
 

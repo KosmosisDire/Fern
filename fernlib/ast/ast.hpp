@@ -29,7 +29,7 @@ struct GenericNameExprSyntax;
 struct LiteralExprSyntax;
 struct ParenExprSyntax;
 struct CallExprSyntax;
-struct InitializerExprSyntax;
+struct ObjectBuilderExprSyntax;
 struct UnaryExprSyntax;
 struct BinaryExprSyntax;
 struct AssignmentExprSyntax;
@@ -99,7 +99,7 @@ public:
     virtual void visit(LiteralExprSyntax* node) = 0;
     virtual void visit(ParenExprSyntax* node) = 0;
     virtual void visit(CallExprSyntax* node) = 0;
-    virtual void visit(InitializerExprSyntax* node) = 0;
+    virtual void visit(ObjectBuilderExprSyntax* node) = 0;
     virtual void visit(UnaryExprSyntax* node) = 0;
     virtual void visit(BinaryExprSyntax* node) = 0;
     virtual void visit(AssignmentExprSyntax* node) = 0;
@@ -274,10 +274,10 @@ struct CallExprSyntax : BaseExprSyntax
     std::vector<ExprPtr> arguments;
 };
 
-// Vector2(1.0, 2.0) { y: 5.0 } or Vector2{ x: 1.0, y: 2.0 } or nested
-struct InitializerExprSyntax : BaseExprSyntax
+// Vector2(1.0, 2.0) { y = 5.0 } or Vector2{ x = 1.0, y = 2.0 } or nested
+struct ObjectBuilderExprSyntax : BaseExprSyntax
 {
-    SYNTAX_NODE(InitializerExpr, BaseExprSyntax)
+    SYNTAX_NODE(ObjectBuilderExpr, BaseExprSyntax)
 
     ExprPtr target = nullptr;
     std::vector<StmtPtr> members;
@@ -484,7 +484,7 @@ struct FieldDeclSyntax : BaseDeclSyntax
     ExprPtr initializer = nullptr;
 };
 
-// x: 3.0, pos.x: 3.0 (field initializer in initializer list)
+// x = 3.0, pos.x = 3.0 (field entry in an object builder)
 struct FieldInitSyntax : BaseStmtSyntax
 {
     SYNTAX_NODE(FieldInit, BaseStmtSyntax)
@@ -555,7 +555,7 @@ public:
             if (arg) arg->accept(this);
     }
 
-    void visit(InitializerExprSyntax* node) override
+    void visit(ObjectBuilderExprSyntax* node) override
     {
         on_visit(node);
         if (node->target) node->target->accept(this);

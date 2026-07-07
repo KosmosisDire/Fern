@@ -41,7 +41,7 @@ struct FhirAssignExpr;
 struct FhirCompoundAssignExpr;
 struct FhirCastExpr;
 struct FhirIndexExpr;
-struct FhirInitializerExpr;
+struct FhirObjectBuilderExpr;
 struct FhirArrayLiteralExpr;
 struct FhirErrorExpr;
 struct FhirNamespaceRefExpr;
@@ -184,7 +184,7 @@ public:
     virtual void visit(FhirCompoundAssignExpr* node) = 0;
     virtual void visit(FhirCastExpr* node) = 0;
     virtual void visit(FhirIndexExpr* node) = 0;
-    virtual void visit(FhirInitializerExpr* node) = 0;
+    virtual void visit(FhirObjectBuilderExpr* node) = 0;
     virtual void visit(FhirArrayLiteralExpr* node) = 0;
     virtual void visit(FhirErrorExpr* node) = 0;
     virtual void visit(FhirNamespaceRefExpr* node) = 0;
@@ -467,18 +467,18 @@ struct FhirIndexExpr : FhirExpr
     }
 };
 
-struct FhirInitializerEntry
+struct FhirObjectBuilderEntry
 {
     std::vector<FieldSymbol*> path;
     FhirExpr* value = nullptr;
 };
 
-struct FhirInitializerExpr : FhirExpr
+struct FhirObjectBuilderExpr : FhirExpr
 {
-    FHIR_NODE(FhirInitializerExpr, FhirExpr)
+    FHIR_NODE(FhirObjectBuilderExpr, FhirExpr)
 
     FhirExpr* construction = nullptr;
-    std::vector<FhirInitializerEntry> entries;
+    std::vector<FhirObjectBuilderEntry> entries;
 
     void visit_children(FhirVisitor* v) override
     {
@@ -632,7 +632,7 @@ public:
     void visit(FhirCompoundAssignExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirCastExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirIndexExpr* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FhirInitializerExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirObjectBuilderExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirArrayLiteralExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirErrorExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirNamespaceRefExpr* node) override { on_visit(node); node->visit_children(this); }

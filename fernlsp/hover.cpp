@@ -108,9 +108,9 @@ struct HoverFormatter : FhirVisitor
         set_signature(std::format("(index) -> {}", format_type(n->type, fmt)));
     }
 
-    void visit(FhirInitializerExpr* n) override
+    void visit(FhirObjectBuilderExpr* n) override
     {
-        set_signature(std::format("(initializer) -> {}", format_type(n->type, fmt)));
+        set_signature(std::format("(object builder) -> {}", format_type(n->type, fmt)));
     }
 
     void visit(FhirArrayLiteralExpr* n) override

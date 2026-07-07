@@ -1,5 +1,5 @@
 ---
-Description: Nested initializer lists for nested type fields
+Description: Nested object builders for nested type fields
 Expected: 1
 ---
 

@@ -1,5 +1,5 @@
 ---
-Description: a blank line stops a following block from gluing onto the call as an initializer
+Description: a blank line stops a following block from gluing onto the call as an object builder
 Expected: 0
 ---
 

@@ -20,7 +20,7 @@ set(FERNLIB_SOURCES
     semantic/binder/core/binder_exprs.cpp
     semantic/binder/core/binder_literals.cpp
     semantic/binder/core/binder_calls.cpp
-    semantic/binder/core/binder_initializers.cpp
+    semantic/binder/core/binder_object_builders.cpp
     semantic/binder/core/binder_stmts.cpp
     semantic/binder/scopes/namespace_binder.cpp
     semantic/binder/scopes/type_binder.cpp

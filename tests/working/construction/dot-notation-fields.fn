@@ -1,5 +1,5 @@
 ---
-Description: Initializer using dot-notation field paths
+Description: Object builder using dot-notation field paths
 Expected: 1
 ---
 

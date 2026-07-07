@@ -1,5 +1,5 @@
 ---
-Description: Initializer field with '=' but no value
+Description: Object builder field with '=' but no value
 Expected: FN1015
 ---
 

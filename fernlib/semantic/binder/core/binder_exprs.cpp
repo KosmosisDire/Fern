@@ -61,8 +61,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         result = bind_call(call);
     else if (auto* member = expr->as<MemberAccessExprSyntax>())
         result = bind_member_access(member);
-    else if (auto* initializer = expr->as<InitializerExprSyntax>())
-        result = bind_initializer(initializer);
+    else if (auto* objectBuilder = expr->as<ObjectBuilderExprSyntax>())
+        result = bind_object_builder(objectBuilder);
     else if (auto* paren = expr->as<ParenExprSyntax>())
         result = bind_paren(paren, expected);
     else if (auto* castExpr = expr->as<CastExprSyntax>())

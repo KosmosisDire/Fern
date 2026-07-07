@@ -1,5 +1,5 @@
 ---
-Description: Namespace-qualified type used with constructor, initializer, and operator
+Description: Namespace-qualified type used with constructor, object builder, and operator
 Expected: 7
 ---
 

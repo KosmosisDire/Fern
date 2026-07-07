@@ -1,5 +1,5 @@
 ---
-Description: Initializer list applied to a generic type
+Description: Object builder applied to a generic type
 Expected: 5
 ---
 

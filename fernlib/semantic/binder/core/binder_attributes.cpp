@@ -10,7 +10,7 @@
 namespace Fern
 {
 
-// Gets the attribute name / path from an attribute constructor / initializer @Foo(1) -> "Foo", @Test.Foo { ... } -> "Test.Foo"
+// Gets the attribute name / path from an attribute constructor / object builder @Foo(1) -> "Foo", @Test.Foo { ... } -> "Test.Foo"
 static BaseExprSyntax* extract_attribute_name(BaseExprSyntax* expr)
 {
     if (!expr) return nullptr;
@@ -19,9 +19,9 @@ static BaseExprSyntax* extract_attribute_name(BaseExprSyntax* expr)
     {
         return extract_attribute_name(call->callee);
     }
-    if (auto* init = expr->as<InitializerExprSyntax>())
+    if (auto* builder = expr->as<ObjectBuilderExprSyntax>())
     {
-        return extract_attribute_name(init->target);
+        return extract_attribute_name(builder->target);
     }
     return expr;
 }
@@ -65,15 +65,15 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             }
             ctor = attrType->find_constructor(args).best.method;
         }
-        else if (auto* initExpr = attr->value->as<InitializerExprSyntax>())
+        else if (auto* builderExpr = attr->value->as<ObjectBuilderExprSyntax>())
         {
-            if (!initExpr->target)
+            if (!builderExpr->target)
             {
                 diag.report(DiagnosticCode::Err_AttrNeedsTypeName, attr->span);
                 continue;
             }
 
-            if (auto* innerCall = initExpr->target->as<CallExprSyntax>())
+            if (auto* innerCall = builderExpr->target->as<CallExprSyntax>())
             {
                 std::vector<OverloadArg> args;
                 for (auto* arg : innerCall->arguments)

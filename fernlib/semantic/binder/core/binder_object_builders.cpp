@@ -27,7 +27,7 @@ static std::string format_field_path(BaseExprSyntax* expr)
     return "";
 }
 
-FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
+FhirExpr* Binder::bind_object_builder_target(ObjectBuilderExprSyntax* expr)
 {
     if (!expr->target) return nullptr;
 
@@ -52,7 +52,7 @@ FhirExpr* Binder::bind_initializer_target(InitializerExprSyntax* expr)
     return bind_value_expr(expr->target);
 }
 
-// Walk a field syntax and collect the chain of FieldSymbols. 
+// Walk a field syntax and collect the chain of FieldSymbols.
 // Returns false and reports diagnostics if any link is not a field on the expected type.
 static bool collect_field_path(Binder* binder, BaseExprSyntax* target, NamedTypeSymbol* type,
                                std::vector<FieldSymbol*>& path_out, Diagnostics& diag)
@@ -78,30 +78,30 @@ static bool collect_field_path(Binder* binder, BaseExprSyntax* target, NamedType
         auto* nestedType = parentType ? parentType->as<NamedTypeSymbol>() : nullptr;
         if (!nestedType)
         {
-            diag.report(DiagnosticCode::Err_InitMemberOnNonStruct, member->span);
+            diag.report(DiagnosticCode::Err_ObjectBuilderMemberOnNonStruct, member->span);
             return false;
         }
 
         if (!member->right)
         {
-            diag.report(DiagnosticCode::Err_InitTargetBadShape, member->span);
+            diag.report(DiagnosticCode::Err_ObjectBuilderTargetBadShape, member->span);
             return false;
         }
 
         return collect_field_path(binder, member->right, nestedType, path_out, diag);
     }
 
-    diag.report(DiagnosticCode::Err_InitTargetBadShape, target->span);
+    diag.report(DiagnosticCode::Err_ObjectBuilderTargetBadShape, target->span);
     return false;
 }
 
-// Binds an initializer expression like `Foo { a: 1, b.c: 2 }`
-FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
+// Binds an object builder like `Foo { a = 1, b.c = 2 }`
+FhirExpr* Binder::bind_object_builder(ObjectBuilderExprSyntax* expr)
 {
-    // Expect a type or constructor call before the list
+    // Expect a type or constructor call before the builder
     if (!expr->target)
     {
-        diag.report(DiagnosticCode::Err_InitListNoType, expr->span);
+        diag.report(DiagnosticCode::Err_ObjectBuilderNoType, expr->span);
         for (auto* member : expr->members)
         {
             if (auto* fieldInit = member->as<FieldInitSyntax>())
@@ -128,7 +128,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         }
         if (!callResult->is<FhirConstructionExpr>())
         {
-            diag.report(DiagnosticCode::Err_InitListBadTarget, callExpr->span);
+            diag.report(DiagnosticCode::Err_ObjectBuilderBadTarget, callExpr->span);
             return fhir.error_expr(expr);
         }
         TypeSymbol* callType = callResult->type;
@@ -145,14 +145,14 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         auto* tref = targetExpr->as<FhirTypeRef>();
         if (!tref)
         {
-            diag.report(DiagnosticCode::Err_InitListBadTarget, expr->target->span);
+            diag.report(DiagnosticCode::Err_ObjectBuilderBadTarget, expr->target->span);
             return fhir.error_expr(expr);
         }
 
         namedType = tref->referenced ? tref->referenced->as<NamedTypeSymbol>() : nullptr;
         if (!namedType)
         {
-            diag.report(DiagnosticCode::Err_InitListBadTarget, expr->target->span);
+            diag.report(DiagnosticCode::Err_ObjectBuilderBadTarget, expr->target->span);
             return fhir.error_expr(expr);
         }
 
@@ -180,12 +180,12 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
 
     if (expr->members.empty())
     {
-        return bind_initializer_target(expr);
+        return bind_object_builder_target(expr);
     }
 
-    FhirExpr* construction = bind_initializer_target(expr);
+    FhirExpr* construction = bind_object_builder_target(expr);
 
-    std::vector<FhirInitializerEntry> entries;
+    std::vector<FhirObjectBuilderEntry> entries;
     std::vector<std::string> seenPaths;
     for (auto* member : expr->members)
     {
@@ -205,7 +205,7 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
             auto it = std::find(seenPaths.begin(), seenPaths.end(), pathStr);
             if (it != seenPaths.end())
             {
-                diag.report(DiagnosticCode::Err_DuplicateInitField, fieldInit->target->span, pathStr);
+                diag.report(DiagnosticCode::Err_DuplicateObjectBuilderField, fieldInit->target->span, pathStr);
                 continue;
             }
             seenPaths.push_back(std::move(pathStr));
@@ -222,13 +222,13 @@ FhirExpr* Binder::bind_initializer(InitializerExprSyntax* expr)
         FhirExpr* value = fieldInit->value ? bind_value_expr(fieldInit->value, fieldType) : nullptr;
         if (!value) continue;
 
-        FhirInitializerEntry entry;
+        FhirObjectBuilderEntry entry;
         entry.path = std::move(path);
         entry.value = value;
         entries.push_back(std::move(entry));
     }
 
-    return fhir.initializer_expr(expr, namedType, construction, std::move(entries));
+    return fhir.object_builder_expr(expr, namedType, construction, std::move(entries));
 }
 
 }

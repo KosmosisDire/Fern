@@ -95,16 +95,16 @@ DIAG(Err_NoImplicitConv,                3405, Error,   "{}cannot implicitly conv
 // Binder: attributes (3500-3599)
 DIAG(Err_AttrMustBeType,                3500, Error,   "attribute must name a type")
 DIAG(Err_NotAttrType,                   3501, Error,   "type '{}' is not an attribute type (missing 'attr' modifier)")                              // CS0616
-DIAG(Err_AttrNeedsTypeName,             3502, Error,   "expected type name in attribute initializer")
-DIAG(Err_AttrNeedsParameterlessCtor,    3503, Error,   "'{}' must contain a parameterless constructor to construct with only an initializer list")
+DIAG(Err_AttrNeedsTypeName,             3502, Error,   "expected type name in attribute object builder")
+DIAG(Err_AttrNeedsParameterlessCtor,    3503, Error,   "'{}' must contain a parameterless constructor to construct with only an object builder")
 
-// Binder: initializers (3600-3699)
-DIAG(Err_InitListNoType,                3600, Error,   "cannot infer type for initializer list, use an explicit type name")
-DIAG(Err_InitListBadTarget,             3601, Error,   "initializer lists can only be applied to a type or constructor call")
+// Binder: object builders (3600-3699)
+DIAG(Err_ObjectBuilderNoType,           3600, Error,   "cannot infer type for object builder, use an explicit type name")
+DIAG(Err_ObjectBuilderBadTarget,        3601, Error,   "object builders can only be applied to a type or constructor call")
 DIAG(Err_NoDefaultCtor,                 3602, Error,   "type '{}' has no default constructor")
-DIAG(Err_DuplicateInitField,            3604, Error,   "duplicate field '{}' in initializer")
-DIAG(Err_InitMemberOnNonStruct,         3605, Error,   "cannot access member on non-struct type")
-DIAG(Err_InitTargetBadShape,            3606, Error,   "initializer target must be a field name or member access")                                  // CS0747
+DIAG(Err_DuplicateObjectBuilderField,   3604, Error,   "duplicate field '{}' in object builder")
+DIAG(Err_ObjectBuilderMemberOnNonStruct, 3605, Error,  "cannot access member on non-struct type")
+DIAG(Err_ObjectBuilderTargetBadShape,   3606, Error,   "object builder target must be a field name or member access")                              // CS0747
 
 // Binder: literals (3700-3799)
 DIAG(Err_UnknownEscape,                 3700, Error,   "unrecognized escape sequence '\\{}'")                                                       // CS1009

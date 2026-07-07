@@ -1,5 +1,5 @@
 ---
-Description: Initializer references a field that does not exist on the type
+Description: Object builder references a field that does not exist on the type
 Expected: FN3203
 ---
 

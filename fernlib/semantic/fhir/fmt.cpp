@@ -159,7 +159,7 @@ void FhirPrettyFormatter::visit(FhirIndexExpr* node)
     out << "]";
 }
 
-void FhirPrettyFormatter::visit(FhirInitializerExpr* node)
+void FhirPrettyFormatter::visit(FhirObjectBuilderExpr* node)
 {
     write_child(node->construction);
     out << " { ";
@@ -532,7 +532,7 @@ void FhirDebugFormatter::visit(FhirIndexExpr* node)
     close_block();
 }
 
-void FhirDebugFormatter::visit(FhirInitializerExpr* node)
+void FhirDebugFormatter::visit(FhirObjectBuilderExpr* node)
 {
     begin_node(node, type_attr(node));
     open_block();

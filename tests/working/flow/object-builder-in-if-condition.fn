@@ -1,5 +1,5 @@
 ---
-Description: Initializer in a parenthesized if condition via member access
+Description: Object builder in a parenthesized if condition via member access
 Expected: 1
 ---
 
