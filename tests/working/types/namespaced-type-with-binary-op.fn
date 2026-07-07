@@ -1,6 +1,6 @@
 ---
 Description: Namespace-qualified type used with constructor, object builder, and operator
-Expected: 7
+Expected: 4
 ---
 
 namespace Math

@@ -1,6 +1,6 @@
 ---
 Description: Backtick raw strings do not process escape sequences
-Expected: 23
+Expected: 20
 ---
 
 type Program
