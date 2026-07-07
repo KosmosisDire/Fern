@@ -1075,6 +1075,10 @@ void Parser::parse_object_builder_members(std::vector<StmtPtr>& out)
         skip_newlines(walker);
         if (walker.check(TokenKind::Comma))
         {
+            if (first)
+            {
+                diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected a field name or value");
+            }
             walker.advance();
             skip_newlines(walker);
         }
@@ -1117,9 +1121,18 @@ void Parser::parse_object_builder_members(std::vector<StmtPtr>& out)
             builder.merge_if(fieldSpan, value);
             out.push_back(builder.field_init(expr, value, fieldSpan));
         }
-        else
+        else if (walker.check(TokenKind::Newline) || walker.check(TokenKind::Comma)
+            || walker.check(TokenKind::RightBrace) || walker.is_at_end())
         {
             out.push_back(builder.expr_stmt(expr));
+        }
+        else
+        {
+            // Malformed member, keep the expression in the AST but stop it from binding
+            diag.report(DiagnosticCode::Err_SyntaxError, walker.current().span, "expected '=', ',' or newline after object builder member");
+            while (!walker.check(TokenKind::RightBrace) && !walker.check(TokenKind::Comma) && !walker.is_at_end())
+                walker.advance();
+            out.push_back(builder.error_stmt(expr, expr->span));
         }
 
         expect_progress(cp);
