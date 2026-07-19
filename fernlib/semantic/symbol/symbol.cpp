@@ -102,6 +102,32 @@ bool MethodSymbol::is_intrinsic() const
     return false;
 }
 
+// TODO: This is kinda a workaround since we have not implemented compile time function execution
+// Once we do implement that, we can actually run the attribute constructor
+// and get the real struct value.
+std::string_view MethodSymbol::intrinsic_name() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.Intrinsic" &&
+            !attr.arguments.empty() && attr.arguments[0].kind == ConstantValue::Kind::String)
+        {
+            return attr.arguments[0].stringValue;
+        }
+    }
+    return {};
+}
+
+bool SubstitutedMethodSymbol::is_intrinsic() const
+{
+    return originalMethod && originalMethod->is_intrinsic();
+}
+
+std::string_view SubstitutedMethodSymbol::intrinsic_name() const
+{
+    return originalMethod ? originalMethod->intrinsic_name() : std::string_view{};
+}
+
 bool NamedTypeSymbol::allows_custom_literals() const
 {
     for (const auto& attr : resolvedAttributes)

@@ -1,0 +1,22 @@
+---
+Description: Cast that converts between two types unrelated to its containing type
+Expected: FN3114
+---
+
+type Broken
+{
+    v: i32
+
+    explicit cast(from: i32) -> f32
+    {
+        return 1.0
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

@@ -306,7 +306,7 @@ CallableDeclSyntax* Parser::parse_function_decl()
     func->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    func->body = parse_body(span);
+    func->body = parse_optional_body(span);
     func->span = span;
 
     return func;
@@ -568,11 +568,11 @@ TypeExprSyntax* Parser::parse_return_type(Span& span)
     return type;
 }
 
-BlockSyntax* Parser::parse_body(Span& span)
+// Bodies are optional syntax, the binder rejects body-less methods without an @Intrinsic tag
+BlockSyntax* Parser::parse_optional_body(Span& span)
 {
     if (!walker.check(TokenKind::LeftBrace))
     {
-        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
         return nullptr;
     }
 
@@ -602,15 +602,7 @@ CallableDeclSyntax* Parser::parse_init_decl()
         skip_newlines(walker);
     }
 
-    if (walker.check(TokenKind::LeftBrace))
-    {
-        initDecl->body = parse_block();
-        span = span.merge(initDecl->body->span);
-    }
-    else
-    {
-        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
-    }
+    initDecl->body = parse_optional_body(span);
     initDecl->span = span;
 
     return initDecl;
@@ -645,15 +637,7 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     decl->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    if (walker.check(TokenKind::LeftBrace))
-    {
-        decl->body = parse_block();
-        span = span.merge(decl->body->span);
-    }
-    else
-    {
-        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
-    }
+    decl->body = parse_optional_body(span);
     decl->span = span;
 
     return decl;
@@ -674,15 +658,7 @@ CallableDeclSyntax* Parser::parse_cast_decl()
     decl->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    if (walker.check(TokenKind::LeftBrace))
-    {
-        decl->body = parse_block();
-        span = span.merge(decl->body->span);
-    }
-    else
-    {
-        diag.report(DiagnosticCode::Err_ExpectedOpenBrace, walker.current().span);
-    }
+    decl->body = parse_optional_body(span);
     decl->span = span;
 
     return decl;
@@ -737,7 +713,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     opDecl->returnType = parse_return_type(span);
     skip_newlines(walker);
 
-    opDecl->body = parse_body(span);
+    opDecl->body = parse_optional_body(span);
     opDecl->span = span;
 
     return opDecl;

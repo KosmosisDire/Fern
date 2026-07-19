@@ -484,6 +484,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
 
     TokenKind opToken = binary_op_to_token(op);
 
+    // TODO: this should be an error, this is only reached when the left type is null
     auto* namedType = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
     {

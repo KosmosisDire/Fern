@@ -1,0 +1,28 @@
+---
+Description: Attribute argument that is not a compile time constant
+Expected: FN3504
+---
+
+type Bar
+{
+    v: i32
+}
+
+attr type Foo
+{
+    x: Bar
+}
+
+@Foo(Bar(1))
+type Payload
+{
+    v: i32
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

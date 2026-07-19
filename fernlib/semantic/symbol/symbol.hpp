@@ -8,6 +8,8 @@
 #include <vector>
 #include <token/kind.hpp>
 
+#include <semantic/constant.hpp>
+
 #include "overload.hpp"
 
 namespace Fern
@@ -38,10 +40,13 @@ struct MethodSymbol;
 struct ParameterSymbol;
 struct LocalSymbol;
 
+// A bound attribute use. Arguments are the evaluated compile time constants
+// aligned to the constructor parameters.
 struct ResolvedAttribute
 {
     NamedTypeSymbol* type = nullptr;
     MethodSymbol* constructor = nullptr;
+    std::vector<ConstantValue> arguments;
 };
 
 enum class Convertibility { None, Explicit, Implicit, Exact };
@@ -230,7 +235,9 @@ struct MethodSymbol : Symbol
     bool is_constructor() const { return callableKind == CallableKind::Constructor; }
     bool is_operator() const { return callableKind == CallableKind::Operator; }
     bool is_literal() const { return callableKind == CallableKind::Literal; }
-    bool is_intrinsic() const;
+    bool is_cast() const { return callableKind == CallableKind::Cast; }
+    virtual bool is_intrinsic() const;
+    virtual std::string_view intrinsic_name() const;
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 
@@ -267,6 +274,8 @@ struct SubstitutedMethodSymbol : MethodSymbol
     MethodSymbol* originalMethod = nullptr;
     mutable bool returnTypeResolved = false;
 
+    bool is_intrinsic() const override;
+    std::string_view intrinsic_name() const override;
     TypeSymbol* get_return_type() const override;
 };
 

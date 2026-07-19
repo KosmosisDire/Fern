@@ -14,6 +14,7 @@ set(FERNLIB_SOURCES
     semantic/symbol/overload.cpp
     semantic/symbol/table.cpp
     semantic/builtin_aliases.cpp
+    semantic/intrinsics.cpp
     semantic/context.cpp
     semantic/binder/core/binder.cpp
     semantic/binder/core/binder_attributes.cpp

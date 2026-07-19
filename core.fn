@@ -5,35 +5,37 @@ attr type BuiltinType{}
 attr type AllowCustomLiterals{}
 attr type NumericInt{}
 attr type NumericFloat{}
-attr type Intrinsic{}
+
+attr type Intrinsic
+{
+    name: string
+}
 
 @BuiltinType @AllowCustomLiterals @NumericFloat
 type F32
 {
     value: f32
 
-    literal f32(from: i32) {}
-    literal f32(from: f32) {}
+    @Intrinsic("f32.literal_i32") literal f32(from: i32)
+    @Intrinsic("f32.literal_f32") literal f32(from: f32)
 
-    @Intrinsic
-    implicit cast(from: i32) -> f32 {}
-    @Intrinsic
-    implicit cast(from: u8) -> f32 {}
-    @Intrinsic
-    explicit cast(from: f32) -> i32 {}
+    @Intrinsic("f32.from_i32")
+    implicit cast(from: i32) -> f32
+    @Intrinsic("f32.from_u8")
+    implicit cast(from: u8) -> f32
 
-    @Intrinsic op -(value: f32) -> f32 {}
-    @Intrinsic op +(value: f32) -> f32 {}
-    @Intrinsic op +(left: f32, right: f32) -> f32 {}
-    @Intrinsic op -(left: f32, right: f32) -> f32 {}
-    @Intrinsic op *(left: f32, right: f32) -> f32 {}
-    @Intrinsic op /(left: f32, right: f32) -> f32 {}
-    @Intrinsic op ==(left: f32, right: f32) -> bool {}
-    @Intrinsic op !=(left: f32, right: f32) -> bool {}
-    @Intrinsic op >(left: f32, right: f32) -> bool {}
-    @Intrinsic op <(left: f32, right: f32) -> bool {}
-    @Intrinsic op >=(left: f32, right: f32) -> bool {}
-    @Intrinsic op <=(left: f32, right: f32) -> bool {}
+    @Intrinsic("f32.neg") op -(value: f32) -> f32
+    @Intrinsic("f32.pos") op +(value: f32) -> f32
+    @Intrinsic("f32.add") op +(left: f32, right: f32) -> f32
+    @Intrinsic("f32.sub") op -(left: f32, right: f32) -> f32
+    @Intrinsic("f32.mul") op *(left: f32, right: f32) -> f32
+    @Intrinsic("f32.div") op /(left: f32, right: f32) -> f32
+    @Intrinsic("f32.eq") op ==(left: f32, right: f32) -> bool
+    @Intrinsic("f32.ne") op !=(left: f32, right: f32) -> bool
+    @Intrinsic("f32.gt") op >(left: f32, right: f32) -> bool
+    @Intrinsic("f32.lt") op <(left: f32, right: f32) -> bool
+    @Intrinsic("f32.ge") op >=(left: f32, right: f32) -> bool
+    @Intrinsic("f32.le") op <=(left: f32, right: f32) -> bool
 }
 
 @BuiltinType @AllowCustomLiterals @NumericInt
@@ -41,27 +43,27 @@ type I32
 {
     value: i32
 
-    literal i32(from: i32) {}
+    @Intrinsic("i32.literal_i32") literal i32(from: i32)
 
-    @Intrinsic
-    implicit cast(from: u8) -> i32 {}
-    @Intrinsic
-    explicit cast(from: f32) -> i32 {}
-    @Intrinsic
-    explicit cast(from: bool) -> i32 {}
+    @Intrinsic("i32.from_u8")
+    implicit cast(from: u8) -> i32
+    @Intrinsic("i32.from_f32")
+    explicit cast(from: f32) -> i32
+    @Intrinsic("i32.from_bool")
+    explicit cast(from: bool) -> i32
 
-    @Intrinsic op -(value: i32) -> i32 {}
-    @Intrinsic op +(value: i32) -> i32 {}
-    @Intrinsic op +(left: i32, right: i32) -> i32 {}
-    @Intrinsic op -(left: i32, right: i32) -> i32 {}
-    @Intrinsic op *(left: i32, right: i32) -> i32 {}
-    @Intrinsic op /(left: i32, right: i32) -> i32 {}
-    @Intrinsic op ==(left: i32, right: i32) -> bool {}
-    @Intrinsic op !=(left: i32, right: i32) -> bool {}
-    @Intrinsic op >(left: i32, right: i32) -> bool {}
-    @Intrinsic op <(left: i32, right: i32) -> bool {}
-    @Intrinsic op >=(left: i32, right: i32) -> bool {}
-    @Intrinsic op <=(left: i32, right: i32) -> bool {}
+    @Intrinsic("i32.neg") op -(value: i32) -> i32
+    @Intrinsic("i32.pos") op +(value: i32) -> i32
+    @Intrinsic("i32.add") op +(left: i32, right: i32) -> i32
+    @Intrinsic("i32.sub") op -(left: i32, right: i32) -> i32
+    @Intrinsic("i32.mul") op *(left: i32, right: i32) -> i32
+    @Intrinsic("i32.div") op /(left: i32, right: i32) -> i32
+    @Intrinsic("i32.eq") op ==(left: i32, right: i32) -> bool
+    @Intrinsic("i32.ne") op !=(left: i32, right: i32) -> bool
+    @Intrinsic("i32.gt") op >(left: i32, right: i32) -> bool
+    @Intrinsic("i32.lt") op <(left: i32, right: i32) -> bool
+    @Intrinsic("i32.ge") op >=(left: i32, right: i32) -> bool
+    @Intrinsic("i32.le") op <=(left: i32, right: i32) -> bool
 }
 
 @BuiltinType
@@ -69,14 +71,14 @@ type Bool
 {
     value: bool
 
-    @Intrinsic
-    explicit cast(from: i32) -> bool {}
+    @Intrinsic("bool.from_i32")
+    explicit cast(from: i32) -> bool
 
-    @Intrinsic op !(value: bool) -> bool {}
-    @Intrinsic op ==(left: bool, right: bool) -> bool {}
-    @Intrinsic op !=(left: bool, right: bool) -> bool {}
-    @Intrinsic op &&(left: bool, right: bool) -> bool {}
-    @Intrinsic op ||(left: bool, right: bool) -> bool {}
+    @Intrinsic("bool.not") op !(value: bool) -> bool
+    @Intrinsic("bool.eq") op ==(left: bool, right: bool) -> bool
+    @Intrinsic("bool.ne") op !=(left: bool, right: bool) -> bool
+    @Intrinsic("bool.and") op &&(left: bool, right: bool) -> bool
+    @Intrinsic("bool.or") op ||(left: bool, right: bool) -> bool
 }
 
 @BuiltinType
@@ -85,16 +87,20 @@ type Array<T>
     length: i32
 
     fn Length() -> i32 { return length }
-    fn CopyTo(dest: Array<T>, destIndex: i32, srcIndex: i32, count: i32) {}
 
-    init(length: i32) {}
+    @Intrinsic("array.copy_to")
+    fn CopyTo(dest: Array<T>, destIndex: i32, srcIndex: i32, count: i32)
+
+    @Intrinsic("array.init")
+    init(length: i32)
+
     init
     {
         length = 0
     }
 
-    op [](self: Array<T>, index: i32) -> T {}
-    op []=(self: Array<T>, index: i32, value: T) {}
+    @Intrinsic("array.get") op [](self: Array<T>, index: i32) -> T
+    @Intrinsic("array.set") op []=(self: Array<T>, index: i32, value: T)
 }
 
 @BuiltinType @AllowCustomLiterals @NumericInt
@@ -102,23 +108,23 @@ type U8
 {
     value: u8
 
-    literal u8(from: i32) {}
+    @Intrinsic("u8.literal_i32") literal u8(from: i32)
 
-    @Intrinsic
-    explicit cast(from: i32) -> u8 {}
-    @Intrinsic
-    explicit cast(from: f32) -> u8 {}
+    @Intrinsic("u8.from_i32")
+    explicit cast(from: i32) -> u8
+    @Intrinsic("u8.from_f32")
+    explicit cast(from: f32) -> u8
 
-    @Intrinsic op +(left: u8, right: u8) -> u8 {}
-    @Intrinsic op -(left: u8, right: u8) -> u8 {}
-    @Intrinsic op *(left: u8, right: u8) -> u8 {}
-    @Intrinsic op /(left: u8, right: u8) -> u8 {}
-    @Intrinsic op ==(left: u8, right: u8) -> bool {}
-    @Intrinsic op !=(left: u8, right: u8) -> bool {}
-    @Intrinsic op >(left: u8, right: u8) -> bool {}
-    @Intrinsic op <(left: u8, right: u8) -> bool {}
-    @Intrinsic op >=(left: u8, right: u8) -> bool {}
-    @Intrinsic op <=(left: u8, right: u8) -> bool {}
+    @Intrinsic("u8.add") op +(left: u8, right: u8) -> u8
+    @Intrinsic("u8.sub") op -(left: u8, right: u8) -> u8
+    @Intrinsic("u8.mul") op *(left: u8, right: u8) -> u8
+    @Intrinsic("u8.div") op /(left: u8, right: u8) -> u8
+    @Intrinsic("u8.eq") op ==(left: u8, right: u8) -> bool
+    @Intrinsic("u8.ne") op !=(left: u8, right: u8) -> bool
+    @Intrinsic("u8.gt") op >(left: u8, right: u8) -> bool
+    @Intrinsic("u8.lt") op <(left: u8, right: u8) -> bool
+    @Intrinsic("u8.ge") op >=(left: u8, right: u8) -> bool
+    @Intrinsic("u8.le") op <=(left: u8, right: u8) -> bool
 }
 
 @BuiltinType @AllowCustomLiterals
@@ -126,12 +132,12 @@ type Char
 {
     value: char
 
-    @Intrinsic op ==(left: char, right: char) -> bool {}
-    @Intrinsic op !=(left: char, right: char) -> bool {}
-    @Intrinsic op >(left: char, right: char) -> bool {}
-    @Intrinsic op <(left: char, right: char) -> bool {}
-    @Intrinsic op >=(left: char, right: char) -> bool {}
-    @Intrinsic op <=(left: char, right: char) -> bool {}
+    @Intrinsic("char.eq") op ==(left: char, right: char) -> bool
+    @Intrinsic("char.ne") op !=(left: char, right: char) -> bool
+    @Intrinsic("char.gt") op >(left: char, right: char) -> bool
+    @Intrinsic("char.lt") op <(left: char, right: char) -> bool
+    @Intrinsic("char.ge") op >=(left: char, right: char) -> bool
+    @Intrinsic("char.le") op <=(left: char, right: char) -> bool
 }
 
 @BuiltinType @AllowCustomLiterals
@@ -141,11 +147,16 @@ type String
 
     fn Length() -> i32 { return length }
 
-    init {}
-    init(length: i32) {}
+    init
+    {
+        length = 0
+    }
 
-    op ==(left: String, right: String) -> bool {}
-    op !=(left: String, right: String) -> bool {}
-    op +(left: String, right: String) -> String {}
-    op [](self: String, index: i32) -> char {}
+    @Intrinsic("string.init")
+    init(length: i32)
+
+    @Intrinsic("string.eq") op ==(left: String, right: String) -> bool
+    @Intrinsic("string.ne") op !=(left: String, right: String) -> bool
+    @Intrinsic("string.concat") op +(left: String, right: String) -> String
+    @Intrinsic("string.get") op [](self: String, index: i32) -> char
 }

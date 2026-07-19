@@ -6,6 +6,8 @@
 #include <common/cast.hpp>
 #include <semantic/context.hpp>
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/intrinsics.hpp>
+#include <semantic/symbol/fmt.hpp>
 
 namespace Fern
 {
@@ -24,6 +26,78 @@ static BaseExprSyntax* extract_attribute_name(BaseExprSyntax* expr)
         return extract_attribute_name(builder->target);
     }
     return expr;
+}
+
+// Resolves the constructor for an explicit argument list and evaluates every
+// argument to a compile time constant.
+MethodSymbol* Binder::resolve_attribute_ctor(
+    NamedTypeSymbol* attrType,
+    const std::vector<ExprPtr>& argSyntax,
+    const Span& span,
+    std::vector<ConstantValue>& outArgs)
+{
+    std::vector<OverloadArg> args;
+    bool hasErrorArg = false;
+    for (auto* arg : argSyntax)
+    {
+        FhirExpr* bound = bind_value_expr(arg);
+        if (bound && bound->is_error())
+        {
+            hasErrorArg = true;
+            args.push_back({});
+        }
+        else
+        {
+            args.push_back(OverloadArg(bound));
+        }
+    }
+
+    auto result = attrType->find_constructor(args);
+    if (result.ambiguous)
+    {
+        if (!hasErrorArg)
+        {
+            std::string candidates;
+            for (auto* m : result.ambiguousCandidates)
+                candidates += std::format("\n  {}", format_method(m, SymbolFormat::signature()));
+            diag.report(DiagnosticCode::Err_AmbiguousCall, span, candidates);
+        }
+        return nullptr;
+    }
+    if (!result.best.method)
+    {
+        if (!hasErrorArg)
+        {
+            if (result.bestFailure.method)
+            {
+                report_argument_mismatches(result.bestFailure.method, args, argSyntax);
+            }
+            else
+            {
+                diag.report(DiagnosticCode::Err_NoMatchingConstructor, span, format_type(attrType), args.size());
+            }
+        }
+        return nullptr;
+    }
+
+    if (hasErrorArg) return result.best.method;
+
+    // Rebind with the parameter types so implicit conversions fold into the constants
+    for (size_t i = 0; i < argSyntax.size(); ++i)
+    {
+        FhirExpr* coerced = bind_value_expr(argSyntax[i], result.best.method->parameters[i]->type);
+        if (coerced && coerced->get_constant())
+        {
+            outArgs.push_back(*coerced->get_constant());
+        }
+        else
+        {
+            diag.report(DiagnosticCode::Err_AttrArgNotConst, argSyntax[i]->span);
+            outArgs.push_back({});
+        }
+    }
+
+    return result.best.method;
 }
 
 void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out)
@@ -54,16 +128,11 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             continue;
         }
 
-        MethodSymbol* ctor = nullptr;
-
+        // Find the explicit argument list: @Foo(args) or @Foo(args) { ... }
+        const std::vector<ExprPtr>* argSyntax = nullptr;
         if (auto* callExpr = attr->value->as<CallExprSyntax>())
         {
-            std::vector<OverloadArg> args;
-            for (auto* arg : callExpr->arguments)
-            {
-                args.push_back(OverloadArg(bind_value_expr(arg)));
-            }
-            ctor = attrType->find_constructor(args).best.method;
+            argSyntax = &callExpr->arguments;
         }
         else if (auto* builderExpr = attr->value->as<ObjectBuilderExprSyntax>())
         {
@@ -72,20 +141,18 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
                 diag.report(DiagnosticCode::Err_AttrNeedsTypeName, attr->span);
                 continue;
             }
-
             if (auto* innerCall = builderExpr->target->as<CallExprSyntax>())
             {
-                std::vector<OverloadArg> args;
-                for (auto* arg : innerCall->arguments)
-                {
-                    args.push_back(OverloadArg(bind_value_expr(arg)));
-                }
-                ctor = attrType->find_constructor(args).best.method;
+                argSyntax = &innerCall->arguments;
             }
-            else
-            {
-                ctor = attrType->find_constructor({}).best.method;
-            }
+        }
+
+        MethodSymbol* ctor = nullptr;
+        std::vector<ConstantValue> arguments;
+
+        if (argSyntax)
+        {
+            ctor = resolve_attribute_ctor(attrType, *argSyntax, attr->span, arguments);
         }
         else
         {
@@ -96,7 +163,16 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             }
         }
 
-        out.push_back(ResolvedAttribute{attrType, ctor});
+        // Hardcode intrisic validation
+        // there is probably a better way to do this, but fine for now
+        if (ctor && attrType->qualified_name() == "Core.Intrinsic" &&
+            !arguments.empty() && arguments[0].kind == ConstantValue::Kind::String &&
+            !Intrinsics::is_known(arguments[0].stringValue))
+        {
+            diag.report(DiagnosticCode::Err_UnknownIntrinsic, attr->span, arguments[0].stringValue);
+        }
+
+        out.push_back(ResolvedAttribute{attrType, ctor, std::move(arguments)});
     }
 }
 

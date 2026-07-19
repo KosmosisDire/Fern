@@ -1,6 +1,6 @@
 ---
-Description: Function declaration with no opening brace
-Expected: FN1007
+Description: Function without a body and without an intrinsic tag
+Expected: FN3111
 ---
 
 type Broken

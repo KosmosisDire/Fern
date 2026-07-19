@@ -108,6 +108,7 @@ Binder& SemanticContext::method_binder(MethodSymbol* method)
 FhirMethod* SemanticContext::bind_single_method(MethodSymbol* method)
 {
     if (!method) return nullptr;
+    if (method->is_intrinsic()) return nullptr;
 
     auto it = boundMethods.find(method);
     if (it != boundMethods.end()) return it->second;
@@ -127,14 +128,13 @@ FhirMethod* SemanticContext::bind_method(MethodSymbol* method)
         return lower_synthetic_constructor(method, parentType);
     }
 
+    // Body-less methods are rejected by signature validation
+    auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
+    if (!callable || !callable->body) return nullptr;
+
     Binder& mBinder = method_binder(method);
 
-    FhirBlock* body = nullptr;
-    auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
-    if (callable && callable->body)
-    {
-        body = mBinder.bind_block(callable->body);
-    }
+    FhirBlock* body = mBinder.bind_block(callable->body);
 
     if (method->is_constructor() && parentType && body)
     {

@@ -1,0 +1,18 @@
+---
+Description: Intrinsic tag with a name not in the registry
+Expected: FN3505
+---
+
+type Broken
+{
+    @Core.Intrinsic("bogus.op")
+    fn test -> i32
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

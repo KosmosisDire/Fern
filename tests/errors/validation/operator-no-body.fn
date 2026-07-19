@@ -1,6 +1,6 @@
 ---
-Description: Operator declaration with no body
-Expected: FN1007
+Description: Operator without a body and without an intrinsic tag
+Expected: FN3111
 ---
 
 type Broken

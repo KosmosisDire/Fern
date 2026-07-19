@@ -1,0 +1,23 @@
+---
+Description: Attribute constructed with the wrong number of arguments
+Expected: FN3401
+---
+
+attr type Foo
+{
+    x: i32
+}
+
+@Foo(1, 2)
+type Payload
+{
+    v: i32
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

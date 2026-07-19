@@ -1,0 +1,26 @@
+---
+Description: Attribute arguments evaluated as compile time constants
+Expected: 0
+---
+
+attr type Meta
+{
+    id: i32
+    tag: string
+    weight: f32
+    enabled: bool
+}
+
+@Meta(2 + 40, "answer", 1.5, true)
+type Payload
+{
+    v: i32
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

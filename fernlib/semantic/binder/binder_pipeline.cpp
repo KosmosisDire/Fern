@@ -118,6 +118,11 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
                 context.symbols.declare_parameter(method, callableAst->parameters[i], i);
             }
 
+            if (callableAst->callableKind == CallableKind::Cast && method->parameters.size() != 1)
+            {
+                context.diag.report(DiagnosticCode::Err_CastParamCount, callableAst->span, method->parameters.size());
+            }
+
             if (callableAst->callableKind == CallableKind::Operator)
             {
                 bool isIndexGet = callableAst->name.kind == TokenKind::IndexOp;
@@ -329,6 +334,23 @@ void BinderPipeline::validate_signatures()
     {
         for (auto* method : type->methods)
         {
+            auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
+            if (callable)
+            {
+                Span loc = callable->span;
+                if (method->is_intrinsic())
+                {
+                    if (callable->body)
+                    {
+                        context.diag.report(DiagnosticCode::Err_IntrinsicWithBody, loc, method->name);
+                    }
+                }
+                else if (!callable->body)
+                {
+                    context.diag.report(DiagnosticCode::Err_MethodNoBody, loc, method->name);
+                }
+            }
+
             if (method->is_operator())
             {
                 bool hasContainingType = std::any_of(method->parameters.begin(), method->parameters.end(),
@@ -341,6 +363,17 @@ void BinderPipeline::validate_signatures()
                           loc,
                           method->name,
                           format_type(type));
+                }
+            }
+
+            if (method->is_cast() && method->parameters.size() == 1)
+            {
+                TypeSymbol* paramType = method->parameters[0]->type;
+                TypeSymbol* returnType = method->get_return_type();
+                if (paramType && returnType && paramType != type && returnType != type)
+                {
+                    Span loc = method->syntax ? method->syntax->span : Span{};
+                    context.diag.report(DiagnosticCode::Err_CastMissingSelfType, loc, format_type(type));
                 }
             }
 
@@ -476,7 +509,6 @@ void BinderPipeline::bind_methods()
         auto* parentType = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
         if (!parentType) continue;
         if (parentType->is_generic_definition()) continue;
-        if (parentType->is_builtin()) continue;
         context.bind_single_method(method);
     }
 
@@ -487,7 +519,6 @@ void BinderPipeline::bind_methods()
         for (size_t i = 0; i < count; ++i)
         {
             auto* inst = type->instantiations[i];
-            if (inst->is_builtin()) continue;
             if (!inst->is_concrete_instantiation()) continue;
             context.symbols.ensure_members_populated(inst);
             for (auto* method : inst->methods)

@@ -1,0 +1,22 @@
+---
+Description: Cast with more than one parameter
+Expected: FN3113
+---
+
+type Broken
+{
+    v: i32
+
+    explicit cast(from: i32, extra: i32) -> Broken
+    {
+        return Broken(from)
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

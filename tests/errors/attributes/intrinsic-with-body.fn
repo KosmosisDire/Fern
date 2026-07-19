@@ -1,0 +1,21 @@
+---
+Description: Intrinsic tagged method that declares a body
+Expected: FN3112
+---
+
+type Broken
+{
+    @Core.Intrinsic("i32.add")
+    fn test -> i32
+    {
+        return 1
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

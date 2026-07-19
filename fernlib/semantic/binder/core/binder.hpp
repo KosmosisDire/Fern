@@ -83,6 +83,7 @@ public:
     FhirBlock* bind_block(BlockSyntax* block);
     void bind_stmt(BaseStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
+    MethodSymbol* resolve_attribute_ctor(NamedTypeSymbol* attrType, const std::vector<ExprPtr>& argSyntax, const Span& span, std::vector<ConstantValue>& outArgs);
     void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
     TypeSymbol* resolve_type_expr(TypeExprSyntax* expr);
     Symbol* resolve_namespace_or_type(BaseExprSyntax* expr);

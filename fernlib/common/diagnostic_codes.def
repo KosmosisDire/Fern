@@ -59,6 +59,10 @@ DIAG(Err_LiteralBadParamType,           3107, Error,   "literal '{}' parameter t
 DIAG(Err_OperatorPairMissing,           3108, Error,   "operator '{}' on type '{}' requires a matching '{}' operator")
 DIAG(Err_DuplicateIndexSetter,          3109, Error,   "type '{}' has multiple '[]=' setters with the same index type '{}'")                                                            // CS0102
 DIAG(Err_IndexerTypeMismatch,           3110, Error,   "indexer on type '{}' has mismatched types: getter returns '{}' but setter expects '{}'")
+DIAG(Err_MethodNoBody,                  3111, Error,   "'{}' must declare a body")                                                                  // CS0501
+DIAG(Err_IntrinsicWithBody,             3112, Error,   "intrinsic '{}' cannot declare a body")                                                      // CS0179
+DIAG(Err_CastParamCount,                3113, Error,   "cast must have exactly 1 parameter, but has {}")
+DIAG(Err_CastMissingSelfType,           3114, Error,   "cast on type '{}' must convert to or from the containing type")                             // CS0556
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031
@@ -97,6 +101,8 @@ DIAG(Err_AttrMustBeType,                3500, Error,   "attribute must name a ty
 DIAG(Err_NotAttrType,                   3501, Error,   "type '{}' is not an attribute type (missing 'attr' modifier)")                              // CS0616
 DIAG(Err_AttrNeedsTypeName,             3502, Error,   "expected type name in attribute object builder")
 DIAG(Err_AttrNeedsParameterlessCtor,    3503, Error,   "'{}' must contain a parameterless constructor to construct with only an object builder")
+DIAG(Err_AttrArgNotConst,               3504, Error,   "attribute argument must be a compile time constant")                                       // CS0182
+DIAG(Err_UnknownIntrinsic,              3505, Error,   "unknown intrinsic name '{}'")
 
 // Binder: object builders (3600-3699)
 DIAG(Err_ObjectBuilderNoType,           3600, Error,   "cannot infer type for object builder, use an explicit type name")

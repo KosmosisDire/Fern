@@ -98,10 +98,20 @@ void format_attributes(std::ostringstream& ss, const std::vector<ResolvedAttribu
 {
     for (const auto& attr : attrs)
     {
-        if (attr.type)
+        if (!attr.type) continue;
+
+        ss << pad << "@" << attr.type->qualified_name();
+        if (!attr.arguments.empty())
         {
-            ss << pad << "@" << attr.type->qualified_name() << "\n";
+            ss << "(";
+            for (size_t i = 0; i < attr.arguments.size(); ++i)
+            {
+                if (i > 0) ss << ", ";
+                ss << attr.arguments[i].format();
+            }
+            ss << ")";
         }
+        ss << "\n";
     }
 }
 
