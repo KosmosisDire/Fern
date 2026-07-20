@@ -71,7 +71,7 @@ struct FhirBuilder
         return node;
     }
 
-    FhirOpExpr* op(BaseSyntax* syntax, TypeSymbol* type, IntrinsicOp op,
+    FhirOpExpr* op(BaseSyntax* syntax, TypeSymbol* type, IntrinsicKind op,
                    std::initializer_list<FhirExpr*> args, MethodSymbol* method = nullptr)
     {
         auto* node = arena.alloc<FhirOpExpr>();

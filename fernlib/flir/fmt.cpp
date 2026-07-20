@@ -91,13 +91,13 @@ void FlirPrettyFormatter::visit(FlirIntrinsic* node)
     {
         out << "(";
         write_child(node->args[0]);
-        out << " " << op_symbol(node->op) << " ";
+        out << " " << format_symbol(node->op) << " ";
         write_child(node->args[1]);
         out << ")";
     }
     else if (node->args.size() == 1)
     {
-        out << "(" << op_symbol(node->op);
+        out << "(" << format_symbol(node->op);
         write_child(node->args[0]);
         out << ")";
     }

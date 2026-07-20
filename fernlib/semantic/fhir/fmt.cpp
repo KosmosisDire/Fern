@@ -91,13 +91,13 @@ void FhirPrettyFormatter::visit(FhirOpExpr* node)
     {
         out << "(";
         write_child(node->args[0]);
-        out << " " << op_symbol(node->op) << " ";
+        out << " " << format_symbol(node->op) << " ";
         write_child(node->args[1]);
         out << ")";
     }
     else if (node->args.size() == 1)
     {
-        out << "(" << op_symbol(node->op);
+        out << "(" << format_symbol(node->op);
         write_child(node->args[0]);
         out << ")";
     }
@@ -140,7 +140,7 @@ void FhirPrettyFormatter::visit(FhirAssignExpr* node)
 void FhirPrettyFormatter::visit(FhirCompoundAssignExpr* node)
 {
     write_child(node->target());
-    out << " " << (node->binaryOp ? op_symbol(node->binaryOp->op) : "?") << "= ";
+    out << " " << (node->binaryOp ? format_symbol(node->binaryOp->op) : "?") << "= ";
     write_child(node->value());
 }
 

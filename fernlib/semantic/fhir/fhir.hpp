@@ -9,6 +9,7 @@
 #include <source/span.hpp>
 
 #include <semantic/constant.hpp>
+#include <semantic/intrinsics.hpp>
 #include <semantic/symbol/overload.hpp>
 
 namespace Fern
@@ -61,49 +62,6 @@ struct FhirWhileStmt;
 struct FhirTypeRef;
 
 struct FhirMethod;
-
-#pragma region Enums
-
-enum class IntrinsicOp
-{
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Greater,
-    Less,
-    GreaterEqual,
-    LessEqual,
-    Equal,
-    NotEqual,
-    And,
-    Or,
-    Negative,
-    Positive,
-    Not,
-};
-
-constexpr std::string_view format(IntrinsicOp op)
-{
-    switch (op)
-    {
-        case IntrinsicOp::Add:          return "Add";
-        case IntrinsicOp::Sub:          return "Sub";
-        case IntrinsicOp::Mul:          return "Mul";
-        case IntrinsicOp::Div:          return "Div";
-        case IntrinsicOp::Greater:      return "Greater";
-        case IntrinsicOp::Less:         return "Less";
-        case IntrinsicOp::GreaterEqual: return "GreaterEqual";
-        case IntrinsicOp::LessEqual:    return "LessEqual";
-        case IntrinsicOp::Equal:        return "Equal";
-        case IntrinsicOp::NotEqual:     return "NotEqual";
-        case IntrinsicOp::And:          return "And";
-        case IntrinsicOp::Or:           return "Or";
-        case IntrinsicOp::Negative:     return "Negative";
-        case IntrinsicOp::Positive:     return "Positive";
-        case IntrinsicOp::Not:          return "Not";
-    }
-}
 
 #pragma region Visitor
 
@@ -259,7 +217,7 @@ struct FhirOpExpr : FhirExpr
 {
     FHIR_NODE(FhirOpExpr, FhirExpr)
 
-    IntrinsicOp op = IntrinsicOp::Add;
+    IntrinsicKind op = IntrinsicKind::None;
     MethodSymbol* method = nullptr;
     std::vector<FhirExpr*> args;
 

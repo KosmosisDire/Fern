@@ -20,28 +20,6 @@ class FlirPrettyFormatter : public DefaultFlirVisitor
     std::string method_label(MethodSymbol* method);
     std::string local_label(FlirLocal* local);
 
-    static constexpr std::string_view op_symbol(IntrinsicOp op)
-    {
-        switch (op)
-        {
-            case IntrinsicOp::Add:          return "+";
-            case IntrinsicOp::Sub:          return "-";
-            case IntrinsicOp::Mul:          return "*";
-            case IntrinsicOp::Div:          return "/";
-            case IntrinsicOp::Greater:      return ">";
-            case IntrinsicOp::Less:         return "<";
-            case IntrinsicOp::GreaterEqual: return ">=";
-            case IntrinsicOp::LessEqual:    return "<=";
-            case IntrinsicOp::Equal:        return "==";
-            case IntrinsicOp::NotEqual:     return "!=";
-            case IntrinsicOp::And:          return "&&";
-            case IntrinsicOp::Or:           return "||";
-            case IntrinsicOp::Negative:     return "-";
-            case IntrinsicOp::Positive:     return "+";
-            case IntrinsicOp::Not:          return "!";
-        }
-    }
-
 public:
     void visit(FlirConst* node) override;
     void visit(FlirLoadLocal* node) override;

@@ -65,7 +65,7 @@ struct FlirBuilder
         return node;
     }
 
-    FlirIntrinsic* intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicOp op,
+    FlirIntrinsic* intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicKind op,
                              std::vector<FlirExpr*> args)
     {
         auto* node = arena.alloc<FlirIntrinsic>();
@@ -77,7 +77,7 @@ struct FlirBuilder
         return node;
     }
 
-    FlirExpr* call_or_intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicOp op, MethodSymbol* method, std::vector<FlirExpr*> args)
+    FlirExpr* call_or_intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicKind op, MethodSymbol* method, std::vector<FlirExpr*> args)
     {
         if (method && !method->is_intrinsic())
             return call(syntax, type, method, nullptr, std::move(args));

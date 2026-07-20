@@ -126,7 +126,7 @@ void FlirLowerer::lower_while(FhirWhileStmt* stmt, std::vector<FlirStmt*>& out)
 {
     auto* cond = lower_expr(stmt->condition);
     auto* condType = cond ? cond->type : nullptr;
-    auto* notCond = builder.intrinsic(stmt->syntax, condType, IntrinsicOp::Not, { cond });
+    auto* notCond = builder.intrinsic(stmt->syntax, condType, IntrinsicKind::BoolNot, { cond });
 
     auto* breakBlock = builder.block(stmt->syntax);
     breakBlock->statements.push_back(builder.break_stmt(stmt->syntax));

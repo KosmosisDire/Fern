@@ -172,7 +172,7 @@ struct FlirIntrinsic : FlirExpr
 {
     FLIR_NODE(FlirIntrinsic, FlirExpr)
 
-    IntrinsicOp op = IntrinsicOp::Add;
+    IntrinsicKind op = IntrinsicKind::None;
     std::vector<FlirExpr*> args;
 
     void visit_children(FlirVisitor* v) override

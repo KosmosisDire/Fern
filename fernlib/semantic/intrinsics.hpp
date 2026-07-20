@@ -10,7 +10,7 @@ namespace Fern
 enum class IntrinsicKind
 {
     None,
-    #define INTRINSIC(name, tag) name,
+    #define INTRINSIC(name, tag, symbol) name,
     #include <semantic/intrinsics.def>
     #undef INTRINSIC
 };
@@ -19,5 +19,8 @@ enum class IntrinsicKind
 IntrinsicKind intrinsic_from_name(std::string_view tag);
 
 std::string_view format(IntrinsicKind kind);
+
+// The operator symbol used in FHIR and FLIR dumps, empty when not an operator
+std::string_view format_symbol(IntrinsicKind kind);
 
 }

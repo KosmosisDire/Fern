@@ -10,35 +10,6 @@
 namespace Fern
 {
 
-constexpr IntrinsicOp to_intrinsic_op(BinaryOp op)
-{
-    switch (op)
-    {
-        case BinaryOp::Add:          return IntrinsicOp::Add;
-        case BinaryOp::Sub:          return IntrinsicOp::Sub;
-        case BinaryOp::Mul:          return IntrinsicOp::Mul;
-        case BinaryOp::Div:          return IntrinsicOp::Div;
-        case BinaryOp::Greater:      return IntrinsicOp::Greater;
-        case BinaryOp::Less:         return IntrinsicOp::Less;
-        case BinaryOp::GreaterEqual: return IntrinsicOp::GreaterEqual;
-        case BinaryOp::LessEqual:    return IntrinsicOp::LessEqual;
-        case BinaryOp::Equal:        return IntrinsicOp::Equal;
-        case BinaryOp::NotEqual:     return IntrinsicOp::NotEqual;
-        case BinaryOp::And:          return IntrinsicOp::And;
-        case BinaryOp::Or:           return IntrinsicOp::Or;
-    }
-}
-
-constexpr IntrinsicOp to_intrinsic_op(UnaryOp op)
-{
-    switch (op)
-    {
-        case UnaryOp::Negative: return IntrinsicOp::Negative;
-        case UnaryOp::Positive: return IntrinsicOp::Positive;
-        case UnaryOp::Not:      return IntrinsicOp::Not;
-    }
-}
-
 FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
 {
     if (!expr) return nullptr;
@@ -422,14 +393,14 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         {
             MethodSymbol* method = result.best.method;
             operand = coerce_to_param(operand, method->parameters[0]->type);
-            return fhir.op(expr, method->get_return_type(), to_intrinsic_op(expr->op), {operand}, method);
+            return fhir.op(expr, method->get_return_type(), method->intrinsic(), {operand}, method);
         }
 
         diag.report(DiagnosticCode::Err_BadUnaryOp, expr->span, Fern::format(opToken), format_type(namedType));
         return fhir.error_expr(expr);
     }
 
-    return fhir.op(expr, operandType, to_intrinsic_op(expr->op), {operand});
+    return fhir.op(expr, operandType, IntrinsicKind::None, {operand});
 }
 
 FhirExpr* Binder::bind_binary(BinaryExprSyntax* expr, TypeSymbol* expected)
@@ -488,7 +459,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     auto* namedType = leftType ? leftType->as<NamedTypeSymbol>() : nullptr;
     if (!namedType)
     {
-        return fhir.op(syntax, leftType, to_intrinsic_op(op), {lhs, rhs});
+        return fhir.op(syntax, leftType, IntrinsicKind::None, {lhs, rhs});
     }
 
     auto* rightNamed = rightType ? rightType->as<NamedTypeSymbol>() : nullptr;
@@ -504,7 +475,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     {
         lhs = coerce_to_param(lhs, method->parameters[0]->type);
         rhs = coerce_to_param(rhs, method->parameters[1]->type);
-        return fhir.op(syntax, method->get_return_type(), to_intrinsic_op(op), {lhs, rhs}, method);
+        return fhir.op(syntax, method->get_return_type(), method->intrinsic(), {lhs, rhs}, method);
     }
 
     if (result.ambiguous)

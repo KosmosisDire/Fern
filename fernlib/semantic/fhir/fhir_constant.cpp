@@ -46,55 +46,134 @@ std::optional<ConstantValue> FhirLiteralExpr::compute_constant() const
 
 #pragma region Intrinsic Evaluators
 
-static std::optional<ConstantValue> eval_int_binary(IntrinsicOp op, int64_t a, int64_t b)
+// Both operands share a kind by the time these run. Per type wrapping splits its tag out of a shared case
+static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const ConstantValue& a, const ConstantValue& b)
 {
-    switch (op)
+    const bool isInt = a.kind == ConstantValue::Kind::Int;
+    const bool isFloat = a.kind == ConstantValue::Kind::Float;
+    const bool isBool = a.kind == ConstantValue::Kind::Bool;
+
+    switch (kind)
     {
-        case IntrinsicOp::Add:          return ConstantValue::make_int(a + b);
-        case IntrinsicOp::Sub:          return ConstantValue::make_int(a - b);
-        case IntrinsicOp::Mul:          return ConstantValue::make_int(a * b);
-        case IntrinsicOp::Div:
-            if (b == 0) return std::nullopt;
-            return ConstantValue::make_int(a / b);
-        case IntrinsicOp::Greater:      return ConstantValue::make_bool(a > b);
-        case IntrinsicOp::Less:         return ConstantValue::make_bool(a < b);
-        case IntrinsicOp::GreaterEqual: return ConstantValue::make_bool(a >= b);
-        case IntrinsicOp::LessEqual:    return ConstantValue::make_bool(a <= b);
-        case IntrinsicOp::Equal:        return ConstantValue::make_bool(a == b);
-        case IntrinsicOp::NotEqual:     return ConstantValue::make_bool(a != b);
-        default:                        return std::nullopt;
+        case IntrinsicKind::I32Add:
+        case IntrinsicKind::U8Add:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_int(a.intValue + b.intValue);
+        case IntrinsicKind::I32Sub:
+        case IntrinsicKind::U8Sub:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_int(a.intValue - b.intValue);
+        case IntrinsicKind::I32Mul:
+        case IntrinsicKind::U8Mul:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_int(a.intValue * b.intValue);
+        case IntrinsicKind::I32Div:
+        case IntrinsicKind::U8Div:
+            if (!isInt || b.intValue == 0) return std::nullopt;
+            return ConstantValue::make_int(a.intValue / b.intValue);
+
+        case IntrinsicKind::F32Add:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(a.floatValue + b.floatValue);
+        case IntrinsicKind::F32Sub:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(a.floatValue - b.floatValue);
+        case IntrinsicKind::F32Mul:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(a.floatValue * b.floatValue);
+        case IntrinsicKind::F32Div:
+            if (!isFloat || b.floatValue == 0.0) return std::nullopt;
+            return ConstantValue::make_float(a.floatValue / b.floatValue);
+
+        case IntrinsicKind::I32Gt:
+        case IntrinsicKind::U8Gt:
+        case IntrinsicKind::CharGt:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(a.intValue > b.intValue);
+        case IntrinsicKind::I32Lt:
+        case IntrinsicKind::U8Lt:
+        case IntrinsicKind::CharLt:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(a.intValue < b.intValue);
+        case IntrinsicKind::I32Ge:
+        case IntrinsicKind::U8Ge:
+        case IntrinsicKind::CharGe:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(a.intValue >= b.intValue);
+        case IntrinsicKind::I32Le:
+        case IntrinsicKind::U8Le:
+        case IntrinsicKind::CharLe:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(a.intValue <= b.intValue);
+        case IntrinsicKind::I32Eq:
+        case IntrinsicKind::U8Eq:
+        case IntrinsicKind::CharEq:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(a.intValue == b.intValue);
+        case IntrinsicKind::I32Ne:
+        case IntrinsicKind::U8Ne:
+        case IntrinsicKind::CharNe:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(a.intValue != b.intValue);
+
+        case IntrinsicKind::F32Gt:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(a.floatValue > b.floatValue);
+        case IntrinsicKind::F32Lt:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(a.floatValue < b.floatValue);
+        case IntrinsicKind::F32Ge:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(a.floatValue >= b.floatValue);
+        case IntrinsicKind::F32Le:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(a.floatValue <= b.floatValue);
+        case IntrinsicKind::F32Eq:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(a.floatValue == b.floatValue);
+        case IntrinsicKind::F32Ne:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(a.floatValue != b.floatValue);
+
+        case IntrinsicKind::BoolAnd:
+            if (!isBool) return std::nullopt;
+            return ConstantValue::make_bool(a.boolValue && b.boolValue);
+        case IntrinsicKind::BoolOr:
+            if (!isBool) return std::nullopt;
+            return ConstantValue::make_bool(a.boolValue || b.boolValue);
+        case IntrinsicKind::BoolEq:
+            if (!isBool) return std::nullopt;
+            return ConstantValue::make_bool(a.boolValue == b.boolValue);
+        case IntrinsicKind::BoolNe:
+            if (!isBool) return std::nullopt;
+            return ConstantValue::make_bool(a.boolValue != b.boolValue);
+
+        default:
+            return std::nullopt;
     }
 }
 
-static std::optional<ConstantValue> eval_float_binary(IntrinsicOp op, double a, double b)
+static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const ConstantValue& a)
 {
-    switch (op)
+    switch (kind)
     {
-        case IntrinsicOp::Add:          return ConstantValue::make_float(a + b);
-        case IntrinsicOp::Sub:          return ConstantValue::make_float(a - b);
-        case IntrinsicOp::Mul:          return ConstantValue::make_float(a * b);
-        case IntrinsicOp::Div:
-            if (b == 0.0) return std::nullopt;
-            return ConstantValue::make_float(a / b);
-        case IntrinsicOp::Greater:      return ConstantValue::make_bool(a > b);
-        case IntrinsicOp::Less:         return ConstantValue::make_bool(a < b);
-        case IntrinsicOp::GreaterEqual: return ConstantValue::make_bool(a >= b);
-        case IntrinsicOp::LessEqual:    return ConstantValue::make_bool(a <= b);
-        case IntrinsicOp::Equal:        return ConstantValue::make_bool(a == b);
-        case IntrinsicOp::NotEqual:     return ConstantValue::make_bool(a != b);
-        default:                        return std::nullopt;
-    }
-}
-
-static std::optional<ConstantValue> eval_bool_binary(IntrinsicOp op, bool a, bool b)
-{
-    switch (op)
-    {
-        case IntrinsicOp::And:      return ConstantValue::make_bool(a && b);
-        case IntrinsicOp::Or:       return ConstantValue::make_bool(a || b);
-        case IntrinsicOp::Equal:    return ConstantValue::make_bool(a == b);
-        case IntrinsicOp::NotEqual: return ConstantValue::make_bool(a != b);
-        default:                    return std::nullopt;
+        case IntrinsicKind::I32Neg:
+            if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
+            return ConstantValue::make_int(-a.intValue);
+        case IntrinsicKind::F32Neg:
+            if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
+            return ConstantValue::make_float(-a.floatValue);
+        case IntrinsicKind::I32Pos:
+            if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
+            return a;
+        case IntrinsicKind::F32Pos:
+            if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
+            return a;
+        case IntrinsicKind::BoolNot:
+            if (a.kind != ConstantValue::Kind::Bool) return std::nullopt;
+            return ConstantValue::make_bool(!a.boolValue);
+        default:
+            return std::nullopt;
     }
 }
 
@@ -110,23 +189,7 @@ std::optional<ConstantValue> FhirOpExpr::compute_constant() const
 
     if (args.size() == 1)
     {
-        const ConstantValue& a = *args[0]->get_constant();
-        switch (op)
-        {
-            case IntrinsicOp::Negative:
-                if (a.kind == ConstantValue::Kind::Int)   return ConstantValue::make_int(-a.intValue);
-                if (a.kind == ConstantValue::Kind::Float) return ConstantValue::make_float(-a.floatValue);
-                return std::nullopt;
-            case IntrinsicOp::Positive:
-                if (a.kind == ConstantValue::Kind::Int ||
-                    a.kind == ConstantValue::Kind::Float) return a;
-                return std::nullopt;
-            case IntrinsicOp::Not:
-                if (a.kind == ConstantValue::Kind::Bool) return ConstantValue::make_bool(!a.boolValue);
-                return std::nullopt;
-            default:
-                return std::nullopt;
-        }
+        return fold_unary(op, *args[0]->get_constant());
     }
 
     if (args.size() == 2)
@@ -141,13 +204,7 @@ std::optional<ConstantValue> FhirOpExpr::compute_constant() const
 
         if (a.kind != b.kind) return std::nullopt;
 
-        switch (a.kind)
-        {
-            case ConstantValue::Kind::Int:   return eval_int_binary(op, a.intValue, b.intValue);
-            case ConstantValue::Kind::Float: return eval_float_binary(op, a.floatValue, b.floatValue);
-            case ConstantValue::Kind::Bool:  return eval_bool_binary(op, a.boolValue, b.boolValue);
-            default:                         return std::nullopt;
-        }
+        return fold_binary(op, a, b);
     }
 
     return std::nullopt;
