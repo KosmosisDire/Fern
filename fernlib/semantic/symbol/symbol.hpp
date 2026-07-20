@@ -9,6 +9,7 @@
 #include <token/kind.hpp>
 
 #include <semantic/constant.hpp>
+#include <semantic/intrinsics.hpp>
 
 #include "overload.hpp"
 
@@ -237,7 +238,7 @@ struct MethodSymbol : Symbol
     bool is_literal() const { return callableKind == CallableKind::Literal; }
     bool is_cast() const { return callableKind == CallableKind::Cast; }
     virtual bool is_intrinsic() const;
-    virtual std::string_view intrinsic_name() const;
+    virtual IntrinsicKind intrinsic() const;
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 
@@ -275,7 +276,7 @@ struct SubstitutedMethodSymbol : MethodSymbol
     mutable bool returnTypeResolved = false;
 
     bool is_intrinsic() const override;
-    std::string_view intrinsic_name() const override;
+    IntrinsicKind intrinsic() const override;
     TypeSymbol* get_return_type() const override;
 };
 

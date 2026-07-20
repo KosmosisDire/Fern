@@ -167,7 +167,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
         // there is probably a better way to do this, but fine for now
         if (ctor && attrType->qualified_name() == "Core.Intrinsic" &&
             !arguments.empty() && arguments[0].kind == ConstantValue::Kind::String &&
-            !Intrinsics::is_known(arguments[0].stringValue))
+            intrinsic_from_name(arguments[0].stringValue) == IntrinsicKind::None)
         {
             diag.report(DiagnosticCode::Err_UnknownIntrinsic, attr->span, arguments[0].stringValue);
         }
