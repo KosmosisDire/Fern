@@ -39,6 +39,7 @@ private:
     FlirExpr* lower_field_ref(FhirFieldRefExpr* expr);
     FlirExpr* lower_this(FhirThisExpr* expr);
     FlirExpr* lower_op(FhirOpExpr* expr);
+    FlirExpr* lower_short_circuit(FhirOpExpr* expr);
     FlirExpr* lower_call(FhirCallExpr* expr);
     FlirExpr* lower_construction(FhirConstructionExpr* expr);
     FlirExpr* lower_assign(FhirAssignExpr* expr);

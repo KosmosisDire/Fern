@@ -197,12 +197,40 @@ FlirExpr* FlirLowerer::lower_this(FhirThisExpr* expr)
 
 FlirExpr* FlirLowerer::lower_op(FhirOpExpr* expr)
 {
+    if (expr->op == IntrinsicKind::BoolAnd || expr->op == IntrinsicKind::BoolOr)
+        return lower_short_circuit(expr);
+
     std::vector<FlirExpr*> args;
     args.reserve(expr->args.size());
     for (auto* a : expr->args)
         args.push_back(lower_expr(a));
 
     return builder.call_or_intrinsic(expr->syntax, expr->type, expr->op, expr->method, std::move(args));
+}
+
+// Rewrites a && b to (tmp = a; if (tmp) tmp = b; yield tmp) and a || b to
+// (tmp = a; if (!tmp) tmp = b; yield tmp) so the right side only runs when needed
+FlirExpr* FlirLowerer::lower_short_circuit(FhirOpExpr* expr)
+{
+    BaseSyntax* syntax = expr->syntax;
+    TypeSymbol* type = expr->type;
+    bool isAnd = expr->op == IntrinsicKind::BoolAnd;
+
+    auto* tmp = builder.synthetic_local(currentMethod, "tmp_sc", type);
+
+    std::vector<FlirStmt*> sideEffects;
+    sideEffects.push_back(builder.store_local(syntax, tmp, lower_expr(expr->args[0])));
+
+    auto* thenBlock = builder.block(syntax);
+    thenBlock->statements.push_back(builder.store_local(syntax, tmp, lower_expr(expr->args[1])));
+
+    FlirExpr* condition = builder.load_local(syntax, tmp);
+    if (!isAnd)
+        condition = builder.intrinsic(syntax, type, IntrinsicKind::BoolNot, { condition });
+
+    sideEffects.push_back(builder.if_stmt(syntax, condition, thenBlock, nullptr));
+
+    return builder.sequence(syntax, std::move(sideEffects), builder.load_local(syntax, tmp));
 }
 
 FlirExpr* FlirLowerer::lower_call(FhirCallExpr* expr)
