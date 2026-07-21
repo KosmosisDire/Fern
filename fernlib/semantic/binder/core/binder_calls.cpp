@@ -167,14 +167,13 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             }
         }
 
-        TypeSymbol* returnType = method->get_return_type();
-
         if (method->is_constructor())
         {
             auto* synthTypeRef = fhir.type_ref(expr->callee, targetType);
-            return fhir.construction(expr, returnType, synthTypeRef, method, std::move(argExprs));
+            return fhir.construction(expr, targetType, synthTypeRef, method, std::move(argExprs));
         }
 
+        TypeSymbol* returnType = method->get_return_type();
         FhirExpr* thisRef = (!isStatic) ? group->thisRef : nullptr;
         return fhir.call(expr, returnType, method, thisRef, std::move(argExprs));
     }

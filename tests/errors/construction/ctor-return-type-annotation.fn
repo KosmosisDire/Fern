@@ -1,0 +1,23 @@
+---
+Description: A constructor returns void so it cannot declare a return type
+Expected: FN1008
+---
+
+type Box
+{
+    value: i32
+
+    init(v: i32) -> Box
+    {
+        this.value = v
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var b = Box(7)
+        return b.value
+    }
+}

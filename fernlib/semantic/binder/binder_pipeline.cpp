@@ -216,10 +216,6 @@ void BinderPipeline::resolve_signatures()
                 {
                     method->set_return_type(tBinder.resolve_type_expr(callable->returnType));
                 }
-                else if (method->is_constructor())
-                {
-                    method->set_return_type(type);
-                }
 
                 for (size_t i = 0; i < method->parameters.size() && i < callable->parameters.size(); ++i)
                 {
@@ -231,7 +227,6 @@ void BinderPipeline::resolve_signatures()
             }
             else if (method->is_constructor())
             {
-                method->set_return_type(type);
                 for (size_t i = 0; i < method->parameters.size() && i < type->fields.size(); ++i)
                 {
                     method->parameters[i]->type = type->fields[i]->type;

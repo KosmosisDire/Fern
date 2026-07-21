@@ -76,11 +76,13 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
         {
             value = bind_value_expr(stmt->value, retType);
 
-            if (!retType && value && value->type)
+            if (method->is_constructor())
             {
-                auto callable = as<CallableDeclSyntax>(method->syntax);
-                Span loc = callable ? callable->name.span.merge(callable->parameters.span) : Span{};
-                diag.report(DiagnosticCode::Err_ReturnValueNoType, loc, method->name);
+                diag.report(DiagnosticCode::Err_ConstructorReturnValue, stmt->span);
+            }
+            else if (!retType && value && value->type)
+            {
+                diag.report(DiagnosticCode::Err_ReturnValueNoType, stmt->span, method->name);
             }
         }
     }

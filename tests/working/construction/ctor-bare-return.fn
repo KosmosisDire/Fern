@@ -1,0 +1,24 @@
+---
+Description: Bare return is allowed for early exit in a void constructor
+Expected: 7
+---
+
+type Box
+{
+    value: i32
+
+    init(v: i32)
+    {
+        this.value = v
+        return
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var b = Box(7)
+        return b.value
+    }
+}

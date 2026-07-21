@@ -286,12 +286,6 @@ void SymbolTable::populate_instantiation_members(NamedTypeSymbol* inst)
         methodPtr->callableKind = templateMethod->callableKind;
         methodPtr->operatorKind = templateMethod->operatorKind;
 
-        if (templateMethod->is_constructor())
-        {
-            methodPtr->set_return_type(inst);
-            methodPtr->returnTypeResolved = true;
-        }
-
         auto* method = own(std::move(methodPtr));
 
         for (auto* templateParam : templateMethod->parameters)

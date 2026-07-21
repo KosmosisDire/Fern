@@ -86,6 +86,7 @@ DIAG(Err_NoIndexGetter,                 3216, Error,   "no indexed getter on '{}
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
 DIAG(Err_ReturnValueRequired,           3301, Error,   "function '{}' must return a value of type '{}'")                                            // CS0126
+DIAG(Err_ConstructorReturnValue,        3302, Error,   "constructor cannot return a value")
 
 // Binder: calls (3400-3499)
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121
