@@ -1,0 +1,22 @@
+---
+Description: Value types cannot form a layout cycle
+Expected: FN3115
+---
+
+type A
+{
+    b: B
+}
+
+type B
+{
+    a: A
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

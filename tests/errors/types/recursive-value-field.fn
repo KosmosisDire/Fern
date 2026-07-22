@@ -1,0 +1,17 @@
+---
+Description: Value type cannot contain a field of its own type
+Expected: FN3115
+---
+
+type Node
+{
+    next: Node
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

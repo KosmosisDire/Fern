@@ -70,7 +70,8 @@ SymbolFormat SymbolFormat::tree_dump()
                  | SymbolFormatOption::IncludeAttributes
                  | SymbolFormatOption::IncludeModifiers
                  | SymbolFormatOption::IncludeMembers
-                 | SymbolFormatOption::IncludeInstantiations,
+                 | SymbolFormatOption::IncludeInstantiations
+                 | SymbolFormatOption::IncludeLayout,
     };
 }
 
@@ -215,6 +216,11 @@ std::string format_type(TypeSymbol* type, const SymbolFormat& fmt)
     }
     ss << prefix << name;
 
+    if (fmt.has(SymbolFormatOption::IncludeLayout) && named->layoutState == LayoutState::Computed)
+    {
+        ss << std::format(" [size={} align={}]", named->sizeInBytes, named->alignment);
+    }
+
     if (wantBody && (!named->fields.empty() || !named->methods.empty() || !named->nestedTypes.empty()))
     {
         ss << "\n" << pad << "{\n";
@@ -325,6 +331,16 @@ std::string format_field(FieldSymbol* field, const SymbolFormat& fmt)
     if (fmt.has(SymbolFormatOption::IncludeTypeOnFields))
     {
         ss << ": " << format_type(field->type, fmt.without_def_only());
+    }
+
+    // Only value aggregates compute field offsets. Ref and builtin handles are leaves whose heap
+    // block layout is deferred, so their field offsets are not meaningful yet.
+    auto* parentType = field->parent ? field->parent->as<NamedTypeSymbol>() : nullptr;
+    if (fmt.has(SymbolFormatOption::IncludeLayout) && parentType
+        && parentType->layoutState == LayoutState::Computed
+        && !parentType->is_ref() && !parentType->is_builtin())
+    {
+        ss << std::format(" @{}", field->offset);
     }
     return ss.str();
 }

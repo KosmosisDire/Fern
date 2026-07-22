@@ -1,7 +1,13 @@
 
 namespace Core
 
-attr type BuiltinType{}
+attr type BuiltinType
+{
+    size: i32
+
+    init { }
+    init(size: i32) { }
+}
 attr type AllowCustomLiterals{}
 attr type NumericInt{}
 attr type NumericFloat{}
@@ -11,7 +17,7 @@ attr type Intrinsic
     name: string
 }
 
-@BuiltinType @AllowCustomLiterals @NumericFloat
+@BuiltinType(4) @AllowCustomLiterals @NumericFloat
 type F32
 {
     value: f32
@@ -38,7 +44,7 @@ type F32
     @Intrinsic("f32.le") op <=(left: f32, right: f32) -> bool
 }
 
-@BuiltinType @AllowCustomLiterals @NumericInt
+@BuiltinType(4) @AllowCustomLiterals @NumericInt
 type I32
 {
     value: i32
@@ -66,7 +72,7 @@ type I32
     @Intrinsic("i32.le") op <=(left: i32, right: i32) -> bool
 }
 
-@BuiltinType
+@BuiltinType(1)
 type Bool
 {
     value: bool
@@ -103,7 +109,7 @@ ref type Array<T>
     @Intrinsic("array.set") op []=(self: Array<T>, index: i32, value: T)
 }
 
-@BuiltinType @AllowCustomLiterals @NumericInt
+@BuiltinType(1) @AllowCustomLiterals @NumericInt
 type U8
 {
     value: u8
@@ -127,7 +133,7 @@ type U8
     @Intrinsic("u8.le") op <=(left: u8, right: u8) -> bool
 }
 
-@BuiltinType @AllowCustomLiterals
+@BuiltinType(1) @AllowCustomLiterals
 type C8
 {
     value: c8

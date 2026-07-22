@@ -37,6 +37,7 @@ enum class SymbolFormatOption : uint32_t
     IncludeModifiers        = 1u << 10,
     IncludeMembers          = 1u << 11,
     IncludeInstantiations   = 1u << 12,
+    IncludeLayout           = 1u << 13,
 };
 
 constexpr SymbolFormatOption operator|(SymbolFormatOption a, SymbolFormatOption b)

@@ -9,6 +9,7 @@
 #include <lexer/lexer.hpp>
 #include <parser/parser.hpp>
 #include <semantic/fhir/flow.hpp>
+#include <semantic/layout.hpp>
 #include <token/walker.hpp>
 
 namespace Fern
@@ -74,6 +75,8 @@ void Compilation::compile()
     binder.resolve_attributes();
     binder.bind_methods();
     binder.validate_signatures();
+
+    LayoutPass(semanticContext, TargetInfo{}).run();
 
     for (auto* method : semanticContext.methods)
     {

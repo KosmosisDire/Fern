@@ -63,6 +63,7 @@ DIAG(Err_MethodNoBody,                  3111, Error,   "'{}' must declare a body
 DIAG(Err_IntrinsicWithBody,             3112, Error,   "intrinsic '{}' cannot declare a body")                                                      // CS0179
 DIAG(Err_CastParamCount,                3113, Error,   "cast must have exactly 1 parameter, but has {}")
 DIAG(Err_CastMissingSelfType,           3114, Error,   "cast on type '{}' must convert to or from the containing type")                             // CS0556
+DIAG(Err_RecursiveValueField,           3115, Error,   "value type '{}' contains a cycle through field '{}'")                                       // CS0523
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031

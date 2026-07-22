@@ -69,6 +69,14 @@ enum class SymbolKind
     Local,
 };
 
+// Tracks a type through the layout pass. InProgress doubles as the cycle marker for recursive value fields.
+enum class LayoutState
+{
+    NotComputed,
+    InProgress,
+    Computed,
+};
+
 #pragma region Symbol Base
 
 struct Symbol
@@ -171,6 +179,10 @@ struct NamedTypeSymbol : TypeSymbol
     std::vector<NamedTypeSymbol*> instantiations;
     bool membersPopulated = false;
 
+    int sizeInBytes = 0;
+    int alignment = 0;
+    LayoutState layoutState = LayoutState::NotComputed;
+
     bool is_attribute() const { return has_modifier(modifiers, Modifier::Attr); }
     bool is_generic_definition() const { return !typeParams.empty(); }
     bool is_generic_instantiation() const { return genericOrigin != nullptr; }
@@ -219,6 +231,7 @@ struct FieldSymbol : Symbol
     Modifier modifiers = Modifier::None;
     TypeSymbol* type = nullptr;
     int index = 0;
+    int offset = 0;
     std::vector<ResolvedAttribute> resolvedAttributes;
 
     FieldSymbol() { kind = Kind; }
