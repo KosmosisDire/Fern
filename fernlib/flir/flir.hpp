@@ -125,6 +125,8 @@ struct FlirLocal
     std::string_view name;
     TypeSymbol* type = nullptr;
     int index = 0;
+    // Byte offset within the frame, assigned by the frame pass. -1 means unassigned.
+    int offset = -1;
 };
 
 #pragma region Expressions
@@ -362,6 +364,8 @@ struct FlirMethod
     std::vector<FlirLocal*> parameters;
     std::vector<FlirLocal*> locals;
     FlirBlock* body = nullptr;
+    // Total frame size in bytes, assigned by the frame pass.
+    int frameSize = 0;
 };
 
 #pragma region DefaultFlirVisitor

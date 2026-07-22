@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include <binder/binder_pipeline.hpp>
+#include <flir/frame.hpp>
 #include <flir/verify.hpp>
 #include <lexer/lexer.hpp>
 #include <parser/parser.hpp>
@@ -88,6 +89,11 @@ void Compilation::compile()
     {
         if (method && method->symbol)
             flirContext.lower_single_method(semanticContext, method->symbol);
+    }
+
+    for (auto* method : flirContext.methods)
+    {
+        FlirFramePass::run(method);
     }
 
     for (auto* method : flirContext.methods)
