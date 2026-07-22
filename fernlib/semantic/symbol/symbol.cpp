@@ -65,6 +65,47 @@ bool NamedTypeSymbol::is_builtin() const
     return false;
 }
 
+bool NamedTypeSymbol::is_ref() const
+{
+    if (has_modifier(modifiers, Modifier::Ref)) return true;
+    if (genericOrigin)
+    {
+        return genericOrigin->is_ref();
+    }
+    return false;
+}
+
+// Cycles in value types are illegal but not rejected until the layout pass, so guard here
+static bool has_default_impl(const NamedTypeSymbol* type, std::vector<const NamedTypeSymbol*>& visiting)
+{
+    if (type->is_ref()) return false;
+    if (type->is_builtin()) return true;
+    for (const auto* seen : visiting)
+    {
+        if (seen == type) return false;
+    }
+    visiting.push_back(type);
+    bool result = true;
+    for (const auto* field : type->fields)
+    {
+        if (!field->type) continue;
+        const auto* fieldType = field->type->as<NamedTypeSymbol>();
+        if (!fieldType || !has_default_impl(fieldType, visiting))
+        {
+            result = false;
+            break;
+        }
+    }
+    visiting.pop_back();
+    return result;
+}
+
+bool NamedTypeSymbol::has_default() const
+{
+    std::vector<const NamedTypeSymbol*> visiting;
+    return has_default_impl(this, visiting);
+}
+
 bool NamedTypeSymbol::is_integer() const
 {
     for (const auto& attr : resolvedAttributes)

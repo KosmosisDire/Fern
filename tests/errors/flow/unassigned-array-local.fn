@@ -1,0 +1,13 @@
+---
+Description: Array local read before any assignment
+Expected: FN4002
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[]
+        return a[0]
+    }
+}

@@ -128,6 +128,10 @@ DIAG(Err_ArrayMissingSetter,            3710, Error,   "Core.Array has no 'op []
 // Flow analysis
 DIAG(Wrn_UnreachableCode,               4000, Warning, "unreachable code detected")                                                                 // CS0162
 DIAG(Err_NotAllPathsReturn,             4001, Error,   "not all code paths return a value")                                                         // CS0161
+DIAG(Err_UseOfUnassignedLocal,          4002, Error,   "use of unassigned local variable '{}'")                                                     // CS0165
+DIAG(Err_UseOfUnassignedField,          4003, Error,   "use of possibly unassigned field '{}'")                                                     // CS0170
+DIAG(Err_CtorFieldNotAssigned,          4004, Error,   "field '{}' must be assigned before the constructor returns")                                // CS0171
+DIAG(Err_ThisBeforeInit,                4005, Error,   "'this' cannot be used until all fields are assigned")
 
 // Driver
 DIAG(Err_CannotOpenFile,                5000, Error,   "could not open file: {}")                                                                   // CS2001

@@ -1,0 +1,36 @@
+---
+Description: Field initializers and defaultable fields satisfy constructor assignment
+Expected: 6
+---
+
+type Holder
+{
+    items: i32[] = [1, 2, 3]
+    count: i32
+    name: string
+
+    init
+    {
+    }
+
+    fn Sum -> i32
+    {
+        var total = 0
+        var i = 0
+        while (i < items.Length())
+        {
+            total = total + items[i]
+            i = i + 1
+        }
+        return total
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var h = Holder()
+        return h.Sum()
+    }
+}

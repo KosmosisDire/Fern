@@ -176,6 +176,8 @@ struct NamedTypeSymbol : TypeSymbol
     bool is_generic_instantiation() const { return genericOrigin != nullptr; }
     bool is_concrete_instantiation() const;
     bool is_builtin() const;
+    bool is_ref() const;
+    bool has_default() const;
     bool is_numeric() const;
     bool is_integer() const;
     bool is_float() const;

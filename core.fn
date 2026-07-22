@@ -82,7 +82,7 @@ type Bool
 }
 
 @BuiltinType
-type Array<T>
+ref type Array<T>
 {
     length: i32
 

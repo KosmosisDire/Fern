@@ -1,0 +1,23 @@
+---
+Description: Reading a required field in a constructor before assigning it
+Expected: FN4003
+---
+
+type Holder
+{
+    items: i32[]
+
+    init
+    {
+        var n = items.Length()
+        items = [1, 2, 3]
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

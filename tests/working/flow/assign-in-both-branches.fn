@@ -1,0 +1,26 @@
+---
+Description: Local assigned in both branches is definitely assigned after the if
+Expected: 1
+---
+
+type Program
+{
+    static fn Pick(flag: bool) -> i32
+    {
+        var x: i32
+        if (flag)
+        {
+            x = 1
+        }
+        else
+        {
+            x = 2
+        }
+        return x
+    }
+
+    static fn Main -> i32
+    {
+        return Pick(true)
+    }
+}

@@ -1,0 +1,30 @@
+---
+Description: Using this in a constructor is allowed once all required fields are assigned
+Expected: 5
+---
+
+type Holder
+{
+    items: i32[]
+    first: i32
+
+    init
+    {
+        items = [5]
+        first = Front()
+    }
+
+    fn Front -> i32
+    {
+        return items[0]
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var h = Holder()
+        return h.first
+    }
+}

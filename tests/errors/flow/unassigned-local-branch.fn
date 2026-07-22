@@ -1,0 +1,22 @@
+---
+Description: Local assigned in only one branch is not definitely assigned
+Expected: FN4002
+---
+
+type Program
+{
+    static fn Pick(flag: bool) -> i32
+    {
+        var x: i32
+        if (flag)
+        {
+            x = 1
+        }
+        return x
+    }
+
+    static fn Main -> i32
+    {
+        return Pick(true)
+    }
+}

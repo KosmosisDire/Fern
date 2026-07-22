@@ -1,0 +1,22 @@
+---
+Description: Assignment inside a while body is not definite after the loop
+Expected: FN4002
+---
+
+type Program
+{
+    static fn Pick(flag: bool) -> i32
+    {
+        var x: i32
+        while (flag)
+        {
+            x = 1
+        }
+        return x
+    }
+
+    static fn Main -> i32
+    {
+        return Pick(true)
+    }
+}

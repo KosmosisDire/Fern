@@ -1,0 +1,21 @@
+---
+Description: Constructor must assign fields that have no default value
+Expected: FN4004
+---
+
+type Holder
+{
+    items: i32[]
+
+    init
+    {
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

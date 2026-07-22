@@ -1,0 +1,27 @@
+---
+Description: Calling a method on this before all required fields are assigned
+Expected: FN4005
+---
+
+type Holder
+{
+    items: i32[]
+
+    init
+    {
+        Touch()
+        items = [1]
+    }
+
+    fn Touch
+    {
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}
