@@ -369,9 +369,9 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
     if (auto* idx = targetExpr->as<FhirIndexExpr>())
     {
         TypeSymbol* elementType = idx->type;
-        TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
         TypeSymbol* objType = idx->object ? idx->object->type : nullptr;
         TypeSymbol* idxType = idx->index ? idx->index->type : nullptr;
+        bool intrinsicAccess = idx->getter && idx->getter->is_intrinsic() && idx->setter && idx->setter->is_intrinsic();
 
         auto* tmpObj = builder.synthetic_local(currentMethod, "obj", objType);
         auto* tmpIdx = builder.synthetic_local(currentMethod, "idx", idxType);
@@ -381,11 +381,24 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
         emit_assign(syntax, builder.local_addr(syntax, tmpIdx), lower_expr(idx->index), idxType, sideEffects);
         emit_assign(syntax, builder.local_addr(syntax, tmpRhs), loweredValue, rhsType, sideEffects);
 
+        auto* tmpVal = builder.synthetic_local(currentMethod, "val", elementType);
+
+        if (intrinsicAccess)
+        {
+            auto* current = address_load(syntax,
+                builder.elem_addr(syntax, read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx), elementType), elementType);
+            auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
+            emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, elementType, sideEffects);
+            emit_assign(syntax,
+                builder.elem_addr(syntax, read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx), elementType),
+                read_slot(syntax, tmpVal), elementType, sideEffects);
+            return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmpVal));
+        }
+
+        TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
         auto* current = build_call(syntax, elementType, idx->getter, nullptr,
             { read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx) });
         auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
-
-        auto* tmpVal = builder.synthetic_local(currentMethod, "val", elementType);
         emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, elementType, sideEffects);
 
         auto* setterCall = builder.call(syntax, setterReturn, idx->setter, nullptr,
@@ -448,6 +461,14 @@ FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
 {
     auto* object = lower_expr(expr->object);
     auto* index = lower_expr(expr->index);
+
+    // The array and string accessors are intrinsic, so index becomes an element address plus a read.
+    // A user defined indexer keeps its getter call.
+    if (expr->getter && expr->getter->is_intrinsic())
+    {
+        auto* addr = builder.elem_addr(expr->syntax, object, index, expr->type);
+        return address_load(expr->syntax, addr, expr->type);
+    }
     return build_call(expr->syntax, expr->type, expr->getter, nullptr, { object, index });
 }
 
@@ -478,6 +499,12 @@ void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syn
     {
         auto* object = lower_expr(idx->object);
         auto* index = lower_expr(idx->index);
+        if (idx->setter->is_intrinsic())
+        {
+            auto* addr = builder.elem_addr(syntax, object, index, idx->type);
+            emit_assign(syntax, addr, value, idx->type, out);
+            return;
+        }
         TypeSymbol* setterReturn = idx->setter->get_return_type();
         auto* call = builder.call(syntax, setterReturn, idx->setter, nullptr, { object, index, value });
         out.push_back(builder.expr_stmt(syntax, call));
@@ -531,14 +558,22 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
     auto* countConst = builder.constant(syntax, i32Type, ConstantValue::make_int(count));
     sideEffects.push_back(builder.expr_stmt(syntax, builder.call(syntax, nullptr, expr->ctor, read_slot(syntax, tmp), { countConst })));
 
+    bool intrinsicSetter = expr->setter && expr->setter->is_intrinsic();
     TypeSymbol* setterReturn = expr->setter ? expr->setter->get_return_type() : nullptr;
     for (int i = 0; i < count; ++i)
     {
         auto* indexConst = builder.constant(syntax, i32Type, ConstantValue::make_int(i));
         auto* value = lower_expr(expr->elements[i]);
-        auto* setCall = builder.call(syntax, setterReturn, expr->setter, nullptr,
-            { read_slot(syntax, tmp), indexConst, value });
-        sideEffects.push_back(builder.expr_stmt(syntax, setCall));
+        if (intrinsicSetter)
+        {
+            emit_assign(syntax, builder.elem_addr(syntax, read_slot(syntax, tmp), indexConst, expr->elementType), value, expr->elementType, sideEffects);
+        }
+        else
+        {
+            auto* setCall = builder.call(syntax, setterReturn, expr->setter, nullptr,
+                { read_slot(syntax, tmp), indexConst, value });
+            sideEffects.push_back(builder.expr_stmt(syntax, setCall));
+        }
     }
 
     return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmp));

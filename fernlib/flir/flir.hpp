@@ -25,6 +25,7 @@ struct FlirStmt;
 struct FlirConst;
 struct FlirLocalAddr;
 struct FlirFieldAddr;
+struct FlirElemAddr;
 struct FlirLoad;
 struct FlirCall;
 struct FlirIntrinsic;
@@ -54,6 +55,7 @@ public:
     virtual void visit(FlirConst* node) = 0;
     virtual void visit(FlirLocalAddr* node) = 0;
     virtual void visit(FlirFieldAddr* node) = 0;
+    virtual void visit(FlirElemAddr* node) = 0;
     virtual void visit(FlirLoad* node) = 0;
     virtual void visit(FlirCall* node) = 0;
     virtual void visit(FlirIntrinsic* node) = 0;
@@ -151,6 +153,21 @@ struct FlirFieldAddr : FlirExpr
     void visit_children(FlirVisitor* v) override
     {
         if (base) base->accept(v);
+    }
+};
+
+struct FlirElemAddr : FlirExpr
+{
+    FLIR_NODE(FlirElemAddr, FlirExpr)
+
+    FlirExpr* base = nullptr;
+    FlirExpr* index = nullptr;
+    TypeSymbol* elemType = nullptr;
+
+    void visit_children(FlirVisitor* v) override
+    {
+        if (base) base->accept(v);
+        if (index) index->accept(v);
     }
 };
 
@@ -358,6 +375,7 @@ public:
     void visit(FlirConst* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirLocalAddr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirFieldAddr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirElemAddr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirLoad* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirCall* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirIntrinsic* node) override { on_visit(node); node->visit_children(this); }

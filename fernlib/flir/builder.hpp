@@ -60,6 +60,18 @@ struct FlirBuilder
         return node;
     }
 
+    FlirElemAddr* elem_addr(BaseSyntax* syntax, FlirExpr* base, FlirExpr* index, TypeSymbol* elemType)
+    {
+        auto* node = arena.alloc<FlirElemAddr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = elemType;
+        node->base = base;
+        node->index = index;
+        node->elemType = elemType;
+        return node;
+    }
+
     FlirLoad* load(BaseSyntax* syntax, TypeSymbol* type, FlirExpr* address)
     {
         auto* node = arena.alloc<FlirLoad>();

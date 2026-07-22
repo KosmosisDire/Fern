@@ -13,7 +13,7 @@ namespace Fern
 static bool is_address(FlirExpr* node)
 {
     if (!node) return false;
-    if (node->is<FlirLocalAddr>() || node->is<FlirFieldAddr>()) return true;
+    if (node->is<FlirLocalAddr>() || node->is<FlirFieldAddr>() || node->is<FlirElemAddr>()) return true;
     if (auto* seq = node->as<FlirSequence>()) return is_address(seq->value);
     return false;
 }
@@ -70,6 +70,11 @@ private:
         else if (auto* n = node->as<FlirFieldAddr>())
         {
             if (!n->field) fail(n, "field address has no field");
+        }
+        else if (auto* n = node->as<FlirElemAddr>())
+        {
+            if (!n->base) fail(n, "element address has no base");
+            if (!n->index) fail(n, "element address has no index");
         }
     }
 };

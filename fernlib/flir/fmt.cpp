@@ -72,6 +72,15 @@ void FlirPrettyFormatter::visit(FlirFieldAddr* node)
     out << "." << (node->field ? node->field->name : "?") << ")";
 }
 
+void FlirPrettyFormatter::visit(FlirElemAddr* node)
+{
+    out << "&";
+    write_child(node->base);
+    out << "[";
+    write_child(node->index);
+    out << "]";
+}
+
 void FlirPrettyFormatter::visit(FlirLoad* node)
 {
     out << "load ";
@@ -384,6 +393,16 @@ void FlirDebugFormatter::visit(FlirFieldAddr* node)
     begin_node(node, std::format("field: {}, {}", field, type_attr(node)));
     open_block();
     write_child("base", node->base);
+    close_block();
+}
+
+void FlirDebugFormatter::visit(FlirElemAddr* node)
+{
+    std::string elem = node->elemType ? format_type(node->elemType) : "?";
+    begin_node(node, std::format("elem: {}, {}", elem, type_attr(node)));
+    open_block();
+    write_child("base", node->base, true);
+    write_child("index", node->index);
     close_block();
 }
 
