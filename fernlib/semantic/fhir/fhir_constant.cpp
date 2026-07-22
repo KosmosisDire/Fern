@@ -87,32 +87,32 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
 
         case IntrinsicKind::I32Gt:
         case IntrinsicKind::U8Gt:
-        case IntrinsicKind::CharGt:
+        case IntrinsicKind::C8Gt:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue > b.intValue);
         case IntrinsicKind::I32Lt:
         case IntrinsicKind::U8Lt:
-        case IntrinsicKind::CharLt:
+        case IntrinsicKind::C8Lt:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue < b.intValue);
         case IntrinsicKind::I32Ge:
         case IntrinsicKind::U8Ge:
-        case IntrinsicKind::CharGe:
+        case IntrinsicKind::C8Ge:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue >= b.intValue);
         case IntrinsicKind::I32Le:
         case IntrinsicKind::U8Le:
-        case IntrinsicKind::CharLe:
+        case IntrinsicKind::C8Le:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue <= b.intValue);
         case IntrinsicKind::I32Eq:
         case IntrinsicKind::U8Eq:
-        case IntrinsicKind::CharEq:
+        case IntrinsicKind::C8Eq:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue == b.intValue);
         case IntrinsicKind::I32Ne:
         case IntrinsicKind::U8Ne:
-        case IntrinsicKind::CharNe:
+        case IntrinsicKind::C8Ne:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue != b.intValue);
 

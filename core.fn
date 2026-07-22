@@ -128,16 +128,16 @@ type U8
 }
 
 @BuiltinType @AllowCustomLiterals
-type Char
+type C8
 {
-    value: char
+    value: c8
 
-    @Intrinsic("char.eq") op ==(left: char, right: char) -> bool
-    @Intrinsic("char.ne") op !=(left: char, right: char) -> bool
-    @Intrinsic("char.gt") op >(left: char, right: char) -> bool
-    @Intrinsic("char.lt") op <(left: char, right: char) -> bool
-    @Intrinsic("char.ge") op >=(left: char, right: char) -> bool
-    @Intrinsic("char.le") op <=(left: char, right: char) -> bool
+    @Intrinsic("c8.eq") op ==(left: c8, right: c8) -> bool
+    @Intrinsic("c8.ne") op !=(left: c8, right: c8) -> bool
+    @Intrinsic("c8.gt") op >(left: c8, right: c8) -> bool
+    @Intrinsic("c8.lt") op <(left: c8, right: c8) -> bool
+    @Intrinsic("c8.ge") op >=(left: c8, right: c8) -> bool
+    @Intrinsic("c8.le") op <=(left: c8, right: c8) -> bool
 }
 
 @BuiltinType @AllowCustomLiterals
@@ -158,5 +158,5 @@ type String
     @Intrinsic("string.eq") op ==(left: String, right: String) -> bool
     @Intrinsic("string.ne") op !=(left: String, right: String) -> bool
     @Intrinsic("string.concat") op +(left: String, right: String) -> String
-    @Intrinsic("string.get") op [](self: String, index: i32) -> char
+    @Intrinsic("string.get") op [](self: String, index: i32) -> c8
 }

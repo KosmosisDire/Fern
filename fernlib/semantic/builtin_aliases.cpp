@@ -13,7 +13,7 @@ constexpr std::array<BuiltinAlias, 6> kAliases = {{
     {"f32",    "Core", "F32"},
     {"bool",   "Core", "Bool"},
     {"u8",     "Core", "U8"},
-    {"char",   "Core", "Char"},
+    {"c8",     "Core", "C8"},
     {"string", "Core", "String"},
 }};
 

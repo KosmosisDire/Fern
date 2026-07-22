@@ -136,7 +136,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
         case TokenKind::LiteralMultilineString:
         case TokenKind::LiteralRawString:
         case TokenKind::LiteralRawMultilineString: type = context.resolve_type_name("string"); break;
-        case TokenKind::LiteralChar: type = context.resolve_type_name("char"); break;
+        case TokenKind::LiteralChar: type = context.resolve_type_name("c8"); break;
         default: break;
     }
 

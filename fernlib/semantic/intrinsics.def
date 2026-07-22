@@ -64,13 +64,13 @@ INTRINSIC(BoolNe,         "bool.ne",         "!=")
 INTRINSIC(BoolAnd,        "bool.and",        "&&")
 INTRINSIC(BoolOr,         "bool.or",         "||")
 
-// char
-INTRINSIC(CharEq,         "char.eq",         "==")
-INTRINSIC(CharNe,         "char.ne",         "!=")
-INTRINSIC(CharGt,         "char.gt",         ">")
-INTRINSIC(CharLt,         "char.lt",         "<")
-INTRINSIC(CharGe,         "char.ge",         ">=")
-INTRINSIC(CharLe,         "char.le",         "<=")
+// c8
+INTRINSIC(C8Eq,           "c8.eq",           "==")
+INTRINSIC(C8Ne,           "c8.ne",           "!=")
+INTRINSIC(C8Gt,           "c8.gt",           ">")
+INTRINSIC(C8Lt,           "c8.lt",           "<")
+INTRINSIC(C8Ge,           "c8.ge",           ">=")
+INTRINSIC(C8Le,           "c8.le",           "<=")
 
 // string
 INTRINSIC(StringInit,     "string.init",     "")

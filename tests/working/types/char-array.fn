@@ -7,7 +7,7 @@ type Program
 {
     static fn Main -> bool
     {
-        var chars: char[] = ['a', 'b', 'c']
+        var chars: c8[] = ['a', 'b', 'c']
         return chars[1] == 'b'
     }
 }
