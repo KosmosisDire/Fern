@@ -19,4 +19,8 @@ The lowering pass walks FHIR top-down and emits FLIR. Notable rewrites:
 - `while` becomes a `FlirLoop` containing an `if (!cond) break` prelude. There is no dedicated `while` node.
 - `else if` chains nest as `FlirIf` inside the parent's `elseBlock`.
 
+## Address Model
+
+Locals are addressable memory. A scalar or handle typed expression evaluates to a value, a value type expression evaluates to an address. `FlirLocalAddr` and `FlirFieldAddr` produce addresses, `FlirLoad` and `FlirStore` move a scalar or handle at an address, and `FlirCopy` is the only node that moves aggregate bytes. Reading a variable loads for scalars and handles but stays an address for value types. Assignment stores for scalars and handles and copies for value types. An aggregate call result is written into a temp through the call's `resultDest`, so the call still yields an address. A helper `is_memory_class` in `builder.hpp` decides value type versus scalar or handle from the type tags, and `FlirVerifier` checks these rules after lowering.
+
 The bigger thing is just there are many less nodes, and this difference will grow as more features like async, for loops, and iterables are added, but FLIR should stay small implementing the minimal set of normalized constructs that are easy to codegen from.

@@ -51,6 +51,12 @@ private:
 
     void lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syntax, std::vector<FlirStmt*>& out);
 
+    FlirExpr* address_load(BaseSyntax* syntax, FlirExpr* address, TypeSymbol* type);
+    FlirExpr* read_slot(BaseSyntax* syntax, FlirLocal* slot);
+    void emit_assign(BaseSyntax* syntax, FlirExpr* destAddr, FlirExpr* value, TypeSymbol* type, std::vector<FlirStmt*>& out);
+    FlirExpr* build_call(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, FlirExpr* thisArg, std::vector<FlirExpr*> args);
+    FlirExpr* apply_bin(BaseSyntax* syntax, TypeSymbol* type, FhirOpExpr* binaryOp, FlirExpr* lhs, FlirExpr* rhs);
+
     //TODO: Is there a better way to pass statements that an out, like with a sequence expr?
     void lower_var_decl(FhirVarDeclStmt* stmt, std::vector<FlirStmt*>& out);
     void lower_expr_stmt(FhirExprStmt* stmt, std::vector<FlirStmt*>& out);

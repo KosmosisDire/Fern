@@ -60,15 +60,22 @@ void FlirPrettyFormatter::visit(FlirConst* node)
     out << node->value.format();
 }
 
-void FlirPrettyFormatter::visit(FlirLoadLocal* node)
+void FlirPrettyFormatter::visit(FlirLocalAddr* node)
 {
-    out << local_label(node->local);
+    out << "&" << local_label(node->local);
 }
 
-void FlirPrettyFormatter::visit(FlirLoadField* node)
+void FlirPrettyFormatter::visit(FlirFieldAddr* node)
 {
+    out << "&(";
     write_child(node->base);
-    out << "." << (node->field ? node->field->name : "?");
+    out << "." << (node->field ? node->field->name : "?") << ")";
+}
+
+void FlirPrettyFormatter::visit(FlirLoad* node)
+{
+    out << "load ";
+    write_child(node->address);
 }
 
 void FlirPrettyFormatter::visit(FlirCall* node)
@@ -83,6 +90,11 @@ void FlirPrettyFormatter::visit(FlirCall* node)
         out << method_label(node->method);
     }
     write_args(node->args);
+    if (node->resultDest)
+    {
+        out << " sret ";
+        write_child(node->resultDest);
+    }
 }
 
 void FlirPrettyFormatter::visit(FlirIntrinsic* node)
@@ -153,17 +165,20 @@ void FlirPrettyFormatter::visit(FlirBlock* node)
     out << "}";
 }
 
-void FlirPrettyFormatter::visit(FlirStoreLocal* node)
+void FlirPrettyFormatter::visit(FlirStore* node)
 {
-    out << local_label(node->local) << " = ";
+    out << "store ";
+    write_child(node->address);
+    out << " = ";
     write_child(node->value);
 }
 
-void FlirPrettyFormatter::visit(FlirStoreField* node)
+void FlirPrettyFormatter::visit(FlirCopy* node)
 {
-    write_child(node->base);
-    out << "." << (node->field ? node->field->name : "?") << " = ";
-    write_child(node->value);
+    out << "copy[" << (node->type ? format_type(node->type) : "?") << "] ";
+    write_child(node->dest);
+    out << " <- ";
+    write_child(node->src);
 }
 
 void FlirPrettyFormatter::visit(FlirExprStmt* node)
@@ -356,12 +371,12 @@ void FlirDebugFormatter::visit(FlirConst* node)
     begin_node(node, std::format("value: {}, {}", node->value.format(), type_attr(node)));
 }
 
-void FlirDebugFormatter::visit(FlirLoadLocal* node)
+void FlirDebugFormatter::visit(FlirLocalAddr* node)
 {
     begin_node(node, std::format("local: {}, {}", local_label(node->local), type_attr(node)));
 }
 
-void FlirDebugFormatter::visit(FlirLoadField* node)
+void FlirDebugFormatter::visit(FlirFieldAddr* node)
 {
     std::string field = node->field
         ? std::format("\"{}\": {}", symbol_label(node->field), format_type(node->field->type))
@@ -372,12 +387,21 @@ void FlirDebugFormatter::visit(FlirLoadField* node)
     close_block();
 }
 
+void FlirDebugFormatter::visit(FlirLoad* node)
+{
+    begin_node(node, type_attr(node));
+    open_block();
+    write_child("address", node->address);
+    close_block();
+}
+
 void FlirDebugFormatter::visit(FlirCall* node)
 {
     begin_node(node, std::format("method: {}, {}", method_label(node->method), type_attr(node)));
     open_block();
     write_child("thisArg", node->thisArg, true);
-    write_children("args", node->args);
+    write_children("args", node->args, true);
+    write_child("resultDest", node->resultDest);
     close_block();
 }
 
@@ -423,23 +447,21 @@ void FlirDebugFormatter::visit(FlirBlock* node)
     close_block();
 }
 
-void FlirDebugFormatter::visit(FlirStoreLocal* node)
+void FlirDebugFormatter::visit(FlirStore* node)
 {
-    begin_node(node, std::format("local: {}", local_label(node->local)));
+    begin_node(node);
     open_block();
+    write_child("address", node->address, true);
     write_child("value", node->value);
     close_block();
 }
 
-void FlirDebugFormatter::visit(FlirStoreField* node)
+void FlirDebugFormatter::visit(FlirCopy* node)
 {
-    std::string field = node->field
-        ? std::format("\"{}\": {}", symbol_label(node->field), format_type(node->field->type))
-        : std::string("null");
-    begin_node(node, std::format("field: {}", field));
+    begin_node(node, std::format("type: {}", node->type ? format_type(node->type) : "?"));
     open_block();
-    write_child("base", node->base, true);
-    write_child("value", node->value);
+    write_child("dest", node->dest, true);
+    write_child("src", node->src);
     close_block();
 }
 

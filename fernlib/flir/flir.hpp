@@ -23,8 +23,9 @@ struct FlirExpr;
 struct FlirStmt;
 
 struct FlirConst;
-struct FlirLoadLocal;
-struct FlirLoadField;
+struct FlirLocalAddr;
+struct FlirFieldAddr;
+struct FlirLoad;
 struct FlirCall;
 struct FlirIntrinsic;
 struct FlirCast;
@@ -32,8 +33,8 @@ struct FlirAlloc;
 struct FlirSequence;
 
 struct FlirBlock;
-struct FlirStoreLocal;
-struct FlirStoreField;
+struct FlirStore;
+struct FlirCopy;
 struct FlirExprStmt;
 struct FlirIf;
 struct FlirLoop;
@@ -51,8 +52,9 @@ public:
     virtual ~FlirVisitor() = default;
 
     virtual void visit(FlirConst* node) = 0;
-    virtual void visit(FlirLoadLocal* node) = 0;
-    virtual void visit(FlirLoadField* node) = 0;
+    virtual void visit(FlirLocalAddr* node) = 0;
+    virtual void visit(FlirFieldAddr* node) = 0;
+    virtual void visit(FlirLoad* node) = 0;
     virtual void visit(FlirCall* node) = 0;
     virtual void visit(FlirIntrinsic* node) = 0;
     virtual void visit(FlirCast* node) = 0;
@@ -60,8 +62,8 @@ public:
     virtual void visit(FlirSequence* node) = 0;
 
     virtual void visit(FlirBlock* node) = 0;
-    virtual void visit(FlirStoreLocal* node) = 0;
-    virtual void visit(FlirStoreField* node) = 0;
+    virtual void visit(FlirStore* node) = 0;
+    virtual void visit(FlirCopy* node) = 0;
     virtual void visit(FlirExprStmt* node) = 0;
     virtual void visit(FlirIf* node) = 0;
     virtual void visit(FlirLoop* node) = 0;
@@ -132,16 +134,16 @@ struct FlirConst : FlirExpr
     ConstantValue value;
 };
 
-struct FlirLoadLocal : FlirExpr
+struct FlirLocalAddr : FlirExpr
 {
-    FLIR_NODE(FlirLoadLocal, FlirExpr)
+    FLIR_NODE(FlirLocalAddr, FlirExpr)
 
     FlirLocal* local = nullptr;
 };
 
-struct FlirLoadField : FlirExpr
+struct FlirFieldAddr : FlirExpr
 {
-    FLIR_NODE(FlirLoadField, FlirExpr)
+    FLIR_NODE(FlirFieldAddr, FlirExpr)
 
     FlirExpr* base = nullptr;
     FieldSymbol* field = nullptr;
@@ -152,6 +154,18 @@ struct FlirLoadField : FlirExpr
     }
 };
 
+struct FlirLoad : FlirExpr
+{
+    FLIR_NODE(FlirLoad, FlirExpr)
+
+    FlirExpr* address = nullptr;
+
+    void visit_children(FlirVisitor* v) override
+    {
+        if (address) address->accept(v);
+    }
+};
+
 struct FlirCall : FlirExpr
 {
     FLIR_NODE(FlirCall, FlirExpr)
@@ -159,12 +173,15 @@ struct FlirCall : FlirExpr
     MethodSymbol* method = nullptr;
     FlirExpr* thisArg = nullptr;
     std::vector<FlirExpr*> args;
+    // Where an aggregate return value is written. Null for scalar, handle, and void returns.
+    FlirExpr* resultDest = nullptr;
 
     void visit_children(FlirVisitor* v) override
     {
         if (thisArg) thisArg->accept(v);
         for (auto* a : args)
             if (a) a->accept(v);
+        if (resultDest) resultDest->accept(v);
     }
 };
 
@@ -234,31 +251,32 @@ struct FlirBlock : FlirStmt
     }
 };
 
-struct FlirStoreLocal : FlirStmt
+struct FlirStore : FlirStmt
 {
-    FLIR_NODE(FlirStoreLocal, FlirStmt)
+    FLIR_NODE(FlirStore, FlirStmt)
 
-    FlirLocal* local = nullptr;
+    FlirExpr* address = nullptr;
     FlirExpr* value = nullptr;
 
     void visit_children(FlirVisitor* v) override
     {
+        if (address) address->accept(v);
         if (value) value->accept(v);
     }
 };
 
-struct FlirStoreField : FlirStmt
+struct FlirCopy : FlirStmt
 {
-    FLIR_NODE(FlirStoreField, FlirStmt)
+    FLIR_NODE(FlirCopy, FlirStmt)
 
-    FlirExpr* base = nullptr;
-    FieldSymbol* field = nullptr;
-    FlirExpr* value = nullptr;
+    FlirExpr* dest = nullptr;
+    FlirExpr* src = nullptr;
+    TypeSymbol* type = nullptr;
 
     void visit_children(FlirVisitor* v) override
     {
-        if (base) base->accept(v);
-        if (value) value->accept(v);
+        if (dest) dest->accept(v);
+        if (src) src->accept(v);
     }
 };
 
@@ -338,8 +356,9 @@ protected:
 
 public:
     void visit(FlirConst* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FlirLoadLocal* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FlirLoadField* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirLocalAddr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirFieldAddr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirLoad* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirCall* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirIntrinsic* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirCast* node) override { on_visit(node); node->visit_children(this); }
@@ -347,8 +366,8 @@ public:
     void visit(FlirSequence* node) override { on_visit(node); node->visit_children(this); }
 
     void visit(FlirBlock* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FlirStoreLocal* node) override { on_visit(node); node->visit_children(this); }
-    void visit(FlirStoreField* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirStore* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirCopy* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirExprStmt* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirIf* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirLoop* node) override { on_visit(node); node->visit_children(this); }

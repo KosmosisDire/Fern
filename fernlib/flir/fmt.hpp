@@ -22,8 +22,9 @@ class FlirPrettyFormatter : public DefaultFlirVisitor
 
 public:
     void visit(FlirConst* node) override;
-    void visit(FlirLoadLocal* node) override;
-    void visit(FlirLoadField* node) override;
+    void visit(FlirLocalAddr* node) override;
+    void visit(FlirFieldAddr* node) override;
+    void visit(FlirLoad* node) override;
     void visit(FlirCall* node) override;
     void visit(FlirIntrinsic* node) override;
     void visit(FlirCast* node) override;
@@ -31,8 +32,8 @@ public:
     void visit(FlirSequence* node) override;
 
     void visit(FlirBlock* node) override;
-    void visit(FlirStoreLocal* node) override;
-    void visit(FlirStoreField* node) override;
+    void visit(FlirStore* node) override;
+    void visit(FlirCopy* node) override;
     void visit(FlirExprStmt* node) override;
     void visit(FlirIf* node) override;
     void visit(FlirLoop* node) override;
@@ -91,8 +92,9 @@ class FlirDebugFormatter : public DefaultFlirVisitor
 
 public:
     void visit(FlirConst* node) override;
-    void visit(FlirLoadLocal* node) override;
-    void visit(FlirLoadField* node) override;
+    void visit(FlirLocalAddr* node) override;
+    void visit(FlirFieldAddr* node) override;
+    void visit(FlirLoad* node) override;
     void visit(FlirCall* node) override;
     void visit(FlirIntrinsic* node) override;
     void visit(FlirCast* node) override;
@@ -100,8 +102,8 @@ public:
     void visit(FlirSequence* node) override;
 
     void visit(FlirBlock* node) override;
-    void visit(FlirStoreLocal* node) override;
-    void visit(FlirStoreField* node) override;
+    void visit(FlirStore* node) override;
+    void visit(FlirCopy* node) override;
     void visit(FlirExprStmt* node) override;
     void visit(FlirIf* node) override;
     void visit(FlirLoop* node) override;

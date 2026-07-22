@@ -39,6 +39,7 @@ set(FERNLIB_SOURCES
     flir/context.cpp
     flir/fmt.cpp
     flir/lower.cpp
+    flir/verify.cpp
 
     # source
     source/file.cpp

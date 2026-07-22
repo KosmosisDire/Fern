@@ -13,6 +13,14 @@
 namespace Fern
 {
 
+// A user value type moves as raw bytes through an address. Scalars, String, and ref handles move as a value.
+inline bool is_memory_class(TypeSymbol* type)
+{
+    auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
+    if (!named) return false;
+    return !named->is_builtin() && !named->is_ref();
+}
+
 struct FlirBuilder
 {
     AllocArena& arena;
@@ -31,9 +39,9 @@ struct FlirBuilder
         return node;
     }
 
-    FlirLoadLocal* load_local(BaseSyntax* syntax, FlirLocal* local)
+    FlirLocalAddr* local_addr(BaseSyntax* syntax, FlirLocal* local)
     {
-        auto* node = arena.alloc<FlirLoadLocal>();
+        auto* node = arena.alloc<FlirLocalAddr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = local ? local->type : nullptr;
@@ -41,14 +49,24 @@ struct FlirBuilder
         return node;
     }
 
-    FlirLoadField* load_field(BaseSyntax* syntax, FlirExpr* base, FieldSymbol* field)
+    FlirFieldAddr* field_addr(BaseSyntax* syntax, FlirExpr* base, FieldSymbol* field)
     {
-        auto* node = arena.alloc<FlirLoadField>();
+        auto* node = arena.alloc<FlirFieldAddr>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = field ? field->type : nullptr;
         node->base = base;
         node->field = field;
+        return node;
+    }
+
+    FlirLoad* load(BaseSyntax* syntax, TypeSymbol* type, FlirExpr* address)
+    {
+        auto* node = arena.alloc<FlirLoad>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = type;
+        node->address = address;
         return node;
     }
 
@@ -75,13 +93,6 @@ struct FlirBuilder
         node->op = op;
         node->args = std::move(args);
         return node;
-    }
-
-    FlirExpr* call_or_intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicKind op, MethodSymbol* method, std::vector<FlirExpr*> args)
-    {
-        if (method && !method->is_intrinsic())
-            return call(syntax, type, method, nullptr, std::move(args));
-        return intrinsic(syntax, type, op, std::move(args));
     }
 
     FlirCast* cast(BaseSyntax* syntax, TypeSymbol* targetType, FlirExpr* operand)
@@ -126,24 +137,24 @@ struct FlirBuilder
         return node;
     }
 
-    FlirStoreLocal* store_local(BaseSyntax* syntax, FlirLocal* local, FlirExpr* value)
+    FlirStore* store(BaseSyntax* syntax, FlirExpr* address, FlirExpr* value)
     {
-        auto* node = arena.alloc<FlirStoreLocal>();
+        auto* node = arena.alloc<FlirStore>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
-        node->local = local;
+        node->address = address;
         node->value = value;
         return node;
     }
 
-    FlirStoreField* store_field(BaseSyntax* syntax, FlirExpr* base, FieldSymbol* field, FlirExpr* value)
+    FlirCopy* copy(BaseSyntax* syntax, FlirExpr* dest, FlirExpr* src, TypeSymbol* type)
     {
-        auto* node = arena.alloc<FlirStoreField>();
+        auto* node = arena.alloc<FlirCopy>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
-        node->base = base;
-        node->field = field;
-        node->value = value;
+        node->dest = dest;
+        node->src = src;
+        node->type = type;
         return node;
     }
 
