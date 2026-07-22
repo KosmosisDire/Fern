@@ -16,7 +16,7 @@ static int align_up(int offset, int align)
 // byte so distinct slots keep distinct addresses.
 static void place(FlirLocal* slot, int& offset, int& frameAlign)
 {
-    if (!slot) return;
+    if (!slot || slot->byAddress) return;
 
     auto* named = slot->type ? slot->type->as<NamedTypeSymbol>() : nullptr;
     int size = named && named->sizeInBytes > 0 ? named->sizeInBytes : 1;

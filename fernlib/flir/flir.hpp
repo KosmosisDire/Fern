@@ -127,6 +127,9 @@ struct FlirLocal
     int index = 0;
     // Byte offset within the frame, assigned by the frame pass. -1 means unassigned.
     int offset = -1;
+    // An incoming pointer to the object rather than frame storage. LocalAddr resolves to that pointer,
+    // so it takes no frame slot. Used for by-address this, value params, and the sret destination.
+    bool byAddress = false;
 };
 
 #pragma region Expressions
@@ -366,6 +369,8 @@ struct FlirMethod
     FlirBlock* body = nullptr;
     // Total frame size in bytes, assigned by the frame pass.
     int frameSize = 0;
+    // Hidden by-address destination an aggregate return is copied into. Null for other returns.
+    FlirLocal* sretParam = nullptr;
 };
 
 #pragma region DefaultFlirVisitor

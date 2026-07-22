@@ -25,4 +25,6 @@ Locals are addressable memory. A scalar or handle typed expression evaluates to 
 
 A frame pass (`frame.cpp`) then walks each method's parameters and locals, assigns a byte offset with C alignment, and sets `frameSize`, so `FlirLocalAddr` becomes the frame base plus a constant offset. The verifier rejects any slot left without an offset.
 
+At the call boundary, value type `this` and aggregate value parameters are by-address (an incoming pointer, no frame slot), aggregate arguments are caller copied, and an aggregate return is copied into the method's hidden `sretParam`.
+
 The bigger thing is just there are many less nodes, and this difference will grow as more features like async, for loops, and iterables are added, but FLIR should stay small implementing the minimal set of normalized constructs that are easy to codegen from.

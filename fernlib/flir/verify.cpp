@@ -88,7 +88,7 @@ void FlirVerifier::verify(FlirMethod* method, Diagnostics& diag)
     std::string_view mname = method->symbol ? std::string_view(method->symbol->name) : std::string_view("?");
     auto check_slot = [&](FlirLocal* slot)
     {
-        if (slot && slot->offset < 0)
+        if (slot && !slot->byAddress && slot->offset < 0)
             diag.report(DiagnosticCode::Err_FlirMalformed, Span{}, mname, "frame slot has no offset");
     };
     for (auto* param : method->parameters) check_slot(param);

@@ -370,7 +370,8 @@ std::string FlirDebugFormatter::local_label(FlirLocal* local)
 {
     if (!local) return "null";
     std::string name = local->name.empty() ? std::format("$l{}", local->index) : std::string(local->name);
-    return std::format("\"{}\": {} @{}", name, local->type ? format_type(local->type) : "?", local->offset);
+    std::string place = local->byAddress ? std::string("@addr") : std::format("@{}", local->offset);
+    return std::format("\"{}\": {} {}", name, local->type ? format_type(local->type) : "?", place);
 }
 
 #pragma region Debug Expression Visitors
@@ -531,7 +532,10 @@ std::string FlirDebugFormatter::format(FlirMethod* method)
     FlirDebugFormatter fmt;
 
     fmt.out << "FlirMethod (signature: " << fmt.method_label(method->symbol)
-            << ", frame: " << method->frameSize << ")";
+            << ", frame: " << method->frameSize;
+    if (method->sretParam)
+        fmt.out << ", sret: " << (method->sretParam->type ? format_type(method->sretParam->type) : "?");
+    fmt.out << ")";
     fmt.open_block();
     fmt.write_indent();
     fmt.out << "locals: [";

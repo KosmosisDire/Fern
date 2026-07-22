@@ -96,9 +96,14 @@ void Compilation::compile()
         FlirFramePass::run(method);
     }
 
-    for (auto* method : flirContext.methods)
+    // The verifier catches lowering bugs. Malformed FLIR from already erroneous input is expected, so
+    // only verify when the program is otherwise clean.
+    if (!diag.has_errors())
     {
-        FlirVerifier::verify(method, diag);
+        for (auto* method : flirContext.methods)
+        {
+            FlirVerifier::verify(method, diag);
+        }
     }
 
     compiled = true;

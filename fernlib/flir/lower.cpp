@@ -29,13 +29,23 @@ FlirMethod* FlirLowerer::lower_method(FhirMethod* method)
         bool isStatic = has_modifier(method->symbol->modifiers, Modifier::Static);
         if (parentType && (method->symbol->is_constructor() || !isStatic))
         {
-            builder.param(currentMethod, "this", parentType);
+            auto* thisSlot = builder.param(currentMethod, "this", parentType);
+            thisSlot->byAddress = is_memory_class(parentType);
         }
 
         for (auto* param : method->symbol->parameters)
         {
             auto* slot = builder.param(currentMethod, param->name, param->type);
+            slot->byAddress = is_memory_class(param->type);
             flir.slots[param] = slot;
+        }
+
+        // An aggregate return is written through a hidden by-address destination.
+        auto* returnType = method->symbol->get_return_type();
+        if (is_memory_class(returnType))
+        {
+            currentMethod->sretParam = builder.slot("sret", returnType);
+            currentMethod->sretParam->byAddress = true;
         }
     }
 
@@ -70,19 +80,38 @@ void FlirLowerer::emit_assign(BaseSyntax* syntax, FlirExpr* destAddr, FlirExpr* 
         out.push_back(builder.store(syntax, destAddr, value));
 }
 
-// Builds a call. An aggregate return is written into a temp through the result destination,
-// and the call expression evaluates to that temp's address.
+// Stages each aggregate argument into a fresh copy and passes the copy's address, so the callee
+// cannot mutate the caller's value through a by-address parameter.
+void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& args, std::vector<FlirStmt*>& out)
+{
+    for (auto*& arg : args)
+    {
+        if (!arg || !is_memory_class(arg->type)) continue;
+        auto* temp = builder.synthetic_local(currentMethod, "arg", arg->type);
+        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type));
+        arg = builder.local_addr(syntax, temp);
+    }
+}
+
+// Builds a call. Aggregate arguments are caller copied. An aggregate return is written into a temp
+// through the result destination, and the call expression evaluates to that temp's address.
 FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, FlirExpr* thisArg, std::vector<FlirExpr*> args)
 {
+    std::vector<FlirStmt*> pre;
+    caller_copy_args(syntax, args, pre);
+
     auto* call = builder.call(syntax, retType, method, thisArg, std::move(args));
-    if (!is_memory_class(retType)) return call;
 
-    auto* temp = builder.synthetic_local(currentMethod, "ret", retType);
-    call->resultDest = builder.local_addr(syntax, temp);
+    if (is_memory_class(retType))
+    {
+        auto* temp = builder.synthetic_local(currentMethod, "ret", retType);
+        call->resultDest = builder.local_addr(syntax, temp);
+        pre.push_back(builder.expr_stmt(syntax, call));
+        return builder.sequence(syntax, std::move(pre), builder.local_addr(syntax, temp));
+    }
 
-    std::vector<FlirStmt*> effects;
-    effects.push_back(builder.expr_stmt(syntax, call));
-    return builder.sequence(syntax, std::move(effects), builder.local_addr(syntax, temp));
+    if (pre.empty()) return call;
+    return builder.sequence(syntax, std::move(pre), call);
 }
 
 // Applies a binary operator, either a user method (aggregate aware) or a primitive intrinsic.
@@ -148,6 +177,13 @@ void FlirLowerer::lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt
 
 void FlirLowerer::lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out)
 {
+    if (currentMethod->sretParam)
+    {
+        auto* value = lower_expr(stmt->value);
+        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type));
+        out.push_back(builder.return_stmt(stmt->syntax, nullptr));
+        return;
+    }
     out.push_back(builder.return_stmt(stmt->syntax, lower_expr(stmt->value)));
 }
 
@@ -319,6 +355,7 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
         auto* temp = builder.synthetic_local(currentMethod, "new", type);
         std::vector<FlirStmt*> sideEffects;
         sideEffects.push_back(builder.store(expr->syntax, builder.local_addr(expr->syntax, temp), builder.alloc_expr(expr->syntax, type)));
+        caller_copy_args(expr->syntax, args, sideEffects);
         auto* handle = builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp));
         sideEffects.push_back(builder.expr_stmt(expr->syntax, builder.call(expr->syntax, nullptr, ctor, handle, std::move(args))));
         return builder.sequence(expr->syntax, std::move(sideEffects), builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp)));
@@ -327,6 +364,7 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
     // Value types construct in place: the constructor writes through a temp's address, which is yielded.
     auto* temp = builder.synthetic_local(currentMethod, "new", type);
     std::vector<FlirStmt*> sideEffects;
+    caller_copy_args(expr->syntax, args, sideEffects);
     sideEffects.push_back(builder.expr_stmt(expr->syntax, builder.call(expr->syntax, nullptr, ctor, builder.local_addr(expr->syntax, temp), std::move(args))));
     return builder.sequence(expr->syntax, std::move(sideEffects), builder.local_addr(expr->syntax, temp));
 }

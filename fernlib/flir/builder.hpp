@@ -252,6 +252,15 @@ struct FlirBuilder
         return node;
     }
 
+    // A standalone slot not tracked in the method's parameter or local vectors.
+    FlirLocal* slot(std::string_view name, TypeSymbol* type)
+    {
+        auto* node = arena.alloc<FlirLocal>();
+        node->name = name;
+        node->type = type;
+        return node;
+    }
+
     FlirMethod* method(MethodSymbol* symbol, FlirBlock* body)
     {
         auto* node = arena.alloc<FlirMethod>();
