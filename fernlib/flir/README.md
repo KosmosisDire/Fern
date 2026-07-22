@@ -27,4 +27,6 @@ A frame pass (`frame.cpp`) then walks each method's parameters and locals, assig
 
 At the call boundary, value type `this` and aggregate value parameters are by-address (an incoming pointer, no frame slot), aggregate arguments are caller copied, and an aggregate return is copied into the method's hidden `sretParam`.
 
+Intrinsic methods lower to `FlirIntrinsic`, which shares `FlirCall`'s shape (`method`, `thisArg`, `args`) but is a distinct type. `build_call` is the one choke point that routes intrinsics there, and the verifier rejects a `FlirCall` to an intrinsic method.
+
 The bigger thing is just there are many less nodes, and this difference will grow as more features like async, for loops, and iterables are added, but FLIR should stay small implementing the minimal set of normalized constructs that are easy to codegen from.

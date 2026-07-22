@@ -108,19 +108,25 @@ void FlirPrettyFormatter::visit(FlirCall* node)
 
 void FlirPrettyFormatter::visit(FlirIntrinsic* node)
 {
-    if (node->args.size() == 2)
+    IntrinsicKind op = node->method ? node->method->intrinsic() : IntrinsicKind::None;
+    if (!node->thisArg && node->args.size() == 2)
     {
         out << "(";
         write_child(node->args[0]);
-        out << " " << format_symbol(node->op) << " ";
+        out << " " << format_symbol(op) << " ";
         write_child(node->args[1]);
         out << ")";
     }
-    else if (node->args.size() == 1)
+    else if (!node->thisArg && node->args.size() == 1)
     {
-        out << "(" << format_symbol(node->op);
+        out << "(" << format_symbol(op);
         write_child(node->args[0]);
         out << ")";
+    }
+    else
+    {
+        out << (node->method ? node->method->name : "?");
+        write_args(node->args);
     }
 }
 
@@ -427,8 +433,10 @@ void FlirDebugFormatter::visit(FlirCall* node)
 
 void FlirDebugFormatter::visit(FlirIntrinsic* node)
 {
-    begin_node(node, std::format("op: {}, {}", Fern::format(node->op), type_attr(node)));
+    IntrinsicKind op = node->method ? node->method->intrinsic() : IntrinsicKind::None;
+    begin_node(node, std::format("op: {}, {}", Fern::format(op), type_attr(node)));
     open_block();
+    write_child("thisArg", node->thisArg, true);
     write_children("args", node->args);
     close_block();
 }

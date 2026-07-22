@@ -76,6 +76,15 @@ private:
             if (!n->base) fail(n, "element address has no base");
             if (!n->index) fail(n, "element address has no index");
         }
+        else if (auto* n = node->as<FlirCall>())
+        {
+            if (n->method && n->method->is_intrinsic()) fail(n, "call to an intrinsic method");
+        }
+        else if (auto* n = node->as<FlirIntrinsic>())
+        {
+            if (!n->method) fail(n, "intrinsic has no method");
+            else if (!n->method->is_intrinsic()) fail(n, "intrinsic node has a non intrinsic method");
+        }
     }
 };
 

@@ -95,14 +95,15 @@ struct FlirBuilder
         return node;
     }
 
-    FlirIntrinsic* intrinsic(BaseSyntax* syntax, TypeSymbol* type, IntrinsicKind op,
-                             std::vector<FlirExpr*> args)
+    FlirIntrinsic* intrinsic(BaseSyntax* syntax, TypeSymbol* type, MethodSymbol* method,
+                             FlirExpr* thisArg, std::vector<FlirExpr*> args)
     {
         auto* node = arena.alloc<FlirIntrinsic>();
         node->syntax = syntax;
         node->span = syntax ? syntax->span : Span{};
         node->type = type;
-        node->op = op;
+        node->method = method;
+        node->thisArg = thisArg;
         node->args = std::move(args);
         return node;
     }

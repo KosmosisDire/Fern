@@ -93,10 +93,14 @@ void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& a
     }
 }
 
-// Builds a call. Aggregate arguments are caller copied. An aggregate return is written into a temp
-// through the result destination, and the call expression evaluates to that temp's address.
+// The single choke point for invoking a method. An intrinsic method becomes a FlirIntrinsic, never a
+// call. A real call caller copies its aggregate arguments and routes an aggregate return through a
+// temp destination, evaluating to that temp's address.
 FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, FlirExpr* thisArg, std::vector<FlirExpr*> args)
 {
+    if (method && method->is_intrinsic())
+        return builder.intrinsic(syntax, retType, method, thisArg, std::move(args));
+
     std::vector<FlirStmt*> pre;
     caller_copy_args(syntax, args, pre);
 
@@ -114,12 +118,21 @@ FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, Metho
     return builder.sequence(syntax, std::move(pre), call);
 }
 
-// Applies a binary operator, either a user method (aggregate aware) or a primitive intrinsic.
+// Applies a binary operator through the call choke point, which routes intrinsics and user methods.
 FlirExpr* FlirLowerer::apply_bin(BaseSyntax* syntax, TypeSymbol* type, FhirOpExpr* binaryOp, FlirExpr* lhs, FlirExpr* rhs)
 {
-    if (binaryOp->method && !binaryOp->method->is_intrinsic())
-        return build_call(syntax, type, binaryOp->method, nullptr, { lhs, rhs });
-    return builder.intrinsic(syntax, type, binaryOp->op, { lhs, rhs });
+    return build_call(syntax, type, binaryOp->method, nullptr, { lhs, rhs });
+}
+
+// Finds an intrinsic method by kind on a type, for negations the lowerer synthesizes.
+MethodSymbol* FlirLowerer::intrinsic_method(TypeSymbol* type, IntrinsicKind kind)
+{
+    auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
+    if (!named) return nullptr;
+    for (auto* method : named->methods)
+        if (method && method->is_intrinsic() && method->intrinsic() == kind)
+            return method;
+    return nullptr;
 }
 
 #pragma region Blocks and Statements
@@ -210,7 +223,7 @@ void FlirLowerer::lower_while(FhirWhileStmt* stmt, std::vector<FlirStmt*>& out)
 {
     auto* cond = lower_expr(stmt->condition);
     auto* condType = cond ? cond->type : nullptr;
-    auto* notCond = builder.intrinsic(stmt->syntax, condType, IntrinsicKind::BoolNot, { cond });
+    auto* notCond = build_call(stmt->syntax, condType, intrinsic_method(condType, IntrinsicKind::BoolNot), nullptr, { cond });
 
     auto* breakBlock = builder.block(stmt->syntax);
     breakBlock->statements.push_back(builder.break_stmt(stmt->syntax));
@@ -291,9 +304,7 @@ FlirExpr* FlirLowerer::lower_op(FhirOpExpr* expr)
     for (auto* a : expr->args)
         args.push_back(lower_expr(a));
 
-    if (expr->method && !expr->method->is_intrinsic())
-        return build_call(expr->syntax, expr->type, expr->method, nullptr, std::move(args));
-    return builder.intrinsic(expr->syntax, expr->type, expr->op, std::move(args));
+    return build_call(expr->syntax, expr->type, expr->method, nullptr, std::move(args));
 }
 
 // Rewrites a && b to (tmp = a; if (tmp) tmp = b; yield tmp) and a || b to
@@ -314,7 +325,7 @@ FlirExpr* FlirLowerer::lower_short_circuit(FhirOpExpr* expr)
 
     FlirExpr* condition = builder.load(syntax, type, builder.local_addr(syntax, tmp));
     if (!isAnd)
-        condition = builder.intrinsic(syntax, type, IntrinsicKind::BoolNot, { condition });
+        condition = build_call(syntax, type, intrinsic_method(type, IntrinsicKind::BoolNot), nullptr, { condition });
 
     sideEffects.push_back(builder.if_stmt(syntax, condition, thenBlock, nullptr));
 
@@ -355,17 +366,15 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
         auto* temp = builder.synthetic_local(currentMethod, "new", type);
         std::vector<FlirStmt*> sideEffects;
         sideEffects.push_back(builder.store(expr->syntax, builder.local_addr(expr->syntax, temp), builder.alloc_expr(expr->syntax, type)));
-        caller_copy_args(expr->syntax, args, sideEffects);
         auto* handle = builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp));
-        sideEffects.push_back(builder.expr_stmt(expr->syntax, builder.call(expr->syntax, nullptr, ctor, handle, std::move(args))));
+        sideEffects.push_back(builder.expr_stmt(expr->syntax, build_call(expr->syntax, nullptr, ctor, handle, std::move(args))));
         return builder.sequence(expr->syntax, std::move(sideEffects), builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp)));
     }
 
     // Value types construct in place: the constructor writes through a temp's address, which is yielded.
     auto* temp = builder.synthetic_local(currentMethod, "new", type);
     std::vector<FlirStmt*> sideEffects;
-    caller_copy_args(expr->syntax, args, sideEffects);
-    sideEffects.push_back(builder.expr_stmt(expr->syntax, builder.call(expr->syntax, nullptr, ctor, builder.local_addr(expr->syntax, temp), std::move(args))));
+    sideEffects.push_back(builder.expr_stmt(expr->syntax, build_call(expr->syntax, nullptr, ctor, builder.local_addr(expr->syntax, temp), std::move(args))));
     return builder.sequence(expr->syntax, std::move(sideEffects), builder.local_addr(expr->syntax, temp));
 }
 
@@ -594,7 +603,7 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
     sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmp), builder.alloc_expr(syntax, type)));
 
     auto* countConst = builder.constant(syntax, i32Type, ConstantValue::make_int(count));
-    sideEffects.push_back(builder.expr_stmt(syntax, builder.call(syntax, nullptr, expr->ctor, read_slot(syntax, tmp), { countConst })));
+    sideEffects.push_back(builder.expr_stmt(syntax, build_call(syntax, nullptr, expr->ctor, read_slot(syntax, tmp), { countConst })));
 
     bool intrinsicSetter = expr->setter && expr->setter->is_intrinsic();
     TypeSymbol* setterReturn = expr->setter ? expr->setter->get_return_type() : nullptr;

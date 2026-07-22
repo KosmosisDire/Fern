@@ -207,15 +207,19 @@ struct FlirCall : FlirExpr
     }
 };
 
+// Same shape as FlirCall but a distinct type so a backend can never treat an intrinsic like a real
+// call. The operation lives on the method tag, read via method->intrinsic().
 struct FlirIntrinsic : FlirExpr
 {
     FLIR_NODE(FlirIntrinsic, FlirExpr)
 
-    IntrinsicKind op = IntrinsicKind::None;
+    MethodSymbol* method = nullptr;
+    FlirExpr* thisArg = nullptr;
     std::vector<FlirExpr*> args;
 
     void visit_children(FlirVisitor* v) override
     {
+        if (thisArg) thisArg->accept(v);
         for (auto* a : args)
             if (a) a->accept(v);
     }
