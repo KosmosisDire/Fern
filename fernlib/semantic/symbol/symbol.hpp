@@ -234,7 +234,8 @@ struct FieldSymbol : Symbol
     Modifier modifiers = Modifier::None;
     TypeSymbol* type = nullptr;
     int index = 0;
-    int offset = 0;
+    // -1 means unassigned
+    int offset = -1;
     std::vector<ResolvedAttribute> resolvedAttributes;
 
     FieldSymbol() { kind = Kind; }

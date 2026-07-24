@@ -12,6 +12,8 @@ struct TargetInfo
 {
     int pointerSize = 8;
     int pointerAlign = 8;
+    // Heap blocks behind Array and String hold an i32 length at offset 0 then element data at this offset
+    int blockHeaderSize = 8;
 };
 
 // Computes size, alignment, and field offsets for every concrete value and ref type, and reports

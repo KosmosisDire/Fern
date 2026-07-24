@@ -90,7 +90,12 @@ void LayoutPass::compute(NamedTypeSymbol* type)
             type->sizeInBytes = target.pointerSize;
             type->alignment = target.pointerAlign;
         }
+
+        // Mark computed before the field walk so a scalar whose value field is its own type terminates.
         type->layoutState = LayoutState::Computed;
+
+        int fieldAlign = 1;
+        place_fields(type, fieldAlign);
         return;
     }
 
