@@ -61,12 +61,18 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     context.symbols.ensure_members_populated(type);
 
     // Ref types are handles. Their pointee never contributes to this type's size, so a ref field
-    // breaks value cycles the same way a C pointer does.
+    // breaks value cycles the same way a C pointer does. Marking the type computed before walking
+    // its payload lets a field of the type itself terminate at the handle size.
     if (type->is_ref())
     {
         type->sizeInBytes = target.pointerSize;
         type->alignment = target.pointerAlign;
         type->layoutState = LayoutState::Computed;
+
+        int payloadAlign = 1;
+        int offset = place_fields(type, payloadAlign);
+        type->payloadSize = offset == 0 ? 1 : align_up(offset, payloadAlign);
+        type->payloadAlign = payloadAlign;
         return;
     }
 
@@ -90,8 +96,19 @@ void LayoutPass::compute(NamedTypeSymbol* type)
 
     type->layoutState = LayoutState::InProgress;
 
-    int offset = 0;
     int structAlign = 1;
+    int offset = place_fields(type, structAlign);
+
+    // An empty value type still occupies one byte so distinct objects get distinct addresses.
+    type->sizeInBytes = offset == 0 ? 1 : align_up(offset, structAlign);
+    type->alignment = structAlign;
+    type->layoutState = LayoutState::Computed;
+}
+
+// Assigns each field the next aligned offset and returns the total span of the fields.
+int LayoutPass::place_fields(NamedTypeSymbol* type, int& structAlign)
+{
+    int offset = 0;
     for (auto* field : type->fields)
     {
         auto* fieldType = field->type ? field->type->as<NamedTypeSymbol>() : nullptr;
@@ -111,11 +128,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
         offset += fieldType->sizeInBytes;
         if (fieldType->alignment > structAlign) structAlign = fieldType->alignment;
     }
-
-    // An empty value type still occupies one byte so distinct objects get distinct addresses.
-    type->sizeInBytes = offset == 0 ? 1 : align_up(offset, structAlign);
-    type->alignment = structAlign;
-    type->layoutState = LayoutState::Computed;
+    return offset;
 }
 
 }

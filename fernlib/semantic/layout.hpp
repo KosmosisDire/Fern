@@ -28,6 +28,7 @@ private:
     TargetInfo target;
 
     void compute(NamedTypeSymbol* type);
+    int place_fields(NamedTypeSymbol* type, int& structAlign);
 };
 
 }

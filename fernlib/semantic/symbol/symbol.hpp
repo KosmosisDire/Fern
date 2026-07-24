@@ -181,6 +181,9 @@ struct NamedTypeSymbol : TypeSymbol
 
     int sizeInBytes = 0;
     int alignment = 0;
+    // Heap block layout of a ref type's fields, assigned by the layout pass. Zero for value types.
+    int payloadSize = 0;
+    int payloadAlign = 0;
     LayoutState layoutState = LayoutState::NotComputed;
 
     bool is_attribute() const { return has_modifier(modifiers, Modifier::Attr); }
