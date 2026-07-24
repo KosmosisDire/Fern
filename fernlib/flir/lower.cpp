@@ -358,6 +358,15 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
     for (auto* a : expr->call->arguments)
         args.push_back(lower_expr(a));
 
+    if (ctor && ctor->is_intrinsic())
+    {
+        // An intrinsic constructor is the allocation itself, producing the constructed value directly.
+        auto* temp = builder.synthetic_local(currentMethod, "new", type);
+        std::vector<FlirStmt*> sideEffects;
+        sideEffects.push_back(builder.store(expr->syntax, builder.local_addr(expr->syntax, temp), build_call(expr->syntax, type, ctor, nullptr, std::move(args))));
+        return builder.sequence(expr->syntax, std::move(sideEffects), builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp)));
+    }
+
     auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
 
     if (named && named->is_ref())
@@ -600,10 +609,8 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
     auto* tmp = builder.local(currentMethod, "$arr", type);
 
     std::vector<FlirStmt*> sideEffects;
-    sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmp), builder.alloc_expr(syntax, type)));
-
     auto* countConst = builder.constant(syntax, i32Type, ConstantValue::make_int(count));
-    sideEffects.push_back(builder.expr_stmt(syntax, build_call(syntax, nullptr, expr->ctor, read_slot(syntax, tmp), { countConst })));
+    sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmp), build_call(syntax, type, expr->ctor, nullptr, { countConst })));
 
     bool intrinsicSetter = expr->setter && expr->setter->is_intrinsic();
     TypeSymbol* setterReturn = expr->setter ? expr->setter->get_return_type() : nullptr;

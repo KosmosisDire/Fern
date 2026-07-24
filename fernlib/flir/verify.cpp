@@ -85,6 +85,18 @@ private:
         {
             if (!n->method) fail(n, "intrinsic has no method");
             else if (!n->method->is_intrinsic()) fail(n, "intrinsic node has a non intrinsic method");
+            else if (n->method->is_constructor())
+            {
+                if (n->thisArg) fail(n, "intrinsic constructor with a this argument");
+                if (!n->type) fail(n, "intrinsic constructor with no type");
+            }
+        }
+        else if (auto* n = node->as<FlirAlloc>())
+        {
+            auto* named = n->allocType ? n->allocType->as<NamedTypeSymbol>() : nullptr;
+            if (!n->allocType) fail(n, "alloc of a null type");
+            else if (named && named->is_builtin()) fail(n, "alloc of a builtin type");
+            else if (!named || !named->is_ref()) fail(n, "alloc of a non ref type");
         }
     }
 };

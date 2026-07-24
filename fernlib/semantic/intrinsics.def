@@ -73,6 +73,7 @@ INTRINSIC(C8Ge,           "c8.ge",           ">=")
 INTRINSIC(C8Le,           "c8.le",           "<=")
 
 // string
+INTRINSIC(StringEmpty,    "string.empty",    "")
 INTRINSIC(StringInit,     "string.init",     "")
 INTRINSIC(StringEq,       "string.eq",       "==")
 INTRINSIC(StringNe,       "string.ne",       "!=")
@@ -80,6 +81,7 @@ INTRINSIC(StringConcat,   "string.concat",   "+")
 INTRINSIC(StringGet,      "string.get",      "")
 
 // array
+INTRINSIC(ArrayEmpty,     "array.empty",     "")
 INTRINSIC(ArrayInit,      "array.init",      "")
 INTRINSIC(ArrayGet,       "array.get",       "")
 INTRINSIC(ArraySet,       "array.set",       "")

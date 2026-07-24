@@ -100,10 +100,7 @@ ref type Array<T>
     @Intrinsic("array.init")
     init(length: i32)
 
-    init
-    {
-        length = 0
-    }
+    @Intrinsic("array.empty") init
 
     @Intrinsic("array.get") op [](self: Array<T>, index: i32) -> T
     @Intrinsic("array.set") op []=(self: Array<T>, index: i32, value: T)
@@ -153,10 +150,7 @@ type String
 
     fn Length() -> i32 { return length }
 
-    init
-    {
-        length = 0
-    }
+    @Intrinsic("string.empty") init
 
     @Intrinsic("string.init")
     init(length: i32)
