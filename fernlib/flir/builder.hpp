@@ -108,7 +108,7 @@ struct FlirBuilder
         return node;
     }
 
-    FlirCast* cast(BaseSyntax* syntax, TypeSymbol* targetType, FlirExpr* operand)
+    FlirCast* cast(BaseSyntax* syntax, TypeSymbol* targetType, FlirExpr* operand, MethodSymbol* method)
     {
         auto* node = arena.alloc<FlirCast>();
         node->syntax = syntax;
@@ -116,6 +116,7 @@ struct FlirBuilder
         node->type = targetType;
         node->targetType = targetType;
         node->operand = operand;
+        node->method = method;
         return node;
     }
 

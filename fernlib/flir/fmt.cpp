@@ -444,7 +444,8 @@ void FlirDebugFormatter::visit(FlirIntrinsic* node)
 void FlirDebugFormatter::visit(FlirCast* node)
 {
     std::string target = node->targetType ? format_type(node->targetType) : "?";
-    begin_node(node, std::format("target: {}, {}", target, type_attr(node)));
+    IntrinsicKind op = node->method ? node->method->intrinsic() : IntrinsicKind::None;
+    begin_node(node, std::format("target: {}, op: {}, {}", target, Fern::format(op), type_attr(node)));
     open_block();
     write_child("operand", node->operand);
     close_block();

@@ -231,6 +231,8 @@ struct FlirCast : FlirExpr
 
     FlirExpr* operand = nullptr;
     TypeSymbol* targetType = nullptr;
+    // The intrinsic conversion method this cast runs
+    MethodSymbol* method = nullptr;
 
     void visit_children(FlirVisitor* v) override
     {

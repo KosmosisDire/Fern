@@ -91,6 +91,11 @@ private:
                 if (!n->type) fail(n, "intrinsic constructor with no type");
             }
         }
+        else if (auto* n = node->as<FlirCast>())
+        {
+            if (!n->method) fail(n, "cast has no method");
+            else if (!n->method->is_intrinsic()) fail(n, "cast with a non intrinsic method");
+        }
         else if (auto* n = node->as<FlirAlloc>())
         {
             auto* named = n->allocType ? n->allocType->as<NamedTypeSymbol>() : nullptr;

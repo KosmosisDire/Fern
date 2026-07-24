@@ -510,7 +510,7 @@ FlirExpr* FlirLowerer::lower_cast(FhirCastExpr* expr)
     auto* operand = lower_expr(expr->operand);
     if (expr->method && !expr->method->is_intrinsic())
         return build_call(expr->syntax, expr->type, expr->method, nullptr, { operand });
-    return builder.cast(expr->syntax, expr->type, operand);
+    return builder.cast(expr->syntax, expr->type, operand, expr->method);
 }
 
 FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
