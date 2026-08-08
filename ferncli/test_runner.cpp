@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include <fern.hpp>
+#include <vm/vm.hpp>
 
 namespace Fern
 {
@@ -208,6 +209,24 @@ TestHeader TestRunner::parse_header(std::string_view source)
 
 #pragma region Execution
 
+// Compares a completed run to the expected text by value, so formatting differences never fail a test: a
+// float equal to five satisfies both "5" and "5.0". Non float results compare by their canonical text.
+static bool result_matches(Interpreter& interpreter, const RunResult& run, std::string_view expected)
+{
+    if (run.hasValue && run.value.kind == Value::Kind::F32)
+    {
+        try
+        {
+            return std::stof(std::string(expected)) == run.value.as_f32();
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+    }
+    return interpreter.format_result(run) == expected;
+}
+
 TestResult TestRunner::run_test(const std::string& path, const std::vector<std::string>& includes)
 {
     TestResult result;
@@ -234,6 +253,23 @@ TestResult TestRunner::run_test(const std::string& path, const std::vector<std::
     compilation.add_source(std::move(source), path);
     compilation.compile();
 
+    // A value test runs Program.Main on a clean compile. A runtime error is reported into the same
+    // diagnostics and handled as a failure below.
+    std::string runtimeValue;
+    bool completed = false;
+    bool matched = false;
+    if (!result.header.expectsCodes && !compilation.diag.has_errors())
+    {
+        Interpreter interpreter(compilation.semantic(), compilation.flir(), compilation.diag);
+        RunResult run = interpreter.run_main();
+        if (run.status == RunResult::Status::Completed)
+        {
+            completed = true;
+            runtimeValue = interpreter.format_result(run);
+            matched = result_matches(interpreter, run, result.header.expected);
+        }
+    }
+
     for (const auto& diag : compilation.diag.get_diagnostics())
     {
         auto filePath = diag.location.fileId >= 0 && diag.location.fileId < (int)compilation.get_units().size()
@@ -254,19 +290,22 @@ TestResult TestRunner::run_test(const std::string& path, const std::vector<std::
                             ? std::string{"no diagnostics"}
                             : join_codes(result.actualCodes);
     }
+    else if (!result.actualCodes.empty())
+    {
+        result.passed = false;
+        result.actual = std::format("{} unexpected diagnostic(s): {}",
+            result.actualCodes.size(),
+            join_codes(result.actualCodes));
+    }
+    else if (!completed)
+    {
+        result.passed = false;
+        result.actual = "no result (Program.Main not found)";
+    }
     else
     {
-        result.passed = result.actualCodes.empty();
-        if (result.actualCodes.empty())
-        {
-            result.actual = "success";
-        }
-        else
-        {
-            result.actual = std::format("{} unexpected diagnostic(s): {}",
-                result.actualCodes.size(),
-                join_codes(result.actualCodes));
-        }
+        result.passed = matched;
+        result.actual = runtimeValue;
     }
 
     return result;

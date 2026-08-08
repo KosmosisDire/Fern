@@ -5,10 +5,12 @@
 #include <semantic/fhir/fmt.hpp>
 #include <semantic/symbol/symbol.hpp>
 #include <flir/fmt.hpp>
+#include <vm/vm.hpp>
 
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -22,6 +24,7 @@ struct CompileArgs
 {
     std::vector<std::string_view> files;
     std::vector<std::string_view> dumpPaths;
+    bool trace = false;
 };
 
 // Splits the run arguments into source files and the --dump whitelist.
@@ -38,6 +41,10 @@ static bool parse_compile_args(int argc, char* argv[], int firstArg, CompileArgs
                 return false;
             }
             out.dumpPaths.push_back(argv[++i]);
+        }
+        else if (arg == "--trace")
+        {
+            out.trace = true;
         }
         else
         {
@@ -115,6 +122,19 @@ static void print_diagnostics(const Fern::Compilation& compilation)
     }
 }
 
+// Prints one line per active call frame when a run errors, deepest first, with each frame's location.
+static void print_backtrace(const Fern::Compilation& compilation, const Fern::RunResult& result)
+{
+    for (const auto& entry : result.backtrace)
+    {
+        auto filePath = entry.span.fileId < compilation.get_units().size()
+                            ? compilation.get_units()[entry.span.fileId]->sourceFile->path()
+                            : "UnknownFile";
+        LOG(LogChannel::General) << "  at " << entry.method << " (" << filePath
+                                 << ":" << (entry.span.startLine + 1) << ")";
+    }
+}
+
 int main(int argc, char* argv[])
 {
 #ifdef _MSC_VER
@@ -145,7 +165,28 @@ int main(int argc, char* argv[])
 
         auto compilation = run_compile(args.files);
         dump_debug(*compilation, args.dumpPaths);
+
+        // A clean compile runs Program.Main. A runtime error is reported into the same diagnostics.
+        std::optional<Fern::Interpreter> interpreter;
+        Fern::RunResult result;
+        if (!compilation->diag.has_errors())
+        {
+            Fern::VmConfig config;
+            config.trace = args.trace;
+            interpreter.emplace(compilation->semantic(), compilation->flir(), compilation->diag, config);
+            result = interpreter->run_main();
+        }
+
         print_diagnostics(*compilation);
+
+        if (result.status == Fern::RunResult::Status::Completed && result.hasValue)
+        {
+            LOG(LogChannel::General) << interpreter->format_result(result);
+        }
+        else if (result.status == Fern::RunResult::Status::Errored)
+        {
+            print_backtrace(*compilation, result);
+        }
         return 0;
     }
 

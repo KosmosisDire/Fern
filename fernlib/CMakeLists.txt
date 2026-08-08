@@ -42,6 +42,11 @@ set(FERNLIB_SOURCES
     flir/lower.cpp
     flir/verify.cpp
 
+    # vm
+    vm/memory.cpp
+    vm/vm.cpp
+    vm/intrinsics.cpp
+
     # source
     source/file.cpp
     source/span.cpp

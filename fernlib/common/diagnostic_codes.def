@@ -137,5 +137,8 @@ DIAG(Err_ThisBeforeInit,                4005, Error,   "'this' cannot be used un
 // Driver
 DIAG(Err_CannotOpenFile,                5000, Error,   "could not open file: {}")                                                                   // CS2001
 
+// Runtime
+DIAG(Err_RuntimeError,                  6000, Error,   "{}")
+
 // FLIR verification (9000, internal consistency checks on lowered FLIR)
 DIAG(Err_FlirMalformed,                 9000, Error,   "internal: malformed FLIR in '{}': {}")

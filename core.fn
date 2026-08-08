@@ -20,8 +20,6 @@ attr type Intrinsic
 @BuiltinType(4) @AllowCustomLiterals @NumericFloat
 type F32
 {
-    value: f32
-
     @Intrinsic("f32.literal_i32") literal f32(from: i32)
     @Intrinsic("f32.literal_f32") literal f32(from: f32)
 
@@ -47,8 +45,6 @@ type F32
 @BuiltinType(4) @AllowCustomLiterals @NumericInt
 type I32
 {
-    value: i32
-
     @Intrinsic("i32.literal_i32") literal i32(from: i32)
 
     @Intrinsic("i32.from_u8")
@@ -75,8 +71,6 @@ type I32
 @BuiltinType(1)
 type Bool
 {
-    value: bool
-
     @Intrinsic("bool.from_i32")
     explicit cast(from: i32) -> bool
 
@@ -109,8 +103,6 @@ ref type Array<T>
 @BuiltinType(1) @AllowCustomLiterals @NumericInt
 type U8
 {
-    value: u8
-
     @Intrinsic("u8.literal_i32") literal u8(from: i32)
 
     @Intrinsic("u8.from_i32")
@@ -133,8 +125,6 @@ type U8
 @BuiltinType(1) @AllowCustomLiterals
 type C8
 {
-    value: c8
-
     @Intrinsic("c8.eq") op ==(left: c8, right: c8) -> bool
     @Intrinsic("c8.ne") op !=(left: c8, right: c8) -> bool
     @Intrinsic("c8.gt") op >(left: c8, right: c8) -> bool

@@ -57,6 +57,29 @@ struct ConstantValue
         return cv;
     }
 
+    // Renders a string constant for debug output with control characters escaped, so a newline shows as
+    // \n rather than breaking the line. Program output never uses this.
+    static std::string escape_string(std::string_view value)
+    {
+        std::string out;
+        out.reserve(value.size() + 2);
+        out.push_back('"');
+        for (char c : value)
+        {
+            switch (c)
+            {
+                case '\n': out += "\\n"; break;
+                case '\t': out += "\\t"; break;
+                case '\r': out += "\\r"; break;
+                case '"':  out += "\\\""; break;
+                case '\\': out += "\\\\"; break;
+                default:   out.push_back(c); break;
+            }
+        }
+        out.push_back('"');
+        return out;
+    }
+
     std::string format() const
     {
         switch (kind)
@@ -64,7 +87,7 @@ struct ConstantValue
             case Kind::Int:     return std::to_string(intValue);
             case Kind::Float:   return std::to_string(floatValue);
             case Kind::Bool:    return boolValue ? "true" : "false";
-            case Kind::String:  return std::format("\"{}\"", stringValue);
+            case Kind::String:  return escape_string(stringValue);
         }
     }
 
