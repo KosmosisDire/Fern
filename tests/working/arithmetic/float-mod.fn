@@ -1,0 +1,13 @@
+---
+Description: Float modulo
+Expected: 1.5
+---
+
+type Program
+{
+    static fn Main -> f32
+    {
+        var a = 7.5
+        return a % 2.0
+    }
+}

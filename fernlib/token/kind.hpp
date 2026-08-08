@@ -106,6 +106,7 @@ enum class BinaryOp
     Sub,
     Mul,
     Div,
+    Mod,
     Greater,
     Less,
     GreaterEqual,
@@ -233,6 +234,7 @@ constexpr bool is_operator_token(TokenKind k)
            k == TokenKind::Minus ||
            k == TokenKind::Star ||
            k == TokenKind::Slash ||
+           k == TokenKind::Percent ||
            k == TokenKind::Greater ||
            k == TokenKind::Less ||
            k == TokenKind::GreaterEqual ||
@@ -282,6 +284,7 @@ constexpr TokenKind binary_op_to_token(BinaryOp op)
         case BinaryOp::Sub:          return TokenKind::Minus;
         case BinaryOp::Mul:          return TokenKind::Star;
         case BinaryOp::Div:          return TokenKind::Slash;
+        case BinaryOp::Mod:          return TokenKind::Percent;
         case BinaryOp::Greater:      return TokenKind::Greater;
         case BinaryOp::Less:         return TokenKind::Less;
         case BinaryOp::GreaterEqual: return TokenKind::GreaterEqual;
@@ -329,6 +332,8 @@ constexpr std::optional<BinaryOp> to_binary_op(TokenKind k)
             return BinaryOp::Mul;
         case TokenKind::Slash:
             return BinaryOp::Div;
+        case TokenKind::Percent:
+            return BinaryOp::Mod;
         case TokenKind::Greater:
             return BinaryOp::Greater;
         case TokenKind::Less:
@@ -370,6 +375,7 @@ constexpr Precedence precedence_of(BinaryOp op)
             return Precedence::Addition;
         case BinaryOp::Mul:
         case BinaryOp::Div:
+        case BinaryOp::Mod:
             return Precedence::Multiplication;
     }
 }
@@ -492,6 +498,7 @@ constexpr std::string_view format(BinaryOp op)
         case BinaryOp::Sub:          return "-";
         case BinaryOp::Mul:          return "*";
         case BinaryOp::Div:          return "/";
+        case BinaryOp::Mod:          return "%";
         case BinaryOp::Greater:      return ">";
         case BinaryOp::Less:         return "<";
         case BinaryOp::GreaterEqual: return ">=";

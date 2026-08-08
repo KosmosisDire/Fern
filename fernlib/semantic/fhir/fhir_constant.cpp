@@ -2,6 +2,7 @@
 #include <semantic/symbol/symbol.hpp>
 
 #include <climits>
+#include <cmath>
 #include <format>
 
 namespace Fern
@@ -71,6 +72,10 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
         case IntrinsicKind::U8Div:
             if (!isInt || b.intValue == 0) return std::nullopt;
             return ConstantValue::make_int(a.intValue / b.intValue);
+        case IntrinsicKind::I32Mod:
+        case IntrinsicKind::U8Mod:
+            if (!isInt || b.intValue == 0) return std::nullopt;
+            return ConstantValue::make_int(a.intValue % b.intValue);
 
         case IntrinsicKind::F32Add:
             if (!isFloat) return std::nullopt;
@@ -84,6 +89,9 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
         case IntrinsicKind::F32Div:
             if (!isFloat || b.floatValue == 0.0) return std::nullopt;
             return ConstantValue::make_float(a.floatValue / b.floatValue);
+        case IntrinsicKind::F32Mod:
+            if (!isFloat || b.floatValue == 0.0) return std::nullopt;
+            return ConstantValue::make_float(std::fmod(a.floatValue, b.floatValue));
 
         case IntrinsicKind::I32Gt:
         case IntrinsicKind::U8Gt:

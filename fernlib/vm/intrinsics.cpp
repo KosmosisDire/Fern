@@ -1,5 +1,6 @@
 #include <vm/vm.hpp>
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <format>
@@ -104,6 +105,14 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
             if (a == INT32_MIN && b == -1) throw VmError{"division overflow"};
             return Value::make_i32(a / b);
         }
+        case IntrinsicKind::I32Mod:
+        {
+            int32_t a = args[0].as_i32();
+            int32_t b = args[1].as_i32();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT32_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i32(a % b);
+        }
         case IntrinsicKind::I32Eq: return Value::make_bool(args[0].as_i32() == args[1].as_i32());
         case IntrinsicKind::I32Ne: return Value::make_bool(args[0].as_i32() != args[1].as_i32());
         case IntrinsicKind::I32Gt: return Value::make_bool(args[0].as_i32() > args[1].as_i32());
@@ -118,6 +127,7 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::F32Sub: return Value::make_f32(args[0].as_f32() - args[1].as_f32());
         case IntrinsicKind::F32Mul: return Value::make_f32(args[0].as_f32() * args[1].as_f32());
         case IntrinsicKind::F32Div: return Value::make_f32(args[0].as_f32() / args[1].as_f32());
+        case IntrinsicKind::F32Mod: return Value::make_f32(std::fmod(args[0].as_f32(), args[1].as_f32()));
         case IntrinsicKind::F32Eq: return Value::make_bool(args[0].as_f32() == args[1].as_f32());
         case IntrinsicKind::F32Ne: return Value::make_bool(args[0].as_f32() != args[1].as_f32());
         case IntrinsicKind::F32Gt: return Value::make_bool(args[0].as_f32() > args[1].as_f32());
@@ -134,6 +144,12 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
             uint8_t b = args[1].as_u8();
             if (b == 0) throw VmError{"division by zero"};
             return Value::make_u8(static_cast<uint8_t>(args[0].as_u8() / b));
+        }
+        case IntrinsicKind::U8Mod:
+        {
+            uint8_t b = args[1].as_u8();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u8(static_cast<uint8_t>(args[0].as_u8() % b));
         }
         case IntrinsicKind::U8Eq: return Value::make_bool(args[0].as_u8() == args[1].as_u8());
         case IntrinsicKind::U8Ne: return Value::make_bool(args[0].as_u8() != args[1].as_u8());

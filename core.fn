@@ -34,6 +34,7 @@ type F32
     @Intrinsic("f32.sub") op -(left: f32, right: f32) -> f32
     @Intrinsic("f32.mul") op *(left: f32, right: f32) -> f32
     @Intrinsic("f32.div") op /(left: f32, right: f32) -> f32
+    @Intrinsic("f32.mod") op %(left: f32, right: f32) -> f32
     @Intrinsic("f32.eq") op ==(left: f32, right: f32) -> bool
     @Intrinsic("f32.ne") op !=(left: f32, right: f32) -> bool
     @Intrinsic("f32.gt") op >(left: f32, right: f32) -> bool
@@ -60,6 +61,7 @@ type I32
     @Intrinsic("i32.sub") op -(left: i32, right: i32) -> i32
     @Intrinsic("i32.mul") op *(left: i32, right: i32) -> i32
     @Intrinsic("i32.div") op /(left: i32, right: i32) -> i32
+    @Intrinsic("i32.mod") op %(left: i32, right: i32) -> i32
     @Intrinsic("i32.eq") op ==(left: i32, right: i32) -> bool
     @Intrinsic("i32.ne") op !=(left: i32, right: i32) -> bool
     @Intrinsic("i32.gt") op >(left: i32, right: i32) -> bool
@@ -114,6 +116,7 @@ type U8
     @Intrinsic("u8.sub") op -(left: u8, right: u8) -> u8
     @Intrinsic("u8.mul") op *(left: u8, right: u8) -> u8
     @Intrinsic("u8.div") op /(left: u8, right: u8) -> u8
+    @Intrinsic("u8.mod") op %(left: u8, right: u8) -> u8
     @Intrinsic("u8.eq") op ==(left: u8, right: u8) -> bool
     @Intrinsic("u8.ne") op !=(left: u8, right: u8) -> bool
     @Intrinsic("u8.gt") op >(left: u8, right: u8) -> bool
