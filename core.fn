@@ -148,6 +148,35 @@ type String
     @Intrinsic("string.init")
     init(length: i32)
 
+    explicit cast(from: i32) -> string
+    {
+        if (from == 0)
+        {
+            return "0"
+        }
+
+        var digits: string[] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        var v = from
+        if (v > 0)
+        {
+            v = -v
+        }
+
+        var result = ""
+        while (v < 0)
+        {
+            var d = -(v % 10)
+            result = digits[d] + result
+            v = v / 10
+        }
+
+        if (from < 0)
+        {
+            return "-" + result
+        }
+        return result
+    }
+
     @Intrinsic("string.eq") op ==(left: String, right: String) -> bool
     @Intrinsic("string.ne") op !=(left: String, right: String) -> bool
     @Intrinsic("string.concat") op +(left: String, right: String) -> String
