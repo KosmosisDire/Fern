@@ -64,6 +64,7 @@ DIAG(Err_IntrinsicWithBody,             3112, Error,   "intrinsic '{}' cannot de
 DIAG(Err_CastParamCount,                3113, Error,   "cast must have exactly 1 parameter, but has {}")
 DIAG(Err_CastMissingSelfType,           3114, Error,   "cast on type '{}' must convert to or from the containing type")                             // CS0556
 DIAG(Err_RecursiveValueField,           3115, Error,   "value type '{}' contains a cycle through field '{}'")                                       // CS0523
+DIAG(Err_DuplicateParameter,            3116, Error,   "duplicate parameter name '{}'")                                                             // CS0100
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031
@@ -88,6 +89,8 @@ DIAG(Err_NoIndexGetter,                 3216, Error,   "no indexed getter on '{}
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
 DIAG(Err_ReturnValueRequired,           3301, Error,   "function '{}' must return a value of type '{}'")                                            // CS0126
 DIAG(Err_ConstructorReturnValue,        3302, Error,   "constructor cannot return a value")
+DIAG(Err_DuplicateLocal,                3303, Error,   "local variable '{}' already defined in this scope")                              // CS0128
+DIAG(Err_LocalShadowsParameter,         3304, Error,   "local variable '{}' conflicts with a parameter of the same name")                   // CS0136
 
 // Binder: calls (3400-3499)
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121

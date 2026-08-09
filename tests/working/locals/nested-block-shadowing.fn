@@ -1,0 +1,23 @@
+---
+Description: A nested block may shadow an outer local without affecting it
+Expected: 1
+---
+
+type Program
+{
+    static fn Shadow(flag: bool) -> i32
+    {
+        var x = 1
+        if (flag)
+        {
+            var x = 2
+            x = 3
+        }
+        return x
+    }
+
+    static fn Main -> i32
+    {
+        return Shadow(true)
+    }
+}

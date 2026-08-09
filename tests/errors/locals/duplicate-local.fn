@@ -1,0 +1,14 @@
+---
+Description: Redeclaring a local in the same scope is an error
+Expected: FN3303
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x = 1
+        var x = true
+        return 0
+    }
+}

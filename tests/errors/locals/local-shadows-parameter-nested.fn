@@ -1,0 +1,22 @@
+---
+Description: A local in a nested block still cannot share a name with a parameter
+Expected: FN3304
+---
+
+type Program
+{
+    static fn Collide(flag: bool) -> i32
+    {
+        if (flag)
+        {
+            var flag = 1
+            return flag
+        }
+        return 0
+    }
+
+    static fn Main -> i32
+    {
+        return Collide(true)
+    }
+}

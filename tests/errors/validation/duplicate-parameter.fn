@@ -1,0 +1,17 @@
+---
+Description: Duplicate parameter names are an error
+Expected: FN3116
+---
+
+type Program
+{
+    static fn Dup(x: i32, x: i32) -> i32
+    {
+        return x
+    }
+
+    static fn Main -> i32
+    {
+        return Dup(2, 3)
+    }
+}

@@ -115,7 +115,16 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
 
             for (int i = 0; i < static_cast<int>(callableAst->parameters.size()); ++i)
             {
-                context.symbols.declare_parameter(method, callableAst->parameters[i], i);
+                auto* paramAst = callableAst->parameters[i];
+                for (auto* existing : method->parameters)
+                {
+                    if (existing->name == paramAst->name.lexeme)
+                    {
+                        context.diag.report(DiagnosticCode::Err_DuplicateParameter, paramAst->name.span, paramAst->name.lexeme);
+                        break;
+                    }
+                }
+                context.symbols.declare_parameter(method, paramAst, i);
             }
 
             if (callableAst->callableKind == CallableKind::Cast && method->parameters.size() != 1)

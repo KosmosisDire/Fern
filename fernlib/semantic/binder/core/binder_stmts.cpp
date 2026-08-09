@@ -134,6 +134,24 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
         }
     }
 
+    Scope* scope = current_block_scope();
+    if (scope && scope->find(decl->name.lexeme))
+    {
+        diag.report(DiagnosticCode::Err_DuplicateLocal, decl->name.span, decl->name.lexeme);
+    }
+    else if (auto* method = containing_method())
+    {
+        for (auto* param : method->parameters)
+        {
+            if (param->name == decl->name.lexeme)
+            {
+                diag.report(DiagnosticCode::Err_LocalShadowsParameter, decl->name.span, decl->name.lexeme);
+                break;
+            }
+        }
+    }
+
+    // declare even on error so later uses still resolve
     auto localPtr = std::make_unique<LocalSymbol>();
     localPtr->name = std::string(decl->name.lexeme);
     localPtr->type = type;
@@ -142,7 +160,7 @@ void Binder::bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out
 
     auto* local = context.symbols.own(std::move(localPtr));
 
-    if (Scope* scope = current_block_scope())
+    if (scope)
     {
         scope->add(decl->name.lexeme, local);
     }
