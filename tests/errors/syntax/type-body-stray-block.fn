@@ -1,0 +1,20 @@
+---
+Description: Stray block after a junk line is skipped whole instead of parsing as members
+Expected: FN1003, FN1003
+---
+
+type Foo
+{
+    junk
+    {
+        w = 1
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

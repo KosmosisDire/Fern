@@ -1,0 +1,19 @@
+---
+Description: Semicolon separated junk statements each get their own error
+Expected: FN1003, FN1003
+---
+
+type Foo
+{
+    junk(); more junk
+
+    x: i32
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

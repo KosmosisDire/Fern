@@ -1,0 +1,22 @@
+---
+Description: Junk line with balanced braces does not end the type body early
+Expected: FN1003
+---
+
+type Foo
+{
+    Foo { w = 1 }
+
+    fn Real() -> i32
+    {
+        return 1
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

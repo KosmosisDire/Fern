@@ -86,7 +86,7 @@ bool TokenWalker::check_progress(Checkpoint cp)
     return tokenIndex != cp.position;
 }
 
-bool TokenWalker::synchronize_to(TokenKind target)
+bool TokenWalker::synchronize_to(bool (*isTarget)(TokenKind))
 {
     int parenDepth = 0;
     int braceDepth = 0;
@@ -95,7 +95,7 @@ bool TokenWalker::synchronize_to(TokenKind target)
     {
         TokenKind kind = current().kind;
 
-        if (kind == target && parenDepth == 0 && braceDepth == 0)
+        if (isTarget(kind) && parenDepth == 0 && braceDepth == 0)
         {
             advance();
             return true;

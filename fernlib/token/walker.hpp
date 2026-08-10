@@ -30,7 +30,7 @@ public:
     Checkpoint checkpoint() const;
     void restore(Checkpoint cp);
     bool check_progress(Checkpoint cp);
-    bool synchronize_to(TokenKind target);
+    bool synchronize_to(bool (*isTarget)(TokenKind));
 
     std::string format() const;
 

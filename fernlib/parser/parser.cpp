@@ -267,9 +267,12 @@ BaseDeclSyntax* Parser::parse_declaration()
             diag.report(DiagnosticCode::Err_ExpectedDeclaration, walker.current().span);
         }
 
-        // One error per junk line, then resync at the next statement boundary
-        walker.advance();
-        while (!is_at_statement_boundary(walker))
+        // One error per junk statement, stepping over balanced braces so junk cannot eat the enclosing body's closer
+        auto cp = walker.checkpoint();
+        walker.synchronize_to(is_terminator);
+
+        // An unmatched closer stops the sync in place, consume it so callers always progress
+        if (!walker.check_progress(cp))
         {
             walker.advance();
         }
