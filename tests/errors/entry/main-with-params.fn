@@ -1,0 +1,12 @@
+---
+Description: Main with parameters is not a valid entry point
+Expected: FN5001
+---
+
+type Program
+{
+    static fn Main(x: i32) -> i32
+    {
+        return x
+    }
+}

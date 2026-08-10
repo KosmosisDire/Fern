@@ -142,6 +142,7 @@ DIAG(Err_ThisBeforeInit,                4005, Error,   "'this' cannot be used un
 
 // Driver
 DIAG(Err_CannotOpenFile,                5000, Error,   "could not open file: {}")                                                                   // CS2001
+DIAG(Err_NoEntryPoint,                  5001, Error,   "no entry point: 'Program.Main' must be a static function with no parameters")               // CS5001
 
 // Runtime
 DIAG(Err_RuntimeError,                  6000, Error,   "{}")

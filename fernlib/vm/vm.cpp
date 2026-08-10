@@ -5,6 +5,7 @@
 
 #include <logger.hpp>
 
+#include <ast/ast.hpp>
 #include <common/diagnostic.hpp>
 #include <flir/context.hpp>
 #include <flir/fmt.hpp>
@@ -37,6 +38,7 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
 FlirMethod* Interpreter::find_main()
 {
     // The entry is Program.Main, wherever Program lives, so search all types rather than one namespace.
+    Span nearMiss{};
     for (auto* type : semantic.symbols.allTypes)
     {
         if (!type || type->name != "Program") continue;
@@ -44,6 +46,8 @@ FlirMethod* Interpreter::find_main()
         for (auto* method : type->methods)
         {
             if (method->name != "Main") continue;
+            // Remember a wrong shaped Main so the error can point at it
+            if (method->syntax) nearMiss = method->syntax->span;
             if (!has_modifier(method->modifiers, Modifier::Static)) continue;
             if (!method->parameters.empty()) continue;
 
@@ -51,6 +55,8 @@ FlirMethod* Interpreter::find_main()
             if (it != flir.loweredMethods.end()) return it->second;
         }
     }
+
+    diag.report(DiagnosticCode::Err_NoEntryPoint, nearMiss);
     return nullptr;
 }
 

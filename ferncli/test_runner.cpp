@@ -253,12 +253,12 @@ TestResult TestRunner::run_test(const std::string& path, const std::vector<std::
     compilation.add_source(std::move(source), path);
     compilation.compile();
 
-    // A value test runs Program.Main on a clean compile. A runtime error is reported into the same
-    // diagnostics and handled as a failure below.
+    // A clean compile runs Program.Main so entry point and runtime diagnostics are testable.
+    // A runtime error is reported into the same diagnostics and handled as a failure below.
     std::string runtimeValue;
     bool completed = false;
     bool matched = false;
-    if (!result.header.expectsCodes && !compilation.diag.has_errors())
+    if (!compilation.diag.has_errors())
     {
         Interpreter interpreter(compilation.semantic(), compilation.flir(), compilation.diag);
         RunResult run = interpreter.run_main();

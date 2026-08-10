@@ -1,0 +1,12 @@
+---
+Description: Main declared as an instance method is not a valid entry point
+Expected: FN5001
+---
+
+type Program
+{
+    fn Main -> i32
+    {
+        return 0
+    }
+}

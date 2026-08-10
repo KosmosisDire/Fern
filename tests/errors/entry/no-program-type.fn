@@ -1,0 +1,12 @@
+---
+Description: A file with no Program type has no entry point
+Expected: FN5001
+---
+
+type Foo
+{
+    static fn Bar -> i32
+    {
+        return 42
+    }
+}
