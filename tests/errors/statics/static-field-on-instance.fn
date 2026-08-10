@@ -1,0 +1,24 @@
+---
+Description: Static field accessed through an instance receiver
+Expected: FN3217
+---
+
+type Counter
+{
+    value: i32
+    static count: i32 = 0
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var c = Counter(3)
+        return c.count
+    }
+}

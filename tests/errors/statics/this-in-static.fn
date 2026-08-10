@@ -1,0 +1,27 @@
+---
+Description: Use of this inside a static function
+Expected: FN3218
+---
+
+type Counter
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+
+    static fn Get -> i32
+    {
+        return this.value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return Counter.Get()
+    }
+}

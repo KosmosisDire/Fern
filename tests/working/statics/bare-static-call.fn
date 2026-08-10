@@ -1,0 +1,33 @@
+---
+Description: Calling a static method by bare name from an instance method
+Expected: 7
+---
+
+type Counter
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+
+    static fn Two -> i32
+    {
+        return 2
+    }
+
+    fn Sum -> i32
+    {
+        return this.value + Two()
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var c = Counter(5)
+        return c.Sum()
+    }
+}

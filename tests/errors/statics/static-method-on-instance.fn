@@ -1,0 +1,28 @@
+---
+Description: Static method called through an instance receiver
+Expected: FN3217
+---
+
+type Counter
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+
+    static fn Five -> i32
+    {
+        return 5
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var c = Counter(3)
+        return c.Five()
+    }
+}

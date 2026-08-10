@@ -158,6 +158,11 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
             diag.report(DiagnosticCode::Err_InstanceMethodNoReceiver, expr->callee->span, group->name);
             return fhir.error_expr(expr);
         }
+        if (isStatic && group->explicitReceiver)
+        {
+            diag.report(DiagnosticCode::Err_StaticMemberOnInstance, expr->callee->span, group->name);
+            return fhir.error_expr(expr);
+        }
 
         if (!hasErrorArg)
         {

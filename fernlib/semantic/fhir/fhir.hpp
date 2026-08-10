@@ -250,6 +250,8 @@ struct FhirMethodGroupRefExpr : FhirExpr
     Symbol* enclosingScope = nullptr;
     std::string_view name;
     FhirExpr* thisRef = nullptr;
+    // true when the receiver was written in source, false for an implicit this
+    bool explicitReceiver = false;
 
     void visit_children(FhirVisitor* v) override
     {

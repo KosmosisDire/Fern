@@ -203,7 +203,8 @@ struct FhirBuilder
     }
 
     FhirMethodGroupRefExpr* method_group_ref(BaseSyntax* syntax, Symbol* enclosingScope,
-                                             std::string_view name, FhirExpr* thisRef = nullptr)
+                                             std::string_view name, FhirExpr* thisRef = nullptr,
+                                             bool explicitReceiver = false)
     {
         auto* node = arena.alloc<FhirMethodGroupRefExpr>();
         node->syntax = syntax;
@@ -212,6 +213,7 @@ struct FhirBuilder
         node->enclosingScope = enclosingScope;
         node->name = name;
         node->thisRef = thisRef;
+        node->explicitReceiver = explicitReceiver;
         return node;
     }
 

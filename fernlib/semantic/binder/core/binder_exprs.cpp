@@ -186,6 +186,17 @@ FhirExpr* Binder::bind_identifier(IdentifierExprSyntax* expr)
         {
             auto* fieldSym = symbol->as<FieldSymbol>();
             if (!fieldSym->type) return fhir.error_expr(expr);
+
+            if (has_modifier(fieldSym->modifiers, Modifier::Static))
+                return fhir.field_ref(expr, nullptr, fieldSym);
+
+            if (auto* method = containing_method();
+                method && has_modifier(method->modifiers, Modifier::Static))
+            {
+                diag.report(DiagnosticCode::Err_InstanceFieldInStatic, expr->span, fieldSym->name);
+                return fhir.error_expr(expr, fieldSym->type);
+            }
+
             auto* thisType = symbol->parent ? symbol->parent->as<TypeSymbol>() : nullptr;
             return fhir.field_ref(expr, fhir.this_expr(expr, thisType), fieldSym);
         }
@@ -212,6 +223,13 @@ FhirExpr* Binder::bind_this(ThisExprSyntax* expr)
     {
         diag.report(DiagnosticCode::Err_ThisOutsideType, expr->span);
         return fhir.error_expr(expr);
+    }
+
+    if (auto* method = containing_method();
+        method && has_modifier(method->modifiers, Modifier::Static))
+    {
+        diag.report(DiagnosticCode::Err_ThisInStaticFunction, expr->span);
+        return fhir.error_expr(expr, type);
     }
 
     return fhir.this_expr(expr, type);
@@ -356,12 +374,17 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 
     if (auto* field = namedType->find_field(memberName))
     {
+        if (has_modifier(field->modifiers, Modifier::Static))
+        {
+            diag.report(DiagnosticCode::Err_StaticMemberOnInstance, expr->span, memberName);
+            return fhir.error_expr(expr, field->type);
+        }
         return fhir.field_ref(expr, left, field);
     }
 
     if (!namedType->collect_methods(memberName).empty())
     {
-        return fhir.method_group_ref(expr, namedType, memberName, left);
+        return fhir.method_group_ref(expr, namedType, memberName, left, /*explicitReceiver=*/true);
     }
 
     diag.report(DiagnosticCode::Err_NoSuchMember, expr->span, format_type(namedType), memberName);

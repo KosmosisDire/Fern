@@ -84,6 +84,9 @@ DIAG(Err_BadBinaryOp,                   3213, Error,   "operator '{}' cannot be 
 DIAG(Err_CannotIndex,                   3214, Error,   "type '{}' cannot be indexed")                                                               // CS0021
 DIAG(Err_NoIndexSetter,                 3215, Error,   "no indexed setter on '{}' accepts an index of type '{}'")
 DIAG(Err_NoIndexGetter,                 3216, Error,   "no indexed getter on '{}' accepts an index of type '{}'")
+DIAG(Err_StaticMemberOnInstance,        3217, Error,   "static member '{}' cannot be accessed through an instance, qualify it with the type name")   // CS0176
+DIAG(Err_ThisInStaticFunction,          3218, Error,   "'this' cannot be used in a static function")                                                 // CS0026
+DIAG(Err_InstanceFieldInStatic,         3219, Error,   "cannot access instance field '{}' in a static function")                                     // CS0120
 
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
