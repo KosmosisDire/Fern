@@ -1,0 +1,22 @@
+---
+Description: An i64 field keeps its own storage next to smaller fields
+Expected: true
+---
+
+type Record
+{
+    tag: u8
+    total: i64
+    count: i32
+
+    init{}
+}
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var r = Record { tag = 7u8, total = 6000000000i64, count = -5 }
+        return r.tag == 7u8 && r.total == 6000000000i64 && r.count == -5
+    }
+}

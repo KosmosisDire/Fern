@@ -146,6 +146,7 @@ private:
     VmMemory memory;
 
     TypeSymbol* i32Type = nullptr;
+    TypeSymbol* i64Type = nullptr;
     TypeSymbol* f32Type = nullptr;
     TypeSymbol* u8Type = nullptr;
     TypeSymbol* boolType = nullptr;

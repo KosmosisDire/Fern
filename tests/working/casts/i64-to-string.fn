@@ -1,0 +1,21 @@
+---
+Description: Core cast from i64 to string covering zero, positive, i64 max, and i64 min
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var zero = 0i64
+        var big = 5000000000i64
+        var maxValue = 9223372036854775807i64
+        var minValue = -9223372036854775807i64 - 1i64
+
+        var a = (string)zero == "0"
+        var b = (string)big == "5000000000"
+        var c = (string)maxValue == "9223372036854775807"
+        var d = (string)minValue == "-9223372036854775808"
+        return a && b && c && d
+    }
+}

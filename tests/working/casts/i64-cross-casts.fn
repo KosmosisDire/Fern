@@ -1,0 +1,29 @@
+---
+Description: Casts between i64 and u8, bool, and f32 in both directions
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var wide = 300i64
+        var narrowed = (u8)wide
+        var truthy = (bool)wide
+
+        var zero = 0i64
+        var falsy = (bool)zero
+
+        var f = 4000000000.0
+        var fromFloat = (i64)f
+        var fromBool = (i64)true
+        var fromByte = (i64)narrowed
+
+        return narrowed == 44u8
+            && truthy
+            && !falsy
+            && fromFloat == 4000000000i64
+            && fromBool == 1i64
+            && fromByte == 44i64
+    }
+}

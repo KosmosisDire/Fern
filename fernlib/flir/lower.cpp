@@ -507,6 +507,15 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
 FlirExpr* FlirLowerer::lower_cast(FhirCastExpr* expr)
 {
+    // A widened constant still carries the narrower source type, so folding retypes it before it truncates
+    auto* from = expr->operand && expr->operand->type ? expr->operand->type->as<NamedTypeSymbol>() : nullptr;
+    auto* to = expr->type ? expr->type->as<NamedTypeSymbol>() : nullptr;
+    if (from && to && from->is_integer() && to->is_integer())
+    {
+        const auto& folded = expr->get_constant();
+        if (folded) return builder.constant(expr->syntax, expr->type, *folded);
+    }
+
     auto* operand = lower_expr(expr->operand);
     if (expr->method && !expr->method->is_intrinsic())
         return build_call(expr->syntax, expr->type, expr->method, nullptr, { operand });

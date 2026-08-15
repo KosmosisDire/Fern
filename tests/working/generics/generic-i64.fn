@@ -1,0 +1,25 @@
+---
+Description: Generic instantiated with i64
+Expected: 99000000000
+---
+
+type Box<T>
+{
+    value: T
+
+    init{}
+
+    fn Get() -> T
+    {
+        return value
+    }
+}
+
+type Program
+{
+    static fn Main -> i64
+    {
+        var b = Box<i64> { value = 99000000000i64 }
+        return b.Get()
+    }
+}

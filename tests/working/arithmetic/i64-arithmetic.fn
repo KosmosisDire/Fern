@@ -1,0 +1,25 @@
+---
+Description: i64 add, subtract, multiply, divide, and modulo past the i32 range
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a = 4000000000i64
+        var b = 3000000000i64
+
+        var sum = a + b == 7000000000i64
+        var diff = a - b == 1000000000i64
+        var product = a * 1000i64 == 4000000000000i64
+        var quotient = a / 7i64 == 571428571i64
+        var remainder = a % 7i64 == 3i64
+
+        var negative = 0i64 - a
+        var negDiv = negative / 7i64 == -571428571i64
+        var negMod = negative % 7i64 == -3i64
+
+        return sum && diff && product && quotient && remainder && negDiv && negMod
+    }
+}

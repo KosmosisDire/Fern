@@ -1,0 +1,16 @@
+---
+Description: Every i64 comparison operator
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a = 5000000000i64
+        var b = 5000000001i64
+        var same = 5000000000i64
+
+        return a < b && b > a && a <= same && a >= same && a != b && a == same
+    }
+}

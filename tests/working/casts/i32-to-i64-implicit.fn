@@ -1,0 +1,18 @@
+---
+Description: i32 widens implicitly to an i64 parameter
+Expected: 4000000000
+---
+
+type Program
+{
+    static fn Scale(v: i64) -> i64
+    {
+        return v * 1000000i64
+    }
+
+    static fn Main -> i64
+    {
+        var small = 4000
+        return Scale(small)
+    }
+}

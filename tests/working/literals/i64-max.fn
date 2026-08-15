@@ -1,0 +1,12 @@
+---
+Description: i64 maximum value literal
+Expected: 9223372036854775807
+---
+
+type Program
+{
+    static fn Main -> i64
+    {
+        return 9223372036854775807i64
+    }
+}

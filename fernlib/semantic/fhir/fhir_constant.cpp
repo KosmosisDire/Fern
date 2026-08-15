@@ -47,6 +47,28 @@ std::optional<ConstantValue> FhirLiteralExpr::compute_constant() const
 
 #pragma region Intrinsic Evaluators
 
+// Folding stops at 64 bits, past that the operation stays runtime work and wraps there
+static bool add_overflows(int64_t a, int64_t b)
+{
+    int64_t r = static_cast<int64_t>(static_cast<uint64_t>(a) + static_cast<uint64_t>(b));
+    return ((a ^ r) & (b ^ r)) < 0;
+}
+
+static bool sub_overflows(int64_t a, int64_t b)
+{
+    int64_t r = static_cast<int64_t>(static_cast<uint64_t>(a) - static_cast<uint64_t>(b));
+    return ((a ^ b) & (a ^ r)) < 0;
+}
+
+static bool mul_overflows(int64_t a, int64_t b)
+{
+    if (a == 0 || b == 0) return false;
+    if (a == -1) return b == INT64_MIN;
+    if (b == -1) return a == INT64_MIN;
+    if (a > 0) return b > 0 ? a > INT64_MAX / b : b < INT64_MIN / a;
+    return b > 0 ? a < INT64_MIN / b : a < INT64_MAX / b;
+}
+
 // Both operands share a kind by the time these run. Per type wrapping splits its tag out of a shared case
 static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const ConstantValue& a, const ConstantValue& b)
 {
@@ -57,24 +79,31 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
     switch (kind)
     {
         case IntrinsicKind::I32Add:
+        case IntrinsicKind::I64Add:
         case IntrinsicKind::U8Add:
-            if (!isInt) return std::nullopt;
+            if (!isInt || add_overflows(a.intValue, b.intValue)) return std::nullopt;
             return ConstantValue::make_int(a.intValue + b.intValue);
         case IntrinsicKind::I32Sub:
+        case IntrinsicKind::I64Sub:
         case IntrinsicKind::U8Sub:
-            if (!isInt) return std::nullopt;
+            if (!isInt || sub_overflows(a.intValue, b.intValue)) return std::nullopt;
             return ConstantValue::make_int(a.intValue - b.intValue);
         case IntrinsicKind::I32Mul:
+        case IntrinsicKind::I64Mul:
         case IntrinsicKind::U8Mul:
-            if (!isInt) return std::nullopt;
+            if (!isInt || mul_overflows(a.intValue, b.intValue)) return std::nullopt;
             return ConstantValue::make_int(a.intValue * b.intValue);
         case IntrinsicKind::I32Div:
+        case IntrinsicKind::I64Div:
         case IntrinsicKind::U8Div:
             if (!isInt || b.intValue == 0) return std::nullopt;
+            if (a.intValue == INT64_MIN && b.intValue == -1) return std::nullopt;
             return ConstantValue::make_int(a.intValue / b.intValue);
         case IntrinsicKind::I32Mod:
+        case IntrinsicKind::I64Mod:
         case IntrinsicKind::U8Mod:
             if (!isInt || b.intValue == 0) return std::nullopt;
+            if (a.intValue == INT64_MIN && b.intValue == -1) return std::nullopt;
             return ConstantValue::make_int(a.intValue % b.intValue);
 
         case IntrinsicKind::F32Add:
@@ -94,31 +123,37 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
             return ConstantValue::make_float(std::fmod(a.floatValue, b.floatValue));
 
         case IntrinsicKind::I32Gt:
+        case IntrinsicKind::I64Gt:
         case IntrinsicKind::U8Gt:
         case IntrinsicKind::C8Gt:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue > b.intValue);
         case IntrinsicKind::I32Lt:
+        case IntrinsicKind::I64Lt:
         case IntrinsicKind::U8Lt:
         case IntrinsicKind::C8Lt:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue < b.intValue);
         case IntrinsicKind::I32Ge:
+        case IntrinsicKind::I64Ge:
         case IntrinsicKind::U8Ge:
         case IntrinsicKind::C8Ge:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue >= b.intValue);
         case IntrinsicKind::I32Le:
+        case IntrinsicKind::I64Le:
         case IntrinsicKind::U8Le:
         case IntrinsicKind::C8Le:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue <= b.intValue);
         case IntrinsicKind::I32Eq:
+        case IntrinsicKind::I64Eq:
         case IntrinsicKind::U8Eq:
         case IntrinsicKind::C8Eq:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue == b.intValue);
         case IntrinsicKind::I32Ne:
+        case IntrinsicKind::I64Ne:
         case IntrinsicKind::U8Ne:
         case IntrinsicKind::C8Ne:
             if (!isInt) return std::nullopt;
@@ -166,12 +201,14 @@ static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const Constan
     switch (kind)
     {
         case IntrinsicKind::I32Neg:
-            if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
+        case IntrinsicKind::I64Neg:
+            if (a.kind != ConstantValue::Kind::Int || a.intValue == INT64_MIN) return std::nullopt;
             return ConstantValue::make_int(-a.intValue);
         case IntrinsicKind::F32Neg:
             if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
             return ConstantValue::make_float(-a.floatValue);
         case IntrinsicKind::I32Pos:
+        case IntrinsicKind::I64Pos:
             if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
             return a;
         case IntrinsicKind::F32Pos:

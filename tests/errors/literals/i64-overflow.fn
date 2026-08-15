@@ -1,0 +1,13 @@
+---
+Description: Literal exceeds i64 maximum
+Expected: FN3704
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v: i64 = 9223372036854775808
+        return 0
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: i64 does not narrow to i32 without an explicit cast
+Expected: FN3405
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var big = 5000000000i64
+        return big
+    }
+}

@@ -116,8 +116,22 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
             return fhir.error_expr(expr, returnType, operand);
         }
 
-        operand->type = returnType;
-        return operand;
+        // Only a literal can be relabelled, anything else already bound its operators to its own type
+        if (operand->is<FhirLiteralExpr>())
+        {
+            operand->type = returnType;
+            return operand;
+        }
+
+        if (operand->type == returnType)
+            return operand;
+
+        auto conv = NamedTypeSymbol::get_conversion(operand->type, returnType);
+        if (conv.level != Convertibility::None)
+            return fhir.cast(expr, returnType, operand, conv.method);
+
+        report_conversion_failure(operand->type, returnType, constVal ? &*constVal : nullptr, expr->span);
+        return fhir.error_expr(expr, returnType, operand);
     }
 
     return fhir.call(expr, returnType, method, {operand});

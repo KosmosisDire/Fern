@@ -1,0 +1,12 @@
+---
+Description: i64 minimum value, one below the most negative writable literal
+Expected: -9223372036854775808
+---
+
+type Program
+{
+    static fn Main -> i64
+    {
+        return -9223372036854775807i64 - 1i64
+    }
+}

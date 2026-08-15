@@ -1,0 +1,13 @@
+---
+Description: i64 unary negate and positive
+Expected: -5000000000
+---
+
+type Program
+{
+    static fn Main -> i64
+    {
+        var a = 5000000000i64
+        return -(+a)
+    }
+}

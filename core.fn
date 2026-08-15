@@ -25,6 +25,8 @@ type F32
 
     @Intrinsic("f32.from_i32")
     implicit cast(from: i32) -> f32
+    @Intrinsic("f32.from_i64")
+    implicit cast(from: i64) -> f32
     @Intrinsic("f32.from_u8")
     implicit cast(from: u8) -> f32
 
@@ -50,6 +52,8 @@ type I32
 
     @Intrinsic("i32.from_u8")
     implicit cast(from: u8) -> i32
+    @Intrinsic("i32.from_i64")
+    explicit cast(from: i64) -> i32
     @Intrinsic("i32.from_f32")
     explicit cast(from: f32) -> i32
     @Intrinsic("i32.from_bool")
@@ -70,11 +74,42 @@ type I32
     @Intrinsic("i32.le") op <=(left: i32, right: i32) -> bool
 }
 
+@BuiltinType(8) @AllowCustomLiterals @NumericInt
+type I64
+{
+    @Intrinsic("i64.literal_i32") literal i64(from: i32)
+
+    @Intrinsic("i64.from_i32")
+    implicit cast(from: i32) -> i64
+    @Intrinsic("i64.from_u8")
+    implicit cast(from: u8) -> i64
+    @Intrinsic("i64.from_f32")
+    explicit cast(from: f32) -> i64
+    @Intrinsic("i64.from_bool")
+    explicit cast(from: bool) -> i64
+
+    @Intrinsic("i64.neg") op -(value: i64) -> i64
+    @Intrinsic("i64.pos") op +(value: i64) -> i64
+    @Intrinsic("i64.add") op +(left: i64, right: i64) -> i64
+    @Intrinsic("i64.sub") op -(left: i64, right: i64) -> i64
+    @Intrinsic("i64.mul") op *(left: i64, right: i64) -> i64
+    @Intrinsic("i64.div") op /(left: i64, right: i64) -> i64
+    @Intrinsic("i64.mod") op %(left: i64, right: i64) -> i64
+    @Intrinsic("i64.eq") op ==(left: i64, right: i64) -> bool
+    @Intrinsic("i64.ne") op !=(left: i64, right: i64) -> bool
+    @Intrinsic("i64.gt") op >(left: i64, right: i64) -> bool
+    @Intrinsic("i64.lt") op <(left: i64, right: i64) -> bool
+    @Intrinsic("i64.ge") op >=(left: i64, right: i64) -> bool
+    @Intrinsic("i64.le") op <=(left: i64, right: i64) -> bool
+}
+
 @BuiltinType(1)
 type Bool
 {
     @Intrinsic("bool.from_i32")
     explicit cast(from: i32) -> bool
+    @Intrinsic("bool.from_i64")
+    explicit cast(from: i64) -> bool
 
     @Intrinsic("bool.not") op !(value: bool) -> bool
     @Intrinsic("bool.eq") op ==(left: bool, right: bool) -> bool
@@ -109,6 +144,8 @@ type U8
 
     @Intrinsic("u8.from_i32")
     explicit cast(from: i32) -> u8
+    @Intrinsic("u8.from_i64")
+    explicit cast(from: i64) -> u8
     @Intrinsic("u8.from_f32")
     explicit cast(from: f32) -> u8
 
@@ -150,6 +187,12 @@ type String
 
     explicit cast(from: i32) -> string
     {
+        return (string)(i64)from
+    }
+
+    -- Digits are peeled in the negative domain so the most negative value never overflows
+    explicit cast(from: i64) -> string
+    {
         if (from == 0)
         {
             return "0"
@@ -166,7 +209,7 @@ type String
         while (v < 0)
         {
             var d = -(v % 10)
-            result = digits[d] + result
+            result = digits[(i32)d] + result
             v = v / 10
         }
 

@@ -1,0 +1,13 @@
+---
+Description: Explicit i64 to i32 cast keeps the low 32 bits
+Expected: 705032704
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var big = 5000000000i64
+        return (i32)big
+    }
+}
