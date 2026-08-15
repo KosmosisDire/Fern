@@ -134,6 +134,7 @@ protected:
     FhirExpr* bind_unary(UnaryExprSyntax* expr);
     FhirExpr* bind_binary(BinaryExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, BaseExprSyntax* syntax, TypeSymbol* expected = nullptr);
+    FhirExpr* check_constant_overflow(FhirOpExpr* node);
     MethodSymbol* break_operator_tie(const std::vector<MethodSymbol*>& candidates, TypeSymbol* expected, TypeSymbol* leftType);
     FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
     FhirExpr* bind_index(IndexExprSyntax* expr, IndexContext ctx = IndexContext::Read);

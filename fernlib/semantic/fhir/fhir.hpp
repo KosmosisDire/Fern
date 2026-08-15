@@ -221,7 +221,12 @@ struct FhirOpExpr : FhirExpr
     MethodSymbol* method = nullptr;
     std::vector<FhirExpr*> args;
 
+    mutable bool constantOverflowed = false;
+
     std::optional<ConstantValue> compute_constant() const;
+
+    // True when every operand is constant but the result does not fit this op's type
+    bool constant_overflows() const;
 
     void visit_children(FhirVisitor* v) override
     {

@@ -394,6 +394,16 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
     return fhir.error_expr(expr);
 }
 
+// Constant math that does not fit the operation's own type is an error, so compile time folding
+// and runtime wrapping can never disagree about the value
+FhirExpr* Binder::check_constant_overflow(FhirOpExpr* node)
+{
+    if (!node->constant_overflows()) return node;
+
+    diag.report(DiagnosticCode::Err_ConstantOverflow, node->span, format_type(node->type));
+    return fhir.error_expr(node->syntax, node->type, node);
+}
+
 FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 {
     // A minus on an integer literal is typed as one number so the minimum of each type can be written directly
@@ -439,7 +449,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         {
             MethodSymbol* method = result.best.method;
             operand = coerce_to_param(operand, method->parameters[0]->type);
-            return fhir.op(expr, method->get_return_type(), method->intrinsic(), {operand}, method);
+            return check_constant_overflow(fhir.op(expr, method->get_return_type(), method->intrinsic(), {operand}, method));
         }
 
         diag.report(DiagnosticCode::Err_BadUnaryOp, expr->span, Fern::format(opToken), format_type(namedType));
@@ -521,7 +531,7 @@ FhirExpr* Binder::bind_binary_op(BinaryOp op, FhirExpr* lhs, FhirExpr* rhs, Base
     {
         lhs = coerce_to_param(lhs, method->parameters[0]->type);
         rhs = coerce_to_param(rhs, method->parameters[1]->type);
-        return fhir.op(syntax, method->get_return_type(), method->intrinsic(), {lhs, rhs}, method);
+        return check_constant_overflow(fhir.op(syntax, method->get_return_type(), method->intrinsic(), {lhs, rhs}, method));
     }
 
     if (result.ambiguous)

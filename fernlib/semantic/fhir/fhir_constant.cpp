@@ -48,7 +48,7 @@ std::optional<ConstantValue> FhirLiteralExpr::compute_constant() const
 
 #pragma region Intrinsic Evaluators
 
-// Folding stops at 64 bits, past that the operation stays runtime work and wraps there
+// Folding computes in 64 bits, so a result past that ceiling is out of range for every integer type
 static bool add_overflows(int64_t a, int64_t b)
 {
     int64_t r = static_cast<int64_t>(static_cast<uint64_t>(a) + static_cast<uint64_t>(b));
@@ -70,8 +70,17 @@ static bool mul_overflows(int64_t a, int64_t b)
     return b > 0 ? a < INT64_MIN / b : a < INT64_MAX / b;
 }
 
-// Both operands share a kind by the time these run. Per type wrapping splits its tag out of a shared case
-static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const ConstantValue& a, const ConstantValue& b)
+// The lowest value of a type has no positive counterpart, so dividing it by minus one has no result in
+// range. The 64 bit fallback keeps the division defined when the type has no range to check against
+static bool divide_overflows(int64_t a, int64_t b, const std::optional<IntRange>& range)
+{
+    return b == -1 && a == (range ? range->min : INT64_MIN);
+}
+
+// Both operands share a kind by the time these run. The caller checks the result against the op type,
+// so these only report what cannot be computed in 64 bits at all
+static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const ConstantValue& a, const ConstantValue& b,
+                                                const std::optional<IntRange>& range, bool& overflowed)
 {
     const bool isInt = a.kind == ConstantValue::Kind::Int;
     const bool isFloat = a.kind == ConstantValue::Kind::Float;
@@ -82,29 +91,32 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
         case IntrinsicKind::I32Add:
         case IntrinsicKind::I64Add:
         case IntrinsicKind::U8Add:
-            if (!isInt || add_overflows(a.intValue, b.intValue)) return std::nullopt;
+            if (!isInt) return std::nullopt;
+            if (add_overflows(a.intValue, b.intValue)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue + b.intValue);
         case IntrinsicKind::I32Sub:
         case IntrinsicKind::I64Sub:
         case IntrinsicKind::U8Sub:
-            if (!isInt || sub_overflows(a.intValue, b.intValue)) return std::nullopt;
+            if (!isInt) return std::nullopt;
+            if (sub_overflows(a.intValue, b.intValue)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue - b.intValue);
         case IntrinsicKind::I32Mul:
         case IntrinsicKind::I64Mul:
         case IntrinsicKind::U8Mul:
-            if (!isInt || mul_overflows(a.intValue, b.intValue)) return std::nullopt;
+            if (!isInt) return std::nullopt;
+            if (mul_overflows(a.intValue, b.intValue)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue * b.intValue);
         case IntrinsicKind::I32Div:
         case IntrinsicKind::I64Div:
         case IntrinsicKind::U8Div:
             if (!isInt || b.intValue == 0) return std::nullopt;
-            if (a.intValue == INT64_MIN && b.intValue == -1) return std::nullopt;
+            if (divide_overflows(a.intValue, b.intValue, range)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue / b.intValue);
         case IntrinsicKind::I32Mod:
         case IntrinsicKind::I64Mod:
         case IntrinsicKind::U8Mod:
             if (!isInt || b.intValue == 0) return std::nullopt;
-            if (a.intValue == INT64_MIN && b.intValue == -1) return std::nullopt;
+            if (divide_overflows(a.intValue, b.intValue, range)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue % b.intValue);
 
         case IntrinsicKind::F32Add:
@@ -197,13 +209,14 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
     }
 }
 
-static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const ConstantValue& a)
+static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const ConstantValue& a, bool& overflowed)
 {
     switch (kind)
     {
         case IntrinsicKind::I32Neg:
         case IntrinsicKind::I64Neg:
-            if (a.kind != ConstantValue::Kind::Int || a.intValue == INT64_MIN) return std::nullopt;
+            if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
+            if (a.intValue == INT64_MIN) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(-a.intValue);
         case IntrinsicKind::F32Neg:
             if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
@@ -227,18 +240,21 @@ static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const Constan
 
 std::optional<ConstantValue> FhirOpExpr::compute_constant() const
 {
+    constantOverflowed = false;
+
     for (auto* arg : args)
     {
         if (!arg || !arg->get_constant())
             return std::nullopt;
     }
 
+    std::optional<ConstantValue> folded;
+
     if (args.size() == 1)
     {
-        return fold_unary(op, *args[0]->get_constant());
+        folded = fold_unary(op, *args[0]->get_constant(), constantOverflowed);
     }
-
-    if (args.size() == 2)
+    else if (args.size() == 2)
     {
         ConstantValue a = *args[0]->get_constant();
         ConstantValue b = *args[1]->get_constant();
@@ -250,10 +266,30 @@ std::optional<ConstantValue> FhirOpExpr::compute_constant() const
 
         if (a.kind != b.kind) return std::nullopt;
 
-        return fold_binary(op, a, b);
+        auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
+        std::optional<IntRange> range = named ? named->integer_range() : std::nullopt;
+        folded = fold_binary(op, a, b, range, constantOverflowed);
+    }
+    else
+    {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    // The fold is declined on overflow so no value outside the op type can reach a backend
+    if (folded && !folded->range_fits(type))
+    {
+        constantOverflowed = true;
+        return std::nullopt;
+    }
+
+    return folded;
+}
+
+// Forces the fold so the flag is current. The binder reports from this, lazy callers only read the cache
+bool FhirOpExpr::constant_overflows() const
+{
+    get_constant();
+    return constantOverflowed;
 }
 
 #pragma region Cast

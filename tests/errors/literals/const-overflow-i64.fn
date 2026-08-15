@@ -1,0 +1,13 @@
+---
+Description: Constant addition whose result does not fit the i64 operation
+Expected: FN3220
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = 9223372036854775807i64 + 1i64
+        return 0
+    }
+}
