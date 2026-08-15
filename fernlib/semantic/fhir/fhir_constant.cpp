@@ -16,9 +16,10 @@ bool ConstantValue::range_fits(TypeSymbol* target) const
     auto* named = target ? target->as<NamedTypeSymbol>() : nullptr;
     if (!named) return true;
 
-    if (named->name == "U8")  return intValue >= 0 && intValue <= 255;
-    if (named->name == "I32") return intValue >= INT32_MIN && intValue <= INT32_MAX;
-    return true;
+    std::optional<IntRange> range = named->integer_range();
+    if (!range) return true;
+
+    return intValue >= range->min && intValue <= range->max;
 }
 
 #pragma region Lazy Dispatch

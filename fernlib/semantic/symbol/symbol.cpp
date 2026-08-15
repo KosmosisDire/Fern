@@ -110,10 +110,22 @@ bool NamedTypeSymbol::is_integer() const
 {
     for (const auto& attr : resolvedAttributes)
     {
-        if (attr.type && attr.type->qualified_name() == "Core.NumericInt")
+        if (attr.type && (attr.type->qualified_name() == "Core.SignedInt"
+            || attr.type->qualified_name() == "Core.UnsignedInt"))
             return true;
     }
     if (genericOrigin) return genericOrigin->is_integer();
+    return false;
+}
+
+bool NamedTypeSymbol::is_unsigned() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.UnsignedInt")
+            return true;
+    }
+    if (genericOrigin) return genericOrigin->is_unsigned();
     return false;
 }
 
@@ -131,6 +143,40 @@ bool NamedTypeSymbol::is_float() const
 bool NamedTypeSymbol::is_numeric() const
 {
     return is_integer() || is_float();
+}
+
+// A size argument on @BuiltinType marks a scalar. Absent means a handle sized value type like String.
+std::optional<int> NamedTypeSymbol::builtin_scalar_size() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.BuiltinType"
+            && !attr.arguments.empty() && attr.arguments[0].kind == ConstantValue::Kind::Int)
+        {
+            return static_cast<int>(attr.arguments[0].intValue);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<IntRange> NamedTypeSymbol::integer_range() const
+{
+    if (!is_integer()) return std::nullopt;
+
+    std::optional<int> size = builtin_scalar_size();
+    if (!size) return std::nullopt;
+
+    int bits = *size * 8;
+    if (is_unsigned())
+    {
+        // Constants are held as a signed 64 bit value so a 64 bit unsigned max has no representation
+        if (bits >= 64) return std::nullopt;
+        return IntRange{ 0, (1LL << bits) - 1 };
+    }
+
+    // Shifting into the sign bit is undefined so the widest case takes the limit directly
+    int64_t max = bits == 64 ? INT64_MAX : (1LL << (bits - 1)) - 1;
+    return IntRange{ -max - 1, max };
 }
 
 bool MethodSymbol::is_intrinsic() const

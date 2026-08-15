@@ -16,20 +16,6 @@ static int align_up(int offset, int align)
     return (offset + align - 1) / align * align;
 }
 
-// A size argument on @BuiltinType marks a scalar. Absent means a handle sized value type like String.
-static std::optional<int> builtin_scalar_size(NamedTypeSymbol* type)
-{
-    for (const auto& attr : type->resolvedAttributes)
-    {
-        if (attr.type && attr.type->qualified_name() == "Core.BuiltinType"
-            && !attr.arguments.empty() && attr.arguments[0].kind == ConstantValue::Kind::Int)
-        {
-            return static_cast<int>(attr.arguments[0].intValue);
-        }
-    }
-    return std::nullopt;
-}
-
 void LayoutPass::run()
 {
     for (auto* type : context.symbols.allTypes)
@@ -80,7 +66,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     // value field, which aliases offset 0 of the whole scalar. No size argument means a handle.
     if (type->is_builtin())
     {
-        if (auto scalarSize = builtin_scalar_size(type))
+        if (auto scalarSize = type->builtin_scalar_size())
         {
             type->sizeInBytes = *scalarSize;
             type->alignment = *scalarSize;

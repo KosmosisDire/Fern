@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -161,6 +163,13 @@ struct TypeSymbol : Symbol
 {
 };
 
+// Inclusive value bounds of an integer type
+struct IntRange
+{
+    int64_t min = 0;
+    int64_t max = 0;
+};
+
 struct NamedTypeSymbol : TypeSymbol
 {
     static constexpr SymbolKind Kind = SymbolKind::NamedType;
@@ -195,7 +204,10 @@ struct NamedTypeSymbol : TypeSymbol
     bool has_default() const;
     bool is_numeric() const;
     bool is_integer() const;
+    bool is_unsigned() const;
     bool is_float() const;
+    std::optional<int> builtin_scalar_size() const;
+    std::optional<IntRange> integer_range() const;
     bool allows_custom_literals() const;
     NamedTypeSymbol* find_instantiation(const std::vector<TypeSymbol*>& args) const;
 

@@ -9,7 +9,8 @@ attr type BuiltinType
     init(size: i32) { }
 }
 attr type AllowCustomLiterals{}
-attr type NumericInt{}
+attr type SignedInt{}
+attr type UnsignedInt{}
 attr type NumericFloat{}
 
 attr type Intrinsic
@@ -45,7 +46,7 @@ type F32
     @Intrinsic("f32.le") op <=(left: f32, right: f32) -> bool
 }
 
-@BuiltinType(4) @AllowCustomLiterals @NumericInt
+@BuiltinType(4) @AllowCustomLiterals @SignedInt
 type I32
 {
     @Intrinsic("i32.literal_i32") literal i32(from: i32)
@@ -74,7 +75,7 @@ type I32
     @Intrinsic("i32.le") op <=(left: i32, right: i32) -> bool
 }
 
-@BuiltinType(8) @AllowCustomLiterals @NumericInt
+@BuiltinType(8) @AllowCustomLiterals @SignedInt
 type I64
 {
     @Intrinsic("i64.literal_i32") literal i64(from: i32)
@@ -137,7 +138,7 @@ ref type Array<T>
     @Intrinsic("array.set") op []=(self: Array<T>, index: i32, value: T)
 }
 
-@BuiltinType(1) @AllowCustomLiterals @NumericInt
+@BuiltinType(1) @AllowCustomLiterals @UnsignedInt
 type U8
 {
     @Intrinsic("u8.literal_i32") literal u8(from: i32)

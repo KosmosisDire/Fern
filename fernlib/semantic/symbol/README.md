@@ -4,7 +4,7 @@ Symbols are the named entities in a program: namespaces, types, fields, methods,
 
 ## Type properties come from attributes
 
-Whether a type is numeric, an integer, a float, or builtin is not hardcoded in the compiler. Instead I used attributes, like `Core.BuiltinType` or `Core.NumericInt` in the fern source itself. Generic instantiations read their attributes off the template, so `Array<i32>` is builtin because `Array<T>` is.
+Whether a type is numeric, an integer, a float, or builtin is not hardcoded in the compiler. Instead I used attributes, like `Core.BuiltinType` or `Core.SignedInt` in the fern source itself. Generic instantiations read their attributes off the template, so `Array<i32>` is builtin because `Array<T>` is.
 
 ## Generics
 
