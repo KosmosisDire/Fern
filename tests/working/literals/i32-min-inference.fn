@@ -1,0 +1,14 @@
+---
+Description: A negative literal at the i32 minimum infers i32 so it needs no cast
+Expected: -2147483648
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = -2147483648
+        var narrowed: i32 = v
+        return narrowed
+    }
+}

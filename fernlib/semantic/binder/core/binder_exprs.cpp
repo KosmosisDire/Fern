@@ -1,6 +1,9 @@
 #include "binder.hpp"
 
+#include <charconv>
+#include <cstdint>
 #include <format>
+#include <system_error>
 
 #include <ast/ast.hpp>
 #include <semantic/context.hpp>
@@ -393,6 +396,26 @@ FhirExpr* Binder::bind_member_access(MemberAccessExprSyntax* expr)
 
 FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 {
+    // A minus on an integer literal is typed as one number so the minimum of each type can be written directly
+    auto* literal = expr->operand ? expr->operand->as<LiteralExprSyntax>() : nullptr;
+    if (expr->op == UnaryOp::Negative && literal && literal->token.kind == TokenKind::LiteralInt)
+    {
+        uint64_t magnitude = 0;
+        const char* first = literal->token.lexeme.data();
+        const char* last = first + literal->token.lexeme.size();
+        auto [ptr, ec] = std::from_chars(first, last, magnitude);
+        if (ec != std::errc{} || magnitude > (uint64_t{1} << 63))
+        {
+            diag.report(DiagnosticCode::Err_LiteralOutOfRange, expr->span, std::format("-{}", literal->token.lexeme));
+            return fhir.error_expr(expr);
+        }
+
+        int64_t value = static_cast<int64_t>(0ull - magnitude);
+        auto* node = fhir.literal(expr, type_integer_literal(value));
+        node->value = ConstantValue::make_int(value);
+        return node;
+    }
+
     FhirExpr* operand = bind_value_expr(expr->operand);
     if (!operand || operand->is_error()) return fhir.error_expr(expr);
 

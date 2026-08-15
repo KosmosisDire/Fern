@@ -1,0 +1,13 @@
+---
+Description: Negative literal below i64 minimum
+Expected: FN3704
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v: i64 = -9223372036854775809
+        return 0
+    }
+}
