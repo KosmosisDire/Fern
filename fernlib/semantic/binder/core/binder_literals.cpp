@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cstdint>
 #include <fast_float/fast_float.h>
 #include <format>
 #include <string>
@@ -137,13 +138,44 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
     return fhir.call(expr, returnType, method, {operand});
 }
 
+// The language rule for literal width so it cannot read type attributes which are not resolved yet
+TypeSymbol* Binder::type_integer_literal(int64_t value)
+{
+    if (value >= INT32_MIN && value <= INT32_MAX)
+        return context.resolve_type_name("i32");
+    return context.resolve_type_name("i64");
+}
+
 FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 {
+    // Use from_chars to avoid throwing exceptions and better handle out-of-range errors.
+    auto report_out_of_range = [&]()
+    {
+        diag.report(DiagnosticCode::Err_LiteralOutOfRange, expr->span, expr->token.lexeme);
+    };
+
+    if (expr->token.kind == TokenKind::LiteralInt)
+    {
+        int64_t value = 0;
+        const char* first = expr->token.lexeme.data();
+        const char* last = first + expr->token.lexeme.size();
+        auto [ptr, ec] = std::from_chars(first, last, value);
+        if (ec == std::errc{})
+        {
+            auto* node = fhir.literal(expr, type_integer_literal(value));
+            node->value = ConstantValue::make_int(value);
+            return node;
+        }
+
+        if (ec == std::errc::result_out_of_range)
+            report_out_of_range();
+        return fhir.literal(expr, context.resolve_type_name("i32"));
+    }
+
     TypeSymbol* type = nullptr;
 
     switch (expr->token.kind)
     {
-        case TokenKind::LiteralInt:    type = context.resolve_type_name("i32");    break;
         case TokenKind::LiteralFloat:  type = context.resolve_type_name("f32");    break;
         case TokenKind::LiteralBool:   type = context.resolve_type_name("bool");   break;
         case TokenKind::LiteralString:
@@ -156,26 +188,9 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 
     auto* node = fhir.literal(expr, type);
 
-    // Use from_chars to avoid throwing exceptions and better handle out-of-range errors.
-    auto report_out_of_range = [&]()
-    {
-        diag.report(DiagnosticCode::Err_LiteralOutOfRange, expr->span, expr->token.lexeme);
-    };
-
     try
     {
-        if (expr->token.kind == TokenKind::LiteralInt)
-        {
-            int64_t value = 0;
-            const char* first = expr->token.lexeme.data();
-            const char* last = first + expr->token.lexeme.size();
-            auto [ptr, ec] = std::from_chars(first, last, value);
-            if (ec == std::errc::result_out_of_range)
-                report_out_of_range();
-            else if (ec == std::errc{})
-                node->value = ConstantValue::make_int(value);
-        }
-        else if (expr->token.kind == TokenKind::LiteralFloat)
+        if (expr->token.kind == TokenKind::LiteralFloat)
         {
             double value = 0;
             const char* first = expr->token.lexeme.data();

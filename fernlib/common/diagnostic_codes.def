@@ -149,3 +149,6 @@ DIAG(Err_RuntimeError,                  6000, Error,   "{}")
 
 // FLIR verification (9000, internal consistency checks on lowered FLIR)
 DIAG(Err_FlirMalformed,                 9000, Error,   "internal: malformed FLIR in '{}': {}")
+
+// Semantic verification (9100, internal consistency checks on declared symbols)
+DIAG(Err_LiteralTypeRuleDrift,          9100, Error,   "internal: the literal typing rule requires '{}' to have range [{}, {}]")

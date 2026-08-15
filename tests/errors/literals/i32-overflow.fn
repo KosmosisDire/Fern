@@ -1,5 +1,5 @@
 ---
-Description: Bare literal exceeds i32 maximum
+Description: Literal exceeds i32 maximum where i32 is required
 Expected: FN3200
 ---
 
@@ -7,7 +7,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = 2147483648
+        var v: i32 = 2147483648
         return 0
     }
 }

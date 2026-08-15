@@ -1,7 +1,9 @@
 #include "binder_pipeline.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
+#include <optional>
 
 #include <ast/ast.hpp>
 #include <semantic/binder/core/binder.hpp>
@@ -282,6 +284,21 @@ void BinderPipeline::resolve_attributes()
             }
         }
     }
+
+    check_literal_type_rule();
+}
+
+// The literal typing rule hardcodes the i32 bounds so a drifting declaration must fail loudly
+void BinderPipeline::check_literal_type_rule()
+{
+    auto* i32Type = context.resolve_type_name("i32");
+    auto* named = i32Type ? i32Type->as<NamedTypeSymbol>() : nullptr;
+    std::optional<IntRange> range = named ? named->integer_range() : std::nullopt;
+
+    if (range && range->min == INT32_MIN && range->max == INT32_MAX) return;
+
+    Span loc = named && named->syntax ? named->syntax->span : Span{};
+    context.diag.report(DiagnosticCode::Err_LiteralTypeRuleDrift, loc, "i32", INT32_MIN, INT32_MAX);
 }
 
 #pragma region Validation

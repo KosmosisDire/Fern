@@ -1,5 +1,5 @@
 ---
-Description: Bare literal below i32 minimum
+Description: Literal below i32 minimum where i32 is required
 Expected: FN3200
 ---
 
@@ -7,7 +7,7 @@ type Program
 {
     static fn Main -> i32
     {
-        var v = -2147483649
+        var v: i32 = -2147483649
         return 0
     }
 }

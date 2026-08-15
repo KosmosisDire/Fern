@@ -79,6 +79,7 @@ type I32
 type I64
 {
     @Intrinsic("i64.literal_i32") literal i64(from: i32)
+    @Intrinsic("i64.literal_i64") literal i64(from: i64)
 
     @Intrinsic("i64.from_i32")
     implicit cast(from: i32) -> i64

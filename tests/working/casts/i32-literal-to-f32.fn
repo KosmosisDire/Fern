@@ -1,0 +1,13 @@
+---
+Description: A bare literal too large for i32 keeps its value when converted to f32
+Expected: 3000000000.0
+---
+
+type Program
+{
+    static fn Main -> f32
+    {
+        var f: f32 = 3000000000
+        return f
+    }
+}

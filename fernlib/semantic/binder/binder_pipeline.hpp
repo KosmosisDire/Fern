@@ -29,6 +29,7 @@ private:
 
     void define_namespace(NamespaceDeclSyntax* nsDecl, NamespaceSymbol* parentNs);
     NamedTypeSymbol* define_type(TypeDeclSyntax* typeDecl, Symbol* parent);
+    void check_literal_type_rule();
     void check_duplicate_methods(NamedTypeSymbol* type);
     void check_operator_pairs(NamedTypeSymbol* type);
     void check_indexer_signatures(NamedTypeSymbol* type);

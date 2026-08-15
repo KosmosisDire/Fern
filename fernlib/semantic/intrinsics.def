@@ -27,6 +27,7 @@ INTRINSIC(I32Le,          "i32.le",          "<=")
 
 // i64
 INTRINSIC(I64LiteralI32,  "i64.literal_i32", "")
+INTRINSIC(I64LiteralI64,  "i64.literal_i64", "")
 INTRINSIC(I64FromI32,     "i64.from_i32",    "")
 INTRINSIC(I64FromU8,      "i64.from_u8",     "")
 INTRINSIC(I64FromF32,     "i64.from_f32",    "")

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include "fhir_builder.hpp"
@@ -140,6 +141,7 @@ protected:
 #pragma region Literal Binding
 
     FhirExpr* bind_literal(LiteralExprSyntax* expr);
+    TypeSymbol* type_integer_literal(int64_t value);
     FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
     MethodSymbol* resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span);
     std::string process_escape_sequences(std::string_view raw, const Span& span);
