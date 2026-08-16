@@ -913,13 +913,6 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
         return nullptr;
     }
 
-    if (walker.check(TokenKind::LiteralSuffix))
-    {
-        Token suffixTok = walker.current();
-        walker.advance();
-        left = builder.literal_suffix(left, suffixTok);
-    }
-
     while (true)
     {
         auto cp = walker.checkpoint();
@@ -1183,6 +1176,15 @@ BaseExprSyntax* Parser::parse_postfix()
     if (!left)
     {
         return nullptr;
+    }
+
+    // The lexer only emits a suffix directly after a literal, so it glues to the literal itself here,
+    // binding tighter than casts, member access, and every operator
+    if (walker.check(TokenKind::LiteralSuffix))
+    {
+        Token suffixTok = walker.current();
+        walker.advance();
+        left = builder.literal_suffix(left, suffixTok);
     }
 
     while (true)

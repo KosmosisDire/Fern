@@ -144,6 +144,7 @@ protected:
     FhirExpr* bind_literal(LiteralExprSyntax* expr);
     TypeSymbol* type_integer_literal(int64_t value);
     FhirExpr* bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbol* expected = nullptr);
+    FhirExpr* apply_literal_suffix(BaseExprSyntax* expr, const Token& suffix, FhirExpr* operand, TypeSymbol* expected);
     MethodSymbol* resolve_literal_suffix(std::string_view suffixName, TypeSymbol* argType, TypeSymbol* expected, const Span& span);
     std::string process_escape_sequences(std::string_view raw, const Span& span);
     FhirExpr* bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* expected = nullptr);

@@ -100,8 +100,13 @@ FhirExpr* Binder::bind_suffixed_literal(LiteralSuffixExprSyntax* expr, TypeSymbo
 {
     auto* operand = bind_value_expr(expr->operand);
     if (!operand) return nullptr;
+    return apply_literal_suffix(expr, expr->suffix, operand, expected);
+}
 
-    auto* method = resolve_literal_suffix(expr->suffix.lexeme, operand->type, expected, expr->suffix.span);
+// Shared by the plain suffix path and the negative literal path in bind_unary
+FhirExpr* Binder::apply_literal_suffix(BaseExprSyntax* expr, const Token& suffix, FhirExpr* operand, TypeSymbol* expected)
+{
+    auto* method = resolve_literal_suffix(suffix.lexeme, operand->type, expected, suffix.span);
     if (!method)
         return operand;
 

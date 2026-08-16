@@ -1,0 +1,20 @@
+---
+Description: Suffixed literals still write each type's minimum with a leading minus
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a = -128i8
+        var b = -32768i16
+        var c = -2147483648i32
+        var d = -9223372036854775808i64
+
+        return (i32)a == -128
+            && (i32)b == -32768
+            && c == -2147483648
+            && d == -9223372036854775808
+    }
+}

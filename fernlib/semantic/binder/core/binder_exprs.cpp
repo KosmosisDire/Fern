@@ -406,8 +406,13 @@ FhirExpr* Binder::check_constant_overflow(FhirOpExpr* node)
 
 FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
 {
-    // A minus on an integer literal is typed as one number so the minimum of each type can be written directly
-    auto* literal = expr->operand ? expr->operand->as<LiteralExprSyntax>() : nullptr;
+    // A minus on an integer literal is typed as one number so the minimum of each type can be written
+    // directly. A suffix glues to the literal in the parse, so it is peeled here and applied after the
+    // negation, letting the suffix range check see the negated value
+    auto* inner = expr->operand;
+    auto* suffixed = inner ? inner->as<LiteralSuffixExprSyntax>() : nullptr;
+    if (suffixed) inner = suffixed->operand;
+    auto* literal = inner ? inner->as<LiteralExprSyntax>() : nullptr;
     if (expr->op == UnaryOp::Negative && literal && literal->token.kind == TokenKind::LiteralInt)
     {
         uint64_t magnitude = 0;
@@ -423,6 +428,8 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         int64_t value = static_cast<int64_t>(0ull - magnitude);
         auto* node = fhir.literal(expr, type_integer_literal(value));
         node->value = ConstantValue::make_int(value);
+        if (suffixed)
+            return apply_literal_suffix(expr, suffixed->suffix, node, nullptr);
         return node;
     }
 
