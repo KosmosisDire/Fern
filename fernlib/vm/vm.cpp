@@ -25,10 +25,16 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
     , target()
     , memory(config.stackSize)
 {
+    i8Type = semantic.resolve_type_name("i8");
+    i16Type = semantic.resolve_type_name("i16");
     i32Type = semantic.resolve_type_name("i32");
     i64Type = semantic.resolve_type_name("i64");
-    f32Type = semantic.resolve_type_name("f32");
     u8Type = semantic.resolve_type_name("u8");
+    u16Type = semantic.resolve_type_name("u16");
+    u32Type = semantic.resolve_type_name("u32");
+    u64Type = semantic.resolve_type_name("u64");
+    f32Type = semantic.resolve_type_name("f32");
+    f64Type = semantic.resolve_type_name("f64");
     boolType = semantic.resolve_type_name("bool");
     c8Type = semantic.resolve_type_name("c8");
     stringType = semantic.resolve_type_name("string");
@@ -123,11 +129,17 @@ std::string Interpreter::format_result(const RunResult& result)
 
     switch (value.kind)
     {
+        case Value::Kind::I8:   return std::to_string(value.as_i8());
+        case Value::Kind::I16:  return std::to_string(value.as_i16());
         case Value::Kind::I32:  return std::to_string(value.as_i32());
         case Value::Kind::I64:  return std::to_string(value.as_i64());
         case Value::Kind::U8:   return std::to_string(value.as_u8());
-        case Value::Kind::Bool: return value.as_bool() ? "true" : "false";
+        case Value::Kind::U16:  return std::to_string(value.as_u16());
+        case Value::Kind::U32:  return std::to_string(value.as_u32());
+        case Value::Kind::U64:  return std::to_string(value.as_u64());
         case Value::Kind::F32:  return std::format("{}", value.as_f32());
+        case Value::Kind::F64:  return std::format("{}", value.as_f64());
+        case Value::Kind::Bool: return value.as_bool() ? "true" : "false";
         case Value::Kind::C8:   return std::string(1, static_cast<char>(value.as_c8()));
         case Value::Kind::Addr: return std::format("{}", value.as_addr());
     }
@@ -280,15 +292,24 @@ Value Interpreter::eval_const(FlirConst* node)
     const ConstantValue& cv = node->value;
     switch (type_kind(node->type))
     {
+        case Value::Kind::I8:   return Value::make_i8(static_cast<int8_t>(cv.intValue));
+        case Value::Kind::I16:  return Value::make_i16(static_cast<int16_t>(cv.intValue));
         case Value::Kind::I32:  return Value::make_i32(static_cast<int32_t>(cv.intValue));
         case Value::Kind::I64:  return Value::make_i64(cv.intValue);
         case Value::Kind::U8:   return Value::make_u8(static_cast<uint8_t>(cv.intValue));
+        case Value::Kind::U16:  return Value::make_u16(static_cast<uint16_t>(cv.intValue));
+        case Value::Kind::U32:  return Value::make_u32(static_cast<uint32_t>(cv.intValue));
+        case Value::Kind::U64:  return Value::make_u64(static_cast<uint64_t>(cv.intValue));
         case Value::Kind::C8:   return Value::make_c8(static_cast<uint8_t>(cv.intValue));
         case Value::Kind::Bool: return Value::make_bool(cv.boolValue);
         case Value::Kind::F32:
             return Value::make_f32(cv.kind == ConstantValue::Kind::Float
                 ? static_cast<float>(cv.floatValue)
                 : static_cast<float>(cv.intValue));
+        case Value::Kind::F64:
+            return Value::make_f64(cv.kind == ConstantValue::Kind::Float
+                ? cv.floatValue
+                : static_cast<double>(cv.intValue));
         case Value::Kind::Addr: return Value::make_addr(intern_string(cv.stringValue));
     }
     return Value{};
@@ -390,10 +411,16 @@ Value Interpreter::eval_cast(FlirCast* node)
 
 Value::Kind Interpreter::type_kind(TypeSymbol* type) const
 {
+    if (type == i8Type)   return Value::Kind::I8;
+    if (type == i16Type)  return Value::Kind::I16;
     if (type == i32Type)  return Value::Kind::I32;
     if (type == i64Type)  return Value::Kind::I64;
-    if (type == f32Type)  return Value::Kind::F32;
     if (type == u8Type)   return Value::Kind::U8;
+    if (type == u16Type)  return Value::Kind::U16;
+    if (type == u32Type)  return Value::Kind::U32;
+    if (type == u64Type)  return Value::Kind::U64;
+    if (type == f32Type)  return Value::Kind::F32;
+    if (type == f64Type)  return Value::Kind::F64;
     if (type == boolType) return Value::Kind::Bool;
     if (type == c8Type)   return Value::Kind::C8;
     // Strings, arrays, and every ref type flow as a one word handle.
@@ -404,8 +431,14 @@ Value Interpreter::load_scalar(uint64_t addr, Value::Kind kind)
 {
     switch (kind)
     {
+        case Value::Kind::I8:   return Value::make_i8(static_cast<int8_t>(memory.read_u8(addr)));
+        case Value::Kind::I16:  return Value::make_i16(static_cast<int16_t>(memory.read_u16(addr)));
         case Value::Kind::I32:  return Value::make_i32(static_cast<int32_t>(memory.read_u32(addr)));
         case Value::Kind::I64:  return Value::make_i64(static_cast<int64_t>(memory.read_u64(addr)));
+        case Value::Kind::U8:   return Value::make_u8(memory.read_u8(addr));
+        case Value::Kind::U16:  return Value::make_u16(memory.read_u16(addr));
+        case Value::Kind::U32:  return Value::make_u32(memory.read_u32(addr));
+        case Value::Kind::U64:  return Value::make_u64(memory.read_u64(addr));
         case Value::Kind::F32:
         {
             uint32_t bits = memory.read_u32(addr);
@@ -413,7 +446,13 @@ Value Interpreter::load_scalar(uint64_t addr, Value::Kind kind)
             std::memcpy(&value, &bits, 4);
             return Value::make_f32(value);
         }
-        case Value::Kind::U8:   return Value::make_u8(memory.read_u8(addr));
+        case Value::Kind::F64:
+        {
+            uint64_t bits = memory.read_u64(addr);
+            double value;
+            std::memcpy(&value, &bits, 8);
+            return Value::make_f64(value);
+        }
         case Value::Kind::Bool: return Value::make_bool(memory.read_u8(addr) != 0);
         case Value::Kind::C8:   return Value::make_c8(memory.read_u8(addr));
         case Value::Kind::Addr: return Value::make_addr(memory.read_u64(addr));
@@ -425,8 +464,14 @@ void Interpreter::store_scalar(uint64_t addr, Value value)
 {
     switch (value.kind)
     {
+        case Value::Kind::I8:   memory.write_u8(addr, static_cast<uint8_t>(value.as_i8())); break;
+        case Value::Kind::I16:  memory.write_u16(addr, static_cast<uint16_t>(value.as_i16())); break;
         case Value::Kind::I32:  memory.write_u32(addr, static_cast<uint32_t>(value.as_i32())); break;
         case Value::Kind::I64:  memory.write_u64(addr, static_cast<uint64_t>(value.as_i64())); break;
+        case Value::Kind::U8:   memory.write_u8(addr, value.as_u8()); break;
+        case Value::Kind::U16:  memory.write_u16(addr, value.as_u16()); break;
+        case Value::Kind::U32:  memory.write_u32(addr, value.as_u32()); break;
+        case Value::Kind::U64:  memory.write_u64(addr, value.as_u64()); break;
         case Value::Kind::F32:
         {
             float raw = value.as_f32();
@@ -435,7 +480,14 @@ void Interpreter::store_scalar(uint64_t addr, Value value)
             memory.write_u32(addr, bits);
             break;
         }
-        case Value::Kind::U8:   memory.write_u8(addr, value.as_u8()); break;
+        case Value::Kind::F64:
+        {
+            double raw = value.as_f64();
+            uint64_t bits;
+            std::memcpy(&bits, &raw, 8);
+            memory.write_u64(addr, bits);
+            break;
+        }
         case Value::Kind::Bool: memory.write_u8(addr, value.as_bool() ? 1 : 0); break;
         case Value::Kind::C8:   memory.write_u8(addr, value.as_c8()); break;
         case Value::Kind::Addr: memory.write_u64(addr, value.as_addr()); break;

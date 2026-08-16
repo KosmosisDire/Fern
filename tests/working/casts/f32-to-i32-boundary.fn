@@ -1,0 +1,17 @@
+---
+Description: f32 to i32 saturates at both edges and passes exact values inside the range
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var big: f32 = 3000000000i64
+        var neg: f32 = -3000000000i64
+        var edge: f32 = 2147483520
+        return (i32)big == 2147483647
+            && (i32)neg == -2147483648
+            && (i32)edge == 2147483520
+    }
+}

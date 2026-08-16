@@ -1,0 +1,13 @@
+---
+Description: u32 accepts its maximum value, which only fits an i64 literal
+Expected: 4294967295
+---
+
+type Program
+{
+    static fn Main -> u32
+    {
+        var x: u32 = 4294967295
+        return x
+    }
+}

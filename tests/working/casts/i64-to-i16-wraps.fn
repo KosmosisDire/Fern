@@ -1,0 +1,12 @@
+---
+Description: Constant narrowing to i16 keeps the low bits like the runtime
+Expected: 4464
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return (i32)(i16)70000
+    }
+}

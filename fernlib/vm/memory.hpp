@@ -43,9 +43,11 @@ public:
     uint64_t stack_pointer() const { return sp; }
 
     uint8_t read_u8(uint64_t addr);
+    uint16_t read_u16(uint64_t addr);
     uint32_t read_u32(uint64_t addr);
     uint64_t read_u64(uint64_t addr);
     void write_u8(uint64_t addr, uint8_t value);
+    void write_u16(uint64_t addr, uint16_t value);
     void write_u32(uint64_t addr, uint32_t value);
     void write_u64(uint64_t addr, uint64_t value);
 

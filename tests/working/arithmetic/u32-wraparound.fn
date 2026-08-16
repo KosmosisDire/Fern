@@ -1,0 +1,14 @@
+---
+Description: u32 addition wraps modulo 2^32 at runtime
+Expected: 0
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: u32 = 4294967295
+        var b: u32 = 1
+        return (i32)(a + b)
+    }
+}

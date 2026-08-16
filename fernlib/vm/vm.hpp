@@ -145,10 +145,16 @@ private:
     TargetInfo target;
     VmMemory memory;
 
+    TypeSymbol* i8Type = nullptr;
+    TypeSymbol* i16Type = nullptr;
     TypeSymbol* i32Type = nullptr;
     TypeSymbol* i64Type = nullptr;
-    TypeSymbol* f32Type = nullptr;
     TypeSymbol* u8Type = nullptr;
+    TypeSymbol* u16Type = nullptr;
+    TypeSymbol* u32Type = nullptr;
+    TypeSymbol* u64Type = nullptr;
+    TypeSymbol* f32Type = nullptr;
+    TypeSymbol* f64Type = nullptr;
     TypeSymbol* boolType = nullptr;
     TypeSymbol* c8Type = nullptr;
     TypeSymbol* stringType = nullptr;

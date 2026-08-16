@@ -1,0 +1,13 @@
+---
+Description: u64 suffix on a literal beyond the i32 range
+Expected: 10000000000
+---
+
+type Program
+{
+    static fn Main -> u64
+    {
+        var x = 10000000000u64
+        return x
+    }
+}

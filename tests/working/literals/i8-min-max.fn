@@ -1,0 +1,14 @@
+---
+Description: i8 accepts its full range through target typed literals
+Expected: -1
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var lo: i8 = -128
+        var hi: i8 = 127
+        return (i32)lo + (i32)hi
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: Negative literal cannot convert to u64 even though u64 has no computable range
+Expected: FN3200
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x: u64 = -3
+        return 0
+    }
+}

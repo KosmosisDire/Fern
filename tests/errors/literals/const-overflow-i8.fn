@@ -1,0 +1,13 @@
+---
+Description: Constant addition of i8 operands whose result does not fit i8
+Expected: FN3220
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = 100i8 + 100i8
+        return 0
+    }
+}

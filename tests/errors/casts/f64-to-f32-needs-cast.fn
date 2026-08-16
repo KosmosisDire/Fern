@@ -1,0 +1,14 @@
+---
+Description: f64 does not implicitly narrow to f32
+Expected: FN3405
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: f64 = 1.5f64
+        var b: f32 = a
+        return 0
+    }
+}

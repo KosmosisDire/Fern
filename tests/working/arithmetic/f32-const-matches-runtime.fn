@@ -1,0 +1,15 @@
+---
+Description: f32 constant folding computes at float width, matching the runtime result
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a: f32 = 0.1
+        var b: f32 = 0.2
+        var runtime = a + b
+        return runtime == 0.1f32 + 0.2f32
+    }
+}

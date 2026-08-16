@@ -8,12 +8,18 @@ namespace Fern
 namespace
 {
 
-constexpr std::array<BuiltinAlias, 7> kAliases = {{
+constexpr std::array<BuiltinAlias, 13> kAliases = {{
+    {"i8",     "Core", "I8"},
+    {"i16",    "Core", "I16"},
     {"i32",    "Core", "I32"},
     {"i64",    "Core", "I64"},
-    {"f32",    "Core", "F32"},
-    {"bool",   "Core", "Bool"},
     {"u8",     "Core", "U8"},
+    {"u16",    "Core", "U16"},
+    {"u32",    "Core", "U32"},
+    {"u64",    "Core", "U64"},
+    {"f32",    "Core", "F32"},
+    {"f64",    "Core", "F64"},
+    {"bool",   "Core", "Bool"},
     {"c8",     "Core", "C8"},
     {"string", "Core", "String"},
 }};

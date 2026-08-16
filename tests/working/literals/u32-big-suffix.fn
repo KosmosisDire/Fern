@@ -1,0 +1,13 @@
+---
+Description: u32 suffix on a literal that is typed i64 by the width ladder
+Expected: 4000000000
+---
+
+type Program
+{
+    static fn Main -> u32
+    {
+        var x = 4000000000u32
+        return x
+    }
+}

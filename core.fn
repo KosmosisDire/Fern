@@ -18,32 +18,82 @@ attr type Intrinsic
     name: string
 }
 
-@BuiltinType(4) @AllowCustomLiterals @NumericFloat
-type F32
+@BuiltinType(1) @AllowCustomLiterals @SignedInt
+type I8
 {
-    @Intrinsic("f32.literal_i32") literal f32(from: i32)
-    @Intrinsic("f32.literal_f32") literal f32(from: f32)
+    @Intrinsic("i8.literal_i32") literal i8(from: i32)
 
-    @Intrinsic("f32.from_i32")
-    implicit cast(from: i32) -> f32
-    @Intrinsic("f32.from_i64")
-    implicit cast(from: i64) -> f32
-    @Intrinsic("f32.from_u8")
-    implicit cast(from: u8) -> f32
+    @Intrinsic("i8.from_i16")
+    explicit cast(from: i16) -> i8
+    @Intrinsic("i8.from_i32")
+    explicit cast(from: i32) -> i8
+    @Intrinsic("i8.from_i64")
+    explicit cast(from: i64) -> i8
+    @Intrinsic("i8.from_u8")
+    explicit cast(from: u8) -> i8
+    @Intrinsic("i8.from_u16")
+    explicit cast(from: u16) -> i8
+    @Intrinsic("i8.from_u32")
+    explicit cast(from: u32) -> i8
+    @Intrinsic("i8.from_u64")
+    explicit cast(from: u64) -> i8
+    @Intrinsic("i8.from_f32")
+    explicit cast(from: f32) -> i8
+    @Intrinsic("i8.from_f64")
+    explicit cast(from: f64) -> i8
 
-    @Intrinsic("f32.neg") op -(value: f32) -> f32
-    @Intrinsic("f32.pos") op +(value: f32) -> f32
-    @Intrinsic("f32.add") op +(left: f32, right: f32) -> f32
-    @Intrinsic("f32.sub") op -(left: f32, right: f32) -> f32
-    @Intrinsic("f32.mul") op *(left: f32, right: f32) -> f32
-    @Intrinsic("f32.div") op /(left: f32, right: f32) -> f32
-    @Intrinsic("f32.mod") op %(left: f32, right: f32) -> f32
-    @Intrinsic("f32.eq") op ==(left: f32, right: f32) -> bool
-    @Intrinsic("f32.ne") op !=(left: f32, right: f32) -> bool
-    @Intrinsic("f32.gt") op >(left: f32, right: f32) -> bool
-    @Intrinsic("f32.lt") op <(left: f32, right: f32) -> bool
-    @Intrinsic("f32.ge") op >=(left: f32, right: f32) -> bool
-    @Intrinsic("f32.le") op <=(left: f32, right: f32) -> bool
+    @Intrinsic("i8.neg") op -(value: i8) -> i8
+    @Intrinsic("i8.pos") op +(value: i8) -> i8
+    @Intrinsic("i8.add") op +(left: i8, right: i8) -> i8
+    @Intrinsic("i8.sub") op -(left: i8, right: i8) -> i8
+    @Intrinsic("i8.mul") op *(left: i8, right: i8) -> i8
+    @Intrinsic("i8.div") op /(left: i8, right: i8) -> i8
+    @Intrinsic("i8.mod") op %(left: i8, right: i8) -> i8
+    @Intrinsic("i8.eq") op ==(left: i8, right: i8) -> bool
+    @Intrinsic("i8.ne") op !=(left: i8, right: i8) -> bool
+    @Intrinsic("i8.gt") op >(left: i8, right: i8) -> bool
+    @Intrinsic("i8.lt") op <(left: i8, right: i8) -> bool
+    @Intrinsic("i8.ge") op >=(left: i8, right: i8) -> bool
+    @Intrinsic("i8.le") op <=(left: i8, right: i8) -> bool
+}
+
+@BuiltinType(2) @AllowCustomLiterals @SignedInt
+type I16
+{
+    @Intrinsic("i16.literal_i32") literal i16(from: i32)
+
+    @Intrinsic("i16.from_i8")
+    implicit cast(from: i8) -> i16
+    @Intrinsic("i16.from_u8")
+    implicit cast(from: u8) -> i16
+    @Intrinsic("i16.from_i32")
+    explicit cast(from: i32) -> i16
+    @Intrinsic("i16.from_i64")
+    explicit cast(from: i64) -> i16
+    @Intrinsic("i16.from_u16")
+    explicit cast(from: u16) -> i16
+    @Intrinsic("i16.from_u32")
+    explicit cast(from: u32) -> i16
+    @Intrinsic("i16.from_u64")
+    explicit cast(from: u64) -> i16
+    @Intrinsic("i16.from_f32")
+    explicit cast(from: f32) -> i16
+    @Intrinsic("i16.from_f64")
+    explicit cast(from: f64) -> i16
+
+    @Intrinsic("i16.neg") op -(value: i16) -> i16
+    @Intrinsic("i16.pos") op +(value: i16) -> i16
+    @Intrinsic("i16.add") op +(left: i16, right: i16) -> i16
+    @Intrinsic("i16.sub") op -(left: i16, right: i16) -> i16
+    @Intrinsic("i16.mul") op *(left: i16, right: i16) -> i16
+    @Intrinsic("i16.div") op /(left: i16, right: i16) -> i16
+    @Intrinsic("i16.mod") op %(left: i16, right: i16) -> i16
+    @Intrinsic("i16.eq") op ==(left: i16, right: i16) -> bool
+    @Intrinsic("i16.ne") op !=(left: i16, right: i16) -> bool
+    @Intrinsic("i16.gt") op >(left: i16, right: i16) -> bool
+    @Intrinsic("i16.lt") op <(left: i16, right: i16) -> bool
+    @Intrinsic("i16.ge") op >=(left: i16, right: i16) -> bool
+    @Intrinsic("i16.le") op <=(left: i16, right: i16) -> bool
 }
 
 @BuiltinType(4) @AllowCustomLiterals @SignedInt
@@ -51,12 +101,24 @@ type I32
 {
     @Intrinsic("i32.literal_i32") literal i32(from: i32)
 
+    @Intrinsic("i32.from_i8")
+    implicit cast(from: i8) -> i32
+    @Intrinsic("i32.from_i16")
+    implicit cast(from: i16) -> i32
     @Intrinsic("i32.from_u8")
     implicit cast(from: u8) -> i32
+    @Intrinsic("i32.from_u16")
+    implicit cast(from: u16) -> i32
     @Intrinsic("i32.from_i64")
     explicit cast(from: i64) -> i32
+    @Intrinsic("i32.from_u32")
+    explicit cast(from: u32) -> i32
+    @Intrinsic("i32.from_u64")
+    explicit cast(from: u64) -> i32
     @Intrinsic("i32.from_f32")
     explicit cast(from: f32) -> i32
+    @Intrinsic("i32.from_f64")
+    explicit cast(from: f64) -> i32
     @Intrinsic("i32.from_bool")
     explicit cast(from: bool) -> i32
 
@@ -81,12 +143,24 @@ type I64
     @Intrinsic("i64.literal_i32") literal i64(from: i32)
     @Intrinsic("i64.literal_i64") literal i64(from: i64)
 
+    @Intrinsic("i64.from_i8")
+    implicit cast(from: i8) -> i64
+    @Intrinsic("i64.from_i16")
+    implicit cast(from: i16) -> i64
     @Intrinsic("i64.from_i32")
     implicit cast(from: i32) -> i64
     @Intrinsic("i64.from_u8")
     implicit cast(from: u8) -> i64
+    @Intrinsic("i64.from_u16")
+    implicit cast(from: u16) -> i64
+    @Intrinsic("i64.from_u32")
+    implicit cast(from: u32) -> i64
+    @Intrinsic("i64.from_u64")
+    explicit cast(from: u64) -> i64
     @Intrinsic("i64.from_f32")
     explicit cast(from: f32) -> i64
+    @Intrinsic("i64.from_f64")
+    explicit cast(from: f64) -> i64
     @Intrinsic("i64.from_bool")
     explicit cast(from: bool) -> i64
 
@@ -103,6 +177,236 @@ type I64
     @Intrinsic("i64.lt") op <(left: i64, right: i64) -> bool
     @Intrinsic("i64.ge") op >=(left: i64, right: i64) -> bool
     @Intrinsic("i64.le") op <=(left: i64, right: i64) -> bool
+}
+
+@BuiltinType(1) @AllowCustomLiterals @UnsignedInt
+type U8
+{
+    @Intrinsic("u8.literal_i32") literal u8(from: i32)
+
+    @Intrinsic("u8.from_i8")
+    explicit cast(from: i8) -> u8
+    @Intrinsic("u8.from_i16")
+    explicit cast(from: i16) -> u8
+    @Intrinsic("u8.from_i32")
+    explicit cast(from: i32) -> u8
+    @Intrinsic("u8.from_i64")
+    explicit cast(from: i64) -> u8
+    @Intrinsic("u8.from_u16")
+    explicit cast(from: u16) -> u8
+    @Intrinsic("u8.from_u32")
+    explicit cast(from: u32) -> u8
+    @Intrinsic("u8.from_u64")
+    explicit cast(from: u64) -> u8
+    @Intrinsic("u8.from_f32")
+    explicit cast(from: f32) -> u8
+    @Intrinsic("u8.from_f64")
+    explicit cast(from: f64) -> u8
+
+    @Intrinsic("u8.add") op +(left: u8, right: u8) -> u8
+    @Intrinsic("u8.sub") op -(left: u8, right: u8) -> u8
+    @Intrinsic("u8.mul") op *(left: u8, right: u8) -> u8
+    @Intrinsic("u8.div") op /(left: u8, right: u8) -> u8
+    @Intrinsic("u8.mod") op %(left: u8, right: u8) -> u8
+    @Intrinsic("u8.eq") op ==(left: u8, right: u8) -> bool
+    @Intrinsic("u8.ne") op !=(left: u8, right: u8) -> bool
+    @Intrinsic("u8.gt") op >(left: u8, right: u8) -> bool
+    @Intrinsic("u8.lt") op <(left: u8, right: u8) -> bool
+    @Intrinsic("u8.ge") op >=(left: u8, right: u8) -> bool
+    @Intrinsic("u8.le") op <=(left: u8, right: u8) -> bool
+}
+
+@BuiltinType(2) @AllowCustomLiterals @UnsignedInt
+type U16
+{
+    @Intrinsic("u16.literal_i32") literal u16(from: i32)
+
+    @Intrinsic("u16.from_u8")
+    implicit cast(from: u8) -> u16
+    @Intrinsic("u16.from_i8")
+    explicit cast(from: i8) -> u16
+    @Intrinsic("u16.from_i16")
+    explicit cast(from: i16) -> u16
+    @Intrinsic("u16.from_i32")
+    explicit cast(from: i32) -> u16
+    @Intrinsic("u16.from_i64")
+    explicit cast(from: i64) -> u16
+    @Intrinsic("u16.from_u32")
+    explicit cast(from: u32) -> u16
+    @Intrinsic("u16.from_u64")
+    explicit cast(from: u64) -> u16
+    @Intrinsic("u16.from_f32")
+    explicit cast(from: f32) -> u16
+    @Intrinsic("u16.from_f64")
+    explicit cast(from: f64) -> u16
+
+    @Intrinsic("u16.add") op +(left: u16, right: u16) -> u16
+    @Intrinsic("u16.sub") op -(left: u16, right: u16) -> u16
+    @Intrinsic("u16.mul") op *(left: u16, right: u16) -> u16
+    @Intrinsic("u16.div") op /(left: u16, right: u16) -> u16
+    @Intrinsic("u16.mod") op %(left: u16, right: u16) -> u16
+    @Intrinsic("u16.eq") op ==(left: u16, right: u16) -> bool
+    @Intrinsic("u16.ne") op !=(left: u16, right: u16) -> bool
+    @Intrinsic("u16.gt") op >(left: u16, right: u16) -> bool
+    @Intrinsic("u16.lt") op <(left: u16, right: u16) -> bool
+    @Intrinsic("u16.ge") op >=(left: u16, right: u16) -> bool
+    @Intrinsic("u16.le") op <=(left: u16, right: u16) -> bool
+}
+
+@BuiltinType(4) @AllowCustomLiterals @UnsignedInt
+type U32
+{
+    @Intrinsic("u32.literal_i32") literal u32(from: i32)
+    @Intrinsic("u32.literal_i64") literal u32(from: i64)
+
+    @Intrinsic("u32.from_u8")
+    implicit cast(from: u8) -> u32
+    @Intrinsic("u32.from_u16")
+    implicit cast(from: u16) -> u32
+    @Intrinsic("u32.from_i8")
+    explicit cast(from: i8) -> u32
+    @Intrinsic("u32.from_i16")
+    explicit cast(from: i16) -> u32
+    @Intrinsic("u32.from_i32")
+    explicit cast(from: i32) -> u32
+    @Intrinsic("u32.from_i64")
+    explicit cast(from: i64) -> u32
+    @Intrinsic("u32.from_u64")
+    explicit cast(from: u64) -> u32
+    @Intrinsic("u32.from_f32")
+    explicit cast(from: f32) -> u32
+    @Intrinsic("u32.from_f64")
+    explicit cast(from: f64) -> u32
+
+    @Intrinsic("u32.add") op +(left: u32, right: u32) -> u32
+    @Intrinsic("u32.sub") op -(left: u32, right: u32) -> u32
+    @Intrinsic("u32.mul") op *(left: u32, right: u32) -> u32
+    @Intrinsic("u32.div") op /(left: u32, right: u32) -> u32
+    @Intrinsic("u32.mod") op %(left: u32, right: u32) -> u32
+    @Intrinsic("u32.eq") op ==(left: u32, right: u32) -> bool
+    @Intrinsic("u32.ne") op !=(left: u32, right: u32) -> bool
+    @Intrinsic("u32.gt") op >(left: u32, right: u32) -> bool
+    @Intrinsic("u32.lt") op <(left: u32, right: u32) -> bool
+    @Intrinsic("u32.ge") op >=(left: u32, right: u32) -> bool
+    @Intrinsic("u32.le") op <=(left: u32, right: u32) -> bool
+}
+
+@BuiltinType(8) @AllowCustomLiterals @UnsignedInt
+type U64
+{
+    @Intrinsic("u64.literal_i32") literal u64(from: i32)
+    @Intrinsic("u64.literal_i64") literal u64(from: i64)
+
+    @Intrinsic("u64.from_u8")
+    implicit cast(from: u8) -> u64
+    @Intrinsic("u64.from_u16")
+    implicit cast(from: u16) -> u64
+    @Intrinsic("u64.from_u32")
+    implicit cast(from: u32) -> u64
+    @Intrinsic("u64.from_i8")
+    explicit cast(from: i8) -> u64
+    @Intrinsic("u64.from_i16")
+    explicit cast(from: i16) -> u64
+    @Intrinsic("u64.from_i32")
+    explicit cast(from: i32) -> u64
+    @Intrinsic("u64.from_i64")
+    explicit cast(from: i64) -> u64
+    @Intrinsic("u64.from_f32")
+    explicit cast(from: f32) -> u64
+    @Intrinsic("u64.from_f64")
+    explicit cast(from: f64) -> u64
+
+    @Intrinsic("u64.add") op +(left: u64, right: u64) -> u64
+    @Intrinsic("u64.sub") op -(left: u64, right: u64) -> u64
+    @Intrinsic("u64.mul") op *(left: u64, right: u64) -> u64
+    @Intrinsic("u64.div") op /(left: u64, right: u64) -> u64
+    @Intrinsic("u64.mod") op %(left: u64, right: u64) -> u64
+    @Intrinsic("u64.eq") op ==(left: u64, right: u64) -> bool
+    @Intrinsic("u64.ne") op !=(left: u64, right: u64) -> bool
+    @Intrinsic("u64.gt") op >(left: u64, right: u64) -> bool
+    @Intrinsic("u64.lt") op <(left: u64, right: u64) -> bool
+    @Intrinsic("u64.ge") op >=(left: u64, right: u64) -> bool
+    @Intrinsic("u64.le") op <=(left: u64, right: u64) -> bool
+}
+
+@BuiltinType(4) @AllowCustomLiterals @NumericFloat
+type F32
+{
+    @Intrinsic("f32.literal_i32") literal f32(from: i32)
+    @Intrinsic("f32.literal_f32") literal f32(from: f32)
+
+    @Intrinsic("f32.from_i8")
+    implicit cast(from: i8) -> f32
+    @Intrinsic("f32.from_i16")
+    implicit cast(from: i16) -> f32
+    @Intrinsic("f32.from_i32")
+    implicit cast(from: i32) -> f32
+    @Intrinsic("f32.from_i64")
+    implicit cast(from: i64) -> f32
+    @Intrinsic("f32.from_u8")
+    implicit cast(from: u8) -> f32
+    @Intrinsic("f32.from_u16")
+    implicit cast(from: u16) -> f32
+    @Intrinsic("f32.from_u32")
+    implicit cast(from: u32) -> f32
+    @Intrinsic("f32.from_u64")
+    implicit cast(from: u64) -> f32
+    @Intrinsic("f32.from_f64")
+    explicit cast(from: f64) -> f32
+
+    @Intrinsic("f32.neg") op -(value: f32) -> f32
+    @Intrinsic("f32.pos") op +(value: f32) -> f32
+    @Intrinsic("f32.add") op +(left: f32, right: f32) -> f32
+    @Intrinsic("f32.sub") op -(left: f32, right: f32) -> f32
+    @Intrinsic("f32.mul") op *(left: f32, right: f32) -> f32
+    @Intrinsic("f32.div") op /(left: f32, right: f32) -> f32
+    @Intrinsic("f32.mod") op %(left: f32, right: f32) -> f32
+    @Intrinsic("f32.eq") op ==(left: f32, right: f32) -> bool
+    @Intrinsic("f32.ne") op !=(left: f32, right: f32) -> bool
+    @Intrinsic("f32.gt") op >(left: f32, right: f32) -> bool
+    @Intrinsic("f32.lt") op <(left: f32, right: f32) -> bool
+    @Intrinsic("f32.ge") op >=(left: f32, right: f32) -> bool
+    @Intrinsic("f32.le") op <=(left: f32, right: f32) -> bool
+}
+
+@BuiltinType(8) @AllowCustomLiterals @NumericFloat
+type F64
+{
+    @Intrinsic("f64.literal_i32") literal f64(from: i32)
+    @Intrinsic("f64.literal_f32") literal f64(from: f32)
+
+    @Intrinsic("f64.from_i8")
+    implicit cast(from: i8) -> f64
+    @Intrinsic("f64.from_i16")
+    implicit cast(from: i16) -> f64
+    @Intrinsic("f64.from_i32")
+    implicit cast(from: i32) -> f64
+    @Intrinsic("f64.from_i64")
+    implicit cast(from: i64) -> f64
+    @Intrinsic("f64.from_u8")
+    implicit cast(from: u8) -> f64
+    @Intrinsic("f64.from_u16")
+    implicit cast(from: u16) -> f64
+    @Intrinsic("f64.from_u32")
+    implicit cast(from: u32) -> f64
+    @Intrinsic("f64.from_u64")
+    implicit cast(from: u64) -> f64
+    @Intrinsic("f64.from_f32")
+    implicit cast(from: f32) -> f64
+
+    @Intrinsic("f64.neg") op -(value: f64) -> f64
+    @Intrinsic("f64.pos") op +(value: f64) -> f64
+    @Intrinsic("f64.add") op +(left: f64, right: f64) -> f64
+    @Intrinsic("f64.sub") op -(left: f64, right: f64) -> f64
+    @Intrinsic("f64.mul") op *(left: f64, right: f64) -> f64
+    @Intrinsic("f64.div") op /(left: f64, right: f64) -> f64
+    @Intrinsic("f64.mod") op %(left: f64, right: f64) -> f64
+    @Intrinsic("f64.eq") op ==(left: f64, right: f64) -> bool
+    @Intrinsic("f64.ne") op !=(left: f64, right: f64) -> bool
+    @Intrinsic("f64.gt") op >(left: f64, right: f64) -> bool
+    @Intrinsic("f64.lt") op <(left: f64, right: f64) -> bool
+    @Intrinsic("f64.ge") op >=(left: f64, right: f64) -> bool
+    @Intrinsic("f64.le") op <=(left: f64, right: f64) -> bool
 }
 
 @BuiltinType(1)
@@ -137,31 +441,6 @@ ref type Array<T>
 
     @Intrinsic("array.get") op [](self: Array<T>, index: i32) -> T
     @Intrinsic("array.set") op []=(self: Array<T>, index: i32, value: T)
-}
-
-@BuiltinType(1) @AllowCustomLiterals @UnsignedInt
-type U8
-{
-    @Intrinsic("u8.literal_i32") literal u8(from: i32)
-
-    @Intrinsic("u8.from_i32")
-    explicit cast(from: i32) -> u8
-    @Intrinsic("u8.from_i64")
-    explicit cast(from: i64) -> u8
-    @Intrinsic("u8.from_f32")
-    explicit cast(from: f32) -> u8
-
-    @Intrinsic("u8.add") op +(left: u8, right: u8) -> u8
-    @Intrinsic("u8.sub") op -(left: u8, right: u8) -> u8
-    @Intrinsic("u8.mul") op *(left: u8, right: u8) -> u8
-    @Intrinsic("u8.div") op /(left: u8, right: u8) -> u8
-    @Intrinsic("u8.mod") op %(left: u8, right: u8) -> u8
-    @Intrinsic("u8.eq") op ==(left: u8, right: u8) -> bool
-    @Intrinsic("u8.ne") op !=(left: u8, right: u8) -> bool
-    @Intrinsic("u8.gt") op >(left: u8, right: u8) -> bool
-    @Intrinsic("u8.lt") op <(left: u8, right: u8) -> bool
-    @Intrinsic("u8.ge") op >=(left: u8, right: u8) -> bool
-    @Intrinsic("u8.le") op <=(left: u8, right: u8) -> bool
 }
 
 @BuiltinType(1) @AllowCustomLiterals

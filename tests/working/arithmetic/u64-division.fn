@@ -1,0 +1,15 @@
+---
+Description: u64 wraps to its maximum and divides as unsigned
+Expected: 6148914691236517205
+---
+
+type Program
+{
+    static fn Main -> u64
+    {
+        var zero: u64 = 0
+        var one: u64 = 1
+        var max = zero - one
+        return max / 3u64
+    }
+}

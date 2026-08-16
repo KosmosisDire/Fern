@@ -1,0 +1,22 @@
+---
+Description: i8, i16, and u16 fields keep their own storage next to each other
+Expected: true
+---
+
+type Record
+{
+    tag: i8
+    count: i16
+    total: u16
+
+    init{}
+}
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var r = Record { tag = -5i8, count = -1000i16, total = 50000u16 }
+        return r.tag == -5i8 && r.count == -1000i16 && r.total == 50000u16
+    }
+}

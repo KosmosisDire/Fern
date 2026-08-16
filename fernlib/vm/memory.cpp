@@ -88,6 +88,14 @@ uint8_t VmMemory::read_u8(uint64_t addr)
     return bytes[addr];
 }
 
+uint16_t VmMemory::read_u16(uint64_t addr)
+{
+    validate(addr, 2);
+    uint16_t value;
+    std::memcpy(&value, bytes.data() + addr, 2);
+    return value;
+}
+
 uint32_t VmMemory::read_u32(uint64_t addr)
 {
     validate(addr, 4);
@@ -108,6 +116,12 @@ void VmMemory::write_u8(uint64_t addr, uint8_t value)
 {
     validate(addr, 1);
     bytes[addr] = value;
+}
+
+void VmMemory::write_u16(uint64_t addr, uint16_t value)
+{
+    validate(addr, 2);
+    std::memcpy(bytes.data() + addr, &value, 2);
 }
 
 void VmMemory::write_u32(uint64_t addr, uint32_t value)

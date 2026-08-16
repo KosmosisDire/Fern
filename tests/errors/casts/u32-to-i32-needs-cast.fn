@@ -1,0 +1,14 @@
+---
+Description: u32 does not implicitly narrow to i32
+Expected: FN3405
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: u32 = 5
+        var b: i32 = a
+        return b
+    }
+}

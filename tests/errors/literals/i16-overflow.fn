@@ -1,0 +1,13 @@
+---
+Description: Integer literal too large for i16
+Expected: FN3200
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x: i16 = 40000
+        return 0
+    }
+}

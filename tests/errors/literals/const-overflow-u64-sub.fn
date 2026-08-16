@@ -1,0 +1,13 @@
+---
+Description: Constant u64 subtraction below zero errors like the other unsigned types
+Expected: FN3220
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = 0u64 - 1u64
+        return 0
+    }
+}

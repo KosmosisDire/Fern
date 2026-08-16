@@ -17,7 +17,12 @@ bool ConstantValue::range_fits(TypeSymbol* target) const
     if (!named) return true;
 
     std::optional<IntRange> range = named->integer_range();
-    if (!range) return true;
+    if (!range)
+    {
+        // u64 has no computable range, but a negative constant still never fits an unsigned type
+        if (named->is_integer() && named->is_unsigned()) return intValue >= 0;
+        return true;
+    }
 
     return intValue >= range->min && intValue <= range->max;
 }
@@ -48,7 +53,8 @@ std::optional<ConstantValue> FhirLiteralExpr::compute_constant() const
 
 #pragma region Intrinsic Evaluators
 
-// Folding computes in 64 bits, so a result past that ceiling is out of range for every integer type
+// Folding computes in 64 bits, so a result past that ceiling is out of range for every ranged
+// integer type. u64 has no range, so its fold declines without an error and the runtime wraps
 static bool add_overflows(int64_t a, int64_t b)
 {
     int64_t r = static_cast<int64_t>(static_cast<uint64_t>(a) + static_cast<uint64_t>(b));
@@ -88,106 +94,212 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
 
     switch (kind)
     {
+        case IntrinsicKind::I8Add:
+        case IntrinsicKind::I16Add:
         case IntrinsicKind::I32Add:
         case IntrinsicKind::I64Add:
         case IntrinsicKind::U8Add:
+        case IntrinsicKind::U16Add:
+        case IntrinsicKind::U32Add:
+        case IntrinsicKind::U64Add:
             if (!isInt) return std::nullopt;
-            if (add_overflows(a.intValue, b.intValue)) { overflowed = true; return std::nullopt; }
+            if (add_overflows(a.intValue, b.intValue)) { overflowed = range.has_value(); return std::nullopt; }
             return ConstantValue::make_int(a.intValue + b.intValue);
+        case IntrinsicKind::I8Sub:
+        case IntrinsicKind::I16Sub:
         case IntrinsicKind::I32Sub:
         case IntrinsicKind::I64Sub:
         case IntrinsicKind::U8Sub:
+        case IntrinsicKind::U16Sub:
+        case IntrinsicKind::U32Sub:
+        case IntrinsicKind::U64Sub:
             if (!isInt) return std::nullopt;
-            if (sub_overflows(a.intValue, b.intValue)) { overflowed = true; return std::nullopt; }
+            if (sub_overflows(a.intValue, b.intValue)) { overflowed = range.has_value(); return std::nullopt; }
             return ConstantValue::make_int(a.intValue - b.intValue);
+        case IntrinsicKind::I8Mul:
+        case IntrinsicKind::I16Mul:
         case IntrinsicKind::I32Mul:
         case IntrinsicKind::I64Mul:
         case IntrinsicKind::U8Mul:
+        case IntrinsicKind::U16Mul:
+        case IntrinsicKind::U32Mul:
+        case IntrinsicKind::U64Mul:
             if (!isInt) return std::nullopt;
-            if (mul_overflows(a.intValue, b.intValue)) { overflowed = true; return std::nullopt; }
+            if (mul_overflows(a.intValue, b.intValue)) { overflowed = range.has_value(); return std::nullopt; }
             return ConstantValue::make_int(a.intValue * b.intValue);
+        case IntrinsicKind::I8Div:
+        case IntrinsicKind::I16Div:
         case IntrinsicKind::I32Div:
         case IntrinsicKind::I64Div:
-        case IntrinsicKind::U8Div:
             if (!isInt || b.intValue == 0) return std::nullopt;
             if (divide_overflows(a.intValue, b.intValue, range)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue / b.intValue);
+        case IntrinsicKind::I8Mod:
+        case IntrinsicKind::I16Mod:
         case IntrinsicKind::I32Mod:
         case IntrinsicKind::I64Mod:
-        case IntrinsicKind::U8Mod:
             if (!isInt || b.intValue == 0) return std::nullopt;
             if (divide_overflows(a.intValue, b.intValue, range)) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(a.intValue % b.intValue);
 
+        // Unsigned constants live in the signed 64 bit domain, so div, mod, and the ordered compares
+        // reread the bits as unsigned to match the runtime
+        case IntrinsicKind::U8Div:
+        case IntrinsicKind::U16Div:
+        case IntrinsicKind::U32Div:
+        case IntrinsicKind::U64Div:
+            if (!isInt || b.intValue == 0) return std::nullopt;
+            return ConstantValue::make_int(static_cast<int64_t>(
+                static_cast<uint64_t>(a.intValue) / static_cast<uint64_t>(b.intValue)));
+        case IntrinsicKind::U8Mod:
+        case IntrinsicKind::U16Mod:
+        case IntrinsicKind::U32Mod:
+        case IntrinsicKind::U64Mod:
+            if (!isInt || b.intValue == 0) return std::nullopt;
+            return ConstantValue::make_int(static_cast<int64_t>(
+                static_cast<uint64_t>(a.intValue) % static_cast<uint64_t>(b.intValue)));
+
+        // f32 folds round the doubles to float and compute at float width so the fold matches the runtime
         case IntrinsicKind::F32Add:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(static_cast<float>(a.floatValue) + static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Add:
             if (!isFloat) return std::nullopt;
             return ConstantValue::make_float(a.floatValue + b.floatValue);
         case IntrinsicKind::F32Sub:
             if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(static_cast<float>(a.floatValue) - static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Sub:
+            if (!isFloat) return std::nullopt;
             return ConstantValue::make_float(a.floatValue - b.floatValue);
         case IntrinsicKind::F32Mul:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(static_cast<float>(a.floatValue) * static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Mul:
             if (!isFloat) return std::nullopt;
             return ConstantValue::make_float(a.floatValue * b.floatValue);
         case IntrinsicKind::F32Div:
             if (!isFloat || b.floatValue == 0.0) return std::nullopt;
+            return ConstantValue::make_float(static_cast<float>(a.floatValue) / static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Div:
+            if (!isFloat || b.floatValue == 0.0) return std::nullopt;
             return ConstantValue::make_float(a.floatValue / b.floatValue);
         case IntrinsicKind::F32Mod:
             if (!isFloat || b.floatValue == 0.0) return std::nullopt;
+            return ConstantValue::make_float(std::fmod(static_cast<float>(a.floatValue), static_cast<float>(b.floatValue)));
+        case IntrinsicKind::F64Mod:
+            if (!isFloat || b.floatValue == 0.0) return std::nullopt;
             return ConstantValue::make_float(std::fmod(a.floatValue, b.floatValue));
 
+        case IntrinsicKind::I8Gt:
+        case IntrinsicKind::I16Gt:
         case IntrinsicKind::I32Gt:
         case IntrinsicKind::I64Gt:
-        case IntrinsicKind::U8Gt:
         case IntrinsicKind::C8Gt:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue > b.intValue);
+        case IntrinsicKind::I8Lt:
+        case IntrinsicKind::I16Lt:
         case IntrinsicKind::I32Lt:
         case IntrinsicKind::I64Lt:
-        case IntrinsicKind::U8Lt:
         case IntrinsicKind::C8Lt:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue < b.intValue);
+        case IntrinsicKind::I8Ge:
+        case IntrinsicKind::I16Ge:
         case IntrinsicKind::I32Ge:
         case IntrinsicKind::I64Ge:
-        case IntrinsicKind::U8Ge:
         case IntrinsicKind::C8Ge:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue >= b.intValue);
+        case IntrinsicKind::I8Le:
+        case IntrinsicKind::I16Le:
         case IntrinsicKind::I32Le:
         case IntrinsicKind::I64Le:
-        case IntrinsicKind::U8Le:
         case IntrinsicKind::C8Le:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue <= b.intValue);
+        case IntrinsicKind::U8Gt:
+        case IntrinsicKind::U16Gt:
+        case IntrinsicKind::U32Gt:
+        case IntrinsicKind::U64Gt:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<uint64_t>(a.intValue) > static_cast<uint64_t>(b.intValue));
+        case IntrinsicKind::U8Lt:
+        case IntrinsicKind::U16Lt:
+        case IntrinsicKind::U32Lt:
+        case IntrinsicKind::U64Lt:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<uint64_t>(a.intValue) < static_cast<uint64_t>(b.intValue));
+        case IntrinsicKind::U8Ge:
+        case IntrinsicKind::U16Ge:
+        case IntrinsicKind::U32Ge:
+        case IntrinsicKind::U64Ge:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<uint64_t>(a.intValue) >= static_cast<uint64_t>(b.intValue));
+        case IntrinsicKind::U8Le:
+        case IntrinsicKind::U16Le:
+        case IntrinsicKind::U32Le:
+        case IntrinsicKind::U64Le:
+            if (!isInt) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<uint64_t>(a.intValue) <= static_cast<uint64_t>(b.intValue));
+        case IntrinsicKind::I8Eq:
+        case IntrinsicKind::I16Eq:
         case IntrinsicKind::I32Eq:
         case IntrinsicKind::I64Eq:
         case IntrinsicKind::U8Eq:
+        case IntrinsicKind::U16Eq:
+        case IntrinsicKind::U32Eq:
+        case IntrinsicKind::U64Eq:
         case IntrinsicKind::C8Eq:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue == b.intValue);
+        case IntrinsicKind::I8Ne:
+        case IntrinsicKind::I16Ne:
         case IntrinsicKind::I32Ne:
         case IntrinsicKind::I64Ne:
         case IntrinsicKind::U8Ne:
+        case IntrinsicKind::U16Ne:
+        case IntrinsicKind::U32Ne:
+        case IntrinsicKind::U64Ne:
         case IntrinsicKind::C8Ne:
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue != b.intValue);
 
         case IntrinsicKind::F32Gt:
             if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<float>(a.floatValue) > static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Gt:
+            if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(a.floatValue > b.floatValue);
         case IntrinsicKind::F32Lt:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<float>(a.floatValue) < static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Lt:
             if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(a.floatValue < b.floatValue);
         case IntrinsicKind::F32Ge:
             if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<float>(a.floatValue) >= static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Ge:
+            if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(a.floatValue >= b.floatValue);
         case IntrinsicKind::F32Le:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<float>(a.floatValue) <= static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Le:
             if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(a.floatValue <= b.floatValue);
         case IntrinsicKind::F32Eq:
             if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<float>(a.floatValue) == static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Eq:
+            if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(a.floatValue == b.floatValue);
         case IntrinsicKind::F32Ne:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(static_cast<float>(a.floatValue) != static_cast<float>(b.floatValue));
+        case IntrinsicKind::F64Ne:
             if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(a.floatValue != b.floatValue);
 
@@ -213,19 +325,25 @@ static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const Constan
 {
     switch (kind)
     {
+        case IntrinsicKind::I8Neg:
+        case IntrinsicKind::I16Neg:
         case IntrinsicKind::I32Neg:
         case IntrinsicKind::I64Neg:
             if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
             if (a.intValue == INT64_MIN) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(-a.intValue);
         case IntrinsicKind::F32Neg:
+        case IntrinsicKind::F64Neg:
             if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
             return ConstantValue::make_float(-a.floatValue);
+        case IntrinsicKind::I8Pos:
+        case IntrinsicKind::I16Pos:
         case IntrinsicKind::I32Pos:
         case IntrinsicKind::I64Pos:
             if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
             return a;
         case IntrinsicKind::F32Pos:
+        case IntrinsicKind::F64Pos:
             if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
             return a;
         case IntrinsicKind::BoolNot:
@@ -324,6 +442,15 @@ static std::optional<ConstantValue> saturate_to_int(double value, NamedTypeSymbo
     return ConstantValue::make_int(static_cast<int64_t>(value));
 }
 
+// An f32 typed constant stores a double, so it rounds through float first to convert like the runtime
+static double float_operand_value(const FhirExpr* operand, const ConstantValue& inner)
+{
+    auto* source = operand->type ? operand->type->as<NamedTypeSymbol>() : nullptr;
+    if (source && source->is_float() && source->builtin_scalar_size() == 4)
+        return static_cast<float>(inner.floatValue);
+    return inner.floatValue;
+}
+
 std::optional<ConstantValue> FhirCastExpr::compute_constant() const
 {
     if (!operand) return std::nullopt;
@@ -335,16 +462,19 @@ std::optional<ConstantValue> FhirCastExpr::compute_constant() const
 
     if (targetNamed->is_float())
     {
-        if (inner->kind == ConstantValue::Kind::Float) return *inner;
-        if (inner->kind == ConstantValue::Kind::Int)
-            return ConstantValue::make_float(static_cast<double>(inner->intValue));
-        return std::nullopt;
+        double value = 0;
+        if (inner->kind == ConstantValue::Kind::Float) value = float_operand_value(operand, *inner);
+        else if (inner->kind == ConstantValue::Kind::Int) value = static_cast<double>(inner->intValue);
+        else return std::nullopt;
+
+        if (targetNamed->builtin_scalar_size() == 4) value = static_cast<float>(value);
+        return ConstantValue::make_float(value);
     }
 
     if (targetNamed->is_integer())
     {
         if (inner->kind == ConstantValue::Kind::Int) return wrap_to_int(inner->intValue, targetNamed);
-        if (inner->kind == ConstantValue::Kind::Float) return saturate_to_int(inner->floatValue, targetNamed);
+        if (inner->kind == ConstantValue::Kind::Float) return saturate_to_int(float_operand_value(operand, *inner), targetNamed);
         return std::nullopt;
     }
 

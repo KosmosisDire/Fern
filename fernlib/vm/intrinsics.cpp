@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <limits>
 
 #include <semantic/symbol/symbol.hpp>
 
@@ -13,6 +14,16 @@ namespace Fern
 #pragma region Numeric Helpers
 
 // Integer add, sub, mul, and neg wrap two's complement
+static int8_t wrap_add(int8_t a, int8_t b) { return static_cast<int8_t>(static_cast<uint8_t>(a) + static_cast<uint8_t>(b)); }
+static int8_t wrap_sub(int8_t a, int8_t b) { return static_cast<int8_t>(static_cast<uint8_t>(a) - static_cast<uint8_t>(b)); }
+static int8_t wrap_mul(int8_t a, int8_t b) { return static_cast<int8_t>(static_cast<uint8_t>(a) * static_cast<uint8_t>(b)); }
+static int8_t wrap_neg(int8_t a) { return static_cast<int8_t>(0u - static_cast<uint8_t>(a)); }
+
+static int16_t wrap_add(int16_t a, int16_t b) { return static_cast<int16_t>(static_cast<uint16_t>(a) + static_cast<uint16_t>(b)); }
+static int16_t wrap_sub(int16_t a, int16_t b) { return static_cast<int16_t>(static_cast<uint16_t>(a) - static_cast<uint16_t>(b)); }
+static int16_t wrap_mul(int16_t a, int16_t b) { return static_cast<int16_t>(static_cast<uint16_t>(a) * static_cast<uint16_t>(b)); }
+static int16_t wrap_neg(int16_t a) { return static_cast<int16_t>(0u - static_cast<uint16_t>(a)); }
+
 static int32_t wrap_add(int32_t a, int32_t b) { return static_cast<int32_t>(static_cast<uint32_t>(a) + static_cast<uint32_t>(b)); }
 static int32_t wrap_sub(int32_t a, int32_t b) { return static_cast<int32_t>(static_cast<uint32_t>(a) - static_cast<uint32_t>(b)); }
 static int32_t wrap_mul(int32_t a, int32_t b) { return static_cast<int32_t>(static_cast<uint32_t>(a) * static_cast<uint32_t>(b)); }
@@ -27,29 +38,28 @@ static uint8_t wrap_add(uint8_t a, uint8_t b) { return static_cast<uint8_t>(stat
 static uint8_t wrap_sub(uint8_t a, uint8_t b) { return static_cast<uint8_t>(static_cast<unsigned>(a) - b); }
 static uint8_t wrap_mul(uint8_t a, uint8_t b) { return static_cast<uint8_t>(static_cast<unsigned>(a) * b); }
 
+static uint16_t wrap_add(uint16_t a, uint16_t b) { return static_cast<uint16_t>(static_cast<unsigned>(a) + b); }
+static uint16_t wrap_sub(uint16_t a, uint16_t b) { return static_cast<uint16_t>(static_cast<unsigned>(a) - b); }
+static uint16_t wrap_mul(uint16_t a, uint16_t b) { return static_cast<uint16_t>(static_cast<unsigned>(a) * b); }
+
+static uint32_t wrap_add(uint32_t a, uint32_t b) { return a + b; }
+static uint32_t wrap_sub(uint32_t a, uint32_t b) { return a - b; }
+static uint32_t wrap_mul(uint32_t a, uint32_t b) { return a * b; }
+
+static uint64_t wrap_add(uint64_t a, uint64_t b) { return a + b; }
+static uint64_t wrap_sub(uint64_t a, uint64_t b) { return a - b; }
+static uint64_t wrap_mul(uint64_t a, uint64_t b) { return a * b; }
+
 // Float to int saturates, matching llvm.fptosi.sat and the wasm saturating conversions. NaN becomes 0.
-static int32_t saturate_i32(float f)
+// The bound compares are exact because every integer limit rounds to a representable double at or
+// past the true edge, and values inside the edge truncate into range anyway.
+template <typename Int>
+static Int saturate_int(double f)
 {
     if (f != f) return 0;
-    if (f >= 2147483648.0f) return INT32_MAX;
-    if (f < -2147483648.0f) return INT32_MIN;
-    return static_cast<int32_t>(f);
-}
-
-static int64_t saturate_i64(float f)
-{
-    if (f != f) return 0;
-    if (f >= 9223372036854775808.0f) return INT64_MAX;
-    if (f < -9223372036854775808.0f) return INT64_MIN;
-    return static_cast<int64_t>(f);
-}
-
-static uint8_t saturate_u8(float f)
-{
-    if (f != f) return 0;
-    if (f <= 0.0f) return 0;
-    if (f >= 255.0f) return 255;
-    return static_cast<uint8_t>(f);
+    if (f >= static_cast<double>(std::numeric_limits<Int>::max())) return std::numeric_limits<Int>::max();
+    if (f <= static_cast<double>(std::numeric_limits<Int>::min())) return std::numeric_limits<Int>::min();
+    return static_cast<Int>(f);
 }
 
 #pragma region Conversions
@@ -58,22 +68,122 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
 {
     switch (kind)
     {
+        // i8
+        case IntrinsicKind::I8FromI16:  return Value::make_i8(static_cast<int8_t>(operand.as_i16()));
+        case IntrinsicKind::I8FromI32:  return Value::make_i8(static_cast<int8_t>(operand.as_i32()));
+        case IntrinsicKind::I8FromI64:  return Value::make_i8(static_cast<int8_t>(operand.as_i64()));
+        case IntrinsicKind::I8FromU8:   return Value::make_i8(static_cast<int8_t>(operand.as_u8()));
+        case IntrinsicKind::I8FromU16:  return Value::make_i8(static_cast<int8_t>(operand.as_u16()));
+        case IntrinsicKind::I8FromU32:  return Value::make_i8(static_cast<int8_t>(operand.as_u32()));
+        case IntrinsicKind::I8FromU64:  return Value::make_i8(static_cast<int8_t>(operand.as_u64()));
+        case IntrinsicKind::I8FromF32:  return Value::make_i8(saturate_int<int8_t>(operand.as_f32()));
+        case IntrinsicKind::I8FromF64:  return Value::make_i8(saturate_int<int8_t>(operand.as_f64()));
+
+        // i16
+        case IntrinsicKind::I16FromI8:  return Value::make_i16(static_cast<int16_t>(operand.as_i8()));
+        case IntrinsicKind::I16FromI32: return Value::make_i16(static_cast<int16_t>(operand.as_i32()));
+        case IntrinsicKind::I16FromI64: return Value::make_i16(static_cast<int16_t>(operand.as_i64()));
+        case IntrinsicKind::I16FromU8:  return Value::make_i16(static_cast<int16_t>(operand.as_u8()));
+        case IntrinsicKind::I16FromU16: return Value::make_i16(static_cast<int16_t>(operand.as_u16()));
+        case IntrinsicKind::I16FromU32: return Value::make_i16(static_cast<int16_t>(operand.as_u32()));
+        case IntrinsicKind::I16FromU64: return Value::make_i16(static_cast<int16_t>(operand.as_u64()));
+        case IntrinsicKind::I16FromF32: return Value::make_i16(saturate_int<int16_t>(operand.as_f32()));
+        case IntrinsicKind::I16FromF64: return Value::make_i16(saturate_int<int16_t>(operand.as_f64()));
+
+        // i32
+        case IntrinsicKind::I32FromI8:   return Value::make_i32(static_cast<int32_t>(operand.as_i8()));
+        case IntrinsicKind::I32FromI16:  return Value::make_i32(static_cast<int32_t>(operand.as_i16()));
+        case IntrinsicKind::I32FromI64:  return Value::make_i32(static_cast<int32_t>(operand.as_i64()));
         case IntrinsicKind::I32FromU8:   return Value::make_i32(static_cast<int32_t>(operand.as_u8()));
-        case IntrinsicKind::I32FromI64:  return Value::make_i32(static_cast<int32_t>(static_cast<uint32_t>(operand.as_i64())));
-        case IntrinsicKind::I32FromF32:  return Value::make_i32(saturate_i32(operand.as_f32()));
+        case IntrinsicKind::I32FromU16:  return Value::make_i32(static_cast<int32_t>(operand.as_u16()));
+        case IntrinsicKind::I32FromU32:  return Value::make_i32(static_cast<int32_t>(operand.as_u32()));
+        case IntrinsicKind::I32FromU64:  return Value::make_i32(static_cast<int32_t>(operand.as_u64()));
+        case IntrinsicKind::I32FromF32:  return Value::make_i32(saturate_int<int32_t>(operand.as_f32()));
+        case IntrinsicKind::I32FromF64:  return Value::make_i32(saturate_int<int32_t>(operand.as_f64()));
         case IntrinsicKind::I32FromBool: return Value::make_i32(operand.as_bool() ? 1 : 0);
+
+        // i64
+        case IntrinsicKind::I64FromI8:   return Value::make_i64(static_cast<int64_t>(operand.as_i8()));
+        case IntrinsicKind::I64FromI16:  return Value::make_i64(static_cast<int64_t>(operand.as_i16()));
         case IntrinsicKind::I64FromI32:  return Value::make_i64(static_cast<int64_t>(operand.as_i32()));
         case IntrinsicKind::I64FromU8:   return Value::make_i64(static_cast<int64_t>(operand.as_u8()));
-        case IntrinsicKind::I64FromF32:  return Value::make_i64(saturate_i64(operand.as_f32()));
+        case IntrinsicKind::I64FromU16:  return Value::make_i64(static_cast<int64_t>(operand.as_u16()));
+        case IntrinsicKind::I64FromU32:  return Value::make_i64(static_cast<int64_t>(operand.as_u32()));
+        case IntrinsicKind::I64FromU64:  return Value::make_i64(static_cast<int64_t>(operand.as_u64()));
+        case IntrinsicKind::I64FromF32:  return Value::make_i64(saturate_int<int64_t>(operand.as_f32()));
+        case IntrinsicKind::I64FromF64:  return Value::make_i64(saturate_int<int64_t>(operand.as_f64()));
         case IntrinsicKind::I64FromBool: return Value::make_i64(operand.as_bool() ? 1 : 0);
-        case IntrinsicKind::F32FromI32:  return Value::make_f32(static_cast<float>(operand.as_i32()));
-        case IntrinsicKind::F32FromI64:  return Value::make_f32(static_cast<float>(operand.as_i64()));
-        case IntrinsicKind::F32FromU8:   return Value::make_f32(static_cast<float>(operand.as_u8()));
-        case IntrinsicKind::U8FromI32:   return Value::make_u8(static_cast<uint8_t>(static_cast<uint32_t>(operand.as_i32())));
-        case IntrinsicKind::U8FromI64:   return Value::make_u8(static_cast<uint8_t>(static_cast<uint64_t>(operand.as_i64())));
-        case IntrinsicKind::U8FromF32:   return Value::make_u8(saturate_u8(operand.as_f32()));
+
+        // u8
+        case IntrinsicKind::U8FromI8:   return Value::make_u8(static_cast<uint8_t>(operand.as_i8()));
+        case IntrinsicKind::U8FromI16:  return Value::make_u8(static_cast<uint8_t>(operand.as_i16()));
+        case IntrinsicKind::U8FromI32:  return Value::make_u8(static_cast<uint8_t>(operand.as_i32()));
+        case IntrinsicKind::U8FromI64:  return Value::make_u8(static_cast<uint8_t>(operand.as_i64()));
+        case IntrinsicKind::U8FromU16:  return Value::make_u8(static_cast<uint8_t>(operand.as_u16()));
+        case IntrinsicKind::U8FromU32:  return Value::make_u8(static_cast<uint8_t>(operand.as_u32()));
+        case IntrinsicKind::U8FromU64:  return Value::make_u8(static_cast<uint8_t>(operand.as_u64()));
+        case IntrinsicKind::U8FromF32:  return Value::make_u8(saturate_int<uint8_t>(operand.as_f32()));
+        case IntrinsicKind::U8FromF64:  return Value::make_u8(saturate_int<uint8_t>(operand.as_f64()));
+
+        // u16
+        case IntrinsicKind::U16FromI8:  return Value::make_u16(static_cast<uint16_t>(operand.as_i8()));
+        case IntrinsicKind::U16FromI16: return Value::make_u16(static_cast<uint16_t>(operand.as_i16()));
+        case IntrinsicKind::U16FromI32: return Value::make_u16(static_cast<uint16_t>(operand.as_i32()));
+        case IntrinsicKind::U16FromI64: return Value::make_u16(static_cast<uint16_t>(operand.as_i64()));
+        case IntrinsicKind::U16FromU8:  return Value::make_u16(static_cast<uint16_t>(operand.as_u8()));
+        case IntrinsicKind::U16FromU32: return Value::make_u16(static_cast<uint16_t>(operand.as_u32()));
+        case IntrinsicKind::U16FromU64: return Value::make_u16(static_cast<uint16_t>(operand.as_u64()));
+        case IntrinsicKind::U16FromF32: return Value::make_u16(saturate_int<uint16_t>(operand.as_f32()));
+        case IntrinsicKind::U16FromF64: return Value::make_u16(saturate_int<uint16_t>(operand.as_f64()));
+
+        // u32
+        case IntrinsicKind::U32FromI8:  return Value::make_u32(static_cast<uint32_t>(operand.as_i8()));
+        case IntrinsicKind::U32FromI16: return Value::make_u32(static_cast<uint32_t>(operand.as_i16()));
+        case IntrinsicKind::U32FromI32: return Value::make_u32(static_cast<uint32_t>(operand.as_i32()));
+        case IntrinsicKind::U32FromI64: return Value::make_u32(static_cast<uint32_t>(operand.as_i64()));
+        case IntrinsicKind::U32FromU8:  return Value::make_u32(static_cast<uint32_t>(operand.as_u8()));
+        case IntrinsicKind::U32FromU16: return Value::make_u32(static_cast<uint32_t>(operand.as_u16()));
+        case IntrinsicKind::U32FromU64: return Value::make_u32(static_cast<uint32_t>(operand.as_u64()));
+        case IntrinsicKind::U32FromF32: return Value::make_u32(saturate_int<uint32_t>(operand.as_f32()));
+        case IntrinsicKind::U32FromF64: return Value::make_u32(saturate_int<uint32_t>(operand.as_f64()));
+
+        // u64
+        case IntrinsicKind::U64FromI8:  return Value::make_u64(static_cast<uint64_t>(operand.as_i8()));
+        case IntrinsicKind::U64FromI16: return Value::make_u64(static_cast<uint64_t>(operand.as_i16()));
+        case IntrinsicKind::U64FromI32: return Value::make_u64(static_cast<uint64_t>(operand.as_i32()));
+        case IntrinsicKind::U64FromI64: return Value::make_u64(static_cast<uint64_t>(operand.as_i64()));
+        case IntrinsicKind::U64FromU8:  return Value::make_u64(static_cast<uint64_t>(operand.as_u8()));
+        case IntrinsicKind::U64FromU16: return Value::make_u64(static_cast<uint64_t>(operand.as_u16()));
+        case IntrinsicKind::U64FromU32: return Value::make_u64(static_cast<uint64_t>(operand.as_u32()));
+        case IntrinsicKind::U64FromF32: return Value::make_u64(saturate_int<uint64_t>(operand.as_f32()));
+        case IntrinsicKind::U64FromF64: return Value::make_u64(saturate_int<uint64_t>(operand.as_f64()));
+
+        // f32
+        case IntrinsicKind::F32FromI8:  return Value::make_f32(static_cast<float>(operand.as_i8()));
+        case IntrinsicKind::F32FromI16: return Value::make_f32(static_cast<float>(operand.as_i16()));
+        case IntrinsicKind::F32FromI32: return Value::make_f32(static_cast<float>(operand.as_i32()));
+        case IntrinsicKind::F32FromI64: return Value::make_f32(static_cast<float>(operand.as_i64()));
+        case IntrinsicKind::F32FromU8:  return Value::make_f32(static_cast<float>(operand.as_u8()));
+        case IntrinsicKind::F32FromU16: return Value::make_f32(static_cast<float>(operand.as_u16()));
+        case IntrinsicKind::F32FromU32: return Value::make_f32(static_cast<float>(operand.as_u32()));
+        case IntrinsicKind::F32FromU64: return Value::make_f32(static_cast<float>(operand.as_u64()));
+        case IntrinsicKind::F32FromF64: return Value::make_f32(static_cast<float>(operand.as_f64()));
+
+        // f64
+        case IntrinsicKind::F64FromI8:  return Value::make_f64(static_cast<double>(operand.as_i8()));
+        case IntrinsicKind::F64FromI16: return Value::make_f64(static_cast<double>(operand.as_i16()));
+        case IntrinsicKind::F64FromI32: return Value::make_f64(static_cast<double>(operand.as_i32()));
+        case IntrinsicKind::F64FromI64: return Value::make_f64(static_cast<double>(operand.as_i64()));
+        case IntrinsicKind::F64FromU8:  return Value::make_f64(static_cast<double>(operand.as_u8()));
+        case IntrinsicKind::F64FromU16: return Value::make_f64(static_cast<double>(operand.as_u16()));
+        case IntrinsicKind::F64FromU32: return Value::make_f64(static_cast<double>(operand.as_u32()));
+        case IntrinsicKind::F64FromU64: return Value::make_f64(static_cast<double>(operand.as_u64()));
+        case IntrinsicKind::F64FromF32: return Value::make_f64(static_cast<double>(operand.as_f32()));
+
+        // bool
         case IntrinsicKind::BoolFromI32: return Value::make_bool(operand.as_i32() != 0);
         case IntrinsicKind::BoolFromI64: return Value::make_bool(operand.as_i64() != 0);
+
         default: break;
     }
     throw VmError{std::format("conversion not implemented: {}", format(kind))};
@@ -112,6 +222,64 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
 
     switch (kind)
     {
+        // i8 arithmetic and compares
+        case IntrinsicKind::I8Neg: return Value::make_i8(wrap_neg(args[0].as_i8()));
+        case IntrinsicKind::I8Pos: return Value::make_i8(args[0].as_i8());
+        case IntrinsicKind::I8Add: return Value::make_i8(wrap_add(args[0].as_i8(), args[1].as_i8()));
+        case IntrinsicKind::I8Sub: return Value::make_i8(wrap_sub(args[0].as_i8(), args[1].as_i8()));
+        case IntrinsicKind::I8Mul: return Value::make_i8(wrap_mul(args[0].as_i8(), args[1].as_i8()));
+        case IntrinsicKind::I8Div:
+        {
+            int8_t a = args[0].as_i8();
+            int8_t b = args[1].as_i8();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT8_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i8(static_cast<int8_t>(a / b));
+        }
+        case IntrinsicKind::I8Mod:
+        {
+            int8_t a = args[0].as_i8();
+            int8_t b = args[1].as_i8();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT8_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i8(static_cast<int8_t>(a % b));
+        }
+        case IntrinsicKind::I8Eq: return Value::make_bool(args[0].as_i8() == args[1].as_i8());
+        case IntrinsicKind::I8Ne: return Value::make_bool(args[0].as_i8() != args[1].as_i8());
+        case IntrinsicKind::I8Gt: return Value::make_bool(args[0].as_i8() > args[1].as_i8());
+        case IntrinsicKind::I8Lt: return Value::make_bool(args[0].as_i8() < args[1].as_i8());
+        case IntrinsicKind::I8Ge: return Value::make_bool(args[0].as_i8() >= args[1].as_i8());
+        case IntrinsicKind::I8Le: return Value::make_bool(args[0].as_i8() <= args[1].as_i8());
+
+        // i16 arithmetic and compares
+        case IntrinsicKind::I16Neg: return Value::make_i16(wrap_neg(args[0].as_i16()));
+        case IntrinsicKind::I16Pos: return Value::make_i16(args[0].as_i16());
+        case IntrinsicKind::I16Add: return Value::make_i16(wrap_add(args[0].as_i16(), args[1].as_i16()));
+        case IntrinsicKind::I16Sub: return Value::make_i16(wrap_sub(args[0].as_i16(), args[1].as_i16()));
+        case IntrinsicKind::I16Mul: return Value::make_i16(wrap_mul(args[0].as_i16(), args[1].as_i16()));
+        case IntrinsicKind::I16Div:
+        {
+            int16_t a = args[0].as_i16();
+            int16_t b = args[1].as_i16();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT16_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i16(static_cast<int16_t>(a / b));
+        }
+        case IntrinsicKind::I16Mod:
+        {
+            int16_t a = args[0].as_i16();
+            int16_t b = args[1].as_i16();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT16_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i16(static_cast<int16_t>(a % b));
+        }
+        case IntrinsicKind::I16Eq: return Value::make_bool(args[0].as_i16() == args[1].as_i16());
+        case IntrinsicKind::I16Ne: return Value::make_bool(args[0].as_i16() != args[1].as_i16());
+        case IntrinsicKind::I16Gt: return Value::make_bool(args[0].as_i16() > args[1].as_i16());
+        case IntrinsicKind::I16Lt: return Value::make_bool(args[0].as_i16() < args[1].as_i16());
+        case IntrinsicKind::I16Ge: return Value::make_bool(args[0].as_i16() >= args[1].as_i16());
+        case IntrinsicKind::I16Le: return Value::make_bool(args[0].as_i16() <= args[1].as_i16());
+
         // i32 arithmetic and compares
         case IntrinsicKind::I32Neg: return Value::make_i32(wrap_neg(args[0].as_i32()));
         case IntrinsicKind::I32Pos: return Value::make_i32(args[0].as_i32());
@@ -170,21 +338,6 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::I64Ge: return Value::make_bool(args[0].as_i64() >= args[1].as_i64());
         case IntrinsicKind::I64Le: return Value::make_bool(args[0].as_i64() <= args[1].as_i64());
 
-        // f32 arithmetic and compares. Division by zero follows IEEE, no error.
-        case IntrinsicKind::F32Neg: return Value::make_f32(-args[0].as_f32());
-        case IntrinsicKind::F32Pos: return Value::make_f32(args[0].as_f32());
-        case IntrinsicKind::F32Add: return Value::make_f32(args[0].as_f32() + args[1].as_f32());
-        case IntrinsicKind::F32Sub: return Value::make_f32(args[0].as_f32() - args[1].as_f32());
-        case IntrinsicKind::F32Mul: return Value::make_f32(args[0].as_f32() * args[1].as_f32());
-        case IntrinsicKind::F32Div: return Value::make_f32(args[0].as_f32() / args[1].as_f32());
-        case IntrinsicKind::F32Mod: return Value::make_f32(std::fmod(args[0].as_f32(), args[1].as_f32()));
-        case IntrinsicKind::F32Eq: return Value::make_bool(args[0].as_f32() == args[1].as_f32());
-        case IntrinsicKind::F32Ne: return Value::make_bool(args[0].as_f32() != args[1].as_f32());
-        case IntrinsicKind::F32Gt: return Value::make_bool(args[0].as_f32() > args[1].as_f32());
-        case IntrinsicKind::F32Lt: return Value::make_bool(args[0].as_f32() < args[1].as_f32());
-        case IntrinsicKind::F32Ge: return Value::make_bool(args[0].as_f32() >= args[1].as_f32());
-        case IntrinsicKind::F32Le: return Value::make_bool(args[0].as_f32() <= args[1].as_f32());
-
         // u8 arithmetic and compares
         case IntrinsicKind::U8Add: return Value::make_u8(wrap_add(args[0].as_u8(), args[1].as_u8()));
         case IntrinsicKind::U8Sub: return Value::make_u8(wrap_sub(args[0].as_u8(), args[1].as_u8()));
@@ -207,6 +360,105 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::U8Lt: return Value::make_bool(args[0].as_u8() < args[1].as_u8());
         case IntrinsicKind::U8Ge: return Value::make_bool(args[0].as_u8() >= args[1].as_u8());
         case IntrinsicKind::U8Le: return Value::make_bool(args[0].as_u8() <= args[1].as_u8());
+
+        // u16 arithmetic and compares
+        case IntrinsicKind::U16Add: return Value::make_u16(wrap_add(args[0].as_u16(), args[1].as_u16()));
+        case IntrinsicKind::U16Sub: return Value::make_u16(wrap_sub(args[0].as_u16(), args[1].as_u16()));
+        case IntrinsicKind::U16Mul: return Value::make_u16(wrap_mul(args[0].as_u16(), args[1].as_u16()));
+        case IntrinsicKind::U16Div:
+        {
+            uint16_t b = args[1].as_u16();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u16(static_cast<uint16_t>(args[0].as_u16() / b));
+        }
+        case IntrinsicKind::U16Mod:
+        {
+            uint16_t b = args[1].as_u16();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u16(static_cast<uint16_t>(args[0].as_u16() % b));
+        }
+        case IntrinsicKind::U16Eq: return Value::make_bool(args[0].as_u16() == args[1].as_u16());
+        case IntrinsicKind::U16Ne: return Value::make_bool(args[0].as_u16() != args[1].as_u16());
+        case IntrinsicKind::U16Gt: return Value::make_bool(args[0].as_u16() > args[1].as_u16());
+        case IntrinsicKind::U16Lt: return Value::make_bool(args[0].as_u16() < args[1].as_u16());
+        case IntrinsicKind::U16Ge: return Value::make_bool(args[0].as_u16() >= args[1].as_u16());
+        case IntrinsicKind::U16Le: return Value::make_bool(args[0].as_u16() <= args[1].as_u16());
+
+        // u32 arithmetic and compares
+        case IntrinsicKind::U32Add: return Value::make_u32(wrap_add(args[0].as_u32(), args[1].as_u32()));
+        case IntrinsicKind::U32Sub: return Value::make_u32(wrap_sub(args[0].as_u32(), args[1].as_u32()));
+        case IntrinsicKind::U32Mul: return Value::make_u32(wrap_mul(args[0].as_u32(), args[1].as_u32()));
+        case IntrinsicKind::U32Div:
+        {
+            uint32_t b = args[1].as_u32();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u32(args[0].as_u32() / b);
+        }
+        case IntrinsicKind::U32Mod:
+        {
+            uint32_t b = args[1].as_u32();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u32(args[0].as_u32() % b);
+        }
+        case IntrinsicKind::U32Eq: return Value::make_bool(args[0].as_u32() == args[1].as_u32());
+        case IntrinsicKind::U32Ne: return Value::make_bool(args[0].as_u32() != args[1].as_u32());
+        case IntrinsicKind::U32Gt: return Value::make_bool(args[0].as_u32() > args[1].as_u32());
+        case IntrinsicKind::U32Lt: return Value::make_bool(args[0].as_u32() < args[1].as_u32());
+        case IntrinsicKind::U32Ge: return Value::make_bool(args[0].as_u32() >= args[1].as_u32());
+        case IntrinsicKind::U32Le: return Value::make_bool(args[0].as_u32() <= args[1].as_u32());
+
+        // u64 arithmetic and compares
+        case IntrinsicKind::U64Add: return Value::make_u64(wrap_add(args[0].as_u64(), args[1].as_u64()));
+        case IntrinsicKind::U64Sub: return Value::make_u64(wrap_sub(args[0].as_u64(), args[1].as_u64()));
+        case IntrinsicKind::U64Mul: return Value::make_u64(wrap_mul(args[0].as_u64(), args[1].as_u64()));
+        case IntrinsicKind::U64Div:
+        {
+            uint64_t b = args[1].as_u64();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u64(args[0].as_u64() / b);
+        }
+        case IntrinsicKind::U64Mod:
+        {
+            uint64_t b = args[1].as_u64();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u64(args[0].as_u64() % b);
+        }
+        case IntrinsicKind::U64Eq: return Value::make_bool(args[0].as_u64() == args[1].as_u64());
+        case IntrinsicKind::U64Ne: return Value::make_bool(args[0].as_u64() != args[1].as_u64());
+        case IntrinsicKind::U64Gt: return Value::make_bool(args[0].as_u64() > args[1].as_u64());
+        case IntrinsicKind::U64Lt: return Value::make_bool(args[0].as_u64() < args[1].as_u64());
+        case IntrinsicKind::U64Ge: return Value::make_bool(args[0].as_u64() >= args[1].as_u64());
+        case IntrinsicKind::U64Le: return Value::make_bool(args[0].as_u64() <= args[1].as_u64());
+
+        // f32 arithmetic and compares. Division by zero follows IEEE, no error.
+        case IntrinsicKind::F32Neg: return Value::make_f32(-args[0].as_f32());
+        case IntrinsicKind::F32Pos: return Value::make_f32(args[0].as_f32());
+        case IntrinsicKind::F32Add: return Value::make_f32(args[0].as_f32() + args[1].as_f32());
+        case IntrinsicKind::F32Sub: return Value::make_f32(args[0].as_f32() - args[1].as_f32());
+        case IntrinsicKind::F32Mul: return Value::make_f32(args[0].as_f32() * args[1].as_f32());
+        case IntrinsicKind::F32Div: return Value::make_f32(args[0].as_f32() / args[1].as_f32());
+        case IntrinsicKind::F32Mod: return Value::make_f32(std::fmod(args[0].as_f32(), args[1].as_f32()));
+        case IntrinsicKind::F32Eq: return Value::make_bool(args[0].as_f32() == args[1].as_f32());
+        case IntrinsicKind::F32Ne: return Value::make_bool(args[0].as_f32() != args[1].as_f32());
+        case IntrinsicKind::F32Gt: return Value::make_bool(args[0].as_f32() > args[1].as_f32());
+        case IntrinsicKind::F32Lt: return Value::make_bool(args[0].as_f32() < args[1].as_f32());
+        case IntrinsicKind::F32Ge: return Value::make_bool(args[0].as_f32() >= args[1].as_f32());
+        case IntrinsicKind::F32Le: return Value::make_bool(args[0].as_f32() <= args[1].as_f32());
+
+        // f64 arithmetic and compares. Division by zero follows IEEE, no error.
+        case IntrinsicKind::F64Neg: return Value::make_f64(-args[0].as_f64());
+        case IntrinsicKind::F64Pos: return Value::make_f64(args[0].as_f64());
+        case IntrinsicKind::F64Add: return Value::make_f64(args[0].as_f64() + args[1].as_f64());
+        case IntrinsicKind::F64Sub: return Value::make_f64(args[0].as_f64() - args[1].as_f64());
+        case IntrinsicKind::F64Mul: return Value::make_f64(args[0].as_f64() * args[1].as_f64());
+        case IntrinsicKind::F64Div: return Value::make_f64(args[0].as_f64() / args[1].as_f64());
+        case IntrinsicKind::F64Mod: return Value::make_f64(std::fmod(args[0].as_f64(), args[1].as_f64()));
+        case IntrinsicKind::F64Eq: return Value::make_bool(args[0].as_f64() == args[1].as_f64());
+        case IntrinsicKind::F64Ne: return Value::make_bool(args[0].as_f64() != args[1].as_f64());
+        case IntrinsicKind::F64Gt: return Value::make_bool(args[0].as_f64() > args[1].as_f64());
+        case IntrinsicKind::F64Lt: return Value::make_bool(args[0].as_f64() < args[1].as_f64());
+        case IntrinsicKind::F64Ge: return Value::make_bool(args[0].as_f64() >= args[1].as_f64());
+        case IntrinsicKind::F64Le: return Value::make_bool(args[0].as_f64() <= args[1].as_f64());
 
         // bool
         case IntrinsicKind::BoolNot: return Value::make_bool(!args[0].as_bool());

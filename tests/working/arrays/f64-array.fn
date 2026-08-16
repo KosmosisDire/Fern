@@ -1,0 +1,13 @@
+---
+Description: f64 array elements read and write at full width
+Expected: 4
+---
+
+type Program
+{
+    static fn Main -> f64
+    {
+        var arr: f64[] = [1.5f64, 2.5f64]
+        return arr[0] + arr[1]
+    }
+}

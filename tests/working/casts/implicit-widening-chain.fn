@@ -1,0 +1,16 @@
+---
+Description: Unsigned values widen implicitly through every larger unsigned type
+Expected: 200
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: u8 = 200
+        var b: u16 = a
+        var c: u32 = b
+        var d: u64 = c
+        return (i32)d
+    }
+}

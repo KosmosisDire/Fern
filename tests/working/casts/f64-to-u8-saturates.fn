@@ -1,0 +1,13 @@
+---
+Description: f64 to u8 saturates at the top of the range
+Expected: 255
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var f: f64 = 300.5f64
+        return (i32)(u8)f
+    }
+}

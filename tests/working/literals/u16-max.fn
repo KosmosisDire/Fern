@@ -1,0 +1,13 @@
+---
+Description: u16 accepts its maximum value from a plain literal
+Expected: 65535
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x: u16 = 65535
+        return (i32)x
+    }
+}
