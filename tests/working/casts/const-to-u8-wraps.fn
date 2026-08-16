@@ -1,0 +1,13 @@
+---
+Description: Constant casts to u8 keep the low 8 bits above and below the range
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        return (u8)300 == 44u8
+            && (u8)(-1) == 255u8
+    }
+}

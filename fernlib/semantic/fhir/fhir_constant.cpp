@@ -294,6 +294,36 @@ bool FhirOpExpr::constant_overflows() const
 
 #pragma region Cast
 
+// Narrowing keeps the low bits and rereads the sign there, which is what the runtime conversion does
+static std::optional<ConstantValue> wrap_to_int(int64_t value, NamedTypeSymbol* target)
+{
+    std::optional<IntRange> range = target->integer_range();
+    std::optional<int> size = target->builtin_scalar_size();
+    if (!range || !size) return std::nullopt;
+
+    int bits = *size * 8;
+    if (bits >= 64) return ConstantValue::make_int(value);
+
+    uint64_t mask = (1ull << bits) - 1;
+    uint64_t kept = static_cast<uint64_t>(value) & mask;
+    bool negative = range->min < 0 && (kept & (1ull << (bits - 1))) != 0;
+
+    return ConstantValue::make_int(static_cast<int64_t>(negative ? kept | ~mask : kept));
+}
+
+// Float to int saturates in every backend, so the fold clamps instead of casting out of range
+static std::optional<ConstantValue> saturate_to_int(double value, NamedTypeSymbol* target)
+{
+    std::optional<IntRange> range = target->integer_range();
+    if (!range) return std::nullopt;
+
+    if (std::isnan(value)) return ConstantValue::make_int(0);
+    if (value <= static_cast<double>(range->min)) return ConstantValue::make_int(range->min);
+    if (value >= static_cast<double>(range->max)) return ConstantValue::make_int(range->max);
+
+    return ConstantValue::make_int(static_cast<int64_t>(value));
+}
+
 std::optional<ConstantValue> FhirCastExpr::compute_constant() const
 {
     if (!operand) return std::nullopt;
@@ -313,9 +343,8 @@ std::optional<ConstantValue> FhirCastExpr::compute_constant() const
 
     if (targetNamed->is_integer())
     {
-        if (inner->kind == ConstantValue::Kind::Int) return *inner;
-        if (inner->kind == ConstantValue::Kind::Float)
-            return ConstantValue::make_int(static_cast<int64_t>(inner->floatValue));
+        if (inner->kind == ConstantValue::Kind::Int) return wrap_to_int(inner->intValue, targetNamed);
+        if (inner->kind == ConstantValue::Kind::Float) return saturate_to_int(inner->floatValue, targetNamed);
         return std::nullopt;
     }
 
