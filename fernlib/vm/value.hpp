@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 
+#include <common/float16.hpp>
+
 #ifdef FERN_DEBUG
 #include <cassert>
 #endif
@@ -15,7 +17,7 @@ namespace Fern
 // An interpreter value. Addr covers frame and heap addresses as well as ref and string handles.
 struct Value
 {
-    enum class Kind { I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, Bool, C8, Addr };
+    enum class Kind { I8, I16, I32, I64, U8, U16, U32, U64, F16, F32, F64, Bool, C8, Addr };
 
     Kind kind;
     union
@@ -28,6 +30,7 @@ struct Value
         uint16_t ushortValue;
         uint32_t uintValue;
         uint64_t ulongValue;
+        uint16_t halfValue;
         float floatValue;
         double doubleValue;
         bool boolValue;
@@ -45,6 +48,7 @@ struct Value
     static Value make_u16(uint16_t v)  { Value x; x.kind = Kind::U16;  x.ushortValue = v; return x; }
     static Value make_u32(uint32_t v)  { Value x; x.kind = Kind::U32;  x.uintValue = v;   return x; }
     static Value make_u64(uint64_t v)  { Value x; x.kind = Kind::U64;  x.ulongValue = v;  return x; }
+    static Value make_f16(uint16_t v)  { Value x; x.kind = Kind::F16;  x.halfValue = v;   return x; }
     static Value make_f32(float v)     { Value x; x.kind = Kind::F32;  x.floatValue = v;  return x; }
     static Value make_f64(double v)    { Value x; x.kind = Kind::F64;  x.doubleValue = v; return x; }
     static Value make_bool(bool v)     { Value x; x.kind = Kind::Bool; x.boolValue = v;   return x; }
@@ -59,6 +63,7 @@ struct Value
     uint16_t as_u16()  const { check(Kind::U16);  return ushortValue; }
     uint32_t as_u32()  const { check(Kind::U32);  return uintValue; }
     uint64_t as_u64()  const { check(Kind::U64);  return ulongValue; }
+    uint16_t as_f16()  const { check(Kind::F16);  return halfValue; }
     float as_f32()     const { check(Kind::F32);  return floatValue; }
     double as_f64()    const { check(Kind::F64);  return doubleValue; }
     bool as_bool()     const { check(Kind::Bool); return boolValue; }
@@ -77,6 +82,7 @@ struct Value
             case Kind::U16:  return std::format("u16 {}", ushortValue);
             case Kind::U32:  return std::format("u32 {}", uintValue);
             case Kind::U64:  return std::format("u64 {}", ulongValue);
+            case Kind::F16:  return std::format("f16 {}", f16_to_float(halfValue));
             case Kind::F32:  return std::format("f32 {}", floatValue);
             case Kind::F64:  return std::format("f64 {}", doubleValue);
             case Kind::Bool: return std::format("bool {}", boolValue ? "true" : "false");
@@ -108,6 +114,7 @@ inline std::string_view format(Value::Kind kind)
         case Value::Kind::U16:  return "u16";
         case Value::Kind::U32:  return "u32";
         case Value::Kind::U64:  return "u64";
+        case Value::Kind::F16:  return "f16";
         case Value::Kind::F32:  return "f32";
         case Value::Kind::F64:  return "f64";
         case Value::Kind::Bool: return "bool";

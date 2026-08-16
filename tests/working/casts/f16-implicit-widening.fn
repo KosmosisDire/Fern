@@ -1,0 +1,19 @@
+---
+Description: Ints implicitly convert to f16 and f16 implicitly widens to f32 and f64
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var h: f16 = 100
+        var f: f32 = h
+        var d: f64 = h
+
+        return f == 100f32
+            && d == 100
+            && h + 1.5f32 == 101.5f32
+            && (f16)(0.1f64) == 0.1f16
+    }
+}

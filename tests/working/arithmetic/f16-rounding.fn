@@ -1,0 +1,20 @@
+---
+Description: Every f16 op rounds back to half width with ties to even
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        -- spacing at 2048 is 2, so 2049 ties down to 2048 and 2051 ties up to 2052
+        var a: f16 = 2048
+        var one: f16 = 1
+        var three: f16 = 3
+
+        return a + one == a
+            && a + three == 2052f16
+            && 2048f16 + 1f16 == 2048f16
+            && 2048f16 + 3f16 == 2052f16
+    }
+}

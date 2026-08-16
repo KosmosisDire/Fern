@@ -7,6 +7,7 @@
 
 #include <ast/ast.hpp>
 #include <common/diagnostic.hpp>
+#include <common/float16.hpp>
 #include <flir/context.hpp>
 #include <flir/fmt.hpp>
 #include <semantic/context.hpp>
@@ -33,6 +34,7 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
     u16Type = semantic.resolve_type_name("u16");
     u32Type = semantic.resolve_type_name("u32");
     u64Type = semantic.resolve_type_name("u64");
+    f16Type = semantic.resolve_type_name("f16");
     f32Type = semantic.resolve_type_name("f32");
     f64Type = semantic.resolve_type_name("f64");
     boolType = semantic.resolve_type_name("bool");
@@ -137,6 +139,7 @@ std::string Interpreter::format_result(const RunResult& result)
         case Value::Kind::U16:  return std::to_string(value.as_u16());
         case Value::Kind::U32:  return std::to_string(value.as_u32());
         case Value::Kind::U64:  return std::to_string(value.as_u64());
+        case Value::Kind::F16:  return std::format("{}", f16_to_float(value.as_f16()));
         case Value::Kind::F32:  return std::format("{}", value.as_f32());
         case Value::Kind::F64:  return std::format("{}", value.as_f64());
         case Value::Kind::Bool: return value.as_bool() ? "true" : "false";
@@ -302,6 +305,10 @@ Value Interpreter::eval_const(FlirConst* node)
         case Value::Kind::U64:  return Value::make_u64(static_cast<uint64_t>(cv.intValue));
         case Value::Kind::C8:   return Value::make_c8(static_cast<uint8_t>(cv.intValue));
         case Value::Kind::Bool: return Value::make_bool(cv.boolValue);
+        case Value::Kind::F16:
+            return Value::make_f16(f16_from_double(cv.kind == ConstantValue::Kind::Float
+                ? cv.floatValue
+                : static_cast<double>(cv.intValue)));
         case Value::Kind::F32:
             return Value::make_f32(cv.kind == ConstantValue::Kind::Float
                 ? static_cast<float>(cv.floatValue)
@@ -419,6 +426,7 @@ Value::Kind Interpreter::type_kind(TypeSymbol* type) const
     if (type == u16Type)  return Value::Kind::U16;
     if (type == u32Type)  return Value::Kind::U32;
     if (type == u64Type)  return Value::Kind::U64;
+    if (type == f16Type)  return Value::Kind::F16;
     if (type == f32Type)  return Value::Kind::F32;
     if (type == f64Type)  return Value::Kind::F64;
     if (type == boolType) return Value::Kind::Bool;
@@ -439,6 +447,7 @@ Value Interpreter::load_scalar(uint64_t addr, Value::Kind kind)
         case Value::Kind::U16:  return Value::make_u16(memory.read_u16(addr));
         case Value::Kind::U32:  return Value::make_u32(memory.read_u32(addr));
         case Value::Kind::U64:  return Value::make_u64(memory.read_u64(addr));
+        case Value::Kind::F16:  return Value::make_f16(memory.read_u16(addr));
         case Value::Kind::F32:
         {
             uint32_t bits = memory.read_u32(addr);
@@ -472,6 +481,7 @@ void Interpreter::store_scalar(uint64_t addr, Value value)
         case Value::Kind::U16:  memory.write_u16(addr, value.as_u16()); break;
         case Value::Kind::U32:  memory.write_u32(addr, value.as_u32()); break;
         case Value::Kind::U64:  memory.write_u64(addr, value.as_u64()); break;
+        case Value::Kind::F16:  memory.write_u16(addr, value.as_f16()); break;
         case Value::Kind::F32:
         {
             float raw = value.as_f32();

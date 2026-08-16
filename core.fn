@@ -37,6 +37,8 @@ type I8
     explicit cast(from: u32) -> i8
     @Intrinsic("i8.from_u64")
     explicit cast(from: u64) -> i8
+    @Intrinsic("i8.from_f16")
+    explicit cast(from: f16) -> i8
     @Intrinsic("i8.from_f32")
     explicit cast(from: f32) -> i8
     @Intrinsic("i8.from_f64")
@@ -76,6 +78,8 @@ type I16
     explicit cast(from: u32) -> i16
     @Intrinsic("i16.from_u64")
     explicit cast(from: u64) -> i16
+    @Intrinsic("i16.from_f16")
+    explicit cast(from: f16) -> i16
     @Intrinsic("i16.from_f32")
     explicit cast(from: f32) -> i16
     @Intrinsic("i16.from_f64")
@@ -115,6 +119,8 @@ type I32
     explicit cast(from: u32) -> i32
     @Intrinsic("i32.from_u64")
     explicit cast(from: u64) -> i32
+    @Intrinsic("i32.from_f16")
+    explicit cast(from: f16) -> i32
     @Intrinsic("i32.from_f32")
     explicit cast(from: f32) -> i32
     @Intrinsic("i32.from_f64")
@@ -157,6 +163,8 @@ type I64
     implicit cast(from: u32) -> i64
     @Intrinsic("i64.from_u64")
     explicit cast(from: u64) -> i64
+    @Intrinsic("i64.from_f16")
+    explicit cast(from: f16) -> i64
     @Intrinsic("i64.from_f32")
     explicit cast(from: f32) -> i64
     @Intrinsic("i64.from_f64")
@@ -198,6 +206,8 @@ type U8
     explicit cast(from: u32) -> u8
     @Intrinsic("u8.from_u64")
     explicit cast(from: u64) -> u8
+    @Intrinsic("u8.from_f16")
+    explicit cast(from: f16) -> u8
     @Intrinsic("u8.from_f32")
     explicit cast(from: f32) -> u8
     @Intrinsic("u8.from_f64")
@@ -235,6 +245,8 @@ type U16
     explicit cast(from: u32) -> u16
     @Intrinsic("u16.from_u64")
     explicit cast(from: u64) -> u16
+    @Intrinsic("u16.from_f16")
+    explicit cast(from: f16) -> u16
     @Intrinsic("u16.from_f32")
     explicit cast(from: f32) -> u16
     @Intrinsic("u16.from_f64")
@@ -273,6 +285,8 @@ type U32
     explicit cast(from: i64) -> u32
     @Intrinsic("u32.from_u64")
     explicit cast(from: u64) -> u32
+    @Intrinsic("u32.from_f16")
+    explicit cast(from: f16) -> u32
     @Intrinsic("u32.from_f32")
     explicit cast(from: f32) -> u32
     @Intrinsic("u32.from_f64")
@@ -311,6 +325,8 @@ type U64
     explicit cast(from: i32) -> u64
     @Intrinsic("u64.from_i64")
     explicit cast(from: i64) -> u64
+    @Intrinsic("u64.from_f16")
+    explicit cast(from: f16) -> u64
     @Intrinsic("u64.from_f32")
     explicit cast(from: f32) -> u64
     @Intrinsic("u64.from_f64")
@@ -327,6 +343,48 @@ type U64
     @Intrinsic("u64.lt") op <(left: u64, right: u64) -> bool
     @Intrinsic("u64.ge") op >=(left: u64, right: u64) -> bool
     @Intrinsic("u64.le") op <=(left: u64, right: u64) -> bool
+}
+
+@BuiltinType(2) @AllowCustomLiterals @NumericFloat
+type F16
+{
+    @Intrinsic("f16.literal_i32") literal f16(from: i32)
+    @Intrinsic("f16.literal_f32") literal f16(from: f32)
+
+    @Intrinsic("f16.from_i8")
+    implicit cast(from: i8) -> f16
+    @Intrinsic("f16.from_i16")
+    implicit cast(from: i16) -> f16
+    @Intrinsic("f16.from_i32")
+    implicit cast(from: i32) -> f16
+    @Intrinsic("f16.from_i64")
+    implicit cast(from: i64) -> f16
+    @Intrinsic("f16.from_u8")
+    implicit cast(from: u8) -> f16
+    @Intrinsic("f16.from_u16")
+    implicit cast(from: u16) -> f16
+    @Intrinsic("f16.from_u32")
+    implicit cast(from: u32) -> f16
+    @Intrinsic("f16.from_u64")
+    implicit cast(from: u64) -> f16
+    @Intrinsic("f16.from_f32")
+    explicit cast(from: f32) -> f16
+    @Intrinsic("f16.from_f64")
+    explicit cast(from: f64) -> f16
+
+    @Intrinsic("f16.neg") op -(value: f16) -> f16
+    @Intrinsic("f16.pos") op +(value: f16) -> f16
+    @Intrinsic("f16.add") op +(left: f16, right: f16) -> f16
+    @Intrinsic("f16.sub") op -(left: f16, right: f16) -> f16
+    @Intrinsic("f16.mul") op *(left: f16, right: f16) -> f16
+    @Intrinsic("f16.div") op /(left: f16, right: f16) -> f16
+    @Intrinsic("f16.mod") op %(left: f16, right: f16) -> f16
+    @Intrinsic("f16.eq") op ==(left: f16, right: f16) -> bool
+    @Intrinsic("f16.ne") op !=(left: f16, right: f16) -> bool
+    @Intrinsic("f16.gt") op >(left: f16, right: f16) -> bool
+    @Intrinsic("f16.lt") op <(left: f16, right: f16) -> bool
+    @Intrinsic("f16.ge") op >=(left: f16, right: f16) -> bool
+    @Intrinsic("f16.le") op <=(left: f16, right: f16) -> bool
 }
 
 @BuiltinType(4) @AllowCustomLiterals @NumericFloat
@@ -351,6 +409,8 @@ type F32
     implicit cast(from: u32) -> f32
     @Intrinsic("f32.from_u64")
     implicit cast(from: u64) -> f32
+    @Intrinsic("f32.from_f16")
+    implicit cast(from: f16) -> f32
     @Intrinsic("f32.from_f64")
     explicit cast(from: f64) -> f32
 
@@ -391,6 +451,8 @@ type F64
     implicit cast(from: u32) -> f64
     @Intrinsic("f64.from_u64")
     implicit cast(from: u64) -> f64
+    @Intrinsic("f64.from_f16")
+    implicit cast(from: f16) -> f64
     @Intrinsic("f64.from_f32")
     implicit cast(from: f32) -> f64
 

@@ -1,0 +1,20 @@
+---
+Description: f16 to int casts saturate at the target range and nan becomes zero
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var big: f16 = 60000
+        var zero: f16 = 0
+        var nan = zero / zero
+
+        return (i32)big == 60000
+            && (i16)big == 32767
+            && (i8)big == 127
+            && (u8)big == 255
+            && (i32)nan == 0
+    }
+}

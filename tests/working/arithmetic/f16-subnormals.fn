@@ -1,0 +1,18 @@
+---
+Description: f16 keeps subnormal values and flushes below the smallest one
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        -- 0.00000006 rounds to the smallest subnormal, 0.00000002 rounds to zero
+        var tiny: f16 = 0.00000006f16
+        var two: f16 = 2
+
+        return tiny > 0f16
+            && 0.00000002f16 == 0f16
+            && tiny / two == 0f16
+    }
+}

@@ -1,0 +1,15 @@
+---
+Description: f16 constant folding computes at half width, matching the runtime result
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a: f16 = 0.1f16
+        var b: f16 = 0.2f16
+        var runtime = a + b
+        return runtime == 0.1f16 + 0.2f16
+    }
+}

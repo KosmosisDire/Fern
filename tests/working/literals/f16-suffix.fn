@@ -1,0 +1,12 @@
+---
+Description: The f16 suffix types a literal as half precision
+Expected: 1.5
+---
+
+type Program
+{
+    static fn Main -> f16
+    {
+        return 1.5f16
+    }
+}

@@ -153,6 +153,7 @@ private:
     TypeSymbol* u16Type = nullptr;
     TypeSymbol* u32Type = nullptr;
     TypeSymbol* u64Type = nullptr;
+    TypeSymbol* f16Type = nullptr;
     TypeSymbol* f32Type = nullptr;
     TypeSymbol* f64Type = nullptr;
     TypeSymbol* boolType = nullptr;

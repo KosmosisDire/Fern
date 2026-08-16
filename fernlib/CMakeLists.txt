@@ -6,6 +6,7 @@ set(FERNLIB_SOURCES
 
     # common
     common/compilation.cpp
+    common/float16.cpp
 
     # semantic
     semantic/symbol/symbol.cpp

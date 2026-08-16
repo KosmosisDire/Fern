@@ -1,0 +1,19 @@
+---
+Description: f16 array elements read and write at their two byte stride
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var arr: f16[] = [1.5f16, 2.5f16, 3f16]
+        arr[0] = arr[1] + 0.5f16
+        var sum = arr[0] + arr[2]
+
+        return arr.Length() == 3
+            && arr[0] == 3f16
+            && arr[2] == 3f16
+            && sum == 6f16
+    }
+}

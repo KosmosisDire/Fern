@@ -5,6 +5,8 @@
 #include <cmath>
 #include <format>
 
+#include <common/float16.hpp>
+
 namespace Fern
 {
 
@@ -83,6 +85,12 @@ static bool divide_overflows(int64_t a, int64_t b, const std::optional<IntRange>
     return b == -1 && a == (range ? range->min : INT64_MIN);
 }
 
+// Rounds a double through binary16 so f16 folds and casts match the runtime
+static double f16_round(double value)
+{
+    return f16_to_float(f16_from_double(value));
+}
+
 // Both operands share a kind by the time these run. The caller checks the result against the op type,
 // so these only report what cannot be computed in 64 bits at all
 static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const ConstantValue& a, const ConstantValue& b,
@@ -158,6 +166,23 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
             if (!isInt || b.intValue == 0) return std::nullopt;
             return ConstantValue::make_int(static_cast<int64_t>(
                 static_cast<uint64_t>(a.intValue) % static_cast<uint64_t>(b.intValue)));
+
+        // f16 folds round the operands to half, compute exactly in double, and round the result back
+        case IntrinsicKind::F16Add:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(f16_round(f16_round(a.floatValue) + f16_round(b.floatValue)));
+        case IntrinsicKind::F16Sub:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(f16_round(f16_round(a.floatValue) - f16_round(b.floatValue)));
+        case IntrinsicKind::F16Mul:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_float(f16_round(f16_round(a.floatValue) * f16_round(b.floatValue)));
+        case IntrinsicKind::F16Div:
+            if (!isFloat || b.floatValue == 0.0) return std::nullopt;
+            return ConstantValue::make_float(f16_round(f16_round(a.floatValue) / f16_round(b.floatValue)));
+        case IntrinsicKind::F16Mod:
+            if (!isFloat || b.floatValue == 0.0) return std::nullopt;
+            return ConstantValue::make_float(f16_round(std::fmod(f16_round(a.floatValue), f16_round(b.floatValue))));
 
         // f32 folds round the doubles to float and compute at float width so the fold matches the runtime
         case IntrinsicKind::F32Add:
@@ -266,6 +291,24 @@ static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const Consta
             if (!isInt) return std::nullopt;
             return ConstantValue::make_bool(a.intValue != b.intValue);
 
+        case IntrinsicKind::F16Gt:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(f16_round(a.floatValue) > f16_round(b.floatValue));
+        case IntrinsicKind::F16Lt:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(f16_round(a.floatValue) < f16_round(b.floatValue));
+        case IntrinsicKind::F16Ge:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(f16_round(a.floatValue) >= f16_round(b.floatValue));
+        case IntrinsicKind::F16Le:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(f16_round(a.floatValue) <= f16_round(b.floatValue));
+        case IntrinsicKind::F16Eq:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(f16_round(a.floatValue) == f16_round(b.floatValue));
+        case IntrinsicKind::F16Ne:
+            if (!isFloat) return std::nullopt;
+            return ConstantValue::make_bool(f16_round(a.floatValue) != f16_round(b.floatValue));
         case IntrinsicKind::F32Gt:
             if (!isFloat) return std::nullopt;
             return ConstantValue::make_bool(static_cast<float>(a.floatValue) > static_cast<float>(b.floatValue));
@@ -332,6 +375,7 @@ static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const Constan
             if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
             if (a.intValue == INT64_MIN) { overflowed = true; return std::nullopt; }
             return ConstantValue::make_int(-a.intValue);
+        case IntrinsicKind::F16Neg:
         case IntrinsicKind::F32Neg:
         case IntrinsicKind::F64Neg:
             if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
@@ -342,6 +386,7 @@ static std::optional<ConstantValue> fold_unary(IntrinsicKind kind, const Constan
         case IntrinsicKind::I64Pos:
             if (a.kind != ConstantValue::Kind::Int) return std::nullopt;
             return a;
+        case IntrinsicKind::F16Pos:
         case IntrinsicKind::F32Pos:
         case IntrinsicKind::F64Pos:
             if (a.kind != ConstantValue::Kind::Float) return std::nullopt;
@@ -442,12 +487,16 @@ static std::optional<ConstantValue> saturate_to_int(double value, NamedTypeSymbo
     return ConstantValue::make_int(static_cast<int64_t>(value));
 }
 
-// An f32 typed constant stores a double, so it rounds through float first to convert like the runtime
+// A narrow float constant stores a double, so it rounds to its own width first to convert like the runtime
 static double float_operand_value(const FhirExpr* operand, const ConstantValue& inner)
 {
     auto* source = operand->type ? operand->type->as<NamedTypeSymbol>() : nullptr;
-    if (source && source->is_float() && source->builtin_scalar_size() == 4)
-        return static_cast<float>(inner.floatValue);
+    if (source && source->is_float())
+    {
+        std::optional<int> size = source->builtin_scalar_size();
+        if (size == 2) return f16_round(inner.floatValue);
+        if (size == 4) return static_cast<float>(inner.floatValue);
+    }
     return inner.floatValue;
 }
 
@@ -467,7 +516,9 @@ std::optional<ConstantValue> FhirCastExpr::compute_constant() const
         else if (inner->kind == ConstantValue::Kind::Int) value = static_cast<double>(inner->intValue);
         else return std::nullopt;
 
-        if (targetNamed->builtin_scalar_size() == 4) value = static_cast<float>(value);
+        std::optional<int> size = targetNamed->builtin_scalar_size();
+        if (size == 2) value = f16_round(value);
+        else if (size == 4) value = static_cast<float>(value);
         return ConstantValue::make_float(value);
     }
 

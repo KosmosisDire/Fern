@@ -1,0 +1,13 @@
+---
+Description: Narrowing past the f16 range produces infinity like the other float casts
+Expected: inf
+---
+
+type Program
+{
+    static fn Main -> f16
+    {
+        var big: f64 = 70000
+        return (f16)big
+    }
+}
