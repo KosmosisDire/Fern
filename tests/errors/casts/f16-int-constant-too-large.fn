@@ -1,0 +1,13 @@
+---
+Description: An int constant past the f16 range does not convert implicitly
+Expected: FN3200
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x: f16 = 70000
+        return 0
+    }
+}

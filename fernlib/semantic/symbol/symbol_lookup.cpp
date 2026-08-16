@@ -1,9 +1,11 @@
 #include "symbol.hpp"
 #include "table.hpp"
 
+#include <common/float16.hpp>
 #include <semantic/fhir/fhir.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 namespace Fern
 {
@@ -277,17 +279,48 @@ Conversion NamedTypeSymbol::get_conversion(const OverloadArg& arg, TypeSymbol* t
         return {};
     }
 
+    // A constant's value overrides the type matrix in both directions: a value that fits makes the
+    // explicit conversion implicit, a value that does not fit forces a cast. Int targets need the
+    // exact value in range, float targets round to their own precision but must stay finite.
+    // Float to int never upgrades, writing a float constant for an int is treated as deliberate
     Conversion conv = get_conversion(arg.type, to);
-    if (conv.level != Convertibility::Explicit) return conv;
-    if (!arg.constant || arg.constant->kind != ConstantValue::Kind::Int) return conv;
+    if (conv.level == Convertibility::None || conv.level == Convertibility::Exact) return conv;
+    if (!arg.constant) return conv;
 
     auto* sourceNamed = arg.type ? arg.type->as<NamedTypeSymbol>() : nullptr;
     auto* targetNamed = to ? to->as<NamedTypeSymbol>() : nullptr;
-    if (!sourceNamed || !sourceNamed->is_integer()) return conv;
-    if (!targetNamed || !targetNamed->is_integer()) return conv;
+    if (!sourceNamed || !targetNamed) return conv;
 
-    if (arg.constant->range_fits(to))
-        conv.level = Convertibility::Implicit;
+    if (arg.constant->kind == ConstantValue::Kind::Int && targetNamed->is_integer())
+    {
+        if (conv.level == Convertibility::Explicit && sourceNamed->is_integer() && arg.constant->range_fits(to))
+            conv.level = Convertibility::Implicit;
+        return conv;
+    }
+
+    if (targetNamed->is_float())
+    {
+        double value = 0;
+        if (arg.constant->kind == ConstantValue::Kind::Int && sourceNamed->is_integer())
+            value = static_cast<double>(arg.constant->intValue);
+        else if (arg.constant->kind == ConstantValue::Kind::Float && sourceNamed->is_float())
+            value = sourceNamed->builtin_scalar_size() == 4
+                ? static_cast<float>(arg.constant->floatValue)
+                : arg.constant->floatValue;
+        else
+            return conv;
+
+        double rounded = value;
+        std::optional<int> size = targetNamed->builtin_scalar_size();
+        if (size == 2) rounded = f16_round(value);
+        else if (size == 4) rounded = static_cast<double>(static_cast<float>(value));
+
+        bool fits = !std::isfinite(value) || std::isfinite(rounded);
+        if (fits && conv.level == Convertibility::Explicit) conv.level = Convertibility::Implicit;
+        if (!fits && conv.level == Convertibility::Implicit) conv.level = Convertibility::Explicit;
+        return conv;
+    }
+
     return conv;
 }
 

@@ -86,7 +86,7 @@ void Binder::report_conversion_failure(TypeSymbol* from, TypeSymbol* to, const C
 {
     auto* fromNamed = from ? from->as<NamedTypeSymbol>() : nullptr;
     auto* toNamed = to ? to->as<NamedTypeSymbol>() : nullptr;
-    if (fromNamed && fromNamed->is_integer() && toNamed && toNamed->is_integer()
+    if (fromNamed && fromNamed->is_integer() && toNamed && (toNamed->is_integer() || toNamed->is_float())
         && constant && constant->kind == ConstantValue::Kind::Int)
     {
         diag.report(DiagnosticCode::Err_ConstantOutOfRange, span, constant->intValue, format_type(to));
@@ -421,7 +421,7 @@ FhirExpr* Binder::bind_unary(UnaryExprSyntax* expr)
         auto [ptr, ec] = std::from_chars(first, last, magnitude);
         if (ec != std::errc{} || magnitude > (uint64_t{1} << 63))
         {
-            diag.report(DiagnosticCode::Err_LiteralOutOfRange, expr->span, std::format("-{}", literal->token.lexeme));
+            diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, std::format("-{}", literal->token.lexeme), "i64");
             return fhir.error_expr(expr);
         }
 

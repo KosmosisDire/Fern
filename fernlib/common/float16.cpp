@@ -87,4 +87,9 @@ float f16_to_float(uint16_t bits)
     return value;
 }
 
+double f16_round(double value)
+{
+    return f16_to_float(f16_from_double(value));
+}
+
 }

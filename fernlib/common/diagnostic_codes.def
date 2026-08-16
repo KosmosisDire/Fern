@@ -126,7 +126,6 @@ DIAG(Err_UnknownEscape,                 3700, Error,   "unrecognized escape sequ
 DIAG(Err_UnknownLiteralSuffix,          3701, Error,   "unknown literal suffix '{}'")
 DIAG(Err_NoMatchingLiteral,             3702, Error,   "no literal '{}' accepting '{}'")
 DIAG(Err_AmbiguousLiteral,              3703, Error,   "literal call is ambiguous between the following members:{}")
-DIAG(Err_LiteralOutOfRange,             3704, Error,   "literal '{}' is out of range")                                                              // CS1021/CS0594
 DIAG(Err_CharLiteralLength,             3705, Error,   "character literal must contain exactly one character")                                      // CS1011/CS1012
 DIAG(Err_ArrayMissingI32Ctor,           3706, Error,   "Core.Array has no constructor taking i32")
 DIAG(Err_ArrayMixedTypes,               3708, Error,   "array literal has mixed element types: '{}' and '{}'")

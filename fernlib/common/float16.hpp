@@ -9,4 +9,7 @@ namespace Fern
 uint16_t f16_from_double(double value);
 float f16_to_float(uint16_t bits);
 
+// Rounds a double to the nearest binary16 value
+double f16_round(double value);
+
 }

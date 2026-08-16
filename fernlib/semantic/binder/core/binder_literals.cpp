@@ -154,9 +154,9 @@ TypeSymbol* Binder::type_integer_literal(int64_t value)
 FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
 {
     // Use from_chars to avoid throwing exceptions and better handle out-of-range errors.
-    auto report_out_of_range = [&]()
+    auto report_out_of_range = [&](std::string_view domain)
     {
-        diag.report(DiagnosticCode::Err_LiteralOutOfRange, expr->span, expr->token.lexeme);
+        diag.report(DiagnosticCode::Err_ConstantOutOfRange, expr->span, expr->token.lexeme, domain);
     };
 
     if (expr->token.kind == TokenKind::LiteralInt)
@@ -173,7 +173,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
         }
 
         if (ec == std::errc::result_out_of_range)
-            report_out_of_range();
+            report_out_of_range("i64");
         return fhir.literal(expr, context.resolve_type_name("i32"));
     }
 
@@ -202,7 +202,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
             const char* last = first + expr->token.lexeme.size();
             auto [ptr, ec] = fast_float::from_chars(first, last, value);
             if (ec == std::errc::result_out_of_range)
-                report_out_of_range();
+                report_out_of_range("f64");
             else if (ec == std::errc{})
                 node->value = ConstantValue::make_float(value);
         }
@@ -289,7 +289,7 @@ FhirExpr* Binder::bind_literal(LiteralExprSyntax* expr)
     }
     catch (const std::out_of_range&)
     {
-        diag.report(DiagnosticCode::Err_LiteralOutOfRange, expr->span, expr->token.lexeme);
+        report_out_of_range(expr->token.kind == TokenKind::LiteralFloat ? "f64" : "i64");
     }
 
     return node;

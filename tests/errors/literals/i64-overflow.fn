@@ -1,6 +1,6 @@
 ---
 Description: Literal exceeds i64 maximum
-Expected: FN3704
+Expected: FN3200
 ---
 
 type Program

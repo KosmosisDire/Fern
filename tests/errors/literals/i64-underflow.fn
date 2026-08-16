@@ -1,6 +1,6 @@
 ---
 Description: Negative literal below i64 minimum
-Expected: FN3704
+Expected: FN3200
 ---
 
 type Program

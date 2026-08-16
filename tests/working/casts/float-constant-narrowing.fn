@@ -1,0 +1,18 @@
+---
+Description: Float constants narrow implicitly when rounding keeps them finite
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a: f16 = 1.5
+        var b: f16 = 0.1
+        var c: f32 = 1.5f64
+
+        return a == 1.5f16
+            && b == 0.1f16
+            && c == 1.5f32
+    }
+}

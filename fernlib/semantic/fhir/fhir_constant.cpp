@@ -85,12 +85,6 @@ static bool divide_overflows(int64_t a, int64_t b, const std::optional<IntRange>
     return b == -1 && a == (range ? range->min : INT64_MIN);
 }
 
-// Rounds a double through binary16 so f16 folds and casts match the runtime
-static double f16_round(double value)
-{
-    return f16_to_float(f16_from_double(value));
-}
-
 // Both operands share a kind by the time these run. The caller checks the result against the op type,
 // so these only report what cannot be computed in 64 bits at all
 static std::optional<ConstantValue> fold_binary(IntrinsicKind kind, const ConstantValue& a, const ConstantValue& b,

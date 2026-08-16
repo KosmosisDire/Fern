@@ -11,9 +11,13 @@ type Program
         var f: f32 = h
         var d: f64 = h
 
+        -- 65519 rounds down to the max finite half, so it still converts implicitly
+        var edge: f16 = 65519
+
         return f == 100f32
             && d == 100
             && h + 1.5f32 == 101.5f32
             && (f16)(0.1f64) == 0.1f16
+            && edge == 65504f16
     }
 }
