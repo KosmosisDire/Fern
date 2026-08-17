@@ -1,0 +1,24 @@
+---
+Description: Generic is not checked for errors until instantiation
+Expected: FN3203
+---
+
+type Test<T>
+{
+    init (
+        a: T,
+        b: T
+    )
+    {
+        this.a = a
+        this.b = b
+    }
+}
+
+type Program
+{
+    static fn Main
+    {
+
+    }
+}

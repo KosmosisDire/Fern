@@ -1,0 +1,29 @@
+--- 
+Description: Generic type name not found
+Expected: 0
+---
+
+type Test<T>
+{
+    a: T
+    b: T
+
+    init (
+        a: T,
+        b: T
+    )
+    {
+        this.a = a
+        this.b = b
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var t = Test<i32>(1, 2)
+        var t2 = Test(1, 2)
+        return 0
+    }
+}
