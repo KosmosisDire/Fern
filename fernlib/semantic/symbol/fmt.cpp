@@ -218,7 +218,7 @@ std::string format_type(TypeSymbol* type, const SymbolFormat& fmt)
 
     if (fmt.has(SymbolFormatOption::IncludeLayout) && named->layoutState == LayoutState::Computed)
     {
-        ss << std::format(" [size={} align={}]", named->sizeInBytes, named->alignment);
+        ss << std::format(" [size={} stride={} align={}]", named->sizeInBytes, named->strideInBytes, named->alignment);
     }
 
     if (wantBody && (!named->fields.empty() || !named->methods.empty() || !named->nestedTypes.empty()))

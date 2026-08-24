@@ -52,6 +52,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     if (type->is_ref())
     {
         type->sizeInBytes = target.pointerSize;
+        type->strideInBytes = target.pointerSize;
         type->alignment = target.pointerAlign;
         type->layoutState = LayoutState::Computed;
 
@@ -76,6 +77,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
             type->sizeInBytes = target.pointerSize;
             type->alignment = target.pointerAlign;
         }
+        type->strideInBytes = type->sizeInBytes;
 
         // Mark computed before the field walk so a scalar whose value field is its own type terminates.
         type->layoutState = LayoutState::Computed;
@@ -90,8 +92,10 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     int structAlign = 1;
     int offset = place_fields(type, structAlign);
 
-    // An empty value type still occupies one byte so distinct objects get distinct addresses.
-    type->sizeInBytes = offset == 0 ? 1 : align_up(offset, structAlign);
+    // An empty value type has no bytes of its own but still strides one, so distinct objects in an
+    // array get distinct addresses.
+    type->sizeInBytes = offset;
+    type->strideInBytes = offset == 0 ? 1 : align_up(offset, structAlign);
     type->alignment = structAlign;
     type->layoutState = LayoutState::Computed;
 }
@@ -116,7 +120,7 @@ int LayoutPass::place_fields(NamedTypeSymbol* type, int& structAlign)
 
         offset = align_up(offset, fieldType->alignment);
         field->offset = offset;
-        offset += fieldType->sizeInBytes;
+        offset += fieldType->strideInBytes;
         if (fieldType->alignment > structAlign) structAlign = fieldType->alignment;
     }
     return offset;

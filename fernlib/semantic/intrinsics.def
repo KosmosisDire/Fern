@@ -318,6 +318,9 @@ INTRINSIC(StringGet,      "string.get",      "")
 
 // core
 INTRINSIC(Panic,          "panic",           "")
+INTRINSIC(LayoutSize,     "layout.size",     "")
+INTRINSIC(LayoutStride,   "layout.stride",   "")
+INTRINSIC(LayoutAlign,    "layout.align",    "")
 
 // array
 INTRINSIC(ArrayEmpty,     "array.empty",     "")

@@ -229,7 +229,7 @@ Control Interpreter::exec_copy(FlirCopy* node)
     uint64_t dest = eval(node->dest).as_addr();
     uint64_t src = eval(node->src).as_addr();
     auto* named = node->type ? node->type->as<NamedTypeSymbol>() : nullptr;
-    uint64_t size = named ? static_cast<uint64_t>(named->sizeInBytes) : 0;
+    uint64_t size = named ? static_cast<uint64_t>(named->strideInBytes) : 0;
     memory.copy(dest, src, size);
     return Control::normal();
 }
@@ -349,7 +349,7 @@ Value Interpreter::eval_elem_addr(FlirElemAddr* node)
         throw VmError{std::format("index {} out of range (length {})", index, length)};
 
     auto* elem = node->elemType ? node->elemType->as<NamedTypeSymbol>() : nullptr;
-    uint64_t elemSize = elem ? static_cast<uint64_t>(elem->sizeInBytes) : 0;
+    uint64_t elemSize = elem ? static_cast<uint64_t>(elem->strideInBytes) : 0;
     uint64_t addr = handle + target.blockHeaderSize + static_cast<uint64_t>(index) * elemSize;
     return Value::make_addr(addr);
 }

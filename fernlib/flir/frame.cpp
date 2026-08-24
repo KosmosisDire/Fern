@@ -19,7 +19,7 @@ static void place(FlirLocal* slot, int& offset, int& frameAlign)
     if (!slot || slot->byAddress) return;
 
     auto* named = slot->type ? slot->type->as<NamedTypeSymbol>() : nullptr;
-    int size = named && named->sizeInBytes > 0 ? named->sizeInBytes : 1;
+    int size = named && named->strideInBytes > 0 ? named->strideInBytes : 1;
     int align = named && named->alignment > 0 ? named->alignment : 1;
 
     offset = align_up(offset, align);

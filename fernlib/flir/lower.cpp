@@ -93,11 +93,21 @@ void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& a
     }
 }
 
+static bool is_layout_query(IntrinsicKind kind)
+{
+    return kind == IntrinsicKind::LayoutSize ||
+           kind == IntrinsicKind::LayoutStride ||
+           kind == IntrinsicKind::LayoutAlign;
+}
+
 // The single choke point for invoking a method. An intrinsic method becomes a FlirIntrinsic, never a
 // call. A real call caller copies its aggregate arguments and routes an aggregate return through a
 // temp destination, evaluating to that temp's address.
 FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, FlirExpr* thisArg, std::vector<FlirExpr*> args)
 {
+    if (method && is_layout_query(method->intrinsic()))
+        return layout_query(syntax, retType, method, method->intrinsic());
+
     if (method && method->is_intrinsic())
         return builder.intrinsic(syntax, retType, method, thisArg, std::move(args));
 
@@ -123,6 +133,26 @@ FlirExpr* FlirLowerer::apply_bin(BaseSyntax* syntax, TypeSymbol* type, FhirOpExp
 {
     return build_call(syntax, type, binaryOp->method, nullptr, { lhs, rhs });
 }
+
+// A layout query folds here, after the layout pass, so no backend ever sees the intrinsic. The
+// measured type is the carrier's argument, as in MemoryLayout<i32>.Size().
+FlirExpr* FlirLowerer::layout_query(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, IntrinsicKind kind)
+{
+    auto* carrier = method->parent ? method->parent->as<NamedTypeSymbol>() : nullptr;
+    auto* measured = carrier && !carrier->typeArguments.empty()
+        ? carrier->typeArguments[0]->as<NamedTypeSymbol>()
+        : nullptr;
+
+    int64_t value = 0;
+    if (measured)
+    {
+        if (kind == IntrinsicKind::LayoutSize)        value = measured->sizeInBytes;
+        else if (kind == IntrinsicKind::LayoutStride) value = measured->strideInBytes;
+        else                                          value = measured->alignment;
+    }
+    return builder.constant(syntax, retType, ConstantValue::make_int(value));
+}
+
 
 // Finds an intrinsic method by kind on a type, for negations the lowerer synthesizes.
 MethodSymbol* FlirLowerer::intrinsic_method(TypeSymbol* type, IntrinsicKind kind)

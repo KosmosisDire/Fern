@@ -188,7 +188,10 @@ struct NamedTypeSymbol : TypeSymbol
     std::vector<NamedTypeSymbol*> instantiations;
     bool membersPopulated = false;
 
+    // Bytes the value occupies, trailing padding excluded. Zero for an empty value type.
     int sizeInBytes = 0;
+    // Bytes between consecutive elements, so size rounded up to alignment. What layout advances by.
+    int strideInBytes = 0;
     int alignment = 0;
     // Heap block layout of a ref type's fields, assigned by the layout pass. Zero for value types.
     int payloadSize = 0;

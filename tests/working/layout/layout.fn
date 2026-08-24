@@ -1,0 +1,12 @@
+---
+Description: Layout size reports the byte size of each primitive
+Expected: 13
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return MemoryLayout<i32>.Size() + MemoryLayout<f64>.Size() + MemoryLayout<c8>.Size()
+    }
+}

@@ -1,0 +1,20 @@
+---
+Description: A layout query resolves a type parameter through the enclosing instantiation
+Expected: 12
+---
+
+type Box<T>
+{
+    static fn Stride() -> i32
+    {
+        return MemoryLayout<T>.Stride()
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return Box<i32>.Stride() + Box<f64>.Stride()
+    }
+}

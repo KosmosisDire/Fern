@@ -5,6 +5,20 @@ type Runtime
     static fn Panic(message: string);
 }
 
+type MemoryLayout<T>
+{
+    -- Bytes the value occupies, trailing padding excluded
+    @Core.Intrinsic("layout.size")
+    static fn Size() -> i32;
+
+    -- Bytes between consecutive elements, so Size rounded up to Alignment
+    @Core.Intrinsic("layout.stride")
+    static fn Stride() -> i32;
+
+    @Core.Intrinsic("layout.align")
+    static fn Alignment() -> i32;
+}
+
 namespace Core
 
 attr type BuiltinType

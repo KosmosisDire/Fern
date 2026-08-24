@@ -1,0 +1,27 @@
+---
+Description: Size excludes trailing padding, stride rounds it up to alignment
+Expected: 17/24/8
+---
+
+type Inner
+{
+    a: i32
+    b: i32
+}
+
+type Outer
+{
+    inner: Inner
+    value: f64
+    flag: bool
+}
+
+type Program
+{
+    static fn Main -> string
+    {
+        return (string)MemoryLayout<Outer>.Size() + "/" +
+               (string)MemoryLayout<Outer>.Stride() + "/" +
+               (string)MemoryLayout<Outer>.Alignment()
+    }
+}

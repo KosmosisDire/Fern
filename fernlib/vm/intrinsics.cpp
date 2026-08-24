@@ -225,7 +225,7 @@ static TypeSymbol* array_elem_type(MethodSymbol* method)
 static uint64_t elem_size(TypeSymbol* type)
 {
     auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
-    return named ? static_cast<uint64_t>(named->sizeInBytes) : 0;
+    return named ? static_cast<uint64_t>(named->strideInBytes) : 0;
 }
 
 Value Interpreter::exec_intrinsic(FlirIntrinsic* node)

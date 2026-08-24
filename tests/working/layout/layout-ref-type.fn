@@ -1,0 +1,13 @@
+---
+Description: A ref type measures the handle, not the heap block
+Expected: 8
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        -- may depend on platform in the future
+        return MemoryLayout<Core.Array<i32>>.Size()
+    }
+}

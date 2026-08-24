@@ -58,6 +58,7 @@ private:
     FlirExpr* apply_bin(BaseSyntax* syntax, TypeSymbol* type, FhirOpExpr* binaryOp, FlirExpr* lhs, FlirExpr* rhs);
     void caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& args, std::vector<FlirStmt*>& out);
     MethodSymbol* intrinsic_method(TypeSymbol* type, IntrinsicKind kind);
+    FlirExpr* layout_query(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, IntrinsicKind kind);
 
     //TODO: Is there a better way to pass statements that an out, like with a sequence expr?
     void lower_var_decl(FhirVarDeclStmt* stmt, std::vector<FlirStmt*>& out);
