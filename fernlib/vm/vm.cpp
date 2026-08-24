@@ -121,12 +121,7 @@ std::string Interpreter::format_result(const RunResult& result)
     const Value& value = result.value;
     if (result.returnType == stringType)
     {
-        uint64_t handle = value.as_addr();
-        uint32_t length = memory.read_u32(handle);
-        std::string text(length, '\0');
-        if (length > 0)
-            std::memcpy(text.data(), memory.host_ptr(handle + target.blockHeaderSize, length), length);
-        return text;
+        return read_string(value.as_addr());
     }
 
     switch (value.kind)
@@ -502,6 +497,15 @@ void Interpreter::store_scalar(uint64_t addr, Value value)
         case Value::Kind::C8:   memory.write_u8(addr, value.as_c8()); break;
         case Value::Kind::Addr: memory.write_u64(addr, value.as_addr()); break;
     }
+}
+
+std::string Interpreter::read_string(uint64_t handle)
+{
+    uint32_t length = memory.read_u32(handle);
+    std::string text(length, '\0');
+    if (length > 0)
+        std::memcpy(text.data(), memory.host_ptr(handle + target.blockHeaderSize, length), length);
+    return text;
 }
 
 uint64_t Interpreter::intern_string(std::string_view text)

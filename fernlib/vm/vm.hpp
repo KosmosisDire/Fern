@@ -131,6 +131,7 @@ private:
     Value load_scalar(uint64_t addr, Value::Kind kind);
     void store_scalar(uint64_t addr, Value value);
     uint64_t intern_string(std::string_view text);
+    std::string read_string(uint64_t handle);
 
     Frame& current_frame() { return frames.back(); }
     void set_span(FlirNode* node);

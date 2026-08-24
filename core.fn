@@ -1,4 +1,10 @@
 
+type Runtime
+{
+    @Core.Intrinsic("panic")
+    static fn Panic(message: string);
+}
+
 namespace Core
 
 attr type BuiltinType

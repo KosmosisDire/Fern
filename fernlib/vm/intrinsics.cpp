@@ -552,6 +552,10 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
             return Value::make_addr(addr);
         }
 
+        // core
+        case IntrinsicKind::Panic:
+            throw VmError{std::format("panic: {}", read_string(args[0].as_addr()))};
+
         // array
         case IntrinsicKind::ArrayEmpty:
         {

@@ -1,0 +1,21 @@
+---
+Description: A guard that panics does not run when the condition is false
+Expected: 42
+---
+
+type Program
+{
+    static fn Check(value: i32) -> i32
+    {
+        if (value < 0)
+        {
+            Runtime.Panic("negative value")
+        }
+        return value
+    }
+
+    static fn Main -> i32
+    {
+        return Check(42)
+    }
+}

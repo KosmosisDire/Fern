@@ -316,6 +316,9 @@ INTRINSIC(StringNe,       "string.ne",       "!=")
 INTRINSIC(StringConcat,   "string.concat",   "+")
 INTRINSIC(StringGet,      "string.get",      "")
 
+// core
+INTRINSIC(Panic,          "panic",           "")
+
 // array
 INTRINSIC(ArrayEmpty,     "array.empty",     "")
 INTRINSIC(ArrayInit,      "array.init",      "")

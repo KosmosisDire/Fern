@@ -1,0 +1,14 @@
+---
+Description: A panic message can be any string expression
+Expected: FN6000
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var index = 3
+        Runtime.Panic("index " + (string)index + " out of range")
+        return 1
+    }
+}
