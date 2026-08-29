@@ -19,6 +19,15 @@ type MemoryLayout<T>
     static fn Alignment() -> i32;
 }
 
+type MemoryLayout
+{
+    static fn AlignUp(value: i32, alignment: i32) -> i32
+    {
+        return (value + alignment - 1) / alignment * alignment
+    }
+}
+
+
 namespace Core
 
 attr type BuiltinType
