@@ -161,6 +161,7 @@ struct FlirFieldAddr : FlirExpr
     }
 };
 
+// The address index strides past base, so base plus index times the element stride. Unchecked.
 struct FlirElemAddr : FlirExpr
 {
     FLIR_NODE(FlirElemAddr, FlirExpr)

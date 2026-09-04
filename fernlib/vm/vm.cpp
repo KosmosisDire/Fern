@@ -341,17 +341,12 @@ Value Interpreter::eval_field_addr(FlirFieldAddr* node)
 
 Value Interpreter::eval_elem_addr(FlirElemAddr* node)
 {
-    uint64_t handle = eval(node->base).as_addr();
-    int32_t index = eval(node->index).as_i32();
-
-    uint32_t length = memory.read_u32(handle);
-    if (index < 0 || static_cast<uint32_t>(index) >= length)
-        throw VmError{std::format("index {} out of range (length {})", index, length)};
+    uint64_t base = eval(node->base).as_addr();
+    int64_t index = eval(node->index).as_i32();
 
     auto* elem = node->elemType ? node->elemType->as<NamedTypeSymbol>() : nullptr;
-    uint64_t elemSize = elem ? static_cast<uint64_t>(elem->strideInBytes) : 0;
-    uint64_t addr = handle + target.blockHeaderSize + static_cast<uint64_t>(index) * elemSize;
-    return Value::make_addr(addr);
+    int64_t stride = elem ? elem->strideInBytes : 0;
+    return Value::make_addr(base + static_cast<uint64_t>(index * stride));
 }
 
 Value Interpreter::eval_load(FlirLoad* node)

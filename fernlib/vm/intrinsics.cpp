@@ -551,6 +551,8 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
             memory.copy(addr + header + la, b + header, lb);
             return Value::make_addr(addr);
         }
+        case IntrinsicKind::StringData:
+            return Value::make_addr(self.as_addr() + header);
 
         // core
         case IntrinsicKind::Panic:
@@ -572,6 +574,8 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
             memory.write_u32(addr, static_cast<uint32_t>(length));
             return Value::make_addr(addr);
         }
+        case IntrinsicKind::ArrayData:
+            return Value::make_addr(self.as_addr() + header);
         case IntrinsicKind::ArrayCopyTo:
         {
             uint64_t src = self.as_addr();
@@ -598,7 +602,7 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         default: break;
     }
 
-    // Literal tags, bool.and, bool.or, array.get, array.set, and string.get never survive lowering.
+    // Literal tags, bool.and, bool.or, ptr.get, and ptr.set never survive lowering.
     throw VmError{std::format("unreachable intrinsic '{}'", format(kind))};
 }
 

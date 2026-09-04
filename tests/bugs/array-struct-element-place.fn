@@ -1,0 +1,32 @@
+---
+Description: Field writes and mutating calls on an array element should land in the array, not in a returned copy
+Expected: 153
+---
+
+type Vec2
+{
+    x: i32
+    y: i32
+
+    init(x: i32, y: i32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    fn Bump()
+    {
+        x = x + 100
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var points = [Vec2(1, 2), Vec2(3, 4)]
+        points[0].x = 50
+        points[1].Bump()
+        return points[0].x + points[1].x
+    }
+}

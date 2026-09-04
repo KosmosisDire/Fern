@@ -1,0 +1,15 @@
+---
+Description: Data points at the element block so writes through the pointer show in the array
+Expected: 13
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var p: Core.Ptr<i32> = a.Data()
+        p[1] = 10
+        return a[1] + p[2]
+    }
+}

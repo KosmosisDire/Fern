@@ -314,7 +314,7 @@ INTRINSIC(StringInit,     "string.init",     "")
 INTRINSIC(StringEq,       "string.eq",       "==")
 INTRINSIC(StringNe,       "string.ne",       "!=")
 INTRINSIC(StringConcat,   "string.concat",   "+")
-INTRINSIC(StringGet,      "string.get",      "")
+INTRINSIC(StringData,     "string.data",     "")
 
 // core
 INTRINSIC(Panic,          "panic",           "")
@@ -322,9 +322,12 @@ INTRINSIC(LayoutSize,     "layout.size",     "")
 INTRINSIC(LayoutStride,   "layout.stride",   "")
 INTRINSIC(LayoutAlign,    "layout.align",    "")
 
+// ptr
+INTRINSIC(PtrGet,         "ptr.get",         "")
+INTRINSIC(PtrSet,         "ptr.set",         "")
+
 // array
 INTRINSIC(ArrayEmpty,     "array.empty",     "")
 INTRINSIC(ArrayInit,      "array.init",      "")
-INTRINSIC(ArrayGet,       "array.get",       "")
-INTRINSIC(ArraySet,       "array.set",       "")
+INTRINSIC(ArrayData,      "array.data",      "")
 INTRINSIC(ArrayCopyTo,    "array.copy_to",   "")

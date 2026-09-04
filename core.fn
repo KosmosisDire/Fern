@@ -3,6 +3,14 @@ type Runtime
 {
     @Core.Intrinsic("panic")
     static fn Panic(message: string);
+
+    static fn CheckIndex(index: i32, length: i32)
+    {
+        if (index < 0 || index >= length)
+        {
+            Panic("index " + (string)index + " out of range (length " + (string)length + ")")
+        }
+    }
 }
 
 type MemoryLayout<T>
@@ -515,12 +523,23 @@ type Bool
     @Intrinsic("bool.or") op ||(left: bool, right: bool) -> bool
 }
 
+-- The address of a place holding a T. Indexing is unchecked, so p[i] is the place i strides past p.
+@BuiltinType
+type Ptr<T>
+{
+    @Intrinsic("ptr.get") op [](self: Ptr<T>, index: i32) -> T
+    @Intrinsic("ptr.set") op []=(self: Ptr<T>, index: i32, value: T)
+}
+
 @BuiltinType
 ref type Array<T>
 {
     length: i32
 
     fn Length() -> i32 { return length }
+
+    @Intrinsic("array.data")
+    fn Data() -> Ptr<T>
 
     @Intrinsic("array.copy_to")
     fn CopyTo(dest: Array<T>, destIndex: i32, srcIndex: i32, count: i32)
@@ -530,8 +549,17 @@ ref type Array<T>
 
     @Intrinsic("array.empty") init
 
-    @Intrinsic("array.get") op [](self: Array<T>, index: i32) -> T
-    @Intrinsic("array.set") op []=(self: Array<T>, index: i32, value: T)
+    op [](self: Array<T>, index: i32) -> T
+    {
+        Runtime.CheckIndex(index, self.length)
+        return self.Data()[index]
+    }
+
+    op []=(self: Array<T>, index: i32, value: T)
+    {
+        Runtime.CheckIndex(index, self.length)
+        self.Data()[index] = value
+    }
 }
 
 @BuiltinType(1) @AllowCustomLiterals
@@ -556,6 +584,9 @@ type String
 
     @Intrinsic("string.init")
     init(length: i32)
+
+    @Intrinsic("string.data")
+    fn Data() -> Ptr<c8>
 
     explicit cast(from: i32) -> string
     {
@@ -595,5 +626,10 @@ type String
     @Intrinsic("string.eq") op ==(left: String, right: String) -> bool
     @Intrinsic("string.ne") op !=(left: String, right: String) -> bool
     @Intrinsic("string.concat") op +(left: String, right: String) -> String
-    @Intrinsic("string.get") op [](self: String, index: i32) -> c8
+
+    op [](self: String, index: i32) -> c8
+    {
+        Runtime.CheckIndex(index, self.length)
+        return self.Data()[index]
+    }
 }

@@ -487,7 +487,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
         auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
         emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, elementType, sideEffects);
 
-        auto* setterCall = builder.call(syntax, setterReturn, idx->setter, nullptr,
+        auto* setterCall = build_call(syntax, setterReturn, idx->setter, nullptr,
             { read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx), read_slot(syntax, tmpVal) });
         sideEffects.push_back(builder.expr_stmt(syntax, setterCall));
 
@@ -557,8 +557,8 @@ FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
     auto* object = lower_expr(expr->object);
     auto* index = lower_expr(expr->index);
 
-    // The array and string accessors are intrinsic, so index becomes an element address plus a read.
-    // A user defined indexer keeps its getter call.
+    // The Ptr accessors are intrinsic, so index becomes an element address plus a read.
+    // Every other indexer, Array and String included, keeps its getter call.
     if (expr->getter && expr->getter->is_intrinsic())
     {
         auto* addr = builder.elem_addr(expr->syntax, object, index, expr->type);
@@ -663,7 +663,7 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
         }
         else
         {
-            auto* setCall = builder.call(syntax, setterReturn, expr->setter, nullptr,
+            auto* setCall = build_call(syntax, setterReturn, expr->setter, nullptr,
                 { read_slot(syntax, tmp), indexConst, value });
             sideEffects.push_back(builder.expr_stmt(syntax, setCall));
         }

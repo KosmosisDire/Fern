@@ -76,6 +76,9 @@ private:
         {
             if (!n->base) fail(n, "element address has no base");
             if (!n->index) fail(n, "element address has no index");
+            auto* elem = n->elemType ? n->elemType->as<NamedTypeSymbol>() : nullptr;
+            if (!elem) fail(n, "element address has no element type");
+            else if (elem->layoutState != LayoutState::Computed) fail(n, "element type has no computed layout");
         }
         else if (auto* n = node->as<FlirCall>())
         {

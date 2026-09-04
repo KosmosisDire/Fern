@@ -1,0 +1,14 @@
+---
+Description: String Data points at the UTF-8 bytes so pointer indexing yields the same code units
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var s = "hey"
+        var p = s.Data()
+        return p[0] == s[0] && p[2] == s[2] && p[1] != s[0]
+    }
+}

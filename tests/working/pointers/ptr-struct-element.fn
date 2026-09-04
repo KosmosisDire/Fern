@@ -1,0 +1,33 @@
+---
+Description: Indexing a pointer to a value type yields the place so field writes and mutating calls land in memory
+Expected: 153
+---
+
+type Vec2
+{
+    x: i32
+    y: i32
+
+    init(x: i32, y: i32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    fn Bump()
+    {
+        x = x + 100
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var points = [Vec2(1, 2), Vec2(3, 4)]
+        var p = points.Data()
+        p[0].x = 50
+        p[1].Bump()
+        return p[0].x + p[1].x
+    }
+}
