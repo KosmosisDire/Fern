@@ -25,11 +25,13 @@ public:
 
     void run();
 
+    // Idempotent, so a type instantiated after run, like a lowering temp's Ptr<T>, can be laid out on demand
+    void compute(NamedTypeSymbol* type);
+
 private:
     SemanticContext& context;
     TargetInfo target;
 
-    void compute(NamedTypeSymbol* type);
     int place_fields(NamedTypeSymbol* type, int& structAlign);
 };
 

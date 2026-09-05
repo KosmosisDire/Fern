@@ -452,6 +452,7 @@ struct VariableDeclSyntax : BaseDeclSyntax
 };
 
 // fn name(params...) -> returnType { body }
+// fn name(params...) -> ref returnType { body }
 // init(params...) { body }
 // op +(params) -> Type { body }
 struct CallableDeclSyntax : BaseDeclSyntax
@@ -462,6 +463,8 @@ struct CallableDeclSyntax : BaseDeclSyntax
     Token name = Token::Invalid();
     ParameterListSyntax parameters;
     TypeExprSyntax* returnType = nullptr;
+    // A ref return yields the place of a returnType rather than a copy of one
+    bool returnsRef = false;
     BlockSyntax* body = nullptr;
 };
 

@@ -322,7 +322,7 @@ std::string FhirPrettyFormatter::format(FhirMethod* method)
         }
         fmt.out << ")";
         if (method->symbol->get_return_type())
-            fmt.out << " -> " << format_type(method->symbol->get_return_type());
+            fmt.out << " -> " << (method->symbol->returnsRef ? "ref " : "") << format_type(method->symbol->get_return_type());
     }
 
     if (method->body)
@@ -418,9 +418,10 @@ std::string FhirDebugFormatter::method_label(MethodSymbol* method)
 {
     if (!method) return "null";
     auto* ret = method->get_return_type();
-    return std::format("{}({}) -> {}",
+    return std::format("{}({}) -> {}{}",
                        symbol_label(method),
                        format_parameter_list(method),
+                       method->returnsRef ? "ref " : "",
                        ret ? format_type(ret) : "void");
 }
 
@@ -566,8 +567,9 @@ void FhirDebugFormatter::visit(FhirArrayLiteralExpr* node)
 {
     std::string element = std::format("element: {}", node->elementType ? format_type(node->elementType) : "?");
     std::string ctor = node->ctor ? std::format(", ctor: {}", method_label(node->ctor)) : "";
+    std::string getter = node->getter ? std::format(", getter: {}", method_label(node->getter)) : "";
     std::string setter = node->setter ? std::format(", setter: {}", method_label(node->setter)) : "";
-    begin_node(node, std::format("{}{}{}, {}", element, ctor, setter, type_attr(node)));
+    begin_node(node, std::format("{}{}{}{}, {}", element, ctor, getter, setter, type_attr(node)));
     open_block();
     write_children("elements", node->elements);
     close_block();

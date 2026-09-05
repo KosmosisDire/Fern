@@ -1,0 +1,25 @@
+---
+Description: Elements of a ref type are handle places, so assigning replaces the slot and field writes reach the object
+Expected: 13
+---
+
+ref type Player
+{
+    health: i32
+
+    init(health: i32)
+    {
+        this.health = health
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var players = [Player(1), Player(2)]
+        players[0] = Player(9)
+        players[1].health = 4
+        return players[0].health + players[1].health
+    }
+}

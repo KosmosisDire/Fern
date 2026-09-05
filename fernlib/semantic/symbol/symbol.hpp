@@ -264,6 +264,8 @@ struct MethodSymbol : Symbol
     TokenKind operatorKind = TokenKind::Invalid;
     std::vector<ParameterSymbol*> parameters;
     std::vector<ResolvedAttribute> resolvedAttributes;
+    // A ref return yields the place of the return type, so a call to it can be read, written, or copied from
+    bool returnsRef = false;
 
     MethodSymbol() { kind = Kind; }
 

@@ -369,20 +369,30 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
         return fhir.error_expr(expr);
     }
 
+    // Elements store through a place getter when the array has one, otherwise through a setter.
+    MethodSymbol* getter = nullptr;
     MethodSymbol* setter = nullptr;
     if (!elements.empty())
     {
         OverloadArg indexArg = { i32Type, nullptr };
-        auto setterResult = arrayType->find_index_setter(indexArg);
-        if (!setterResult.best.is_callable())
+        auto getterResult = arrayType->find_index_getter(indexArg);
+        if (getterResult.best.is_callable() && getterResult.best.method->returnsRef)
         {
-            diag.report(DiagnosticCode::Err_ArrayMissingSetter, expr->span, format_type(elementType));
-            return fhir.error_expr(expr);
+            getter = getterResult.best.method;
         }
-        setter = setterResult.best.method;
+        else
+        {
+            auto setterResult = arrayType->find_index_setter(indexArg);
+            if (!setterResult.best.is_callable())
+            {
+                diag.report(DiagnosticCode::Err_ArrayMissingIndexer, expr->span, format_type(elementType));
+                return fhir.error_expr(expr);
+            }
+            setter = setterResult.best.method;
+        }
     }
 
-    return fhir.array_literal(expr, arrayType, elementType, std::move(elements), ctorResult.best.method, setter);
+    return fhir.array_literal(expr, arrayType, elementType, std::move(elements), ctorResult.best.method, getter, setter);
 }
 
 }

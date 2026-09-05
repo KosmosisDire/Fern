@@ -306,7 +306,7 @@ CallableDeclSyntax* Parser::parse_function_decl()
     parse_parameter_list(func->parameters, span);
     skip_newlines(walker);
 
-    func->returnType = parse_return_type(span);
+    func->returnType = parse_return_type(span, true, func->returnsRef);
     skip_newlines(walker);
 
     func->body = parse_optional_body(span);
@@ -556,7 +556,8 @@ void Parser::parse_parameter_list(ParameterListSyntax& out, Span& span)
     }
 }
 
-TypeExprSyntax* Parser::parse_return_type(Span& span)
+// -> T or -> ref T. Only functions and operators may return a place, so casts and literals pass allowRef false.
+TypeExprSyntax* Parser::parse_return_type(Span& span, bool allowRef, bool& returnsRef)
 {
     if (!walker.check(TokenKind::ThinArrow))
     {
@@ -565,6 +566,21 @@ TypeExprSyntax* Parser::parse_return_type(Span& span)
 
     walker.advance();
     skip_newlines(walker);
+
+    if (walker.check(TokenKind::Ref))
+    {
+        if (allowRef)
+        {
+            returnsRef = true;
+        }
+        else
+        {
+            diag.report(DiagnosticCode::Err_RefReturnNotAllowed, walker.current().span);
+        }
+        span = span.merge(walker.current().span);
+        walker.advance();
+        skip_newlines(walker);
+    }
 
     auto* type = expect_type("expected a return type after '->'");
     builder.merge_if(span, type);
@@ -637,7 +653,7 @@ CallableDeclSyntax* Parser::parse_literal_decl()
     parse_parameter_list(decl->parameters, span);
     skip_newlines(walker);
 
-    decl->returnType = parse_return_type(span);
+    decl->returnType = parse_return_type(span, false, decl->returnsRef);
     skip_newlines(walker);
 
     decl->body = parse_optional_body(span);
@@ -658,7 +674,7 @@ CallableDeclSyntax* Parser::parse_cast_decl()
     parse_parameter_list(decl->parameters, span);
     skip_newlines(walker);
 
-    decl->returnType = parse_return_type(span);
+    decl->returnType = parse_return_type(span, false, decl->returnsRef);
     skip_newlines(walker);
 
     decl->body = parse_optional_body(span);
@@ -713,7 +729,7 @@ CallableDeclSyntax* Parser::parse_operator_decl()
     parse_parameter_list(opDecl->parameters, span);
     skip_newlines(walker);
 
-    opDecl->returnType = parse_return_type(span);
+    opDecl->returnType = parse_return_type(span, true, opDecl->returnsRef);
     skip_newlines(walker);
 
     opDecl->body = parse_optional_body(span);

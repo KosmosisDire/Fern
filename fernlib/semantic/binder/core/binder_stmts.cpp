@@ -84,6 +84,10 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
             {
                 diag.report(DiagnosticCode::Err_ReturnValueNoType, stmt->span, method->name);
             }
+            else if (method->returnsRef && value && !value->is_error() && !is_place(value))
+            {
+                diag.report(DiagnosticCode::Err_RefReturnNotPlace, stmt->value->span);
+            }
         }
     }
     else if (TypeSymbol* retType = method->get_return_type())

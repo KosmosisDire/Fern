@@ -51,6 +51,9 @@ public:
 
     NamedTypeSymbol* get_or_declare_generic_instance(NamedTypeSymbol* templ, const std::vector<TypeSymbol*>& typeArgs);
     NamedTypeSymbol* get_or_declare_array_type(TypeSymbol* elementType);
+    NamedTypeSymbol* get_or_declare_pointer_type(TypeSymbol* pointee);
+    // The generic template of the given name and arity declared in core.fn's Core namespace
+    NamedTypeSymbol* core_template(std::string_view name, int arity);
     TypeSymbol* substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs);
     void populate_instantiation_members(NamedTypeSymbol* inst);
     void ensure_members_populated(NamedTypeSymbol* type);

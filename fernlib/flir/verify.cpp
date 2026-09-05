@@ -9,12 +9,14 @@ namespace Fern
 
 #pragma region Address Predicate
 
-// True for nodes that produce an address, seen through a sequence that yields one.
+// True for nodes that produce an address, seen through a sequence that yields one. A call to a ref
+// returning method yields the place it returns.
 static bool is_address(FlirExpr* node)
 {
     if (!node) return false;
     if (node->is<FlirLocalAddr>() || node->is<FlirFieldAddr>() || node->is<FlirElemAddr>()) return true;
     if (auto* seq = node->as<FlirSequence>()) return is_address(seq->value);
+    if (auto* call = node->as<FlirCall>()) return call->method && call->method->returnsRef;
     return false;
 }
 
@@ -83,6 +85,12 @@ private:
         else if (auto* n = node->as<FlirCall>())
         {
             if (n->method && n->method->is_intrinsic()) fail(n, "call to an intrinsic method");
+            if (n->method && n->method->returnsRef && n->resultDest) fail(n, "ref returning call with a result destination");
+        }
+        else if (auto* n = node->as<FlirReturn>())
+        {
+            bool refMethod = method && method->symbol && method->symbol->returnsRef;
+            if (refMethod && !is_address(n->value)) fail(n, "ref return of a non address");
         }
         else if (auto* n = node->as<FlirIntrinsic>())
         {

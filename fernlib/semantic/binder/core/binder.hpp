@@ -138,6 +138,7 @@ protected:
     MethodSymbol* break_operator_tie(const std::vector<MethodSymbol*>& candidates, TypeSymbol* expected, TypeSymbol* leftType);
     FhirExpr* bind_assignment(AssignmentExprSyntax* expr);
     FhirExpr* bind_index(IndexExprSyntax* expr, IndexContext ctx = IndexContext::Read);
+    static bool is_place(FhirExpr* expr);
 
 #pragma region Literal Binding
 

@@ -602,7 +602,7 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         default: break;
     }
 
-    // Literal tags, bool.and, bool.or, ptr.get, and ptr.set never survive lowering.
+    // Literal tags, bool.and, bool.or, and ptr.index never survive lowering.
     throw VmError{std::format("unreachable intrinsic '{}'", format(kind))};
 }
 

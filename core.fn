@@ -523,12 +523,11 @@ type Bool
     @Intrinsic("bool.or") op ||(left: bool, right: bool) -> bool
 }
 
--- The address of a place holding a T. Indexing is unchecked, so p[i] is the place i strides past p.
+-- The address of a place holding a T. Indexing is unchecked and yields the place i strides past p.
 @BuiltinType
 type Ptr<T>
 {
-    @Intrinsic("ptr.get") op [](self: Ptr<T>, index: i32) -> T
-    @Intrinsic("ptr.set") op []=(self: Ptr<T>, index: i32, value: T)
+    @Intrinsic("ptr.index") op [](self: Ptr<T>, index: i32) -> ref T
 }
 
 @BuiltinType
@@ -549,16 +548,11 @@ ref type Array<T>
 
     @Intrinsic("array.empty") init
 
-    op [](self: Array<T>, index: i32) -> T
+    -- Elements are places, so whole and partial writes through the index land in the array
+    op [](self: Array<T>, index: i32) -> ref T
     {
         Runtime.CheckIndex(index, self.length)
         return self.Data()[index]
-    }
-
-    op []=(self: Array<T>, index: i32, value: T)
-    {
-        Runtime.CheckIndex(index, self.length)
-        self.Data()[index] = value
     }
 }
 

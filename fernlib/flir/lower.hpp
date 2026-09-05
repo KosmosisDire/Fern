@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <semantic/fhir/fhir.hpp>
+#include <semantic/layout.hpp>
 #include <flir/builder.hpp>
 #include <flir/context.hpp>
 #include <flir/flir.hpp>
@@ -26,6 +27,8 @@ private:
     SemanticContext& semantic;
     FlirContext& flir;
     FlirBuilder builder;
+    // Lays out the Ptr<T> instances that address temps introduce after the layout pass has run
+    LayoutPass layout;
 
     FlirMethod* currentMethod = nullptr;
 
@@ -50,6 +53,13 @@ private:
     FlirExpr* lower_array_literal(FhirArrayLiteralExpr* expr);
 
     void lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syntax, std::vector<FlirStmt*>& out);
+
+    FlirExpr* lower_place(FhirExpr* expr);
+    FlirExpr* call_expr(FhirCallExpr* expr);
+    FlirExpr* index_place(BaseSyntax* syntax, MethodSymbol* getter, TypeSymbol* elemType, FlirExpr* object, FlirExpr* index);
+    TypeSymbol* pointer_type(TypeSymbol* pointee);
+    FlirLocal* address_temp(TypeSymbol* pointee);
+    FlirExpr* deref(BaseSyntax* syntax, FlirLocal* ptrSlot, TypeSymbol* type);
 
     FlirExpr* address_load(BaseSyntax* syntax, FlirExpr* address, TypeSymbol* type);
     FlirExpr* read_slot(BaseSyntax* syntax, FlirLocal* slot);

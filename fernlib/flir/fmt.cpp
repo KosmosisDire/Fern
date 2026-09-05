@@ -258,7 +258,7 @@ std::string FlirPrettyFormatter::format(FlirMethod* method)
         }
         fmt.out << ")";
         if (method->symbol->get_return_type())
-            fmt.out << " -> " << format_type(method->symbol->get_return_type());
+            fmt.out << " -> " << (method->symbol->returnsRef ? "ref " : "") << format_type(method->symbol->get_return_type());
     }
 
     if (!method->locals.empty())
@@ -366,9 +366,10 @@ std::string FlirDebugFormatter::method_label(MethodSymbol* method)
 {
     if (!method) return "null";
     auto* ret = method->get_return_type();
-    return std::format("{}({}) -> {}",
+    return std::format("{}({}) -> {}{}",
                        symbol_label(method),
                        format_parameter_list(method),
+                       method->returnsRef ? "ref " : "",
                        ret ? format_type(ret) : "void");
 }
 

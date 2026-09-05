@@ -1,0 +1,27 @@
+---
+Description: A ref return must return a place, not a temporary value
+Expected: FN3305
+---
+
+type Vec2
+{
+    x: i32
+
+    init(x: i32)
+    {
+        this.x = x
+    }
+}
+
+type Program
+{
+    static fn Make() -> ref Vec2
+    {
+        return Vec2(1)
+    }
+
+    static fn Main -> i32
+    {
+        return Make().x
+    }
+}

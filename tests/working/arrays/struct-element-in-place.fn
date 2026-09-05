@@ -1,5 +1,5 @@
 ---
-Description: Field writes and mutating calls on an array element should land in the array, not in a returned copy
+Description: Field writes and mutating calls on an array element land in the array, not in a copy
 Expected: 153
 ---
 

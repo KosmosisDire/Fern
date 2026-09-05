@@ -523,7 +523,7 @@ std::string format_method(MethodSymbol* method, const SymbolFormat& fmt)
     if (fmt.has(SymbolFormatOption::IncludeReturnType))
     {
         TypeSymbol* ret = method->get_return_type();
-        ss << " -> " << (ret ? format_type(ret, innerType) : std::string("void"));
+        ss << " -> " << (method->returnsRef ? "ref " : "") << (ret ? format_type(ret, innerType) : std::string("void"));
     }
 
     return ss.str();

@@ -1,0 +1,27 @@
+---
+Description: A ref return is only allowed on functions and operators
+Expected: FN1020
+---
+
+type Meters
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+
+    explicit cast(from: i32) -> ref Meters
+    {
+        return Meters(from)
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return ((Meters)3).value
+    }
+}

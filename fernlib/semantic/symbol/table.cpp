@@ -151,6 +151,7 @@ MethodSymbol* SymbolTable::declare_method(NamedTypeSymbol* parent, CallableDeclS
 
     auto* method = declare_method(parent, name, modifiers, syntax->callableKind, operatorKind);
     method->syntax = syntax;
+    method->returnsRef = syntax->returnsRef;
     return method;
 }
 
@@ -192,13 +193,26 @@ NamedTypeSymbol* SymbolTable::get_or_declare_generic_instance(NamedTypeSymbol* t
     return inst;
 }
 
+NamedTypeSymbol* SymbolTable::core_template(std::string_view name, int arity)
+{
+    auto* coreNs = globalNamespace->find_namespace("Core");
+    return coreNs ? coreNs->find_type(name, arity) : nullptr;
+}
+
 NamedTypeSymbol* SymbolTable::get_or_declare_array_type(TypeSymbol* elementType)
 {
     if (!elementType) return nullptr;
-    auto* coreNs = globalNamespace->find_namespace("Core");
-    auto* arrayTemplate = coreNs ? coreNs->find_type("Array", 1) : nullptr;
+    auto* arrayTemplate = core_template("Array", 1);
     if (!arrayTemplate) return nullptr;
     return get_or_declare_generic_instance(arrayTemplate, {elementType});
+}
+
+NamedTypeSymbol* SymbolTable::get_or_declare_pointer_type(TypeSymbol* pointee)
+{
+    if (!pointee) return nullptr;
+    auto* ptrTemplate = core_template("Ptr", 1);
+    if (!ptrTemplate) return nullptr;
+    return get_or_declare_generic_instance(ptrTemplate, {pointee});
 }
 
 TypeSymbol* SymbolTable::substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs)
@@ -285,6 +299,7 @@ void SymbolTable::populate_instantiation_members(NamedTypeSymbol* inst)
         methodPtr->modifiers = templateMethod->modifiers;
         methodPtr->callableKind = templateMethod->callableKind;
         methodPtr->operatorKind = templateMethod->operatorKind;
+        methodPtr->returnsRef = templateMethod->returnsRef;
 
         auto* method = own(std::move(methodPtr));
 

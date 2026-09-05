@@ -31,6 +31,7 @@ DIAG(Err_ExpectedMemberAfterDot,        1016, Error,   "expected member name aft
 DIAG(Err_ExpectedElseBody,              1017, Error,   "expected '{{' or 'if' after 'else'")
 DIAG(Err_SyntaxError,                   1018, Error,   "{}")                                                                                        // CS1003 (generic passthrough used by Parser::expect)
 DIAG(Err_UnparenthesizedCondition,      1019, Error,   "condition must be parenthesized")
+DIAG(Err_RefReturnNotAllowed,           1020, Error,   "a ref return is only allowed on functions and operators")
 
 // AST validation
 DIAG(Err_BadNamespaceContent,           2000, Error,   "namespaces can only contain types and other namespaces")                                    // CS0116
@@ -88,6 +89,7 @@ DIAG(Err_StaticMemberOnInstance,        3217, Error,   "static member '{}' canno
 DIAG(Err_ThisInStaticFunction,          3218, Error,   "'this' cannot be used in a static function")                                                 // CS0026
 DIAG(Err_InstanceFieldInStatic,         3219, Error,   "cannot access instance field '{}' in a static function")                                     // CS0120
 DIAG(Err_ConstantOverflow,              3220, Error,   "constant expression overflows type '{}'")                                                    // CS0220
+DIAG(Err_AssignToTemporary,             3221, Error,   "cannot assign to a temporary value, the target must be a variable, field, or element")     // CS1612
 
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")
@@ -95,6 +97,7 @@ DIAG(Err_ReturnValueRequired,           3301, Error,   "function '{}' must retur
 DIAG(Err_ConstructorReturnValue,        3302, Error,   "constructor cannot return a value")
 DIAG(Err_DuplicateLocal,                3303, Error,   "local variable '{}' already defined in this scope")                              // CS0128
 DIAG(Err_LocalShadowsParameter,         3304, Error,   "local variable '{}' conflicts with a parameter of the same name")                   // CS0136
+DIAG(Err_RefReturnNotPlace,             3305, Error,   "a ref return must return a variable, field, or element, not a temporary value")            // CS8156
 
 // Binder: calls (3400-3499)
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121
@@ -130,7 +133,7 @@ DIAG(Err_CharLiteralLength,             3705, Error,   "character literal must c
 DIAG(Err_ArrayMissingI32Ctor,           3706, Error,   "Core.Array has no constructor taking i32")
 DIAG(Err_ArrayMixedTypes,               3708, Error,   "array literal has mixed element types: '{}' and '{}'")
 DIAG(Err_ArrayCannotInferElement,       3709, Error,   "type cannot be inferred for array, consider adding a type annotation or explicit constructor")  // CS0826 (also covers empty array with no annotation)
-DIAG(Err_ArrayMissingSetter,            3710, Error,   "Core.Array has no 'op []=' for element type '{}'")
+DIAG(Err_ArrayMissingIndexer,           3710, Error,   "Core.Array has no indexer that can store elements of type '{}'")
 
 // Flow analysis
 DIAG(Wrn_UnreachableCode,               4000, Warning, "unreachable code detected")                                                                 // CS0162

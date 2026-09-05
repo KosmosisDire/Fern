@@ -1,0 +1,32 @@
+---
+Description: A ref return of a scalar can be assigned, compound assigned, and copied out
+Expected: 10
+---
+
+ref type Cells
+{
+    data: i32[]
+
+    init()
+    {
+        data = [0, 0, 0]
+    }
+
+    fn Slot(index: i32) -> ref i32
+    {
+        return data[index]
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var c = Cells()
+        c.Slot(1) = 7
+        c.Slot(1) += 3
+        var s = c.Slot(1)
+        s += 100
+        return c.Slot(1)
+    }
+}

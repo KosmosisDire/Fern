@@ -169,7 +169,7 @@ struct FhirBuilder
     }
 
     FhirArrayLiteralExpr* array_literal(BaseSyntax* syntax, TypeSymbol* arrayType, TypeSymbol* elementType,
-                                        std::vector<FhirExpr*> elements, MethodSymbol* ctor, MethodSymbol* setter)
+                                        std::vector<FhirExpr*> elements, MethodSymbol* ctor, MethodSymbol* getter, MethodSymbol* setter)
     {
         auto* node = arena.alloc<FhirArrayLiteralExpr>();
         node->syntax = syntax;
@@ -178,6 +178,7 @@ struct FhirBuilder
         node->elementType = elementType;
         node->elements = std::move(elements);
         node->ctor = ctor;
+        node->getter = getter;
         node->setter = setter;
         return node;
     }

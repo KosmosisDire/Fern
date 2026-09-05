@@ -323,8 +323,7 @@ INTRINSIC(LayoutStride,   "layout.stride",   "")
 INTRINSIC(LayoutAlign,    "layout.align",    "")
 
 // ptr
-INTRINSIC(PtrGet,         "ptr.get",         "")
-INTRINSIC(PtrSet,         "ptr.set",         "")
+INTRINSIC(PtrIndex,       "ptr.index",       "")
 
 // array
 INTRINSIC(ArrayEmpty,     "array.empty",     "")

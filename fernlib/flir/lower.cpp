@@ -12,6 +12,7 @@ FlirLowerer::FlirLowerer(SemanticContext& semantic, FlirContext& flir)
     : semantic(semantic)
     , flir(flir)
     , builder(flir.arena)
+    , layout(semantic, TargetInfo{})
 {
 }
 
@@ -40,9 +41,10 @@ FlirMethod* FlirLowerer::lower_method(FhirMethod* method)
             flir.slots[param] = slot;
         }
 
-        // An aggregate return is written through a hidden by-address destination.
+        // An aggregate return is written through a hidden by-address destination. A ref return hands
+        // back the address of an existing place instead, so it never needs one.
         auto* returnType = method->symbol->get_return_type();
-        if (is_memory_class(returnType))
+        if (is_memory_class(returnType) && !method->symbol->returnsRef)
         {
             currentMethod->sretParam = builder.slot("sret", returnType);
             currentMethod->sretParam->byAddress = true;
@@ -116,7 +118,8 @@ FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, Metho
 
     auto* call = builder.call(syntax, retType, method, thisArg, std::move(args));
 
-    if (is_memory_class(retType))
+    // A ref returning call evaluates to the returned address itself, so it takes no result temp.
+    if (is_memory_class(retType) && !(method && method->returnsRef))
     {
         auto* temp = builder.synthetic_local(currentMethod, "ret", retType);
         call->resultDest = builder.local_addr(syntax, temp);
@@ -220,6 +223,11 @@ void FlirLowerer::lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt
 
 void FlirLowerer::lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out)
 {
+    if (currentMethod->symbol && currentMethod->symbol->returnsRef)
+    {
+        out.push_back(builder.return_stmt(stmt->syntax, lower_place(stmt->value)));
+        return;
+    }
     if (currentMethod->sretParam)
     {
         auto* value = lower_expr(stmt->value);
@@ -312,10 +320,8 @@ FlirExpr* FlirLowerer::lower_param_ref(FhirParamRefExpr* expr)
 
 FlirExpr* FlirLowerer::lower_field_ref(FhirFieldRefExpr* expr)
 {
-    auto* base = lower_expr(expr->thisRef);
-    auto* addr = builder.field_addr(expr->syntax, base, expr->symbol);
     auto* fieldType = expr->symbol ? expr->symbol->type : nullptr;
-    return address_load(expr->syntax, addr, fieldType);
+    return address_load(expr->syntax, lower_place(expr), fieldType);
 }
 
 FlirExpr* FlirLowerer::lower_this(FhirThisExpr* expr)
@@ -362,7 +368,15 @@ FlirExpr* FlirLowerer::lower_short_circuit(FhirOpExpr* expr)
     return builder.sequence(syntax, std::move(sideEffects), builder.load(syntax, type, builder.local_addr(syntax, tmp)));
 }
 
+// A ref returning call yields a place, which reads like any other place in value position.
 FlirExpr* FlirLowerer::lower_call(FhirCallExpr* expr)
+{
+    auto* call = call_expr(expr);
+    if (expr->is_place()) return address_load(expr->syntax, call, expr->type);
+    return call;
+}
+
+FlirExpr* FlirLowerer::call_expr(FhirCallExpr* expr)
 {
     auto* callee = expr->callee;
     MethodSymbol* method = callee ? callee->method : nullptr;
@@ -449,15 +463,16 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
     FhirExpr* valueExpr = expr->value();
 
     std::vector<FlirStmt*> sideEffects;
-    FlirExpr* loweredValue = lower_expr(valueExpr);
     TypeSymbol* rhsType = valueExpr ? valueExpr->type : nullptr;
+    TypeSymbol* targetType = targetExpr ? targetExpr->type : type;
+    auto* tmpVal = builder.synthetic_local(currentMethod, "val", type);
 
-    if (auto* idx = targetExpr->as<FhirIndexExpr>())
+    // A value indexer has no place to write through, so the object and index are staged once and the
+    // getter and setter both run on the staged temps.
+    if (auto* idx = targetExpr->as<FhirIndexExpr>(); idx && !idx->is_place())
     {
-        TypeSymbol* elementType = idx->type;
         TypeSymbol* objType = idx->object ? idx->object->type : nullptr;
         TypeSymbol* idxType = idx->index ? idx->index->type : nullptr;
-        bool intrinsicAccess = idx->getter && idx->getter->is_intrinsic() && idx->setter && idx->setter->is_intrinsic();
 
         auto* tmpObj = builder.synthetic_local(currentMethod, "obj", objType);
         auto* tmpIdx = builder.synthetic_local(currentMethod, "idx", idxType);
@@ -465,72 +480,32 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
         emit_assign(syntax, builder.local_addr(syntax, tmpObj), lower_expr(idx->object), objType, sideEffects);
         emit_assign(syntax, builder.local_addr(syntax, tmpIdx), lower_expr(idx->index), idxType, sideEffects);
-        emit_assign(syntax, builder.local_addr(syntax, tmpRhs), loweredValue, rhsType, sideEffects);
+        emit_assign(syntax, builder.local_addr(syntax, tmpRhs), lower_expr(valueExpr), rhsType, sideEffects);
 
-        auto* tmpVal = builder.synthetic_local(currentMethod, "val", elementType);
-
-        if (intrinsicAccess)
-        {
-            auto* current = address_load(syntax,
-                builder.elem_addr(syntax, read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx), elementType), elementType);
-            auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
-            emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, elementType, sideEffects);
-            emit_assign(syntax,
-                builder.elem_addr(syntax, read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx), elementType),
-                read_slot(syntax, tmpVal), elementType, sideEffects);
-            return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmpVal));
-        }
-
-        TypeSymbol* setterReturn = idx->setter ? idx->setter->get_return_type() : nullptr;
-        auto* current = build_call(syntax, elementType, idx->getter, nullptr,
+        auto* current = build_call(syntax, targetType, idx->getter, nullptr,
             { read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx) });
         auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
-        emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, elementType, sideEffects);
+        emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, type, sideEffects);
 
-        auto* setterCall = build_call(syntax, setterReturn, idx->setter, nullptr,
+        auto* setterCall = build_call(syntax, idx->setter->get_return_type(), idx->setter, nullptr,
             { read_slot(syntax, tmpObj), read_slot(syntax, tmpIdx), read_slot(syntax, tmpVal) });
         sideEffects.push_back(builder.expr_stmt(syntax, setterCall));
 
         return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmpVal));
     }
 
-    if (auto* field = targetExpr->as<FhirFieldRefExpr>())
-    {
-        TypeSymbol* fieldType = field->symbol ? field->symbol->type : type;
-        TypeSymbol* baseType = field->thisRef ? field->thisRef->type : nullptr;
-
-        FlirLocal* tmpObj = nullptr;
-        if (field->thisRef)
-        {
-            tmpObj = builder.synthetic_local(currentMethod, "obj", baseType);
-            emit_assign(syntax, builder.local_addr(syntax, tmpObj), lower_expr(field->thisRef), baseType, sideEffects);
-        }
-        auto base_read = [&]() -> FlirExpr* { return tmpObj ? read_slot(syntax, tmpObj) : nullptr; };
-
-        auto* tmpRhs = builder.synthetic_local(currentMethod, "rhs", rhsType);
-        emit_assign(syntax, builder.local_addr(syntax, tmpRhs), loweredValue, rhsType, sideEffects);
-
-        auto* current = address_load(syntax, builder.field_addr(syntax, base_read(), field->symbol), fieldType);
-        auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
-
-        auto* tmpVal = builder.synthetic_local(currentMethod, "val", type);
-        emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, type, sideEffects);
-
-        emit_assign(syntax, builder.field_addr(syntax, base_read(), field->symbol), read_slot(syntax, tmpVal), fieldType, sideEffects);
-
-        return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmpVal));
-    }
+    // Every other target is a place. Its address is taken once, so the target's operands run once, and
+    // the place is then read, updated, and written back through that pointer.
+    auto* tmpPtr = address_temp(targetType);
+    sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmpPtr), lower_place(targetExpr)));
 
     auto* tmpRhs = builder.synthetic_local(currentMethod, "rhs", rhsType);
-    emit_assign(syntax, builder.local_addr(syntax, tmpRhs), loweredValue, rhsType, sideEffects);
+    emit_assign(syntax, builder.local_addr(syntax, tmpRhs), lower_expr(valueExpr), rhsType, sideEffects);
 
-    auto* current = lower_expr(targetExpr);
+    auto* current = address_load(syntax, deref(syntax, tmpPtr, targetType), targetType);
     auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
-
-    auto* tmpVal = builder.synthetic_local(currentMethod, "val", type);
     emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, type, sideEffects);
-
-    lower_store(targetExpr, read_slot(syntax, tmpVal), syntax, sideEffects);
+    emit_assign(syntax, deref(syntax, tmpPtr, targetType), read_slot(syntax, tmpVal), targetType, sideEffects);
 
     return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmpVal));
 }
@@ -552,60 +527,93 @@ FlirExpr* FlirLowerer::lower_cast(FhirCastExpr* expr)
     return builder.cast(expr->syntax, expr->type, operand, expr->method);
 }
 
+// An index on a place getter reads the element place. A value getter stays a call.
 FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
 {
     auto* object = lower_expr(expr->object);
     auto* index = lower_expr(expr->index);
 
-    // The Ptr accessors are intrinsic, so index becomes an element address plus a read.
-    // Every other indexer, Array and String included, keeps its getter call.
-    if (expr->getter && expr->getter->is_intrinsic())
-    {
-        auto* addr = builder.elem_addr(expr->syntax, object, index, expr->type);
-        return address_load(expr->syntax, addr, expr->type);
-    }
+    if (expr->is_place())
+        return address_load(expr->syntax, index_place(expr->syntax, expr->getter, expr->type, object, index), expr->type);
     return build_call(expr->syntax, expr->type, expr->getter, nullptr, { object, index });
 }
 
+// A value indexer stores through its setter. Every other target is a place and is written directly.
 void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syntax, std::vector<FlirStmt*>& out)
 {
     if (!target) return;
 
-    if (auto* local = target->as<FhirLocalRefExpr>())
+    if (auto* idx = target->as<FhirIndexExpr>(); idx && !idx->is_place())
     {
-        auto* slot = flir.lookup_local_symbol(local->symbol);
-        emit_assign(syntax, builder.local_addr(syntax, slot), value, slot ? slot->type : nullptr, out);
-        return;
-    }
-    if (auto* param = target->as<FhirParamRefExpr>())
-    {
-        auto* slot = flir.lookup_param_symbol(param->symbol);
-        emit_assign(syntax, builder.local_addr(syntax, slot), value, slot ? slot->type : nullptr, out);
-        return;
-    }
-    if (auto* field = target->as<FhirFieldRefExpr>())
-    {
-        auto* base = lower_expr(field->thisRef);
-        auto* addr = builder.field_addr(syntax, base, field->symbol);
-        emit_assign(syntax, addr, value, field->symbol ? field->symbol->type : nullptr, out);
-        return;
-    }
-    if (auto* idx = target->as<FhirIndexExpr>(); idx && idx->setter)
-    {
+        if (!idx->setter) return;
         auto* object = lower_expr(idx->object);
         auto* index = lower_expr(idx->index);
-        if (idx->setter->is_intrinsic())
-        {
-            auto* addr = builder.elem_addr(syntax, object, index, idx->type);
-            emit_assign(syntax, addr, value, idx->type, out);
-            return;
-        }
-        TypeSymbol* setterReturn = idx->setter->get_return_type();
-        auto* call = builder.call(syntax, setterReturn, idx->setter, nullptr, { object, index, value });
+        auto* call = build_call(syntax, idx->setter->get_return_type(), idx->setter, nullptr, { object, index, value });
         out.push_back(builder.expr_stmt(syntax, call));
         return;
     }
+    emit_assign(syntax, lower_place(target), value, target->type, out);
 }
+
+#pragma region Places
+
+// The address of a place expression. The binder guarantees that assignment targets and ref returns are
+// places, so anything else here is an aggregate that already evaluates to its address.
+FlirExpr* FlirLowerer::lower_place(FhirExpr* expr)
+{
+    if (!expr) return nullptr;
+
+    if (auto* e = expr->as<FhirLocalRefExpr>())
+        return builder.local_addr(e->syntax, flir.lookup_local_symbol(e->symbol));
+    if (auto* e = expr->as<FhirParamRefExpr>())
+        return builder.local_addr(e->syntax, flir.lookup_param_symbol(e->symbol));
+    if (auto* e = expr->as<FhirThisExpr>())
+    {
+        if (!currentMethod || currentMethod->parameters.empty()) return nullptr;
+        return builder.local_addr(e->syntax, currentMethod->parameters[0]);
+    }
+    if (auto* e = expr->as<FhirFieldRefExpr>())
+        return builder.field_addr(e->syntax, lower_expr(e->thisRef), e->symbol);
+    if (auto* e = expr->as<FhirIndexExpr>())
+        return index_place(e->syntax, e->getter, e->type, lower_expr(e->object), lower_expr(e->index));
+    if (auto* e = expr->as<FhirCallExpr>())
+        return call_expr(e);
+
+    return lower_expr(expr);
+}
+
+// The address of an indexed place. Ptr indexing is the one intrinsic and is element arithmetic, any
+// other place getter is a call that yields the address it returns.
+FlirExpr* FlirLowerer::index_place(BaseSyntax* syntax, MethodSymbol* getter, TypeSymbol* elemType, FlirExpr* object, FlirExpr* index)
+{
+    if (getter && getter->intrinsic() == IntrinsicKind::PtrIndex)
+        return builder.elem_addr(syntax, object, index, elemType);
+    return build_call(syntax, elemType, getter, nullptr, { object, index });
+}
+
+// Ptr<pointee>, instantiated and laid out on demand since lowering runs after the layout pass.
+TypeSymbol* FlirLowerer::pointer_type(TypeSymbol* pointee)
+{
+    auto* inst = semantic.symbols.get_or_declare_pointer_type(pointee);
+    if (inst) layout.compute(inst);
+    return inst;
+}
+
+// A frame slot that holds the address of a place, so the place's operands run once and the place can
+// be read and written more than once.
+FlirLocal* FlirLowerer::address_temp(TypeSymbol* pointee)
+{
+    return builder.synthetic_local(currentMethod, "ptr", pointer_type(pointee));
+}
+
+// The place an address temp points at, spelled as element zero so it stays an address node.
+FlirExpr* FlirLowerer::deref(BaseSyntax* syntax, FlirLocal* ptrSlot, TypeSymbol* type)
+{
+    auto* zero = builder.constant(syntax, semantic.resolve_type_name("i32"), ConstantValue::make_int(0));
+    return builder.elem_addr(syntax, read_slot(syntax, ptrSlot), zero, type);
+}
+
+#pragma region Builders
 
 // Lowers Foo { a = 1, b.c = 2 } to a sequence of field writes into a temp
 FlirExpr* FlirLowerer::lower_object_builder(FhirObjectBuilderExpr* expr)
@@ -637,7 +645,8 @@ FlirExpr* FlirLowerer::lower_object_builder(FhirObjectBuilderExpr* expr)
     return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmp));
 }
 
-// Lowers [a, b, c] to an alloc plus constructor, then one indexed setter per element
+// Lowers [a, b, c] to an alloc plus constructor, then one element store per element, through the
+// element place when the array has a place getter and through the setter otherwise
 FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
 {
     BaseSyntax* syntax = expr->syntax;
@@ -651,19 +660,18 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
     auto* countConst = builder.constant(syntax, i32Type, ConstantValue::make_int(count));
     sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmp), build_call(syntax, type, expr->ctor, nullptr, { countConst })));
 
-    bool intrinsicSetter = expr->setter && expr->setter->is_intrinsic();
-    TypeSymbol* setterReturn = expr->setter ? expr->setter->get_return_type() : nullptr;
     for (int i = 0; i < count; ++i)
     {
         auto* indexConst = builder.constant(syntax, i32Type, ConstantValue::make_int(i));
         auto* value = lower_expr(expr->elements[i]);
-        if (intrinsicSetter)
+        if (expr->getter)
         {
-            emit_assign(syntax, builder.elem_addr(syntax, read_slot(syntax, tmp), indexConst, expr->elementType), value, expr->elementType, sideEffects);
+            auto* place = index_place(syntax, expr->getter, expr->elementType, read_slot(syntax, tmp), indexConst);
+            emit_assign(syntax, place, value, expr->elementType, sideEffects);
         }
         else
         {
-            auto* setCall = build_call(syntax, setterReturn, expr->setter, nullptr,
+            auto* setCall = build_call(syntax, expr->setter->get_return_type(), expr->setter, nullptr,
                 { read_slot(syntax, tmp), indexConst, value });
             sideEffects.push_back(builder.expr_stmt(syntax, setCall));
         }

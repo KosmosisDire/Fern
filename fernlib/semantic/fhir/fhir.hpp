@@ -11,6 +11,7 @@
 #include <semantic/constant.hpp>
 #include <semantic/intrinsics.hpp>
 #include <semantic/symbol/overload.hpp>
+#include <semantic/symbol/symbol.hpp>
 
 namespace Fern
 {
@@ -286,6 +287,9 @@ struct FhirCallExpr : FhirExpr
     FhirMethodRefExpr* callee = nullptr;
     std::vector<FhirExpr*> arguments;
 
+    // True when the callee returns ref, so the call denotes a place rather than a temporary
+    bool is_place() const { return callee && callee->method && callee->method->returnsRef; }
+
     void visit_children(FhirVisitor* v) override
     {
         if (callee) callee->accept(v);
@@ -365,6 +369,9 @@ struct FhirIndexExpr : FhirExpr
     MethodSymbol* getter = nullptr;
     MethodSymbol* setter = nullptr;
 
+    // True when the getter returns ref, so the element is a place and writes need no setter
+    bool is_place() const { return getter && getter->returnsRef; }
+
     void visit_children(FhirVisitor* v) override
     {
         if (object) object->accept(v);
@@ -400,6 +407,8 @@ struct FhirArrayLiteralExpr : FhirExpr
     TypeSymbol* elementType = nullptr;
     std::vector<FhirExpr*> elements;
     MethodSymbol* ctor = nullptr;
+    // Elements are stored through the getter when it returns ref, otherwise through the setter
+    MethodSymbol* getter = nullptr;
     MethodSymbol* setter = nullptr;
 
     void visit_children(FhirVisitor* v) override

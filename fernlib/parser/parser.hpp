@@ -37,7 +37,7 @@ private:
 
     // Shared parse helpers
     void parse_parameter_list(ParameterListSyntax& out, Span& span);
-    TypeExprSyntax* parse_return_type(Span& span);
+    TypeExprSyntax* parse_return_type(Span& span, bool allowRef, bool& returnsRef);
     BlockSyntax* parse_optional_body(Span& span);
 
     // Statements
