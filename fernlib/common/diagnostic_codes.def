@@ -49,8 +49,8 @@ DIAG(Err_ArrayTypeNotFound,             3001, Error,   "Array type not found")  
 DIAG(Err_TypeNotGeneric,                3002, Error,   "type '{}' is not generic")                                                                  // CS0308
 
 // Binder: pipeline (3100-3199, member declaration validation)
-DIAG(Err_IndexGetParamCount,            3100, Error,   "operator '[]' must have 2 parameters (self, index), but has {}")
-DIAG(Err_IndexSetParamCount,            3101, Error,   "operator '[]=' must have 3 parameters (self, index, value), but has {}")
+DIAG(Err_IndexGetParamCount,            3100, Error,   "operator '[]' must have 1 parameter (index), but has {}")
+DIAG(Err_IndexSetParamCount,            3101, Error,   "operator '[]=' must have 2 parameters (index, value), but has {}")
 DIAG(Err_OperatorParamCount,            3102, Error,   "operator '{}' must have 1 parameter (unary) or 2 parameters (binary), but has {}")          // CS1019/CS1020
 DIAG(Err_LiteralReturnType,             3103, Error,   "literal '{}' must return '{}', not '{}'")
 DIAG(Err_DuplicateMember,               3104, Error,   "duplicate {} on type '{}'")                                                                 // CS0102

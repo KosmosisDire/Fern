@@ -7,7 +7,7 @@ type Container
 {
     init{}
 
-    op []=(self: Container, index: i32, value: f32) {}
+    op []=(index: i32, value: f32) {}
 }
 
 type Program

@@ -228,6 +228,13 @@ constexpr bool is_expression_start(TokenKind k)
            is_literal(k);
 }
 
+// The index operators name a component of their receiver, so they are instance members with this,
+// unlike every other operator which is a static function of its operands
+constexpr bool is_index_operator(TokenKind k)
+{
+    return k == TokenKind::IndexOp || k == TokenKind::IndexSetOp;
+}
+
 constexpr bool is_operator_token(TokenKind k)
 {
     return k == TokenKind::Plus ||

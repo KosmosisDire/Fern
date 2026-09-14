@@ -137,7 +137,8 @@ MethodSymbol* SymbolTable::declare_method(NamedTypeSymbol* parent, CallableDeclS
         case CallableKind::Operator:
             name = syntax->name.lexeme;
             operatorKind = syntax->name.kind;
-            modifiers = Modifier::Public | Modifier::Static;
+            modifiers = Modifier::Public;
+            if (!is_index_operator(operatorKind)) modifiers = modifiers | Modifier::Static;
             break;
         case CallableKind::Literal:
             name = syntax->name.lexeme;

@@ -191,10 +191,9 @@ OverloadResult NamedTypeSymbol::find_index_getter(const OverloadArg& index)
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
-        if (!method->is_operator() || method->operatorKind != TokenKind::IndexOp || method->parameters.size() != 2)
+        if (!method->is_operator() || method->operatorKind != TokenKind::IndexOp || method->parameters.size() != 1)
             continue;
-        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
-        std::vector<OverloadArg> args = { selfPlaceholder, index };
+        std::vector<OverloadArg> args = { index };
         candidates.push_back(Overload::grade(method, args));
     }
 
@@ -208,11 +207,10 @@ OverloadResult NamedTypeSymbol::find_index_setter(const OverloadArg& index)
     std::vector<OverloadMatch> candidates;
     for (auto* method : methods)
     {
-        if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 3)
+        if (!method->is_operator() || method->operatorKind != TokenKind::IndexSetOp || method->parameters.size() != 2)
             continue;
-        OverloadArg selfPlaceholder{ method->parameters[0]->type, nullptr };
-        OverloadArg valuePlaceholder{ method->parameters[2]->type, nullptr };
-        std::vector<OverloadArg> args = { selfPlaceholder, index, valuePlaceholder };
+        OverloadArg valuePlaceholder{ method->parameters[1]->type, nullptr };
+        std::vector<OverloadArg> args = { index, valuePlaceholder };
         candidates.push_back(Overload::grade(method, args));
     }
 

@@ -3,11 +3,10 @@
 namespace Fern
 {
 
-// The storage a vetted ref method's result lives in, decided by its receiver alone. Arguments are
-// copies that no ref method may return a place inside, so they never matter. A ref type or static
-// receiver leaves only heap or pointer storage, a value type receiver puts the result inside the
-// receiver's own storage.
-static PlaceStorage receiver_storage(const FhirExpr* receiver)
+// Arguments are copies that no ref method may return a place inside, so only the receiver matters. A
+// ref type or static receiver leaves only heap or pointer storage, a value type receiver puts the
+// result inside the receiver's own storage.
+PlaceStorage receiver_storage(const FhirExpr* receiver)
 {
     if (!receiver) return PlaceStorage::Heap;
     auto* type = receiver->type ? receiver->type->as<NamedTypeSymbol>() : nullptr;

@@ -166,6 +166,10 @@ struct FhirExpr : FhirNode
     bool is_place() const { return place_storage() != PlaceStorage::Temporary; }
 };
 
+// The storage a method called on this receiver may hand back through a ref return or write into
+// through this. Null means a static call.
+PlaceStorage receiver_storage(const FhirExpr* receiver);
+
 struct FhirStmt : FhirNode
 {
     FhirStmt(int k) : FhirNode(k) {}

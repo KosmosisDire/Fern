@@ -22,14 +22,14 @@ type Box
         this.item = item
     }
 
-    op [](self: Box, index: i32) -> Vec2
+    op [](index: i32) -> Vec2
     {
-        return self.item
+        return item
     }
 
-    op []=(self: Box, index: i32, value: Vec2)
+    op []=(index: i32, value: Vec2)
     {
-        self.item = value
+        item = value
     }
 }
 

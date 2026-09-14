@@ -1,0 +1,33 @@
+---
+Description: A value type indexer setter needs a receiver that is a place, a temporary would take the write and vanish
+Expected: FN3221
+---
+
+type Cell
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+
+    op [](index: i32) -> i32
+    {
+        return value
+    }
+
+    op []=(index: i32, newValue: i32)
+    {
+        value = newValue
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        Cell(1)[0] = 5
+        return 0
+    }
+}

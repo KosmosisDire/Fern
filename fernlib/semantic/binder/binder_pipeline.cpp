@@ -142,11 +142,11 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
                 bool isIndexGet = callableAst->name.kind == TokenKind::IndexOp;
                 bool isIndexSet = callableAst->name.kind == TokenKind::IndexSetOp;
 
-                if (isIndexGet && method->parameters.size() != 2)
+                if (isIndexGet && method->parameters.size() != 1)
                 {
                     context.diag.report(DiagnosticCode::Err_IndexGetParamCount, callableAst->span, method->parameters.size());
                 }
-                else if (isIndexSet && method->parameters.size() != 3)
+                else if (isIndexSet && method->parameters.size() != 2)
                 {
                     context.diag.report(DiagnosticCode::Err_IndexSetParamCount, callableAst->span, method->parameters.size());
                 }
@@ -384,7 +384,8 @@ void BinderPipeline::validate_signatures()
                 }
             }
 
-            if (method->is_operator())
+            // Index operators take the containing type as this, every other operator names it in a parameter
+            if (method->is_operator() && !is_index_operator(method->operatorKind))
             {
                 bool hasContainingType = std::any_of(method->parameters.begin(), method->parameters.end(),
                     [type](auto* param) { return param->type == type; });
@@ -482,9 +483,8 @@ void BinderPipeline::check_indexer_signatures(NamedTypeSymbol* type)
 {
     auto signature_matches = [](MethodSymbol* a, MethodSymbol* b) -> bool
     {
-        if (a->parameters.size() < 2 || b->parameters.size() < 2) return false;
-        return a->parameters[0]->type == b->parameters[0]->type
-            && a->parameters[1]->type == b->parameters[1]->type;
+        if (a->parameters.empty() || b->parameters.empty()) return false;
+        return a->parameters[0]->type == b->parameters[0]->type;
     };
 
     std::vector<MethodSymbol*> getters;
@@ -504,7 +504,7 @@ void BinderPipeline::check_indexer_signatures(NamedTypeSymbol* type)
             if (signature_matches(setters[i], setters[j]))
             {
                 Span loc = setters[j]->syntax ? setters[j]->syntax->span : Span{};
-                context.diag.report(DiagnosticCode::Err_DuplicateIndexSetter, loc, format_type(type), format_type(setters[i]->parameters[1]->type));
+                context.diag.report(DiagnosticCode::Err_DuplicateIndexSetter, loc, format_type(type), format_type(setters[i]->parameters[0]->type));
                 isDuplicate[j] = true;
             }
         }
@@ -520,9 +520,9 @@ void BinderPipeline::check_indexer_signatures(NamedTypeSymbol* type)
             if (isDuplicate[i]) continue;
             auto* setter = setters[i];
             if (!signature_matches(getter, setter)) continue;
-            if (setter->parameters.size() < 3) continue;
+            if (setter->parameters.size() < 2) continue;
             TypeSymbol* getterValue = getter->get_return_type();
-            TypeSymbol* setterValue = setter->parameters[2]->type;
+            TypeSymbol* setterValue = setter->parameters[1]->type;
             if (getterValue && setterValue && getterValue != setterValue)
             {
                 Span loc = setter->syntax ? setter->syntax->span : Span{};

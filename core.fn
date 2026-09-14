@@ -527,7 +527,7 @@ type Bool
 @BuiltinType
 type Ptr<T>
 {
-    @Intrinsic("ptr.index") op [](self: Ptr<T>, index: i32) -> ref T
+    @Intrinsic("ptr.index") op [](index: i32) -> ref T
 }
 
 @BuiltinType
@@ -549,10 +549,10 @@ ref type Array<T>
     @Intrinsic("array.empty") init
 
     -- Elements are places, so whole and partial writes through the index land in the array
-    op [](self: Array<T>, index: i32) -> ref T
+    op [](index: i32) -> ref T
     {
-        Runtime.CheckIndex(index, self.length)
-        return self.Data()[index]
+        Runtime.CheckIndex(index, length)
+        return Data()[index]
     }
 }
 
@@ -626,9 +626,9 @@ type String
         return String.Concat(left, right)
     }
 
-    op [](self: String, index: i32) -> c8
+    op [](index: i32) -> c8
     {
-        Runtime.CheckIndex(index, self.length)
-        return self.Data()[index]
+        Runtime.CheckIndex(index, length)
+        return Data()[index]
     }
 }

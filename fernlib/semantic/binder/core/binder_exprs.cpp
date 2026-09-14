@@ -581,10 +581,12 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
         return fhir.error_expr(expr);
     }
 
-    // A value indexer stores through its setter. Every other target must be a place, or the write
-    // would land in a temporary and vanish.
+    // A value indexer stores through its setter, which runs on the receiver by address, so a value
+    // type receiver must be a place. Every other target must be a place itself, or the write would
+    // land in a temporary and vanish.
     bool valueIndexer = idx && idx->setter && !idx->returns_ref();
-    if (!valueIndexer && !writeTarget->is_place())
+    bool writable = valueIndexer ? receiver_storage(idx->object) != PlaceStorage::Temporary : writeTarget->is_place();
+    if (!writable)
     {
         diag.report(DiagnosticCode::Err_AssignToTemporary, expr->target->span);
         return fhir.error_expr(expr);
@@ -671,8 +673,8 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr, IndexContext ctx)
     }
 
     MethodSymbol* primary = getter ? getter : setter;
-    TypeSymbol* exprType = getter ? getter->get_return_type() : setter->parameters[2]->type;
-    index = coerce_to_param(index, primary->parameters[1]->type);
+    TypeSymbol* exprType = getter ? getter->get_return_type() : setter->parameters[1]->type;
+    index = coerce_to_param(index, primary->parameters[0]->type);
 
     return fhir.index_expr(expr, exprType, object, index, getter, setter);
 }

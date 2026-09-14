@@ -1,0 +1,36 @@
+---
+Description: A value type indexer returning ref hands back a place inside the receiver, so writes land in the local
+Expected: 20
+---
+
+type Pair
+{
+    first: i32
+    second: i32
+
+    init(first: i32, second: i32)
+    {
+        this.first = first
+        this.second = second
+    }
+
+    op [](index: i32) -> ref i32
+    {
+        if (index == 0)
+        {
+            return this.first
+        }
+        return this.second
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = Pair(1, 2)
+        p[1] = 7
+        p[1] += 3
+        return p[0] * 10 + p[1]
+    }
+}

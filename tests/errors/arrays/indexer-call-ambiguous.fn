@@ -10,12 +10,12 @@ type Vector2
     x: f32
     y: f32
 
-    op [](vec: Vector2, index: i32) -> f32
+    op [](index: i32) -> f32
     {
         return 0.0
     }
 
-    op [](vec: Vector2, index: f32) -> f32
+    op [](index: f32) -> f32
     {
         return 0.0
     }
