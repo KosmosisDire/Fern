@@ -391,23 +391,37 @@ FhirBlock* Binder::bind_block(BlockSyntax* block)
     return node;
 }
 
-// Emits field-default assignments for a constructor body. Called from the
-// constructor-binding path when producing synthetic and declared constructors.
+// The initializer assignments at the start of a constructor body, one per instance field
 void Binder::emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out)
 {
     for (auto* field : type->fields)
     {
         if (has_modifier(field->modifiers, Modifier::Static)) continue;
-        auto* fieldDecl = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
-        if (!fieldDecl || !fieldDecl->initializer) continue;
-
-        auto* value = bind_value_expr(fieldDecl->initializer, field->type);
-        if (!value) continue;
-
-        auto* fieldAccess = fhir.field_ref(nullptr, fhir.this_expr(nullptr, type), field);
-        auto* assignExpr = fhir.assign(nullptr, fieldAccess, value);
-        out.push_back(fhir.expr_stmt(nullptr, assignExpr));
+        emit_field_default(field, fhir.this_expr(nullptr, type), out);
     }
+}
+
+// The initializer assignments that make up a type's static init body, one per static field
+void Binder::emit_static_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out)
+{
+    for (auto* field : type->fields)
+    {
+        if (!has_modifier(field->modifiers, Modifier::Static)) continue;
+        emit_field_default(field, nullptr, out);
+    }
+}
+
+void Binder::emit_field_default(FieldSymbol* field, FhirExpr* receiver, std::vector<FhirStmt*>& out)
+{
+    auto* fieldDecl = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
+    if (!fieldDecl || !fieldDecl->initializer) return;
+
+    auto* value = bind_value_expr(fieldDecl->initializer, field->type);
+    if (!value) return;
+
+    auto* fieldAccess = fhir.field_ref(nullptr, receiver, field);
+    auto* assignExpr = fhir.assign(nullptr, fieldAccess, value);
+    out.push_back(fhir.expr_stmt(nullptr, assignExpr));
 }
 
 }

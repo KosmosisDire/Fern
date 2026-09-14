@@ -60,6 +60,7 @@ struct SemanticContext
 private:
     FhirMethod* bind_method(MethodSymbol* method);
     FhirMethod* lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* parentType);
+    FhirMethod* lower_static_init(MethodSymbol* method, NamedTypeSymbol* parentType);
 };
 
 }

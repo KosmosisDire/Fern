@@ -105,11 +105,14 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
     }
 
     int fieldIndex = 0;
+    bool hasStaticInit = false;
     for (auto* member : typeDecl->declarations)
     {
         if (auto* fieldAst = member->as<FieldDeclSyntax>())
         {
             context.symbols.declare_field(type, fieldAst, fieldIndex++);
+            if (fieldAst->initializer && has_modifier(fieldAst->modifiers, Modifier::Static))
+                hasStaticInit = true;
         }
         else if (auto* callableAst = member->as<CallableDeclSyntax>())
         {
@@ -180,6 +183,11 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
             if (has_modifier(field->modifiers, Modifier::Static)) continue;
             context.symbols.declare_parameter(method, field->name, paramIndex++);
         }
+    }
+
+    if (hasStaticInit)
+    {
+        context.symbols.declare_method(type, MethodSymbol::staticInitName, Modifier::Public | Modifier::Static, CallableKind::Function);
     }
 
     type->membersPopulated = true;

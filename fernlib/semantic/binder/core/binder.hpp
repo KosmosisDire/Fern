@@ -86,6 +86,7 @@ public:
     void resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttribute>& out);
     MethodSymbol* resolve_attribute_ctor(NamedTypeSymbol* attrType, const std::vector<ExprPtr>& argSyntax, const Span& span, std::vector<ConstantValue>& outArgs);
     void emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
+    void emit_static_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& out);
     TypeSymbol* resolve_type_expr(TypeExprSyntax* expr);
     Symbol* resolve_namespace_or_type(BaseExprSyntax* expr);
     TypeSymbol* resolve_generic_name(GenericNameExprSyntax* gen, Symbol* parentScope = nullptr);
@@ -113,6 +114,7 @@ protected:
 
 #pragma region Statement Binding
 
+    void emit_field_default(FieldSymbol* field, FhirExpr* receiver, std::vector<FhirStmt*>& out);
     void bind_var_decl(VariableDeclSyntax* decl, std::vector<FhirStmt*>& out);
     void bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out);
     void bind_if(IfStmtSyntax* stmt, std::vector<FhirStmt*>& out);

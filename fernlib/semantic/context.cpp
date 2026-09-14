@@ -128,6 +128,11 @@ FhirMethod* SemanticContext::bind_method(MethodSymbol* method)
         return lower_synthetic_constructor(method, parentType);
     }
 
+    if (method->is_static_init() && parentType)
+    {
+        return lower_static_init(method, parentType);
+    }
+
     // Body-less methods are rejected by signature validation
     auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
     if (!callable || !callable->body) return nullptr;
@@ -167,6 +172,16 @@ FhirMethod* SemanticContext::lower_synthetic_constructor(MethodSymbol* method, N
     }
 
     return fhir.method(method, ctorBlock);
+}
+
+FhirMethod* SemanticContext::lower_static_init(MethodSymbol* method, NamedTypeSymbol* parentType)
+{
+    Binder& mBinder = method_binder(method);
+    FhirBuilder fhir(arena);
+
+    auto* body = fhir.block(nullptr);
+    mBinder.emit_static_defaults(parentType, body->statements);
+    return fhir.method(method, body);
 }
 
 }

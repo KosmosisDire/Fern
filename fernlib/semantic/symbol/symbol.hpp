@@ -277,7 +277,11 @@ struct MethodSymbol : Symbol
 
     MethodSymbol() { kind = Kind; }
 
+    // The synthesized static method that runs a type's static field initializers
+    static constexpr std::string_view staticInitName = "$static_init";
+
     bool is_constructor() const { return callableKind == CallableKind::Constructor; }
+    bool is_static_init() const { return is_auto_generated() && name == staticInitName; }
     bool is_operator() const { return callableKind == CallableKind::Operator; }
     bool is_literal() const { return callableKind == CallableKind::Literal; }
     bool is_cast() const { return callableKind == CallableKind::Cast; }
