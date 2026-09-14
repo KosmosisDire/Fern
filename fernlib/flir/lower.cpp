@@ -572,7 +572,11 @@ FlirExpr* FlirLowerer::lower_place(FhirExpr* expr)
         return builder.local_addr(e->syntax, currentMethod->parameters[0]);
     }
     if (auto* e = expr->as<FhirFieldRefExpr>())
+    {
+        if (e->symbol && has_modifier(e->symbol->modifiers, Modifier::Static))
+            return builder.static_addr(e->syntax, e->symbol);
         return builder.field_addr(e->syntax, lower_expr(e->thisRef), e->symbol);
+    }
     if (auto* e = expr->as<FhirIndexExpr>())
         return e->returns_ref() ? index_place(e->syntax, e->getter, e->type, lower_expr(e->object), lower_expr(e->index)) : nullptr;
     if (auto* e = expr->as<FhirCallExpr>())
