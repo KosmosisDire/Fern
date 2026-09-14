@@ -502,6 +502,8 @@ type USize
     explicit cast(from: f32) -> usize
     @Intrinsic("usize.from_f64")
     explicit cast(from: f64) -> usize
+    @Intrinsic("usize.from_ptr")
+    explicit cast(from: Ptr) -> usize
 
     @Intrinsic("usize.add") op +(left: usize, right: usize) -> usize
     @Intrinsic("usize.sub") op -(left: usize, right: usize) -> usize
@@ -674,7 +676,8 @@ type Bool
 type Ptr
 {
     @Intrinsic("ptr.null") init
-    @Intrinsic("ptr.add") op +(p: Ptr, offset: i32) -> Ptr
+    @Intrinsic("ptr.from_usize") explicit cast(from: usize) -> Ptr
+    @Intrinsic("ptr.add") op +(p: Ptr, offset: isize) -> Ptr
     @Intrinsic("ptr.eq") op ==(left: Ptr, right: Ptr) -> bool
     @Intrinsic("ptr.ne") op !=(left: Ptr, right: Ptr) -> bool
 
@@ -691,8 +694,8 @@ type Ptr<T>
     @Intrinsic("ptr.cast") implicit cast(from: Ptr<T>) -> Ptr
     @Intrinsic("ptr.cast") explicit cast(from: Ptr) -> Ptr<T>
 
-    @Intrinsic("ptr.index") op [](index: i32) -> ref T
-    @Intrinsic("ptr.add") op +(p: Ptr<T>, offset: i32) -> Ptr<T>
+    @Intrinsic("ptr.index") op [](index: isize) -> ref T
+    @Intrinsic("ptr.add") op +(p: Ptr<T>, offset: isize) -> Ptr<T>
     @Intrinsic("ptr.eq") op ==(left: Ptr<T>, right: Ptr<T>) -> bool
     @Intrinsic("ptr.ne") op !=(left: Ptr<T>, right: Ptr<T>) -> bool
 
@@ -700,7 +703,7 @@ type Ptr<T>
 
     -- Moves count elements from this to dest. The two runs may overlap.
     @Intrinsic("ptr.copy")
-    fn CopyTo(dest: Ptr<T>, count: i32)
+    fn CopyTo(dest: Ptr<T>, count: isize)
 }
 
 @BuiltinType

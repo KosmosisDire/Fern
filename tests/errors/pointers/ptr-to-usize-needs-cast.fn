@@ -1,0 +1,15 @@
+---
+Description: A pointer does not become a usize without a cast
+Expected: FN3405
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a = [1, 2, 3]
+        var raw: Core.Ptr = a.Data()
+        var bits: usize = raw
+        return (i32)bits
+    }
+}

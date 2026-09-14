@@ -230,7 +230,7 @@ Control Interpreter::exec_copy(FlirCopy* node)
 {
     uint64_t dest = eval(node->dest).as_addr();
     uint64_t src = eval(node->src).as_addr();
-    int32_t count = eval(node->count).as_i32();
+    int64_t count = eval(node->count).as_i64();
     if (count < 0) throw VmError{std::format("negative length {}", count)};
     auto* named = node->type ? node->type->as<NamedTypeSymbol>() : nullptr;
     uint64_t stride = named ? static_cast<uint64_t>(named->strideInBytes) : 0;
@@ -352,7 +352,7 @@ Value Interpreter::eval_static_addr(FlirStaticAddr* node)
 Value Interpreter::eval_elem_addr(FlirElemAddr* node)
 {
     uint64_t base = eval(node->base).as_addr();
-    int64_t index = eval(node->index).as_i32();
+    int64_t index = eval(node->index).as_i64();
 
     auto* elem = node->elemType ? node->elemType->as<NamedTypeSymbol>() : nullptr;
     int64_t stride = elem ? elem->strideInBytes : 0;

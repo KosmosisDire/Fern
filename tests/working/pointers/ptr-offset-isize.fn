@@ -1,0 +1,15 @@
+---
+Description: Pointer stepping and indexing take isize, and an i32 index widens on its own
+Expected: 10
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a = [1, 2, 3, 4]
+        var step: isize = 2
+        var i: i32 = 1
+        return (a.Data() + step)[i] + (a.Data() + i)[step] + a.Data()[step - 1]
+    }
+}

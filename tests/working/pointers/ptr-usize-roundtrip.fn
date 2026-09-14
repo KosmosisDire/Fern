@@ -1,0 +1,16 @@
+---
+Description: An untyped pointer casts to usize and back and still reaches the same place
+Expected: 2
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a = [1, 2, 3]
+        var raw: Core.Ptr = a.Data()
+        var bits = (usize)raw + 4
+        var back = (Core.Ptr)bits
+        return ((Core.Ptr<i32>)back)[0]
+    }
+}

@@ -210,6 +210,7 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::USizeFromF16:  return Value::make_u64(saturate_int<uint64_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::USizeFromF32:  return Value::make_u64(saturate_int<uint64_t>(operand.as_f32()));
         case IntrinsicKind::USizeFromF64:  return Value::make_u64(saturate_int<uint64_t>(operand.as_f64()));
+        case IntrinsicKind::USizeFromPtr:  return Value::make_u64(operand.as_addr());
 
         // f16 rounds through one double to half conversion, int to double is exact at every relevant magnitude
         case IntrinsicKind::F16FromI8:  return Value::make_f16(f16_from_double(static_cast<double>(operand.as_i8())));
@@ -259,6 +260,7 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
 
         // ptr
         case IntrinsicKind::PtrCast: return operand;
+        case IntrinsicKind::PtrFromUSize: return Value::make_addr(operand.as_u64());
 
         default: break;
     }

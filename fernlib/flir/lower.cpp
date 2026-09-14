@@ -77,7 +77,7 @@ FlirExpr* FlirLowerer::read_slot(BaseSyntax* syntax, FlirLocal* slot)
 void FlirLowerer::emit_assign(BaseSyntax* syntax, FlirExpr* destAddr, FlirExpr* value, TypeSymbol* type, std::vector<FlirStmt*>& out)
 {
     if (is_memory_value(type))
-        out.push_back(builder.copy(syntax, destAddr, value, type, i32_const(syntax, 1)));
+        out.push_back(builder.copy(syntax, destAddr, value, type, isize_const(syntax, 1)));
     else
         out.push_back(builder.store(syntax, destAddr, value));
 }
@@ -90,7 +90,7 @@ void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& a
     {
         if (!arg || !is_memory_value(arg->type)) continue;
         auto* temp = builder.synthetic_local(currentMethod, "arg", arg->type);
-        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type, i32_const(syntax, 1)));
+        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type, isize_const(syntax, 1)));
         arg = builder.local_addr(syntax, temp);
     }
 }
@@ -260,7 +260,7 @@ void FlirLowerer::lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out
     if (currentMethod->sretParam)
     {
         auto* value = lower_expr(stmt->value);
-        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type, i32_const(stmt->syntax, 1)));
+        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type, isize_const(stmt->syntax, 1)));
         out.push_back(builder.return_stmt(stmt->syntax, nullptr));
         return;
     }
@@ -483,7 +483,7 @@ FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr* expr)
     {
         // A value type stages into a temp so it evaluates once, copies into the target, yields the temp
         auto* tmp = builder.synthetic_local(currentMethod, "val", type);
-        sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type, i32_const(syntax, 1)));
+        sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type, isize_const(syntax, 1)));
         lower_store(expr->target, builder.local_addr(syntax, tmp), syntax, sideEffects);
         return builder.sequence(syntax, std::move(sideEffects), builder.local_addr(syntax, tmp));
     }
@@ -659,12 +659,17 @@ FlirLocal* FlirLowerer::address_temp(TypeSymbol* pointee)
 // The place a pointer value points at, spelled as element zero so it stays an address node.
 FlirExpr* FlirLowerer::deref(BaseSyntax* syntax, FlirExpr* pointer, TypeSymbol* type)
 {
-    return builder.elem_addr(syntax, pointer, i32_const(syntax, 0), type);
+    return builder.elem_addr(syntax, pointer, isize_const(syntax, 0), type);
 }
 
 FlirConst* FlirLowerer::i32_const(BaseSyntax* syntax, int64_t value)
 {
     return builder.constant(syntax, semantic.resolve_type_name("i32"), ConstantValue::make_int(value));
+}
+
+FlirConst* FlirLowerer::isize_const(BaseSyntax* syntax, int64_t value)
+{
+    return builder.constant(syntax, semantic.resolve_type_name("isize"), ConstantValue::make_int(value));
 }
 
 #pragma region Builders
