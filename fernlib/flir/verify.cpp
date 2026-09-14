@@ -50,18 +50,18 @@ private:
         if (auto* n = node->as<FlirLoad>())
         {
             if (!is_address(n->address)) fail(n, "load address is not an address");
-            if (is_memory_class(n->type)) fail(n, "load of an aggregate type");
+            if (is_memory_value(n->type)) fail(n, "load of a value type");
         }
         else if (auto* n = node->as<FlirStore>())
         {
             if (!is_address(n->address)) fail(n, "store address is not an address");
-            else if (is_memory_class(n->address->type)) fail(n, "store to an aggregate address");
+            else if (is_memory_value(n->address->type)) fail(n, "store to a value type address");
         }
         else if (auto* n = node->as<FlirCopy>())
         {
             if (!is_address(n->dest)) fail(n, "copy dest is not an address");
             if (!is_address(n->src)) fail(n, "copy src is not an address");
-            if (!is_memory_class(n->type)) fail(n, "copy of a non aggregate type");
+            if (!is_memory_value(n->type)) fail(n, "copy of a type that moves as a value");
             auto* named = n->type ? n->type->as<NamedTypeSymbol>() : nullptr;
             if (named && named->layoutState != LayoutState::Computed) fail(n, "copy type has no computed layout");
         }

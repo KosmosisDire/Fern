@@ -197,8 +197,9 @@ struct NamedTypeSymbol : TypeSymbol
     int payloadSize = 0;
     int payloadAlign = 0;
     LayoutState layoutState = LayoutState::NotComputed;
+    // True for a user value type, a block of bytes with no word form. Set by the layout pass.
+    bool isMemoryValue = false;
 
-    bool is_attribute() const { return has_modifier(modifiers, Modifier::Attr); }
     bool is_generic_definition() const { return !typeParams.empty(); }
     bool is_generic_instantiation() const { return genericOrigin != nullptr; }
     bool is_concrete_instantiation() const;
@@ -231,6 +232,13 @@ struct NamedTypeSymbol : TypeSymbol
     // is an integer literal whose value fits target.
     static Conversion get_conversion(const OverloadArg& arg, TypeSymbol* to);
 };
+
+// A user value type is a block of bytes reached by address. Everything else is one word.
+inline bool is_memory_value(TypeSymbol* type)
+{
+    auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
+    return named && named->isMemoryValue;
+}
 
 struct TypeParamSymbol : TypeSymbol
 {

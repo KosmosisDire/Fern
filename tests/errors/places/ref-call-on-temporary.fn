@@ -1,0 +1,33 @@
+---
+Description: A ref call on a temporary value type receiver is not a place, so assigning through it is an error
+Expected: FN3221
+---
+
+type Vec2
+{
+    x: i32
+
+    init(x: i32)
+    {
+        this.x = x
+    }
+
+    fn X() -> ref i32
+    {
+        return this.x
+    }
+}
+
+type Program
+{
+    static fn Make() -> Vec2
+    {
+        return Vec2(1)
+    }
+
+    static fn Main -> i32
+    {
+        Make().X() = 5
+        return 0
+    }
+}

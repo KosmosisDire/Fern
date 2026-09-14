@@ -572,7 +572,7 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
 
     auto* idx = writeTarget->as<FhirIndexExpr>();
 
-    if (idx && !idx->setter && !idx->is_place())
+    if (idx && !idx->setter && !idx->returns_ref())
     {
         TypeSymbol* objType = idx->object ? idx->object->type : nullptr;
         TypeSymbol* idxType = idx->index ? idx->index->type : nullptr;
@@ -583,8 +583,8 @@ FhirExpr* Binder::bind_assignment(AssignmentExprSyntax* expr)
 
     // A value indexer stores through its setter. Every other target must be a place, or the write
     // would land in a temporary and vanish.
-    bool valueIndexer = idx && idx->setter && !idx->is_place();
-    if (!valueIndexer && !is_place(writeTarget))
+    bool valueIndexer = idx && idx->setter && !idx->returns_ref();
+    if (!valueIndexer && !writeTarget->is_place())
     {
         diag.report(DiagnosticCode::Err_AssignToTemporary, expr->target->span);
         return fhir.error_expr(expr);
@@ -675,25 +675,6 @@ FhirExpr* Binder::bind_index(IndexExprSyntax* expr, IndexContext ctx)
     index = coerce_to_param(index, primary->parameters[1]->type);
 
     return fhir.index_expr(expr, exprType, object, index, getter, setter);
-}
-
-// A place is storage that can be written through, as opposed to a temporary value. Locals, parameters,
-// and this are places. A field of a ref type lives on the heap so it is a place through any handle,
-// while a field of a value type is a place only when the value it belongs to is one. An index or call
-// is a place when its getter or callee returns ref.
-bool Binder::is_place(FhirExpr* expr)
-{
-    if (!expr) return false;
-    if (expr->is<FhirLocalRefExpr>() || expr->is<FhirParamRefExpr>() || expr->is<FhirThisExpr>()) return true;
-    if (auto* field = expr->as<FhirFieldRefExpr>())
-    {
-        auto* owner = field->symbol && field->symbol->parent ? field->symbol->parent->as<NamedTypeSymbol>() : nullptr;
-        if (owner && owner->is_ref()) return true;
-        return !field->thisRef || is_place(field->thisRef);
-    }
-    if (auto* idx = expr->as<FhirIndexExpr>()) return idx->is_place();
-    if (auto* call = expr->as<FhirCallExpr>()) return call->is_place();
-    return false;
 }
 
 }

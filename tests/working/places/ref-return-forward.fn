@@ -1,0 +1,34 @@
+---
+Description: A ref return may forward a place from a ref method on a ref type receiver, the storage is the heap object
+Expected: 4
+---
+
+ref type Cells
+{
+    data: i32[]
+
+    init()
+    {
+        data = [0, 0, 0]
+    }
+
+    fn Slot(index: i32) -> ref i32
+    {
+        return data[index]
+    }
+}
+
+type Program
+{
+    static fn Pick(c: Cells, index: i32) -> ref i32
+    {
+        return c.Slot(index)
+    }
+
+    static fn Main -> i32
+    {
+        var c = Cells()
+        Pick(c, 1) = 4
+        return c.Slot(1)
+    }
+}

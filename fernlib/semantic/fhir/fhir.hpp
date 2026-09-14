@@ -133,6 +133,22 @@ public:
     const T* as() const { return is<T>() ? static_cast<const T*>(this) : nullptr; }
 };
 
+// A place is any memory location that is assignable and outlives the expression naming it, so
+// another way of saying lvalue. This says where a place's storage lives, which decides how long it
+// lasts. Temporary means the expression is a value and names no storage at all.
+enum class PlaceStorage
+{
+    Temporary,
+    // Dies at return: a local, a param copy, or the handle slot of this in a ref type
+    Frame,
+    // The caller's own memory, reached through this in a value type method
+    Receiver,
+    // An object's own memory, reached through a ref type handle or a static
+    Heap,
+    // Memory reached through a Ptr<T>, lifetime unknown
+    Pointer,
+};
+
 struct FhirExpr : FhirNode
 {
     TypeSymbol* type = nullptr;
@@ -144,6 +160,10 @@ struct FhirExpr : FhirNode
     bool is_error() const { return is<FhirErrorExpr>(); }
 
     const std::optional<ConstantValue>& get_constant() const;
+
+    // Assignment needs any place, a ref return needs one that outlives the frame
+    PlaceStorage place_storage() const;
+    bool is_place() const { return place_storage() != PlaceStorage::Temporary; }
 };
 
 struct FhirStmt : FhirNode
@@ -287,8 +307,8 @@ struct FhirCallExpr : FhirExpr
     FhirMethodRefExpr* callee = nullptr;
     std::vector<FhirExpr*> arguments;
 
-    // True when the callee returns ref, so the call denotes a place rather than a temporary
-    bool is_place() const { return callee && callee->method && callee->method->returnsRef; }
+    // True when the callee returns ref, so the call yields the returned place rather than a copy
+    bool returns_ref() const { return callee && callee->method && callee->method->returnsRef; }
 
     void visit_children(FhirVisitor* v) override
     {
@@ -369,8 +389,8 @@ struct FhirIndexExpr : FhirExpr
     MethodSymbol* getter = nullptr;
     MethodSymbol* setter = nullptr;
 
-    // True when the getter returns ref, so the element is a place and writes need no setter
-    bool is_place() const { return getter && getter->returnsRef; }
+    // True when the getter returns ref, so indexing yields the element place and writes need no setter
+    bool returns_ref() const { return getter && getter->returnsRef; }
 
     void visit_children(FhirVisitor* v) override
     {

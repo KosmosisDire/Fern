@@ -31,20 +31,20 @@ FlirMethod* FlirLowerer::lower_method(FhirMethod* method)
         if (parentType && (method->symbol->is_constructor() || !isStatic))
         {
             auto* thisSlot = builder.param(currentMethod, "this", parentType);
-            thisSlot->byAddress = is_memory_class(parentType);
+            thisSlot->byAddress = is_memory_value(parentType);
         }
 
         for (auto* param : method->symbol->parameters)
         {
             auto* slot = builder.param(currentMethod, param->name, param->type);
-            slot->byAddress = is_memory_class(param->type);
+            slot->byAddress = is_memory_value(param->type);
             flir.slots[param] = slot;
         }
 
-        // An aggregate return is written through a hidden by-address destination. A ref return hands
+        // A value type return is written through a hidden by address destination. A ref return hands
         // back the address of an existing place instead, so it never needs one.
         auto* returnType = method->symbol->get_return_type();
-        if (is_memory_class(returnType) && !method->symbol->returnsRef)
+        if (is_memory_value(returnType) && !method->symbol->returnsRef)
         {
             currentMethod->sretParam = builder.slot("sret", returnType);
             currentMethod->sretParam->byAddress = true;
@@ -60,10 +60,10 @@ FlirMethod* FlirLowerer::lower_method(FhirMethod* method)
 
 #pragma region Representation Helpers
 
-// Reads a value at an address. Aggregates stay addresses, scalars and handles load.
+// Reads a value at an address. Value types stay addresses, scalars and handles load.
 FlirExpr* FlirLowerer::address_load(BaseSyntax* syntax, FlirExpr* address, TypeSymbol* type)
 {
-    if (is_memory_class(type)) return address;
+    if (is_memory_value(type)) return address;
     return builder.load(syntax, type, address);
 }
 
@@ -73,22 +73,22 @@ FlirExpr* FlirLowerer::read_slot(BaseSyntax* syntax, FlirLocal* slot)
     return address_load(syntax, builder.local_addr(syntax, slot), type);
 }
 
-// Writes a value into a destination address. Aggregates copy their bytes, scalars and handles store.
+// Writes a value into a destination address. Value types copy their bytes, scalars and handles store.
 void FlirLowerer::emit_assign(BaseSyntax* syntax, FlirExpr* destAddr, FlirExpr* value, TypeSymbol* type, std::vector<FlirStmt*>& out)
 {
-    if (is_memory_class(type))
+    if (is_memory_value(type))
         out.push_back(builder.copy(syntax, destAddr, value, type));
     else
         out.push_back(builder.store(syntax, destAddr, value));
 }
 
-// Stages each aggregate argument into a fresh copy and passes the copy's address, so the callee
-// cannot mutate the caller's value through a by-address parameter.
+// Stages each value type argument into a fresh copy and passes the copy's address, so the callee
+// cannot mutate the caller's value through a by address parameter.
 void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& args, std::vector<FlirStmt*>& out)
 {
     for (auto*& arg : args)
     {
-        if (!arg || !is_memory_class(arg->type)) continue;
+        if (!arg || !is_memory_value(arg->type)) continue;
         auto* temp = builder.synthetic_local(currentMethod, "arg", arg->type);
         out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type));
         arg = builder.local_addr(syntax, temp);
@@ -103,7 +103,7 @@ static bool is_layout_query(IntrinsicKind kind)
 }
 
 // The single choke point for invoking a method. An intrinsic method becomes a FlirIntrinsic, never a
-// call. A real call caller copies its aggregate arguments and routes an aggregate return through a
+// call. A real call caller copies its value type arguments and routes a value type return through a
 // temp destination, evaluating to that temp's address.
 FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, MethodSymbol* method, FlirExpr* thisArg, std::vector<FlirExpr*> args)
 {
@@ -119,7 +119,7 @@ FlirExpr* FlirLowerer::build_call(BaseSyntax* syntax, TypeSymbol* retType, Metho
     auto* call = builder.call(syntax, retType, method, thisArg, std::move(args));
 
     // A ref returning call evaluates to the returned address itself, so it takes no result temp.
-    if (is_memory_class(retType) && !(method && method->returnsRef))
+    if (is_memory_value(retType) && !(method && method->returnsRef))
     {
         auto* temp = builder.synthetic_local(currentMethod, "ret", retType);
         call->resultDest = builder.local_addr(syntax, temp);
@@ -372,7 +372,7 @@ FlirExpr* FlirLowerer::lower_short_circuit(FhirOpExpr* expr)
 FlirExpr* FlirLowerer::lower_call(FhirCallExpr* expr)
 {
     auto* call = call_expr(expr);
-    if (expr->is_place()) return address_load(expr->syntax, call, expr->type);
+    if (expr->returns_ref()) return address_load(expr->syntax, call, expr->type);
     return call;
 }
 
@@ -439,9 +439,9 @@ FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr* expr)
     std::vector<FlirStmt*> sideEffects;
     FlirExpr* loweredValue = lower_expr(expr->value);
 
-    if (is_memory_class(type))
+    if (is_memory_value(type))
     {
-        // Aggregate: stage into a temp so the value evaluates once, copy into the target, yield the temp.
+        // A value type stages into a temp so it evaluates once, copies into the target, yields the temp
         auto* tmp = builder.synthetic_local(currentMethod, "val", type);
         sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type));
         lower_store(expr->target, builder.local_addr(syntax, tmp), syntax, sideEffects);
@@ -469,7 +469,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
     // A value indexer has no place to write through, so the object and index are staged once and the
     // getter and setter both run on the staged temps.
-    if (auto* idx = targetExpr->as<FhirIndexExpr>(); idx && !idx->is_place())
+    if (auto* idx = targetExpr->as<FhirIndexExpr>(); idx && !idx->returns_ref())
     {
         TypeSymbol* objType = idx->object ? idx->object->type : nullptr;
         TypeSymbol* idxType = idx->index ? idx->index->type : nullptr;
@@ -533,7 +533,7 @@ FlirExpr* FlirLowerer::lower_index(FhirIndexExpr* expr)
     auto* object = lower_expr(expr->object);
     auto* index = lower_expr(expr->index);
 
-    if (expr->is_place())
+    if (expr->returns_ref())
         return address_load(expr->syntax, index_place(expr->syntax, expr->getter, expr->type, object, index), expr->type);
     return build_call(expr->syntax, expr->type, expr->getter, nullptr, { object, index });
 }
@@ -543,7 +543,7 @@ void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syn
 {
     if (!target) return;
 
-    if (auto* idx = target->as<FhirIndexExpr>(); idx && !idx->is_place())
+    if (auto* idx = target->as<FhirIndexExpr>(); idx && !idx->returns_ref())
     {
         if (!idx->setter) return;
         auto* object = lower_expr(idx->object);
@@ -557,8 +557,7 @@ void FlirLowerer::lower_store(FhirExpr* target, FlirExpr* value, BaseSyntax* syn
 
 #pragma region Places
 
-// The address of a place expression. The binder guarantees that assignment targets and ref returns are
-// places, so anything else here is an aggregate that already evaluates to its address.
+// The address of a place expression, over the same shapes FhirExpr::place_storage calls places
 FlirExpr* FlirLowerer::lower_place(FhirExpr* expr)
 {
     if (!expr) return nullptr;
@@ -579,11 +578,11 @@ FlirExpr* FlirLowerer::lower_place(FhirExpr* expr)
     if (auto* e = expr->as<FhirCallExpr>())
         return call_expr(e);
 
+    // A user value type moves through an address, so lowering it normally already gives one back
     return lower_expr(expr);
 }
 
-// The address of an indexed place. Ptr indexing is the one intrinsic and is element arithmetic, any
-// other place getter is a call that yields the address it returns.
+// Ptr indexing computes the element address inline, any other ref getter returns it from the call
 FlirExpr* FlirLowerer::index_place(BaseSyntax* syntax, MethodSymbol* getter, TypeSymbol* elemType, FlirExpr* object, FlirExpr* index)
 {
     if (getter && getter->intrinsic() == IntrinsicKind::PtrIndex)
@@ -634,7 +633,7 @@ FlirExpr* FlirLowerer::lower_object_builder(FhirObjectBuilderExpr* expr)
         {
             addr = builder.field_addr(syntax, addr, entry.path[i]);
             auto* interType = entry.path[i] ? entry.path[i]->type : nullptr;
-            if (!is_memory_class(interType))
+            if (!is_memory_value(interType))
                 addr = builder.load(syntax, interType, addr);
         }
         auto* value = lower_expr(entry.value);

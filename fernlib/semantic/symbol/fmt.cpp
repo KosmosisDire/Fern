@@ -333,7 +333,7 @@ std::string format_field(FieldSymbol* field, const SymbolFormat& fmt)
         ss << ": " << format_type(field->type, fmt.without_def_only());
     }
 
-    // Only value aggregates compute field offsets. Ref and builtin handles are leaves whose heap
+    // Only value types compute field offsets. Ref and builtin handles are leaves whose heap
     // block layout is deferred, so their field offsets are not meaningful yet.
     auto* parentType = field->parent ? field->parent->as<NamedTypeSymbol>() : nullptr;
     if (fmt.has(SymbolFormatOption::IncludeLayout) && parentType

@@ -9,6 +9,7 @@ When binding fails FHIR does not throw away the tree. It produces poison nodes t
 ## Other
 
 - Constant folding that computes an expression's value where one exists, used for integer range checks and constant conditions.
+- A place classification on `FhirExpr` that says whether an expression is a value or a place and where the place's storage lives. Assignment targets need any place, `ref` returns need one that outlives the frame, and later address of and GC work can ask the same question.
 - A flow pass that checks every path returns a value and flags unreachable code.
 - A hit test that finds the node and symbol at a line and column, to power IDE hover and goto definition.
 - Formatters that print FHIR back as readable pseudo source or dump the full tree for debugging.

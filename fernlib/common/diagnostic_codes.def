@@ -98,6 +98,8 @@ DIAG(Err_ConstructorReturnValue,        3302, Error,   "constructor cannot retur
 DIAG(Err_DuplicateLocal,                3303, Error,   "local variable '{}' already defined in this scope")                              // CS0128
 DIAG(Err_LocalShadowsParameter,         3304, Error,   "local variable '{}' conflicts with a parameter of the same name")                   // CS0136
 DIAG(Err_RefReturnNotPlace,             3305, Error,   "a ref return must return a variable, field, or element, not a temporary value")            // CS8156
+DIAG(Err_RefReturnEscapesFrame,         3306, Error,   "a ref return cannot return a local or parameter, the place must outlive the call")          // CS8168
+DIAG(Err_RefReturnThis,                 3307, Error,   "a ref return cannot return this itself, return one of its fields instead")                  // CS8170
 
 // Binder: calls (3400-3499)
 DIAG(Err_AmbiguousCall,                 3400, Error,   "the call is ambiguous between the following members:{}")                                    // CS0121

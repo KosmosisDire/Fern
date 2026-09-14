@@ -42,7 +42,7 @@ struct Control
 #pragma region Frame
 
 // One activation record. base is the frame's stack address. byAddress maps the pointer slots (value
-// this, aggregate params, sret) to the incoming addresses they alias. span tracks the running node so a
+// this, value type params, sret) to the incoming addresses they alias. span tracks the running node so a
 // runtime error and the backtrace report the right source location.
 struct Frame
 {

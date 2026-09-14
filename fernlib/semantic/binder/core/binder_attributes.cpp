@@ -122,7 +122,7 @@ void Binder::resolve_attributes(BaseDeclSyntax* decl, std::vector<ResolvedAttrib
             continue;
         }
 
-        if (!attrType->is_attribute())
+        if (!has_modifier(attrType->modifiers, Modifier::Attr))
         {
             diag.report(DiagnosticCode::Err_NotAttrType, attr->span, attrType->name);
             continue;

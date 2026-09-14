@@ -1,0 +1,32 @@
+---
+Description: A ref return of a field of this on a value type writes into the receiver variable
+Expected: 6
+---
+
+type Vec2
+{
+    x: i32
+    y: i32
+
+    init(x: i32, y: i32)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    fn X() -> ref i32
+    {
+        return this.x
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = Vec2(1, 2)
+        v.X() = 5
+        v.X() += 1
+        return v.x
+    }
+}

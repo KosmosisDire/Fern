@@ -582,12 +582,14 @@ type String
     @Intrinsic("string.data")
     fn Data() -> Ptr<c8>
 
+    @Intrinsic("string.concat")
+    static fn Concat(left: String, right: String) -> String
+
     explicit cast(from: i32) -> string
     {
         return (string)(i64)from
     }
 
-    -- Digits are peeled in the negative domain so the most negative value never overflows
     explicit cast(from: i64) -> string
     {
         if (from == 0)
@@ -619,7 +621,10 @@ type String
 
     @Intrinsic("string.eq") op ==(left: String, right: String) -> bool
     @Intrinsic("string.ne") op !=(left: String, right: String) -> bool
-    @Intrinsic("string.concat") op +(left: String, right: String) -> String
+    op +(left: String, right: String) -> String
+    {
+        return String.Concat(left, right)
+    }
 
     op [](self: String, index: i32) -> c8
     {

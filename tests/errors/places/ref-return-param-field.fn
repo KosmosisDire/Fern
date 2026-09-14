@@ -1,0 +1,27 @@
+---
+Description: A ref return cannot return a field of a by value parameter, the parameter is a copy
+Expected: FN3306
+---
+
+type Vec2
+{
+    x: i32
+
+    init(x: i32)
+    {
+        this.x = x
+    }
+}
+
+type Program
+{
+    static fn Bad(v: Vec2) -> ref i32
+    {
+        return v.x
+    }
+
+    static fn Main -> i32
+    {
+        return Bad(Vec2(1))
+    }
+}

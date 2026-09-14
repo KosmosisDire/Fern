@@ -1,0 +1,18 @@
+---
+Description: A ref return cannot return a local, its frame dies with the call
+Expected: FN3306
+---
+
+type Program
+{
+    static fn Bad() -> ref i32
+    {
+        var x = 1
+        return x
+    }
+
+    static fn Main -> i32
+    {
+        return Bad()
+    }
+}

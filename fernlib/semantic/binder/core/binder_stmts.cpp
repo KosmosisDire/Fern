@@ -84,9 +84,17 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
             {
                 diag.report(DiagnosticCode::Err_ReturnValueNoType, stmt->span, method->name);
             }
-            else if (method->returnsRef && value && !value->is_error() && !is_place(value))
+            else if (method->returnsRef && value && !value->is_error())
             {
-                diag.report(DiagnosticCode::Err_RefReturnNotPlace, stmt->value->span);
+                // A returned place must outlive the frame. Bare this is legal storage but pointless,
+                // since v.Self() = w is v = w in disguise, so it is rejected on its own.
+                PlaceStorage storage = value->place_storage();
+                if (storage == PlaceStorage::Temporary)
+                    diag.report(DiagnosticCode::Err_RefReturnNotPlace, stmt->value->span);
+                else if (value->is<FhirThisExpr>())
+                    diag.report(DiagnosticCode::Err_RefReturnThis, stmt->value->span);
+                else if (storage == PlaceStorage::Frame)
+                    diag.report(DiagnosticCode::Err_RefReturnEscapesFrame, stmt->value->span);
             }
         }
     }

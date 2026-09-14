@@ -1,0 +1,27 @@
+---
+Description: A ref return cannot return a ref type parameter, the place would be its frame slot
+Expected: FN3306
+---
+
+ref type Cells
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+}
+
+type Program
+{
+    static fn Bad(c: Cells) -> ref Cells
+    {
+        return c
+    }
+
+    static fn Main -> i32
+    {
+        return Bad(Cells(1)).value
+    }
+}

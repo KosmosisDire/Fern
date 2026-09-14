@@ -13,14 +13,6 @@
 namespace Fern
 {
 
-// A user value type moves as raw bytes through an address. Scalars, String, and ref handles move as a value.
-inline bool is_memory_class(TypeSymbol* type)
-{
-    auto* named = type ? type->as<NamedTypeSymbol>() : nullptr;
-    if (!named) return false;
-    return !named->is_builtin() && !named->is_ref();
-}
-
 struct FlirBuilder
 {
     AllocArena& arena;

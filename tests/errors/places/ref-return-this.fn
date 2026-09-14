@@ -1,0 +1,28 @@
+---
+Description: A ref return cannot return this itself
+Expected: FN3307
+---
+
+type Vec2
+{
+    x: i32
+
+    init(x: i32)
+    {
+        this.x = x
+    }
+
+    fn Self() -> ref Vec2
+    {
+        return this
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = Vec2(1)
+        return v.Self().x
+    }
+}

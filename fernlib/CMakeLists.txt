@@ -35,6 +35,7 @@ set(FERNLIB_SOURCES
     semantic/fhir/flow.cpp
     semantic/fhir/fmt.cpp
     semantic/fhir/hittest.cpp
+    semantic/fhir/place.cpp
 
     # flir
     flir/context.cpp

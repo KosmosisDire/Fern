@@ -196,7 +196,7 @@ struct FlirCall : FlirExpr
     MethodSymbol* method = nullptr;
     FlirExpr* thisArg = nullptr;
     std::vector<FlirExpr*> args;
-    // Where an aggregate return value is written. Null for scalar, handle, and void returns.
+    // Where a value type return is written. Null for scalar, handle, and void returns.
     FlirExpr* resultDest = nullptr;
 
     void visit_children(FlirVisitor* v) override
@@ -376,7 +376,7 @@ struct FlirMethod
     FlirBlock* body = nullptr;
     // Total frame size in bytes, assigned by the frame pass.
     int frameSize = 0;
-    // Hidden by-address destination an aggregate return is copied into. Null for other returns.
+    // Hidden by address destination a value type return is copied into. Null for other returns.
     FlirLocal* sretParam = nullptr;
 };
 

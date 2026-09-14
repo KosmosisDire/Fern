@@ -51,6 +51,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     // its payload lets a field of the type itself terminate at the handle size.
     if (type->is_ref())
     {
+        type->isMemoryValue = false;
         type->sizeInBytes = target.pointerSize;
         type->strideInBytes = target.pointerSize;
         type->alignment = target.pointerAlign;
@@ -67,6 +68,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     // value field, which aliases offset 0 of the whole scalar. No size argument means a handle.
     if (type->is_builtin())
     {
+        type->isMemoryValue = false;
         if (auto scalarSize = type->builtin_scalar_size())
         {
             type->sizeInBytes = *scalarSize;
@@ -87,6 +89,7 @@ void LayoutPass::compute(NamedTypeSymbol* type)
         return;
     }
 
+    type->isMemoryValue = true;
     type->layoutState = LayoutState::InProgress;
 
     int structAlign = 1;
