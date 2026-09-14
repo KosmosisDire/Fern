@@ -368,6 +368,7 @@ void FlowAnalyzer::check_this_escape(FhirExpr* expr, State& state)
     if (!ctorType) return;
     for (auto* field : ctorType->fields)
     {
+        if (has_modifier(field->modifiers, Modifier::Static)) continue;
         if (!state.assigned.contains(field))
         {
             diag.report(DiagnosticCode::Err_ThisBeforeInit, expr->span);
@@ -381,6 +382,7 @@ void FlowAnalyzer::check_ctor_complete(State& state, const Span& span)
     if (!ctorType) return;
     for (auto* field : ctorType->fields)
     {
+        if (has_modifier(field->modifiers, Modifier::Static)) continue;
         if (!state.assigned.contains(field))
         {
             diag.report(DiagnosticCode::Err_CtorFieldNotAssigned, span, field->name);

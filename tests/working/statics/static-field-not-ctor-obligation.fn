@@ -1,0 +1,39 @@
+---
+Description: A constructor does not have to assign a static field, even one with no default
+Expected: 3
+---
+
+ref type Node
+{
+    value: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+}
+
+type Holder
+{
+    value: i32
+    static shared: Node
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+
+    fn Get() -> i32
+    {
+        return this.value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var h = Holder(3)
+        return h.Get()
+    }
+}
