@@ -262,6 +262,24 @@ void SymbolTable::ensure_members_populated(NamedTypeSymbol* type)
     }
 }
 
+std::vector<NamedTypeSymbol*> SymbolTable::concrete_types()
+{
+    std::vector<NamedTypeSymbol*> result;
+    for (auto* type : allTypes)
+    {
+        if (!type->is_generic_definition()) result.push_back(type);
+    }
+    for (auto* type : allTypes)
+    {
+        if (!type->is_generic_definition()) continue;
+        for (auto* inst : type->instantiations)
+        {
+            if (inst->is_concrete_instantiation()) result.push_back(inst);
+        }
+    }
+    return result;
+}
+
 void SymbolTable::populate_instantiation_members(NamedTypeSymbol* inst)
 {
     if (inst->membersPopulated) return;

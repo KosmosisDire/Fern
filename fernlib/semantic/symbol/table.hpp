@@ -57,6 +57,8 @@ public:
     TypeSymbol* substitute_type(TypeSymbol* type, NamedTypeSymbol* origin, const std::vector<TypeSymbol*>& typeArgs);
     void populate_instantiation_members(NamedTypeSymbol* inst);
     void ensure_members_populated(NamedTypeSymbol* type);
+    // Every type that has a layout and code, so all non generic types then each concrete instantiation
+    std::vector<NamedTypeSymbol*> concrete_types();
 
     Symbol* lookup(std::span<const std::string_view> path);
     Symbol* lookup(std::initializer_list<std::string_view> path);

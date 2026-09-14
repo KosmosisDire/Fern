@@ -121,9 +121,8 @@ int LayoutPass::place_fields(NamedTypeSymbol* type, int& structAlign)
 void LayoutPass::place_statics()
 {
     StaticLayout& region = context.staticLayout;
-    for (auto* type : context.symbols.allTypes)
+    for (auto* type : context.symbols.concrete_types())
     {
-        if (type->is_generic_definition()) continue;
         for (auto* field : type->fields)
         {
             if (!has_modifier(field->modifiers, Modifier::Static)) continue;
