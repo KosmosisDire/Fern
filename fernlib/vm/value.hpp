@@ -87,7 +87,7 @@ struct Value
             case Kind::F64:  return std::format("f64 {}", doubleValue);
             case Kind::Bool: return std::format("bool {}", boolValue ? "true" : "false");
             case Kind::C8:   return std::format("c8 {}", charValue);
-            case Kind::Addr: return std::format("addr {}", addrValue);
+            case Kind::Addr: return std::format("addr {:#x}", addrValue);
         }
         return "";
     }
