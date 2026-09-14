@@ -1,0 +1,25 @@
+---
+Description: A static field can be written, compound assigned, and read back through its type
+Expected: 7
+---
+
+type Counter
+{
+    value: i32
+    static count: i32
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        Counter.count = 5
+        Counter.count += 2
+        return Counter.count
+    }
+}

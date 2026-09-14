@@ -40,6 +40,8 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
     boolType = semantic.resolve_type_name("bool");
     c8Type = semantic.resolve_type_name("c8");
     stringType = semantic.resolve_type_name("string");
+
+    staticBase = memory.alloc(static_cast<uint64_t>(semantic.staticLayout.sizeInBytes), nullptr);
 }
 
 #pragma region Entry
@@ -275,6 +277,7 @@ Value Interpreter::eval(FlirExpr* expr)
     if (auto* e = expr->as<FlirConst>())     return eval_const(e);
     if (auto* e = expr->as<FlirLocalAddr>()) return eval_local_addr(e);
     if (auto* e = expr->as<FlirFieldAddr>()) return eval_field_addr(e);
+    if (auto* e = expr->as<FlirStaticAddr>()) return eval_static_addr(e);
     if (auto* e = expr->as<FlirElemAddr>())  return eval_elem_addr(e);
     if (auto* e = expr->as<FlirLoad>())      return eval_load(e);
     if (auto* e = expr->as<FlirCall>())      return eval_call(e);
@@ -337,6 +340,11 @@ Value Interpreter::eval_field_addr(FlirFieldAddr* node)
 {
     uint64_t base = eval(node->base).as_addr();
     return Value::make_addr(base + node->field->offset);
+}
+
+Value Interpreter::eval_static_addr(FlirStaticAddr* node)
+{
+    return Value::make_addr(staticBase + node->field->offset);
 }
 
 Value Interpreter::eval_elem_addr(FlirElemAddr* node)

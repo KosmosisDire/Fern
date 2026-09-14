@@ -1,0 +1,31 @@
+---
+Description: A static field of a value type is a place, so its fields can be written in place
+Expected: 12
+---
+
+type Vec2
+{
+    x: i32
+    y: i32
+
+    init(x: i32, y: i32)
+    {
+        this.x = x
+        this.y = y
+    }
+}
+
+type Config
+{
+    static origin: Vec2
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        Config.origin = Vec2(1, 2)
+        Config.origin.x += 9
+        return Config.origin.x + Config.origin.y
+    }
+}

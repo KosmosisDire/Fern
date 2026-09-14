@@ -116,6 +116,7 @@ private:
     Value eval_const(FlirConst* node);
     Value eval_local_addr(FlirLocalAddr* node);
     Value eval_field_addr(FlirFieldAddr* node);
+    Value eval_static_addr(FlirStaticAddr* node);
     Value eval_elem_addr(FlirElemAddr* node);
     Value eval_load(FlirLoad* node);
     Value eval_call(FlirCall* node);
@@ -145,6 +146,8 @@ private:
     VmConfig config;
     TargetInfo target;
     VmMemory memory;
+    // The block holding every static field, allocated once when the interpreter is made
+    uint64_t staticBase = 0;
 
     TypeSymbol* i8Type = nullptr;
     TypeSymbol* i16Type = nullptr;

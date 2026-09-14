@@ -1,0 +1,32 @@
+---
+Description: A static field is shared across instances and reachable by bare name from instance methods
+Expected: 32
+---
+
+type Counter
+{
+    value: i32
+    static count: i32
+
+    init(value: i32)
+    {
+        this.value = value
+        count = count + 1
+    }
+
+    fn Total() -> i32
+    {
+        return count * 10 + this.value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a = Counter(1)
+        var b = Counter(2)
+        var c = Counter(2)
+        return c.Total()
+    }
+}
