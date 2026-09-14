@@ -574,9 +574,9 @@ FlirExpr* FlirLowerer::lower_place(FhirExpr* expr)
     if (auto* e = expr->as<FhirFieldRefExpr>())
         return builder.field_addr(e->syntax, lower_expr(e->thisRef), e->symbol);
     if (auto* e = expr->as<FhirIndexExpr>())
-        return index_place(e->syntax, e->getter, e->type, lower_expr(e->object), lower_expr(e->index));
+        return e->returns_ref() ? index_place(e->syntax, e->getter, e->type, lower_expr(e->object), lower_expr(e->index)) : nullptr;
     if (auto* e = expr->as<FhirCallExpr>())
-        return call_expr(e);
+        return e->returns_ref() ? call_expr(e) : nullptr;
 
     // A user value type moves through an address, so lowering it normally already gives one back
     return lower_expr(expr);
