@@ -59,7 +59,8 @@ private:
     FlirExpr* index_place(BaseSyntax* syntax, MethodSymbol* getter, TypeSymbol* elemType, FlirExpr* object, FlirExpr* index);
     TypeSymbol* pointer_type(TypeSymbol* pointee);
     FlirLocal* address_temp(TypeSymbol* pointee);
-    FlirExpr* deref(BaseSyntax* syntax, FlirLocal* ptrSlot, TypeSymbol* type);
+    FlirExpr* deref(BaseSyntax* syntax, FlirExpr* pointer, TypeSymbol* type);
+    FlirConst* i32_const(BaseSyntax* syntax, int64_t value);
 
     FlirExpr* address_load(BaseSyntax* syntax, FlirExpr* address, TypeSymbol* type);
     FlirExpr* read_slot(BaseSyntax* syntax, FlirLocal* slot);
@@ -73,6 +74,7 @@ private:
     //TODO: Is there a better way to pass statements that an out, like with a sequence expr?
     void lower_var_decl(FhirVarDeclStmt* stmt, std::vector<FlirStmt*>& out);
     void lower_expr_stmt(FhirExprStmt* stmt, std::vector<FlirStmt*>& out);
+    void lower_ptr_copy(FhirCallExpr* call, std::vector<FlirStmt*>& out);
     void lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt*>& out);
     void lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out);
     void lower_if(FhirIfStmt* stmt, std::vector<FlirStmt*>& out);

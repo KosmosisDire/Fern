@@ -1,0 +1,15 @@
+---
+Description: CopyTo panics when the run does not fit in the destination
+Expected: FN6000
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var b: i32[] = [0, 0]
+        a.CopyTo(b, 0, 0, 3)
+        return b[0]
+    }
+}

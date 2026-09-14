@@ -61,7 +61,11 @@ private:
         {
             if (!is_address(n->dest)) fail(n, "copy dest is not an address");
             if (!is_address(n->src)) fail(n, "copy src is not an address");
-            if (!is_memory_value(n->type)) fail(n, "copy of a type that moves as a value");
+            if (!n->count) fail(n, "copy has no count");
+            // A single scalar or handle is a store. Only a run of them moves as bytes.
+            auto* countConst = n->count ? n->count->as<FlirConst>() : nullptr;
+            bool single = countConst && countConst->value.kind == ConstantValue::Kind::Int && countConst->value.intValue == 1;
+            if (single && !is_memory_value(n->type)) fail(n, "copy of one value that moves as a scalar");
             auto* named = n->type ? n->type->as<NamedTypeSymbol>() : nullptr;
             if (named && named->layoutState != LayoutState::Computed) fail(n, "copy type has no computed layout");
         }

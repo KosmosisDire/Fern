@@ -11,6 +11,14 @@ type Runtime
             Panic("index " + (string)index + " out of range (length " + (string)length + ")")
         }
     }
+
+    static fn CheckRange(start: i32, count: i32, length: i32)
+    {
+        if (start < 0 || count < 0 || start > length - count)
+        {
+            Panic("range " + (string)start + " to " + (string)(start + count) + " out of range (length " + (string)length + ")")
+        }
+    }
 }
 
 type MemoryLayout<T>
@@ -528,6 +536,11 @@ type Bool
 type Ptr<T>
 {
     @Intrinsic("ptr.index") op [](index: i32) -> ref T
+    @Intrinsic("ptr.add") op +(p: Ptr<T>, offset: i32) -> Ptr<T>
+
+    -- Moves count elements from this to dest. The two runs may overlap.
+    @Intrinsic("ptr.copy")
+    fn CopyTo(dest: Ptr<T>, count: i32)
 }
 
 @BuiltinType
@@ -540,8 +553,12 @@ ref type Array<T>
     @Intrinsic("array.data")
     fn Data() -> Ptr<T>
 
-    @Intrinsic("array.copy_to")
     fn CopyTo(dest: Array<T>, destIndex: i32, srcIndex: i32, count: i32)
+    {
+        Runtime.CheckRange(srcIndex, count, length)
+        Runtime.CheckRange(destIndex, count, dest.length);
+        (Data() + srcIndex).CopyTo(dest.Data() + destIndex, count)
+    }
 
     @Intrinsic("array.init")
     init(length: i32)
@@ -582,8 +599,13 @@ type String
     @Intrinsic("string.data")
     fn Data() -> Ptr<c8>
 
-    @Intrinsic("string.concat")
     static fn Concat(left: String, right: String) -> String
+    {
+        var result = String(left.length + right.length)
+        left.Data().CopyTo(result.Data(), left.length)
+        right.Data().CopyTo(result.Data() + left.length, right.length)
+        return result
+    }
 
     explicit cast(from: i32) -> string
     {
@@ -619,8 +641,29 @@ type String
         return result
     }
 
-    @Intrinsic("string.eq") op ==(left: String, right: String) -> bool
-    @Intrinsic("string.ne") op !=(left: String, right: String) -> bool
+    op ==(left: String, right: String) -> bool
+    {
+        if (left.length != right.length)
+        {
+            return false
+        }
+
+        var i = 0
+        while (i < left.length)
+        {
+            if (left.Data()[i] != right.Data()[i])
+            {
+                return false
+            }
+            i += 1
+        }
+        return true
+    }
+
+    op !=(left: String, right: String) -> bool
+    {
+        return !(left == right)
+    }
     op +(left: String, right: String) -> String
     {
         return String.Concat(left, right)

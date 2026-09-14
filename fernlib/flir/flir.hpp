@@ -304,6 +304,8 @@ struct FlirStore : FlirStmt
     }
 };
 
+// Moves count elements of type from src to dest, so count times the stride of type in bytes. The two
+// runs may overlap. A value assignment is a copy of count one.
 struct FlirCopy : FlirStmt
 {
     FLIR_NODE(FlirCopy, FlirStmt)
@@ -311,11 +313,13 @@ struct FlirCopy : FlirStmt
     FlirExpr* dest = nullptr;
     FlirExpr* src = nullptr;
     TypeSymbol* type = nullptr;
+    FlirExpr* count = nullptr;
 
     void visit_children(FlirVisitor* v) override
     {
         if (dest) dest->accept(v);
         if (src) src->accept(v);
+        if (count) count->accept(v);
     }
 };
 

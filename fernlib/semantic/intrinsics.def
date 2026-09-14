@@ -311,9 +311,6 @@ INTRINSIC(C8Le,           "c8.le",           "<=")
 // string
 INTRINSIC(StringEmpty,    "string.empty",    "")
 INTRINSIC(StringInit,     "string.init",     "")
-INTRINSIC(StringEq,       "string.eq",       "==")
-INTRINSIC(StringNe,       "string.ne",       "!=")
-INTRINSIC(StringConcat,   "string.concat",   "+")
 INTRINSIC(StringData,     "string.data",     "")
 
 // core
@@ -324,9 +321,10 @@ INTRINSIC(LayoutAlign,    "layout.align",    "")
 
 // ptr
 INTRINSIC(PtrIndex,       "ptr.index",       "")
+INTRINSIC(PtrAdd,         "ptr.add",         "+")
+INTRINSIC(PtrCopy,        "ptr.copy",        "")
 
 // array
 INTRINSIC(ArrayEmpty,     "array.empty",     "")
 INTRINSIC(ArrayInit,      "array.init",      "")
 INTRINSIC(ArrayData,      "array.data",      "")
-INTRINSIC(ArrayCopyTo,    "array.copy_to",   "")

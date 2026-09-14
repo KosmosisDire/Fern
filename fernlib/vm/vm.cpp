@@ -228,9 +228,11 @@ Control Interpreter::exec_copy(FlirCopy* node)
 {
     uint64_t dest = eval(node->dest).as_addr();
     uint64_t src = eval(node->src).as_addr();
+    int32_t count = eval(node->count).as_i32();
+    if (count < 0) throw VmError{std::format("negative length {}", count)};
     auto* named = node->type ? node->type->as<NamedTypeSymbol>() : nullptr;
-    uint64_t size = named ? static_cast<uint64_t>(named->strideInBytes) : 0;
-    memory.copy(dest, src, size);
+    uint64_t stride = named ? static_cast<uint64_t>(named->strideInBytes) : 0;
+    memory.copy(dest, src, stride * static_cast<uint64_t>(count));
     return Control::normal();
 }
 

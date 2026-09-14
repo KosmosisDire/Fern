@@ -163,7 +163,7 @@ struct FlirBuilder
         return node;
     }
 
-    FlirCopy* copy(BaseSyntax* syntax, FlirExpr* dest, FlirExpr* src, TypeSymbol* type)
+    FlirCopy* copy(BaseSyntax* syntax, FlirExpr* dest, FlirExpr* src, TypeSymbol* type, FlirExpr* count)
     {
         auto* node = arena.alloc<FlirCopy>();
         node->syntax = syntax;
@@ -171,6 +171,7 @@ struct FlirBuilder
         node->dest = dest;
         node->src = src;
         node->type = type;
+        node->count = count;
         return node;
     }
 

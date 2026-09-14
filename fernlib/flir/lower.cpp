@@ -77,7 +77,7 @@ FlirExpr* FlirLowerer::read_slot(BaseSyntax* syntax, FlirLocal* slot)
 void FlirLowerer::emit_assign(BaseSyntax* syntax, FlirExpr* destAddr, FlirExpr* value, TypeSymbol* type, std::vector<FlirStmt*>& out)
 {
     if (is_memory_value(type))
-        out.push_back(builder.copy(syntax, destAddr, value, type));
+        out.push_back(builder.copy(syntax, destAddr, value, type, i32_const(syntax, 1)));
     else
         out.push_back(builder.store(syntax, destAddr, value));
 }
@@ -90,9 +90,16 @@ void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& a
     {
         if (!arg || !is_memory_value(arg->type)) continue;
         auto* temp = builder.synthetic_local(currentMethod, "arg", arg->type);
-        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type));
+        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type, i32_const(syntax, 1)));
         arg = builder.local_addr(syntax, temp);
     }
+}
+
+// The T of a Ptr<T>
+static TypeSymbol* pointee_type(TypeSymbol* pointer)
+{
+    auto* named = pointer ? pointer->as<NamedTypeSymbol>() : nullptr;
+    return named && !named->typeArguments.empty() ? named->typeArguments[0] : nullptr;
 }
 
 static bool is_layout_query(IntrinsicKind kind)
@@ -210,9 +217,31 @@ void FlirLowerer::lower_expr_stmt(FhirExprStmt* stmt, std::vector<FlirStmt*>& ou
         lower_assign_stmt(assign, out);
         return;
     }
+    if (auto* call = stmt->expression ? stmt->expression->as<FhirCallExpr>() : nullptr)
+    {
+        auto* method = call->callee ? call->callee->method : nullptr;
+        if (method && method->intrinsic() == IntrinsicKind::PtrCopy)
+        {
+            lower_ptr_copy(call, out);
+            return;
+        }
+    }
     auto* lowered = lower_expr(stmt->expression);
     if (lowered)
         out.push_back(builder.expr_stmt(stmt->syntax, lowered));
+}
+
+// p.CopyTo(dest, count) is the copy node itself, over the places the two pointers point at
+void FlirLowerer::lower_ptr_copy(FhirCallExpr* call, std::vector<FlirStmt*>& out)
+{
+    FhirExpr* source = call->callee->thisRef;
+    if (!source || call->arguments.size() != 2) return;
+
+    TypeSymbol* elemType = pointee_type(source->type);
+    auto* src = deref(call->syntax, lower_expr(source), elemType);
+    auto* dest = deref(call->syntax, lower_expr(call->arguments[0]), elemType);
+    auto* count = lower_expr(call->arguments[1]);
+    out.push_back(builder.copy(call->syntax, dest, src, elemType, count));
 }
 
 void FlirLowerer::lower_assign_stmt(FhirAssignExpr* assign, std::vector<FlirStmt*>& out)
@@ -231,7 +260,7 @@ void FlirLowerer::lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out
     if (currentMethod->sretParam)
     {
         auto* value = lower_expr(stmt->value);
-        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type));
+        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type, i32_const(stmt->syntax, 1)));
         out.push_back(builder.return_stmt(stmt->syntax, nullptr));
         return;
     }
@@ -340,6 +369,14 @@ FlirExpr* FlirLowerer::lower_op(FhirOpExpr* expr)
     for (auto* a : expr->args)
         args.push_back(lower_expr(a));
 
+    // p + n is element arithmetic, the same node ptr.index uses but yielding the address as a value
+    if (expr->op == IntrinsicKind::PtrAdd && args.size() == 2)
+    {
+        auto* node = builder.elem_addr(expr->syntax, args[0], args[1], pointee_type(expr->type));
+        node->type = expr->type;
+        return node;
+    }
+
     return build_call(expr->syntax, expr->type, expr->method, nullptr, std::move(args));
 }
 
@@ -443,7 +480,7 @@ FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr* expr)
     {
         // A value type stages into a temp so it evaluates once, copies into the target, yields the temp
         auto* tmp = builder.synthetic_local(currentMethod, "val", type);
-        sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type));
+        sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type, i32_const(syntax, 1)));
         lower_store(expr->target, builder.local_addr(syntax, tmp), syntax, sideEffects);
         return builder.sequence(syntax, std::move(sideEffects), builder.local_addr(syntax, tmp));
     }
@@ -487,7 +524,7 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
 
         auto receiver = [&]() -> FlirExpr*
         {
-            return byAddress ? deref(syntax, tmpObj, objType) : read_slot(syntax, tmpObj);
+            return byAddress ? deref(syntax, read_slot(syntax, tmpObj), objType) : read_slot(syntax, tmpObj);
         };
 
         auto* current = build_call(syntax, targetType, idx->getter, receiver(), { read_slot(syntax, tmpIdx) });
@@ -509,10 +546,10 @@ FlirExpr* FlirLowerer::lower_compound_assign(FhirCompoundAssignExpr* expr)
     auto* tmpRhs = builder.synthetic_local(currentMethod, "rhs", rhsType);
     emit_assign(syntax, builder.local_addr(syntax, tmpRhs), lower_expr(valueExpr), rhsType, sideEffects);
 
-    auto* current = address_load(syntax, deref(syntax, tmpPtr, targetType), targetType);
+    auto* current = address_load(syntax, deref(syntax, read_slot(syntax, tmpPtr), targetType), targetType);
     auto* result = apply_bin(syntax, type, binOp, current, read_slot(syntax, tmpRhs));
     emit_assign(syntax, builder.local_addr(syntax, tmpVal), result, type, sideEffects);
-    emit_assign(syntax, deref(syntax, tmpPtr, targetType), read_slot(syntax, tmpVal), targetType, sideEffects);
+    emit_assign(syntax, deref(syntax, read_slot(syntax, tmpPtr), targetType), read_slot(syntax, tmpVal), targetType, sideEffects);
 
     return builder.sequence(syntax, std::move(sideEffects), read_slot(syntax, tmpVal));
 }
@@ -616,11 +653,15 @@ FlirLocal* FlirLowerer::address_temp(TypeSymbol* pointee)
     return builder.synthetic_local(currentMethod, "ptr", pointer_type(pointee));
 }
 
-// The place an address temp points at, spelled as element zero so it stays an address node.
-FlirExpr* FlirLowerer::deref(BaseSyntax* syntax, FlirLocal* ptrSlot, TypeSymbol* type)
+// The place a pointer value points at, spelled as element zero so it stays an address node.
+FlirExpr* FlirLowerer::deref(BaseSyntax* syntax, FlirExpr* pointer, TypeSymbol* type)
 {
-    auto* zero = builder.constant(syntax, semantic.resolve_type_name("i32"), ConstantValue::make_int(0));
-    return builder.elem_addr(syntax, read_slot(syntax, ptrSlot), zero, type);
+    return builder.elem_addr(syntax, pointer, i32_const(syntax, 0), type);
+}
+
+FlirConst* FlirLowerer::i32_const(BaseSyntax* syntax, int64_t value)
+{
+    return builder.constant(syntax, semantic.resolve_type_name("i32"), ConstantValue::make_int(value));
 }
 
 #pragma region Builders
@@ -661,18 +702,17 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
 {
     BaseSyntax* syntax = expr->syntax;
     TypeSymbol* type = expr->type;
-    TypeSymbol* i32Type = semantic.resolve_type_name("i32");
     int count = static_cast<int>(expr->elements.size());
 
     auto* tmp = builder.local(currentMethod, "$arr", type);
 
     std::vector<FlirStmt*> sideEffects;
-    auto* countConst = builder.constant(syntax, i32Type, ConstantValue::make_int(count));
+    auto* countConst = i32_const(syntax, count);
     sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmp), build_call(syntax, type, expr->ctor, nullptr, { countConst })));
 
     for (int i = 0; i < count; ++i)
     {
-        auto* indexConst = builder.constant(syntax, i32Type, ConstantValue::make_int(i));
+        auto* indexConst = i32_const(syntax, i);
         auto* value = lower_expr(expr->elements[i]);
         if (expr->getter)
         {

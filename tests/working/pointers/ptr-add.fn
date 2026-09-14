@@ -1,0 +1,15 @@
+---
+Description: Adding an offset to a pointer moves it that many elements forward
+Expected: 92
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3, 4]
+        var p: Core.Ptr<i32> = a.Data() + 1
+        p[0] = 9
+        return a[1] * 10 + (p + 2)[0] - 2
+    }
+}

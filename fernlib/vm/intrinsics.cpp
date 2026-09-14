@@ -526,31 +526,6 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
             memory.write_u32(addr, static_cast<uint32_t>(length));
             return Value::make_addr(addr);
         }
-        case IntrinsicKind::StringEq:
-        case IntrinsicKind::StringNe:
-        {
-            uint64_t a = args[0].as_addr();
-            uint64_t b = args[1].as_addr();
-            uint32_t la = memory.read_u32(a);
-            uint32_t lb = memory.read_u32(b);
-            bool equal = la == lb;
-            if (equal && la > 0)
-                equal = std::memcmp(memory.host_ptr(a + header, la), memory.host_ptr(b + header, la), la) == 0;
-            return Value::make_bool(kind == IntrinsicKind::StringEq ? equal : !equal);
-        }
-        case IntrinsicKind::StringConcat:
-        {
-            uint64_t a = args[0].as_addr();
-            uint64_t b = args[1].as_addr();
-            uint32_t la = memory.read_u32(a);
-            uint32_t lb = memory.read_u32(b);
-            uint64_t total = static_cast<uint64_t>(la) + lb;
-            uint64_t addr = memory.alloc(header + total + 1, stringType);
-            memory.write_u32(addr, static_cast<uint32_t>(total));
-            memory.copy(addr + header, a + header, la);
-            memory.copy(addr + header + la, b + header, lb);
-            return Value::make_addr(addr);
-        }
         case IntrinsicKind::StringData:
             return Value::make_addr(self.as_addr() + header);
 
@@ -576,33 +551,11 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         }
         case IntrinsicKind::ArrayData:
             return Value::make_addr(self.as_addr() + header);
-        case IntrinsicKind::ArrayCopyTo:
-        {
-            uint64_t src = self.as_addr();
-            uint64_t dest = args[0].as_addr();
-            int32_t destIndex = args[1].as_i32();
-            int32_t srcIndex = args[2].as_i32();
-            int32_t count = args[3].as_i32();
-            if (count < 0) throw VmError{std::format("negative length {}", count)};
-
-            uint32_t srcLen = memory.read_u32(src);
-            uint32_t destLen = memory.read_u32(dest);
-            if (srcIndex < 0 || static_cast<int64_t>(srcIndex) + count > srcLen)
-                throw VmError{std::format("index {} out of range (length {})", srcIndex, srcLen)};
-            if (destIndex < 0 || static_cast<int64_t>(destIndex) + count > destLen)
-                throw VmError{std::format("index {} out of range (length {})", destIndex, destLen)};
-
-            uint64_t stride = elem_size(array_elem_type(node->method));
-            memory.copy(dest + header + static_cast<uint64_t>(destIndex) * stride,
-                        src + header + static_cast<uint64_t>(srcIndex) * stride,
-                        static_cast<uint64_t>(count) * stride);
-            return Value{};
-        }
 
         default: break;
     }
 
-    // Literal tags, bool.and, bool.or, and ptr.index never survive lowering.
+    // Literal tags, bool.and, bool.or, ptr.index, ptr.add, and ptr.copy never survive lowering.
     throw VmError{std::format("unreachable intrinsic '{}'", format(kind))};
 }
 

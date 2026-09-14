@@ -195,7 +195,9 @@ void FlirPrettyFormatter::visit(FlirStore* node)
 
 void FlirPrettyFormatter::visit(FlirCopy* node)
 {
-    out << "copy[" << (node->type ? format_type(node->type) : "?") << "] ";
+    out << "copy[" << (node->type ? format_type(node->type) : "?") << " x ";
+    write_child(node->count);
+    out << "] ";
     write_child(node->dest);
     out << " <- ";
     write_child(node->src);
@@ -504,7 +506,8 @@ void FlirDebugFormatter::visit(FlirCopy* node)
     begin_node(node, std::format("type: {}", node->type ? format_type(node->type) : "?"));
     open_block();
     write_child("dest", node->dest, true);
-    write_child("src", node->src);
+    write_child("src", node->src, true);
+    write_child("count", node->count);
     close_block();
 }
 
