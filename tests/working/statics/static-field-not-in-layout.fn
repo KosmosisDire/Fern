@@ -1,0 +1,23 @@
+---
+Description: A static field takes no space in the instance layout
+Expected: 4
+---
+
+type Counter
+{
+    value: i32
+    static count: i32 = 0
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return MemoryLayout<Counter>.Size()
+    }
+}

@@ -109,6 +109,7 @@ int LayoutPass::place_fields(NamedTypeSymbol* type, int& structAlign)
     int offset = 0;
     for (auto* field : type->fields)
     {
+        if (has_modifier(field->modifiers, Modifier::Static)) continue;
         auto* fieldType = field->type ? field->type->as<NamedTypeSymbol>() : nullptr;
         if (!fieldType) continue;
 

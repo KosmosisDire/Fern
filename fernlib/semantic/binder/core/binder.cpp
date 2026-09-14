@@ -397,6 +397,7 @@ void Binder::emit_field_defaults(NamedTypeSymbol* type, std::vector<FhirStmt*>& 
 {
     for (auto* field : type->fields)
     {
+        if (has_modifier(field->modifiers, Modifier::Static)) continue;
         auto* fieldDecl = field->syntax ? field->syntax->as<FieldDeclSyntax>() : nullptr;
         if (!fieldDecl || !fieldDecl->initializer) continue;
 
