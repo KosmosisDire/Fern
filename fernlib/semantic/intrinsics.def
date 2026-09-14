@@ -326,6 +326,7 @@ INTRINSIC(PtrAdd,         "ptr.add",         "+")
 INTRINSIC(PtrCopy,        "ptr.copy",        "")
 INTRINSIC(PtrEq,          "ptr.eq",          "==")
 INTRINSIC(PtrNe,          "ptr.ne",          "!=")
+INTRINSIC(PtrCast,        "ptr.cast",        "")
 
 // array
 INTRINSIC(ArrayEmpty,     "array.empty",     "")

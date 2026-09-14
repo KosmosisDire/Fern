@@ -1,0 +1,13 @@
+---
+Description: Typed pointers compare by address
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a: i32[] = [1, 2, 3]
+        return a.Data() + 1 == a.Data() + 1 && a.Data() != a.Data() + 1
+    }
+}

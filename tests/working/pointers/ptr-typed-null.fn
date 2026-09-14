@@ -1,0 +1,23 @@
+---
+Description: A typed pointer built with no arguments is null and a data pointer is not
+Expected: 3
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var p = Core.Ptr<i32>()
+        var result = 0
+        if (p.IsNull())
+        {
+            result += 1
+        }
+        if (!a.Data().IsNull())
+        {
+            result += 2
+        }
+        return result
+    }
+}

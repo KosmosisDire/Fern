@@ -1,0 +1,16 @@
+---
+Description: An explicit cast from an untyped pointer gives back a typed pointer to the same place
+Expected: 7
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var raw: Core.Ptr = a.Data()
+        var back = (Core.Ptr<i32>)raw
+        back[1] = 7
+        return a[1]
+    }
+}

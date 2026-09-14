@@ -547,8 +547,18 @@ type Ptr
 @BuiltinType
 type Ptr<T>
 {
+    @Intrinsic("ptr.null") init
+
+    -- Dropping the type happens on its own. Giving a type needs a cast so the reader can see it.
+    @Intrinsic("ptr.cast") implicit cast(from: Ptr<T>) -> Ptr
+    @Intrinsic("ptr.cast") explicit cast(from: Ptr) -> Ptr<T>
+
     @Intrinsic("ptr.index") op [](index: i32) -> ref T
     @Intrinsic("ptr.add") op +(p: Ptr<T>, offset: i32) -> Ptr<T>
+    @Intrinsic("ptr.eq") op ==(left: Ptr<T>, right: Ptr<T>) -> bool
+    @Intrinsic("ptr.ne") op !=(left: Ptr<T>, right: Ptr<T>) -> bool
+
+    fn IsNull() -> bool { return this == Ptr<T>() }
 
     -- Moves count elements from this to dest. The two runs may overlap.
     @Intrinsic("ptr.copy")

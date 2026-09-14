@@ -1,0 +1,14 @@
+---
+Description: Two typed pointers never convert directly, the type must be dropped first
+Expected: FN3206
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var p = (Core.Ptr<f32>)a.Data()
+        return 0
+    }
+}

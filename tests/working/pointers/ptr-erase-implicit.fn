@@ -1,0 +1,14 @@
+---
+Description: A typed pointer converts to an untyped one on its own and the untyped one steps in bytes
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var a: i32[] = [1, 2, 3]
+        var raw: Core.Ptr = a.Data()
+        return raw + 4 == a.Data() + 1
+    }
+}

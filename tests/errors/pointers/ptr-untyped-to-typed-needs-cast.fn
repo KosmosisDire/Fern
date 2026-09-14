@@ -1,0 +1,13 @@
+---
+Description: An untyped pointer does not become a typed one without an explicit cast
+Expected: FN3405
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p: Core.Ptr<i32> = Core.Ptr()
+        return 0
+    }
+}

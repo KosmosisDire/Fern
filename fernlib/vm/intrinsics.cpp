@@ -207,6 +207,9 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::BoolFromI32: return Value::make_bool(operand.as_i32() != 0);
         case IntrinsicKind::BoolFromI64: return Value::make_bool(operand.as_i64() != 0);
 
+        // ptr
+        case IntrinsicKind::PtrCast: return operand;
+
         default: break;
     }
     throw VmError{std::format("conversion not implemented: {}", format(kind))};
