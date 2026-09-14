@@ -1,0 +1,17 @@
+---
+Description: A void Main still runs the static initializers first
+Expected:
+---
+
+type Config
+{
+    static flag: i32 = 5
+}
+
+type Program
+{
+    static fn Main
+    {
+        Config.flag = Config.flag + 1
+    }
+}

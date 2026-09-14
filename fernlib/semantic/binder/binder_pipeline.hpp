@@ -22,6 +22,7 @@ public:
     void resolve_signatures();
     void resolve_attributes();
     void bind_methods();
+    void synthesize_entry();
     void validate_signatures();
 
 private:

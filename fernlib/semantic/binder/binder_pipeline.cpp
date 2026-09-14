@@ -562,4 +562,29 @@ void BinderPipeline::bind_methods()
     }
 }
 
+#pragma region Entry
+
+// The entry is Program.Main wherever Program lives. Runs after bind_methods so every instantiation
+// whose static init the entry must call already exists.
+void BinderPipeline::synthesize_entry()
+{
+    for (auto* type : context.symbols.allTypes)
+    {
+        if (!type || type->name != "Program") continue;
+        for (auto* method : type->methods)
+        {
+            if (method->name != "Main") continue;
+            if (!has_modifier(method->modifiers, Modifier::Static)) continue;
+            if (!method->parameters.empty()) continue;
+
+            auto* entry = context.symbols.declare_method(type, MethodSymbol::entryName, Modifier::Public | Modifier::Static, CallableKind::Function);
+            entry->set_return_type(method->get_return_type());
+            context.mainMethod = method;
+            context.entryMethod = entry;
+            context.bind_single_method(entry);
+            return;
+        }
+    }
+}
+
 }

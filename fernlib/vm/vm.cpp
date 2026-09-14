@@ -48,22 +48,20 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
 
 FlirMethod* Interpreter::find_main()
 {
-    // The entry is Program.Main, wherever Program lives, so search all types rather than one namespace.
+    if (semantic.entryMethod)
+    {
+        auto it = flir.loweredMethods.find(semantic.entryMethod);
+        if (it != flir.loweredMethods.end()) return it->second;
+    }
+
+    // Point the error at a wrong shaped Main when there is one
     Span nearMiss{};
     for (auto* type : semantic.symbols.allTypes)
     {
         if (!type || type->name != "Program") continue;
-
         for (auto* method : type->methods)
         {
-            if (method->name != "Main") continue;
-            // Remember a wrong shaped Main so the error can point at it
-            if (method->syntax) nearMiss = method->syntax->span;
-            if (!has_modifier(method->modifiers, Modifier::Static)) continue;
-            if (!method->parameters.empty()) continue;
-
-            auto it = flir.loweredMethods.find(method);
-            if (it != flir.loweredMethods.end()) return it->second;
+            if (method->name == "Main" && method->syntax) nearMiss = method->syntax->span;
         }
     }
 

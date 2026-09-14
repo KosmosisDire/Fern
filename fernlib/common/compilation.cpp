@@ -76,6 +76,7 @@ void Compilation::compile()
     binder.resolve_signatures();
     binder.resolve_attributes();
     binder.bind_methods();
+    binder.synthesize_entry();
     binder.validate_signatures();
 
     LayoutPass(semanticContext, TargetInfo{}).run();

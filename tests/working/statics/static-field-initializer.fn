@@ -1,0 +1,26 @@
+---
+Description: A static field initializer runs once before Main, not per construction
+Expected: 7
+---
+
+type Counter
+{
+    value: i32
+    static count: i32 = 7
+
+    init(value: i32)
+    {
+        this.value = value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        Counter.count += 1
+        var c = Counter(1)
+        var d = Counter(2)
+        return Counter.count - 1
+    }
+}

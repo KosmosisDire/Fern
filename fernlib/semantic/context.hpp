@@ -40,6 +40,10 @@ struct SemanticContext
     std::vector<FhirMethod*> methods;
     StaticLayout staticLayout;
 
+    // Program.Main and the synthesized entry that wraps it, both null when the program has no Main
+    MethodSymbol* mainMethod = nullptr;
+    MethodSymbol* entryMethod = nullptr;
+
     std::unique_ptr<RootBinder> rootBinder;
     std::unordered_map<NamespaceSymbol*, std::unique_ptr<Binder>> nsBinders;
     std::unordered_map<NamedTypeSymbol*, std::unique_ptr<Binder>> typeBinders;
@@ -61,6 +65,7 @@ private:
     FhirMethod* bind_method(MethodSymbol* method);
     FhirMethod* lower_synthetic_constructor(MethodSymbol* method, NamedTypeSymbol* parentType);
     FhirMethod* lower_static_init(MethodSymbol* method, NamedTypeSymbol* parentType);
+    FhirMethod* lower_entry(MethodSymbol* method);
 };
 
 }

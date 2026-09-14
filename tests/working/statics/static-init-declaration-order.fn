@@ -1,0 +1,22 @@
+---
+Description: Static initializers run in type declaration order, so a later type may read an earlier one
+Expected: 12
+---
+
+type First
+{
+    static base: i32 = 10
+}
+
+type Second
+{
+    static derived: i32 = First.base + 2
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return Second.derived
+    }
+}

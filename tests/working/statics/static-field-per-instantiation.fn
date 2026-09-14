@@ -1,0 +1,28 @@
+---
+Description: Each generic instantiation has its own static field with its own initializer run
+Expected: 1311
+---
+
+ref type Box<T>
+{
+    item: T
+    static made: i32 = 10
+
+    init(item: T)
+    {
+        this.item = item
+        made += 1
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a = Box<i32>(1)
+        var b = Box<i32>(2)
+        var c = Box<i32>(3)
+        var d = Box<bool>(true)
+        return Box<i32>.made * 100 + Box<bool>.made
+    }
+}

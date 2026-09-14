@@ -133,6 +133,11 @@ FhirMethod* SemanticContext::bind_method(MethodSymbol* method)
         return lower_static_init(method, parentType);
     }
 
+    if (method->is_entry())
+    {
+        return lower_entry(method);
+    }
+
     // Body-less methods are rejected by signature validation
     auto* callable = method->syntax ? method->syntax->as<CallableDeclSyntax>() : nullptr;
     if (!callable || !callable->body) return nullptr;
@@ -181,6 +186,31 @@ FhirMethod* SemanticContext::lower_static_init(MethodSymbol* method, NamedTypeSy
 
     auto* body = fhir.block(nullptr);
     mBinder.emit_static_defaults(parentType, body->statements);
+    return fhir.method(method, body);
+}
+
+// Calls every static init in declaration order, then Main, so no backend has to order them
+FhirMethod* SemanticContext::lower_entry(MethodSymbol* method)
+{
+    FhirBuilder fhir(arena);
+    auto* body = fhir.block(nullptr);
+
+    for (auto* type : symbols.concrete_types())
+    {
+        for (auto* init : type->methods)
+        {
+            if (!init->is_static_init()) continue;
+            body->statements.push_back(fhir.expr_stmt(nullptr, fhir.call(nullptr, nullptr, init, {})));
+        }
+    }
+
+    TypeSymbol* mainType = mainMethod->get_return_type();
+    auto* mainCall = fhir.call(nullptr, mainType, mainMethod, {});
+    if (mainType)
+        body->statements.push_back(fhir.return_stmt(nullptr, mainCall));
+    else
+        body->statements.push_back(fhir.expr_stmt(nullptr, mainCall));
+
     return fhir.method(method, body);
 }
 
