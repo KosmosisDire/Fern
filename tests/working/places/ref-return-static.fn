@@ -1,0 +1,24 @@
+---
+Description: A ref return may return a static field, its storage lives for the whole program
+Expected: 9
+---
+
+type Counter
+{
+    static count: i32
+
+    static fn Slot() -> ref i32
+    {
+        return count
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        Counter.Slot() = 4
+        Counter.Slot() += 5
+        return Counter.Slot()
+    }
+}
