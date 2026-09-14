@@ -1,0 +1,28 @@
+---
+Description: A ref return must name a place of exactly the return type, a conversion would return a temporary
+Expected: FN3308
+---
+
+type Vec2
+{
+    x: i32
+
+    init(x: i32)
+    {
+        this.x = x
+    }
+
+    fn X() -> ref i64
+    {
+        return this.x
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var v = Vec2(4)
+        return (i32)v.X()
+    }
+}

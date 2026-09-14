@@ -74,7 +74,9 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
         }
         else
         {
-            value = bind_value_expr(stmt->value, retType);
+            // A ref return hands back a place, and a conversion would make a temporary, so the place
+            // must already have the return type
+            value = method->returnsRef ? bind_value_expr(stmt->value) : bind_value_expr(stmt->value, retType);
 
             if (method->is_constructor())
             {
@@ -89,7 +91,9 @@ void Binder::bind_return(ReturnStmtSyntax* stmt, std::vector<FhirStmt*>& out)
                 // A returned place must outlive the frame. Bare this is legal storage but pointless,
                 // since v.Self() = w is v = w in disguise, so it is rejected on its own.
                 PlaceStorage storage = value->place_storage();
-                if (storage == PlaceStorage::Temporary)
+                if (retType && value->type && value->type != retType)
+                    diag.report(DiagnosticCode::Err_RefReturnTypeMismatch, stmt->value->span, format_type(retType), format_type(value->type));
+                else if (storage == PlaceStorage::Temporary)
                     diag.report(DiagnosticCode::Err_RefReturnNotPlace, stmt->value->span);
                 else if (value->is<FhirThisExpr>())
                     diag.report(DiagnosticCode::Err_RefReturnThis, stmt->value->span);
