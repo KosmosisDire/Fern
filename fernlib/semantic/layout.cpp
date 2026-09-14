@@ -16,6 +16,12 @@ static int align_up(int offset, int align)
     return (offset + align - 1) / align * align;
 }
 
+LayoutPass::LayoutPass(SemanticContext& context)
+    : context(context)
+    , target(context.symbols.target)
+{
+}
+
 void LayoutPass::run()
 {
     for (auto* type : context.symbols.allTypes)

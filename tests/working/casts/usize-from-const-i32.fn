@@ -1,0 +1,13 @@
+---
+Description: an i32 constant that fits becomes usize without a cast
+Expected: 5
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var n: usize = 5
+        return (i32)n
+    }
+}

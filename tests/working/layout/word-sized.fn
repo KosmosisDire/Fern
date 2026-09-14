@@ -1,0 +1,14 @@
+---
+Description: isize and usize take the pointer width
+Expected: 8/8/8
+---
+
+type Program
+{
+    static fn Main -> string
+    {
+        return (string)MemoryLayout<usize>.Size() + "/" +
+               (string)MemoryLayout<isize>.Stride() + "/" +
+               (string)MemoryLayout<usize>.Alignment()
+    }
+}

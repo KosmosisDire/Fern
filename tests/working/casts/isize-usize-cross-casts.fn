@@ -1,0 +1,15 @@
+---
+Description: isize and usize convert to each other only through a cast and keep their bits
+Expected: -1
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var s: isize = -1
+        var u = (usize)s
+        var back = (isize)u
+        return (i32)back
+    }
+}

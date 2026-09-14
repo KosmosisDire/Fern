@@ -79,7 +79,7 @@ void Compilation::compile()
     binder.synthesize_entry();
     binder.validate_signatures();
 
-    LayoutPass(semanticContext, TargetInfo{}).run();
+    LayoutPass(semanticContext).run();
 
     for (auto* method : semanticContext.methods)
     {

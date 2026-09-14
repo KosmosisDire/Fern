@@ -1,0 +1,15 @@
+---
+Description: u32 widens to usize and usize to u64 without a cast
+Expected: 7
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: u32 = 7
+        var b: usize = a
+        var c: u64 = b
+        return (i32)c
+    }
+}

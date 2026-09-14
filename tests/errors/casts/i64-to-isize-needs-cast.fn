@@ -1,0 +1,14 @@
+---
+Description: i64 does not implicitly narrow to isize
+Expected: FN3405
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i64 = 5
+        var b: isize = a
+        return (i32)b
+    }
+}

@@ -1,0 +1,13 @@
+---
+Description: usize suffix on a literal beyond the i32 range
+Expected: 10000000000
+---
+
+type Program
+{
+    static fn Main -> u64
+    {
+        var x = 10000000000usize
+        return x
+    }
+}

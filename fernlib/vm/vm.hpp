@@ -144,7 +144,7 @@ private:
     FlirContext& flir;
     Diagnostics& diag;
     VmConfig config;
-    TargetInfo target;
+    const TargetInfo& target;
     VmMemory memory;
     // The block holding every static field, allocated once when the interpreter is made
     uint64_t staticBase = 0;
@@ -157,6 +157,8 @@ private:
     TypeSymbol* u16Type = nullptr;
     TypeSymbol* u32Type = nullptr;
     TypeSymbol* u64Type = nullptr;
+    TypeSymbol* isizeType = nullptr;
+    TypeSymbol* usizeType = nullptr;
     TypeSymbol* f16Type = nullptr;
     TypeSymbol* f32Type = nullptr;
     TypeSymbol* f64Type = nullptr;

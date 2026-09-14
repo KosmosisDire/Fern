@@ -1,0 +1,14 @@
+---
+Description: usize division and remainder treat the word as unsigned
+Expected: 20
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: usize = 100
+        var b: usize = 8
+        return (i32)(a / b + a % b + a - 96)
+    }
+}

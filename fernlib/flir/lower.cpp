@@ -12,7 +12,7 @@ FlirLowerer::FlirLowerer(SemanticContext& semantic, FlirContext& flir)
     : semantic(semantic)
     , flir(flir)
     , builder(flir.arena)
-    , layout(semantic, TargetInfo{})
+    , layout(semantic)
 {
 }
 

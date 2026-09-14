@@ -1,0 +1,16 @@
+---
+Description: isize arithmetic wraps and divides like a signed 64 bit word
+Expected: 43
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: isize = 40
+        var b: isize = -3
+        var c = a * b + 5
+        var d = -c / 3 % 7 + a
+        return (i32)d
+    }
+}

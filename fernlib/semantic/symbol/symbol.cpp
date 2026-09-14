@@ -140,12 +140,24 @@ bool NamedTypeSymbol::is_float() const
     return false;
 }
 
+bool NamedTypeSymbol::is_word_sized() const
+{
+    for (const auto& attr : resolvedAttributes)
+    {
+        if (attr.type && attr.type->qualified_name() == "Core.WordSized")
+            return true;
+    }
+    if (genericOrigin) return genericOrigin->is_word_sized();
+    return false;
+}
+
 bool NamedTypeSymbol::is_numeric() const
 {
     return is_integer() || is_float();
 }
 
-// A size argument on @BuiltinType marks a scalar. Absent means a handle sized value type like String.
+// A size argument on @BuiltinType marks a scalar and a word sized type is a scalar as wide as a pointer.
+// Neither means a handle sized value type like String.
 std::optional<int> NamedTypeSymbol::builtin_scalar_size() const
 {
     for (const auto& attr : resolvedAttributes)
@@ -156,6 +168,7 @@ std::optional<int> NamedTypeSymbol::builtin_scalar_size() const
             return static_cast<int>(attr.arguments[0].intValue);
         }
     }
+    if (is_word_sized() && table) return table->target.pointerSize;
     return std::nullopt;
 }
 

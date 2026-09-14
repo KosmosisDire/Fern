@@ -80,6 +80,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::I8FromF16:  return Value::make_i8(saturate_int<int8_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::I8FromF32:  return Value::make_i8(saturate_int<int8_t>(operand.as_f32()));
         case IntrinsicKind::I8FromF64:  return Value::make_i8(saturate_int<int8_t>(operand.as_f64()));
+        case IntrinsicKind::I8FromISize: return Value::make_i8(static_cast<int8_t>(operand.as_i64()));
+        case IntrinsicKind::I8FromUSize: return Value::make_i8(static_cast<int8_t>(operand.as_u64()));
 
         // i16
         case IntrinsicKind::I16FromI8:  return Value::make_i16(static_cast<int16_t>(operand.as_i8()));
@@ -92,6 +94,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::I16FromF16: return Value::make_i16(saturate_int<int16_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::I16FromF32: return Value::make_i16(saturate_int<int16_t>(operand.as_f32()));
         case IntrinsicKind::I16FromF64: return Value::make_i16(saturate_int<int16_t>(operand.as_f64()));
+        case IntrinsicKind::I16FromISize: return Value::make_i16(static_cast<int16_t>(operand.as_i64()));
+        case IntrinsicKind::I16FromUSize: return Value::make_i16(static_cast<int16_t>(operand.as_u64()));
 
         // i32
         case IntrinsicKind::I32FromI8:   return Value::make_i32(static_cast<int32_t>(operand.as_i8()));
@@ -105,6 +109,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::I32FromF32:  return Value::make_i32(saturate_int<int32_t>(operand.as_f32()));
         case IntrinsicKind::I32FromF64:  return Value::make_i32(saturate_int<int32_t>(operand.as_f64()));
         case IntrinsicKind::I32FromBool: return Value::make_i32(operand.as_bool() ? 1 : 0);
+        case IntrinsicKind::I32FromISize: return Value::make_i32(static_cast<int32_t>(operand.as_i64()));
+        case IntrinsicKind::I32FromUSize: return Value::make_i32(static_cast<int32_t>(operand.as_u64()));
 
         // i64
         case IntrinsicKind::I64FromI8:   return Value::make_i64(static_cast<int64_t>(operand.as_i8()));
@@ -118,6 +124,22 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::I64FromF32:  return Value::make_i64(saturate_int<int64_t>(operand.as_f32()));
         case IntrinsicKind::I64FromF64:  return Value::make_i64(saturate_int<int64_t>(operand.as_f64()));
         case IntrinsicKind::I64FromBool: return Value::make_i64(operand.as_bool() ? 1 : 0);
+        case IntrinsicKind::I64FromISize: return Value::make_i64(static_cast<int64_t>(operand.as_i64()));
+        case IntrinsicKind::I64FromUSize: return Value::make_i64(static_cast<int64_t>(operand.as_u64()));
+
+        // isize
+        case IntrinsicKind::ISizeFromI8:   return Value::make_i64(static_cast<int64_t>(operand.as_i8()));
+        case IntrinsicKind::ISizeFromI16:  return Value::make_i64(static_cast<int64_t>(operand.as_i16()));
+        case IntrinsicKind::ISizeFromI32:  return Value::make_i64(static_cast<int64_t>(operand.as_i32()));
+        case IntrinsicKind::ISizeFromI64:  return Value::make_i64(static_cast<int64_t>(operand.as_i64()));
+        case IntrinsicKind::ISizeFromU8:   return Value::make_i64(static_cast<int64_t>(operand.as_u8()));
+        case IntrinsicKind::ISizeFromU16:  return Value::make_i64(static_cast<int64_t>(operand.as_u16()));
+        case IntrinsicKind::ISizeFromU32:  return Value::make_i64(static_cast<int64_t>(operand.as_u32()));
+        case IntrinsicKind::ISizeFromU64:  return Value::make_i64(static_cast<int64_t>(operand.as_u64()));
+        case IntrinsicKind::ISizeFromUSize: return Value::make_i64(static_cast<int64_t>(operand.as_u64()));
+        case IntrinsicKind::ISizeFromF16:  return Value::make_i64(saturate_int<int64_t>(f16_to_float(operand.as_f16())));
+        case IntrinsicKind::ISizeFromF32:  return Value::make_i64(saturate_int<int64_t>(operand.as_f32()));
+        case IntrinsicKind::ISizeFromF64:  return Value::make_i64(saturate_int<int64_t>(operand.as_f64()));
 
         // u8
         case IntrinsicKind::U8FromI8:   return Value::make_u8(static_cast<uint8_t>(operand.as_i8()));
@@ -130,6 +152,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::U8FromF16:  return Value::make_u8(saturate_int<uint8_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::U8FromF32:  return Value::make_u8(saturate_int<uint8_t>(operand.as_f32()));
         case IntrinsicKind::U8FromF64:  return Value::make_u8(saturate_int<uint8_t>(operand.as_f64()));
+        case IntrinsicKind::U8FromISize: return Value::make_u8(static_cast<uint8_t>(operand.as_i64()));
+        case IntrinsicKind::U8FromUSize: return Value::make_u8(static_cast<uint8_t>(operand.as_u64()));
 
         // u16
         case IntrinsicKind::U16FromI8:  return Value::make_u16(static_cast<uint16_t>(operand.as_i8()));
@@ -142,6 +166,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::U16FromF16: return Value::make_u16(saturate_int<uint16_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::U16FromF32: return Value::make_u16(saturate_int<uint16_t>(operand.as_f32()));
         case IntrinsicKind::U16FromF64: return Value::make_u16(saturate_int<uint16_t>(operand.as_f64()));
+        case IntrinsicKind::U16FromISize: return Value::make_u16(static_cast<uint16_t>(operand.as_i64()));
+        case IntrinsicKind::U16FromUSize: return Value::make_u16(static_cast<uint16_t>(operand.as_u64()));
 
         // u32
         case IntrinsicKind::U32FromI8:  return Value::make_u32(static_cast<uint32_t>(operand.as_i8()));
@@ -154,6 +180,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::U32FromF16: return Value::make_u32(saturate_int<uint32_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::U32FromF32: return Value::make_u32(saturate_int<uint32_t>(operand.as_f32()));
         case IntrinsicKind::U32FromF64: return Value::make_u32(saturate_int<uint32_t>(operand.as_f64()));
+        case IntrinsicKind::U32FromISize: return Value::make_u32(static_cast<uint32_t>(operand.as_i64()));
+        case IntrinsicKind::U32FromUSize: return Value::make_u32(static_cast<uint32_t>(operand.as_u64()));
 
         // u64
         case IntrinsicKind::U64FromI8:  return Value::make_u64(static_cast<uint64_t>(operand.as_i8()));
@@ -166,6 +194,22 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::U64FromF16: return Value::make_u64(saturate_int<uint64_t>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::U64FromF32: return Value::make_u64(saturate_int<uint64_t>(operand.as_f32()));
         case IntrinsicKind::U64FromF64: return Value::make_u64(saturate_int<uint64_t>(operand.as_f64()));
+        case IntrinsicKind::U64FromISize: return Value::make_u64(static_cast<uint64_t>(operand.as_i64()));
+        case IntrinsicKind::U64FromUSize: return Value::make_u64(static_cast<uint64_t>(operand.as_u64()));
+
+        // usize
+        case IntrinsicKind::USizeFromI8:   return Value::make_u64(static_cast<uint64_t>(operand.as_i8()));
+        case IntrinsicKind::USizeFromI16:  return Value::make_u64(static_cast<uint64_t>(operand.as_i16()));
+        case IntrinsicKind::USizeFromI32:  return Value::make_u64(static_cast<uint64_t>(operand.as_i32()));
+        case IntrinsicKind::USizeFromI64:  return Value::make_u64(static_cast<uint64_t>(operand.as_i64()));
+        case IntrinsicKind::USizeFromU8:   return Value::make_u64(static_cast<uint64_t>(operand.as_u8()));
+        case IntrinsicKind::USizeFromU16:  return Value::make_u64(static_cast<uint64_t>(operand.as_u16()));
+        case IntrinsicKind::USizeFromU32:  return Value::make_u64(static_cast<uint64_t>(operand.as_u32()));
+        case IntrinsicKind::USizeFromU64:  return Value::make_u64(static_cast<uint64_t>(operand.as_u64()));
+        case IntrinsicKind::USizeFromISize: return Value::make_u64(static_cast<uint64_t>(operand.as_i64()));
+        case IntrinsicKind::USizeFromF16:  return Value::make_u64(saturate_int<uint64_t>(f16_to_float(operand.as_f16())));
+        case IntrinsicKind::USizeFromF32:  return Value::make_u64(saturate_int<uint64_t>(operand.as_f32()));
+        case IntrinsicKind::USizeFromF64:  return Value::make_u64(saturate_int<uint64_t>(operand.as_f64()));
 
         // f16 rounds through one double to half conversion, int to double is exact at every relevant magnitude
         case IntrinsicKind::F16FromI8:  return Value::make_f16(f16_from_double(static_cast<double>(operand.as_i8())));
@@ -176,6 +220,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::F16FromU16: return Value::make_f16(f16_from_double(static_cast<double>(operand.as_u16())));
         case IntrinsicKind::F16FromU32: return Value::make_f16(f16_from_double(static_cast<double>(operand.as_u32())));
         case IntrinsicKind::F16FromU64: return Value::make_f16(f16_from_double(static_cast<double>(operand.as_u64())));
+        case IntrinsicKind::F16FromISize: return Value::make_f16(f16_from_double(static_cast<double>(operand.as_i64())));
+        case IntrinsicKind::F16FromUSize: return Value::make_f16(f16_from_double(static_cast<double>(operand.as_u64())));
         case IntrinsicKind::F16FromF32: return Value::make_f16(f16_from_double(operand.as_f32()));
         case IntrinsicKind::F16FromF64: return Value::make_f16(f16_from_double(operand.as_f64()));
 
@@ -188,6 +234,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::F32FromU16: return Value::make_f32(static_cast<float>(operand.as_u16()));
         case IntrinsicKind::F32FromU32: return Value::make_f32(static_cast<float>(operand.as_u32()));
         case IntrinsicKind::F32FromU64: return Value::make_f32(static_cast<float>(operand.as_u64()));
+        case IntrinsicKind::F32FromISize: return Value::make_f32(static_cast<float>(operand.as_i64()));
+        case IntrinsicKind::F32FromUSize: return Value::make_f32(static_cast<float>(operand.as_u64()));
         case IntrinsicKind::F32FromF16: return Value::make_f32(f16_to_float(operand.as_f16()));
         case IntrinsicKind::F32FromF64: return Value::make_f32(static_cast<float>(operand.as_f64()));
 
@@ -200,6 +248,8 @@ Value Interpreter::convert(IntrinsicKind kind, Value operand)
         case IntrinsicKind::F64FromU16: return Value::make_f64(static_cast<double>(operand.as_u16()));
         case IntrinsicKind::F64FromU32: return Value::make_f64(static_cast<double>(operand.as_u32()));
         case IntrinsicKind::F64FromU64: return Value::make_f64(static_cast<double>(operand.as_u64()));
+        case IntrinsicKind::F64FromISize: return Value::make_f64(static_cast<double>(operand.as_i64()));
+        case IntrinsicKind::F64FromUSize: return Value::make_f64(static_cast<double>(operand.as_u64()));
         case IntrinsicKind::F64FromF16: return Value::make_f64(static_cast<double>(f16_to_float(operand.as_f16())));
         case IntrinsicKind::F64FromF32: return Value::make_f64(static_cast<double>(operand.as_f32()));
 
@@ -364,6 +414,35 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::I64Ge: return Value::make_bool(args[0].as_i64() >= args[1].as_i64());
         case IntrinsicKind::I64Le: return Value::make_bool(args[0].as_i64() <= args[1].as_i64());
 
+        // isize arithmetic and compares on the 64 bit word
+        case IntrinsicKind::ISizeNeg: return Value::make_i64(wrap_neg(args[0].as_i64()));
+        case IntrinsicKind::ISizePos: return Value::make_i64(args[0].as_i64());
+        case IntrinsicKind::ISizeAdd: return Value::make_i64(wrap_add(args[0].as_i64(), args[1].as_i64()));
+        case IntrinsicKind::ISizeSub: return Value::make_i64(wrap_sub(args[0].as_i64(), args[1].as_i64()));
+        case IntrinsicKind::ISizeMul: return Value::make_i64(wrap_mul(args[0].as_i64(), args[1].as_i64()));
+        case IntrinsicKind::ISizeDiv:
+        {
+            int64_t a = args[0].as_i64();
+            int64_t b = args[1].as_i64();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT64_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i64(a / b);
+        }
+        case IntrinsicKind::ISizeMod:
+        {
+            int64_t a = args[0].as_i64();
+            int64_t b = args[1].as_i64();
+            if (b == 0) throw VmError{"division by zero"};
+            if (a == INT64_MIN && b == -1) throw VmError{"division overflow"};
+            return Value::make_i64(a % b);
+        }
+        case IntrinsicKind::ISizeEq: return Value::make_bool(args[0].as_i64() == args[1].as_i64());
+        case IntrinsicKind::ISizeNe: return Value::make_bool(args[0].as_i64() != args[1].as_i64());
+        case IntrinsicKind::ISizeGt: return Value::make_bool(args[0].as_i64() > args[1].as_i64());
+        case IntrinsicKind::ISizeLt: return Value::make_bool(args[0].as_i64() < args[1].as_i64());
+        case IntrinsicKind::ISizeGe: return Value::make_bool(args[0].as_i64() >= args[1].as_i64());
+        case IntrinsicKind::ISizeLe: return Value::make_bool(args[0].as_i64() <= args[1].as_i64());
+
         // u8 arithmetic and compares
         case IntrinsicKind::U8Add: return Value::make_u8(wrap_add(args[0].as_u8(), args[1].as_u8()));
         case IntrinsicKind::U8Sub: return Value::make_u8(wrap_sub(args[0].as_u8(), args[1].as_u8()));
@@ -455,6 +534,29 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::U64Lt: return Value::make_bool(args[0].as_u64() < args[1].as_u64());
         case IntrinsicKind::U64Ge: return Value::make_bool(args[0].as_u64() >= args[1].as_u64());
         case IntrinsicKind::U64Le: return Value::make_bool(args[0].as_u64() <= args[1].as_u64());
+
+        // usize arithmetic and compares on the 64 bit word
+        case IntrinsicKind::USizeAdd: return Value::make_u64(wrap_add(args[0].as_u64(), args[1].as_u64()));
+        case IntrinsicKind::USizeSub: return Value::make_u64(wrap_sub(args[0].as_u64(), args[1].as_u64()));
+        case IntrinsicKind::USizeMul: return Value::make_u64(wrap_mul(args[0].as_u64(), args[1].as_u64()));
+        case IntrinsicKind::USizeDiv:
+        {
+            uint64_t b = args[1].as_u64();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u64(args[0].as_u64() / b);
+        }
+        case IntrinsicKind::USizeMod:
+        {
+            uint64_t b = args[1].as_u64();
+            if (b == 0) throw VmError{"division by zero"};
+            return Value::make_u64(args[0].as_u64() % b);
+        }
+        case IntrinsicKind::USizeEq: return Value::make_bool(args[0].as_u64() == args[1].as_u64());
+        case IntrinsicKind::USizeNe: return Value::make_bool(args[0].as_u64() != args[1].as_u64());
+        case IntrinsicKind::USizeGt: return Value::make_bool(args[0].as_u64() > args[1].as_u64());
+        case IntrinsicKind::USizeLt: return Value::make_bool(args[0].as_u64() < args[1].as_u64());
+        case IntrinsicKind::USizeGe: return Value::make_bool(args[0].as_u64() >= args[1].as_u64());
+        case IntrinsicKind::USizeLe: return Value::make_bool(args[0].as_u64() <= args[1].as_u64());
 
         // f16 widens to float, computes there, and rounds back, which is correctly rounded for every op
         case IntrinsicKind::F16Neg: return Value::make_f16(static_cast<uint16_t>(args[0].as_f16() ^ 0x8000));

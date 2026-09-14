@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "symbol.hpp"
+#include <semantic/target.hpp>
 
 namespace Fern
 {
@@ -22,6 +23,7 @@ class SymbolTable
 {
 public:
     NamespaceSymbol* globalNamespace = nullptr;
+    TargetInfo target;
     std::vector<NamedTypeSymbol*> allTypes;
     std::vector<MethodSymbol*> allMethods;
     std::unordered_map<std::string, std::vector<MethodSymbol*>> literalSuffixMap;

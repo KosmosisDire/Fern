@@ -23,7 +23,7 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
     , flir(flir)
     , diag(diag)
     , config(config)
-    , target()
+    , target(semantic.symbols.target)
     , memory(config.stackSize)
 {
     i8Type = semantic.resolve_type_name("i8");
@@ -34,6 +34,8 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
     u16Type = semantic.resolve_type_name("u16");
     u32Type = semantic.resolve_type_name("u32");
     u64Type = semantic.resolve_type_name("u64");
+    isizeType = semantic.resolve_type_name("isize");
+    usizeType = semantic.resolve_type_name("usize");
     f16Type = semantic.resolve_type_name("f16");
     f32Type = semantic.resolve_type_name("f32");
     f64Type = semantic.resolve_type_name("f64");
@@ -424,6 +426,9 @@ Value::Kind Interpreter::type_kind(TypeSymbol* type) const
     if (type == u16Type)  return Value::Kind::U16;
     if (type == u32Type)  return Value::Kind::U32;
     if (type == u64Type)  return Value::Kind::U64;
+    // The VM word is 64 bits, so the word sized types flow as their 64 bit kinds
+    if (type == isizeType) return Value::Kind::I64;
+    if (type == usizeType) return Value::Kind::U64;
     if (type == f16Type)  return Value::Kind::F16;
     if (type == f32Type)  return Value::Kind::F32;
     if (type == f64Type)  return Value::Kind::F64;

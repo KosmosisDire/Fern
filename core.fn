@@ -57,6 +57,8 @@ attr type AllowCustomLiterals{}
 attr type SignedInt{}
 attr type UnsignedInt{}
 attr type NumericFloat{}
+-- As wide as a pointer, so BuiltinType carries no size
+attr type WordSized{}
 
 attr type Intrinsic
 {
@@ -88,6 +90,10 @@ type I8
     explicit cast(from: f32) -> i8
     @Intrinsic("i8.from_f64")
     explicit cast(from: f64) -> i8
+    @Intrinsic("i8.from_isize")
+    explicit cast(from: isize) -> i8
+    @Intrinsic("i8.from_usize")
+    explicit cast(from: usize) -> i8
 
     @Intrinsic("i8.neg") op -(value: i8) -> i8
     @Intrinsic("i8.pos") op +(value: i8) -> i8
@@ -129,6 +135,10 @@ type I16
     explicit cast(from: f32) -> i16
     @Intrinsic("i16.from_f64")
     explicit cast(from: f64) -> i16
+    @Intrinsic("i16.from_isize")
+    explicit cast(from: isize) -> i16
+    @Intrinsic("i16.from_usize")
+    explicit cast(from: usize) -> i16
 
     @Intrinsic("i16.neg") op -(value: i16) -> i16
     @Intrinsic("i16.pos") op +(value: i16) -> i16
@@ -172,6 +182,10 @@ type I32
     explicit cast(from: f64) -> i32
     @Intrinsic("i32.from_bool")
     explicit cast(from: bool) -> i32
+    @Intrinsic("i32.from_isize")
+    explicit cast(from: isize) -> i32
+    @Intrinsic("i32.from_usize")
+    explicit cast(from: usize) -> i32
 
     @Intrinsic("i32.neg") op -(value: i32) -> i32
     @Intrinsic("i32.pos") op +(value: i32) -> i32
@@ -216,6 +230,10 @@ type I64
     explicit cast(from: f64) -> i64
     @Intrinsic("i64.from_bool")
     explicit cast(from: bool) -> i64
+    @Intrinsic("i64.from_isize")
+    implicit cast(from: isize) -> i64
+    @Intrinsic("i64.from_usize")
+    explicit cast(from: usize) -> i64
 
     @Intrinsic("i64.neg") op -(value: i64) -> i64
     @Intrinsic("i64.pos") op +(value: i64) -> i64
@@ -230,6 +248,53 @@ type I64
     @Intrinsic("i64.lt") op <(left: i64, right: i64) -> bool
     @Intrinsic("i64.ge") op >=(left: i64, right: i64) -> bool
     @Intrinsic("i64.le") op <=(left: i64, right: i64) -> bool
+}
+
+-- A signed integer as wide as a pointer, for offsets and counts. Casts follow C# nint.
+@BuiltinType @WordSized @AllowCustomLiterals @SignedInt
+type ISize
+{
+    @Intrinsic("isize.literal_i32") literal isize(from: i32)
+    @Intrinsic("isize.literal_i64") literal isize(from: i64)
+
+    @Intrinsic("isize.from_i8")
+    implicit cast(from: i8) -> isize
+    @Intrinsic("isize.from_i16")
+    implicit cast(from: i16) -> isize
+    @Intrinsic("isize.from_i32")
+    implicit cast(from: i32) -> isize
+    @Intrinsic("isize.from_u8")
+    implicit cast(from: u8) -> isize
+    @Intrinsic("isize.from_u16")
+    implicit cast(from: u16) -> isize
+    @Intrinsic("isize.from_i64")
+    explicit cast(from: i64) -> isize
+    @Intrinsic("isize.from_u32")
+    explicit cast(from: u32) -> isize
+    @Intrinsic("isize.from_u64")
+    explicit cast(from: u64) -> isize
+    @Intrinsic("isize.from_usize")
+    explicit cast(from: usize) -> isize
+    @Intrinsic("isize.from_f16")
+    explicit cast(from: f16) -> isize
+    @Intrinsic("isize.from_f32")
+    explicit cast(from: f32) -> isize
+    @Intrinsic("isize.from_f64")
+    explicit cast(from: f64) -> isize
+
+    @Intrinsic("isize.neg") op -(value: isize) -> isize
+    @Intrinsic("isize.pos") op +(value: isize) -> isize
+    @Intrinsic("isize.add") op +(left: isize, right: isize) -> isize
+    @Intrinsic("isize.sub") op -(left: isize, right: isize) -> isize
+    @Intrinsic("isize.mul") op *(left: isize, right: isize) -> isize
+    @Intrinsic("isize.div") op /(left: isize, right: isize) -> isize
+    @Intrinsic("isize.mod") op %(left: isize, right: isize) -> isize
+    @Intrinsic("isize.eq") op ==(left: isize, right: isize) -> bool
+    @Intrinsic("isize.ne") op !=(left: isize, right: isize) -> bool
+    @Intrinsic("isize.gt") op >(left: isize, right: isize) -> bool
+    @Intrinsic("isize.lt") op <(left: isize, right: isize) -> bool
+    @Intrinsic("isize.ge") op >=(left: isize, right: isize) -> bool
+    @Intrinsic("isize.le") op <=(left: isize, right: isize) -> bool
 }
 
 @BuiltinType(1) @AllowCustomLiterals @UnsignedInt
@@ -257,6 +322,10 @@ type U8
     explicit cast(from: f32) -> u8
     @Intrinsic("u8.from_f64")
     explicit cast(from: f64) -> u8
+    @Intrinsic("u8.from_isize")
+    explicit cast(from: isize) -> u8
+    @Intrinsic("u8.from_usize")
+    explicit cast(from: usize) -> u8
 
     @Intrinsic("u8.add") op +(left: u8, right: u8) -> u8
     @Intrinsic("u8.sub") op -(left: u8, right: u8) -> u8
@@ -296,6 +365,10 @@ type U16
     explicit cast(from: f32) -> u16
     @Intrinsic("u16.from_f64")
     explicit cast(from: f64) -> u16
+    @Intrinsic("u16.from_isize")
+    explicit cast(from: isize) -> u16
+    @Intrinsic("u16.from_usize")
+    explicit cast(from: usize) -> u16
 
     @Intrinsic("u16.add") op +(left: u16, right: u16) -> u16
     @Intrinsic("u16.sub") op -(left: u16, right: u16) -> u16
@@ -336,6 +409,10 @@ type U32
     explicit cast(from: f32) -> u32
     @Intrinsic("u32.from_f64")
     explicit cast(from: f64) -> u32
+    @Intrinsic("u32.from_isize")
+    explicit cast(from: isize) -> u32
+    @Intrinsic("u32.from_usize")
+    explicit cast(from: usize) -> u32
 
     @Intrinsic("u32.add") op +(left: u32, right: u32) -> u32
     @Intrinsic("u32.sub") op -(left: u32, right: u32) -> u32
@@ -376,6 +453,10 @@ type U64
     explicit cast(from: f32) -> u64
     @Intrinsic("u64.from_f64")
     explicit cast(from: f64) -> u64
+    @Intrinsic("u64.from_usize")
+    implicit cast(from: usize) -> u64
+    @Intrinsic("u64.from_isize")
+    explicit cast(from: isize) -> u64
 
     @Intrinsic("u64.add") op +(left: u64, right: u64) -> u64
     @Intrinsic("u64.sub") op -(left: u64, right: u64) -> u64
@@ -388,6 +469,51 @@ type U64
     @Intrinsic("u64.lt") op <(left: u64, right: u64) -> bool
     @Intrinsic("u64.ge") op >=(left: u64, right: u64) -> bool
     @Intrinsic("u64.le") op <=(left: u64, right: u64) -> bool
+}
+
+-- An unsigned integer as wide as a pointer, for sizes and addresses. Casts follow C# nuint.
+@BuiltinType @WordSized @AllowCustomLiterals @UnsignedInt
+type USize
+{
+    @Intrinsic("usize.literal_i32") literal usize(from: i32)
+    @Intrinsic("usize.literal_i64") literal usize(from: i64)
+
+    @Intrinsic("usize.from_u8")
+    implicit cast(from: u8) -> usize
+    @Intrinsic("usize.from_u16")
+    implicit cast(from: u16) -> usize
+    @Intrinsic("usize.from_u32")
+    implicit cast(from: u32) -> usize
+    @Intrinsic("usize.from_i8")
+    explicit cast(from: i8) -> usize
+    @Intrinsic("usize.from_i16")
+    explicit cast(from: i16) -> usize
+    @Intrinsic("usize.from_i32")
+    explicit cast(from: i32) -> usize
+    @Intrinsic("usize.from_i64")
+    explicit cast(from: i64) -> usize
+    @Intrinsic("usize.from_u64")
+    explicit cast(from: u64) -> usize
+    @Intrinsic("usize.from_isize")
+    explicit cast(from: isize) -> usize
+    @Intrinsic("usize.from_f16")
+    explicit cast(from: f16) -> usize
+    @Intrinsic("usize.from_f32")
+    explicit cast(from: f32) -> usize
+    @Intrinsic("usize.from_f64")
+    explicit cast(from: f64) -> usize
+
+    @Intrinsic("usize.add") op +(left: usize, right: usize) -> usize
+    @Intrinsic("usize.sub") op -(left: usize, right: usize) -> usize
+    @Intrinsic("usize.mul") op *(left: usize, right: usize) -> usize
+    @Intrinsic("usize.div") op /(left: usize, right: usize) -> usize
+    @Intrinsic("usize.mod") op %(left: usize, right: usize) -> usize
+    @Intrinsic("usize.eq") op ==(left: usize, right: usize) -> bool
+    @Intrinsic("usize.ne") op !=(left: usize, right: usize) -> bool
+    @Intrinsic("usize.gt") op >(left: usize, right: usize) -> bool
+    @Intrinsic("usize.lt") op <(left: usize, right: usize) -> bool
+    @Intrinsic("usize.ge") op >=(left: usize, right: usize) -> bool
+    @Intrinsic("usize.le") op <=(left: usize, right: usize) -> bool
 }
 
 @BuiltinType(2) @AllowCustomLiterals @NumericFloat
@@ -412,6 +538,10 @@ type F16
     implicit cast(from: u32) -> f16
     @Intrinsic("f16.from_u64")
     implicit cast(from: u64) -> f16
+    @Intrinsic("f16.from_isize")
+    implicit cast(from: isize) -> f16
+    @Intrinsic("f16.from_usize")
+    implicit cast(from: usize) -> f16
     @Intrinsic("f16.from_f32")
     explicit cast(from: f32) -> f16
     @Intrinsic("f16.from_f64")
@@ -454,6 +584,10 @@ type F32
     implicit cast(from: u32) -> f32
     @Intrinsic("f32.from_u64")
     implicit cast(from: u64) -> f32
+    @Intrinsic("f32.from_isize")
+    implicit cast(from: isize) -> f32
+    @Intrinsic("f32.from_usize")
+    implicit cast(from: usize) -> f32
     @Intrinsic("f32.from_f16")
     implicit cast(from: f16) -> f32
     @Intrinsic("f32.from_f64")
@@ -496,6 +630,10 @@ type F64
     implicit cast(from: u32) -> f64
     @Intrinsic("f64.from_u64")
     implicit cast(from: u64) -> f64
+    @Intrinsic("f64.from_isize")
+    implicit cast(from: isize) -> f64
+    @Intrinsic("f64.from_usize")
+    implicit cast(from: usize) -> f64
     @Intrinsic("f64.from_f16")
     implicit cast(from: f16) -> f64
     @Intrinsic("f64.from_f32")

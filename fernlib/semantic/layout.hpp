@@ -1,21 +1,13 @@
 #pragma once
 
+#include <semantic/target.hpp>
+
 namespace Fern
 {
 
 struct SemanticContext;
 struct NamedTypeSymbol;
 struct FieldSymbol;
-
-// Byte layout parameters for the target platform. One canonical instance drives the pass so pointer
-// width can change later without touching the algorithm.
-struct TargetInfo
-{
-    int pointerSize = 8;
-    int pointerAlign = 8;
-    // Heap blocks behind Array and String hold an i32 length at offset 0 then element data at this offset
-    int blockHeaderSize = 8;
-};
 
 // The one block that holds every static field. A static field's offset is relative to this block.
 struct StaticLayout
@@ -29,7 +21,7 @@ struct StaticLayout
 class LayoutPass
 {
 public:
-    LayoutPass(SemanticContext& context, TargetInfo target) : context(context), target(target) {}
+    explicit LayoutPass(SemanticContext& context);
 
     void run();
 
@@ -38,7 +30,7 @@ public:
 
 private:
     SemanticContext& context;
-    TargetInfo target;
+    const TargetInfo& target;
 
     int place_fields(NamedTypeSymbol* type, int& structAlign);
     void place_statics();

@@ -210,6 +210,7 @@ struct NamedTypeSymbol : TypeSymbol
     bool is_integer() const;
     bool is_unsigned() const;
     bool is_float() const;
+    bool is_word_sized() const;
     std::optional<int> builtin_scalar_size() const;
     std::optional<IntRange> integer_range() const;
     bool allows_custom_literals() const;

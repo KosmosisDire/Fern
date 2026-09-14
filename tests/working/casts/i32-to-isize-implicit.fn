@@ -1,0 +1,14 @@
+---
+Description: i32 widens to isize without a cast
+Expected: -5
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var i: i32 = -5
+        var s: isize = i
+        return (i32)s
+    }
+}

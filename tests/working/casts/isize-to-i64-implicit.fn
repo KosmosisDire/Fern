@@ -1,0 +1,15 @@
+---
+Description: isize widens to i64 and to f64 without a cast
+Expected: 12
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var s: isize = -6
+        var l: i64 = s
+        var f: f64 = s
+        return (i32)(l * -1) + (i32)(f * -1.0)
+    }
+}
