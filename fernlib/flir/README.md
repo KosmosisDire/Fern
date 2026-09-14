@@ -25,6 +25,8 @@ Locals are addressable memory. A scalar or handle typed expression evaluates to 
 
 A frame pass (`frame.cpp`) then walks each method's parameters and locals, assigns a byte offset with C alignment, and sets `frameSize`, so `FlirLocalAddr` becomes the frame base plus a constant offset. The verifier rejects any slot left without an offset.
 
+Static fields live in one region shared by every type, laid out by the layout pass into `StaticLayout` on the semantic context. `FlirStaticAddr` names the field and each backend turns it into its own storage, the region base plus the field offset on the VM. It never has a base expression, and the verifier rejects a `FlirFieldAddr` on a static field.
+
 At the call boundary, value type `this` and value type parameters are by address (an incoming pointer, no frame slot), value type arguments are caller copied, and a value type return is copied into the method's hidden `sretParam`.
 
 Intrinsic methods lower to `FlirIntrinsic`, which shares `FlirCall`'s shape (`method`, `thisArg`, `args`) but is a distinct type. `build_call` is the one choke point that routes intrinsics there, and the verifier rejects a `FlirCall` to an intrinsic method.

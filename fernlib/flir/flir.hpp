@@ -25,6 +25,7 @@ struct FlirStmt;
 struct FlirConst;
 struct FlirLocalAddr;
 struct FlirFieldAddr;
+struct FlirStaticAddr;
 struct FlirElemAddr;
 struct FlirLoad;
 struct FlirCall;
@@ -55,6 +56,7 @@ public:
     virtual void visit(FlirConst* node) = 0;
     virtual void visit(FlirLocalAddr* node) = 0;
     virtual void visit(FlirFieldAddr* node) = 0;
+    virtual void visit(FlirStaticAddr* node) = 0;
     virtual void visit(FlirElemAddr* node) = 0;
     virtual void visit(FlirLoad* node) = 0;
     virtual void visit(FlirCall* node) = 0;
@@ -159,6 +161,14 @@ struct FlirFieldAddr : FlirExpr
     {
         if (base) base->accept(v);
     }
+};
+
+// The address of a static field inside the static region, so the region base plus the field offset
+struct FlirStaticAddr : FlirExpr
+{
+    FLIR_NODE(FlirStaticAddr, FlirExpr)
+
+    FieldSymbol* field = nullptr;
 };
 
 // The address index strides past base, so base plus index times the element stride. Unchecked.
@@ -391,6 +401,7 @@ public:
     void visit(FlirConst* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirLocalAddr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirFieldAddr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FlirStaticAddr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirElemAddr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirLoad* node) override { on_visit(node); node->visit_children(this); }
     void visit(FlirCall* node) override { on_visit(node); node->visit_children(this); }

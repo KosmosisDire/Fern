@@ -14,7 +14,7 @@ namespace Fern
 static bool is_address(FlirExpr* node)
 {
     if (!node) return false;
-    if (node->is<FlirLocalAddr>() || node->is<FlirFieldAddr>() || node->is<FlirElemAddr>()) return true;
+    if (node->is<FlirLocalAddr>() || node->is<FlirFieldAddr>() || node->is<FlirStaticAddr>() || node->is<FlirElemAddr>()) return true;
     if (auto* seq = node->as<FlirSequence>()) return is_address(seq->value);
     if (auto* call = node->as<FlirCall>()) return call->method && call->method->returnsRef;
     return false;
@@ -73,7 +73,14 @@ private:
         {
             if (!n->base) fail(n, "field address has no base");
             if (!n->field) fail(n, "field address has no field");
+            else if (has_modifier(n->field->modifiers, Modifier::Static)) fail(n, "field address of a static field");
             else if (n->field->offset < 0) fail(n, "field has no offset");
+        }
+        else if (auto* n = node->as<FlirStaticAddr>())
+        {
+            if (!n->field) fail(n, "static address has no field");
+            else if (!has_modifier(n->field->modifiers, Modifier::Static)) fail(n, "static address of an instance field");
+            else if (n->field->offset < 0) fail(n, "static field has no offset");
         }
         else if (auto* n = node->as<FlirElemAddr>())
         {

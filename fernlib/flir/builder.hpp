@@ -52,6 +52,16 @@ struct FlirBuilder
         return node;
     }
 
+    FlirStaticAddr* static_addr(BaseSyntax* syntax, FieldSymbol* field)
+    {
+        auto* node = arena.alloc<FlirStaticAddr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = field ? field->type : nullptr;
+        node->field = field;
+        return node;
+    }
+
     FlirElemAddr* elem_addr(BaseSyntax* syntax, FlirExpr* base, FlirExpr* index, TypeSymbol* elemType)
     {
         auto* node = arena.alloc<FlirElemAddr>();

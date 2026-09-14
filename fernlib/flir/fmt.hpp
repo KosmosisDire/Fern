@@ -24,6 +24,7 @@ public:
     void visit(FlirConst* node) override;
     void visit(FlirLocalAddr* node) override;
     void visit(FlirFieldAddr* node) override;
+    void visit(FlirStaticAddr* node) override;
     void visit(FlirElemAddr* node) override;
     void visit(FlirLoad* node) override;
     void visit(FlirCall* node) override;
@@ -95,6 +96,7 @@ public:
     void visit(FlirConst* node) override;
     void visit(FlirLocalAddr* node) override;
     void visit(FlirFieldAddr* node) override;
+    void visit(FlirStaticAddr* node) override;
     void visit(FlirElemAddr* node) override;
     void visit(FlirLoad* node) override;
     void visit(FlirCall* node) override;
