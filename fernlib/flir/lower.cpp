@@ -372,7 +372,10 @@ FlirExpr* FlirLowerer::lower_op(FhirOpExpr* expr)
     // p + n is element arithmetic, the same node ptr.index uses but yielding the address as a value
     if (expr->op == IntrinsicKind::PtrAdd && args.size() == 2)
     {
-        auto* node = builder.elem_addr(expr->syntax, args[0], args[1], pointee_type(expr->type));
+        // An untyped pointer has no pointee, so it steps in bytes
+        TypeSymbol* elemType = pointee_type(expr->type);
+        if (!elemType) elemType = semantic.resolve_type_name("u8");
+        auto* node = builder.elem_addr(expr->syntax, args[0], args[1], elemType);
         node->type = expr->type;
         return node;
     }

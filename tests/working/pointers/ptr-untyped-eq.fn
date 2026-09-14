@@ -1,0 +1,13 @@
+---
+Description: Untyped pointers compare by address so equal offsets from the same base are equal
+Expected: true
+---
+
+type Program
+{
+    static fn Main -> bool
+    {
+        var p = Core.Ptr()
+        return p + 3 + 5 == p + 8 && p + 1 != p
+    }
+}

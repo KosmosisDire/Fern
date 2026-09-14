@@ -1,0 +1,23 @@
+---
+Description: An untyped pointer built with no arguments is null and a stepped one is not
+Expected: 3
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = Core.Ptr()
+        var q = p + 8
+        var result = 0
+        if (p.IsNull())
+        {
+            result += 1
+        }
+        if (!q.IsNull())
+        {
+            result += 2
+        }
+        return result
+    }
+}

@@ -531,6 +531,18 @@ type Bool
     @Intrinsic("bool.or") op ||(left: bool, right: bool) -> bool
 }
 
+-- The address of something with no known type, like a C void pointer. Stepping moves in bytes.
+@BuiltinType
+type Ptr
+{
+    @Intrinsic("ptr.null") init
+    @Intrinsic("ptr.add") op +(p: Ptr, offset: i32) -> Ptr
+    @Intrinsic("ptr.eq") op ==(left: Ptr, right: Ptr) -> bool
+    @Intrinsic("ptr.ne") op !=(left: Ptr, right: Ptr) -> bool
+
+    fn IsNull() -> bool { return this == Ptr() }
+}
+
 -- The address of a place holding a T. Indexing is unchecked and yields the place i strides past p.
 @BuiltinType
 type Ptr<T>

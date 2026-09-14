@@ -1,0 +1,13 @@
+---
+Description: An untyped pointer has no pointee so it cannot be indexed
+Expected: FN3214
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = Core.Ptr()
+        return p[0]
+    }
+}
