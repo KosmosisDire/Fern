@@ -1,0 +1,20 @@
+---
+Description: A synthesized constructor takes only the instance fields, not the static ones
+Expected: 5
+---
+
+type Pair
+{
+    static count: i32
+    a: i32
+    b: i32
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = Pair(2, 3)
+        return p.a + p.b
+    }
+}

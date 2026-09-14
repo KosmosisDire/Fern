@@ -174,9 +174,11 @@ NamedTypeSymbol* BinderPipeline::define_type(TypeDeclSyntax* typeDecl, Symbol* p
     {
         auto* method = context.symbols.declare_method(type, "init", Modifier::Public, CallableKind::Constructor);
 
-        for (int i = 0; i < static_cast<int>(type->fields.size()); ++i)
+        int paramIndex = 0;
+        for (auto* field : type->fields)
         {
-            context.symbols.declare_parameter(method, type->fields[i]->name, i);
+            if (has_modifier(field->modifiers, Modifier::Static)) continue;
+            context.symbols.declare_parameter(method, field->name, paramIndex++);
         }
     }
 
@@ -238,9 +240,11 @@ void BinderPipeline::resolve_signatures()
             }
             else if (method->is_constructor())
             {
-                for (size_t i = 0; i < method->parameters.size() && i < type->fields.size(); ++i)
+                // A synthesized constructor takes one parameter per instance field, named after it
+                for (auto* param : method->parameters)
                 {
-                    method->parameters[i]->type = type->fields[i]->type;
+                    auto* field = type->find_field(param->name);
+                    if (field) param->type = field->type;
                 }
             }
         }
