@@ -35,6 +35,8 @@ void LayoutPass::run()
             if (inst->is_concrete_instantiation()) compute(inst);
         }
     }
+
+    place_statics();
 }
 
 // Sibling of has_default_impl in symbol.cpp, which walks the same field graph for definite assignment.
@@ -103,31 +105,52 @@ void LayoutPass::compute(NamedTypeSymbol* type)
     type->layoutState = LayoutState::Computed;
 }
 
-// Assigns each field the next aligned offset and returns the total span of the fields.
+// Assigns each instance field the next aligned offset and returns the total span of the fields.
 int LayoutPass::place_fields(NamedTypeSymbol* type, int& structAlign)
 {
     int offset = 0;
     for (auto* field : type->fields)
     {
         if (has_modifier(field->modifiers, Modifier::Static)) continue;
-        auto* fieldType = field->type ? field->type->as<NamedTypeSymbol>() : nullptr;
-        if (!fieldType) continue;
-
-        if (fieldType->layoutState == LayoutState::InProgress)
-        {
-            Span loc = field->syntax ? field->syntax->span : Span{};
-            context.diag.report(DiagnosticCode::Err_RecursiveValueField, loc, format_type(type), field->name);
-            continue;
-        }
-
-        compute(fieldType);
-
-        offset = align_up(offset, fieldType->alignment);
-        field->offset = offset;
-        offset += fieldType->strideInBytes;
-        if (fieldType->alignment > structAlign) structAlign = fieldType->alignment;
+        offset = place_field(type, field, offset, structAlign);
     }
     return offset;
+}
+
+// Static fields of every type share one region, in type then field declaration order
+void LayoutPass::place_statics()
+{
+    StaticLayout& region = context.staticLayout;
+    for (auto* type : context.symbols.allTypes)
+    {
+        if (type->is_generic_definition()) continue;
+        for (auto* field : type->fields)
+        {
+            if (!has_modifier(field->modifiers, Modifier::Static)) continue;
+            region.sizeInBytes = place_field(type, field, region.sizeInBytes, region.alignment);
+        }
+    }
+}
+
+// Puts one field at the next aligned spot after offset and returns the offset past it
+int LayoutPass::place_field(NamedTypeSymbol* owner, FieldSymbol* field, int offset, int& align)
+{
+    auto* fieldType = field->type ? field->type->as<NamedTypeSymbol>() : nullptr;
+    if (!fieldType) return offset;
+
+    if (fieldType->layoutState == LayoutState::InProgress)
+    {
+        Span loc = field->syntax ? field->syntax->span : Span{};
+        context.diag.report(DiagnosticCode::Err_RecursiveValueField, loc, format_type(owner), field->name);
+        return offset;
+    }
+
+    compute(fieldType);
+
+    offset = align_up(offset, fieldType->alignment);
+    field->offset = offset;
+    if (fieldType->alignment > align) align = fieldType->alignment;
+    return offset + fieldType->strideInBytes;
 }
 
 }

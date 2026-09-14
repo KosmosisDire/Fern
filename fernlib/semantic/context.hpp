@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <common/diagnostic.hpp>
+#include <semantic/layout.hpp>
 #include <symbol/table.hpp>
 #include <token/token.hpp>
 
@@ -37,6 +38,7 @@ struct SemanticContext
 
     SymbolTable symbols;
     std::vector<FhirMethod*> methods;
+    StaticLayout staticLayout;
 
     std::unique_ptr<RootBinder> rootBinder;
     std::unordered_map<NamespaceSymbol*, std::unique_ptr<Binder>> nsBinders;
