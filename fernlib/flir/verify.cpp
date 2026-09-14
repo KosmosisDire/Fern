@@ -71,6 +71,7 @@ private:
         }
         else if (auto* n = node->as<FlirFieldAddr>())
         {
+            if (!n->base) fail(n, "field address has no base");
             if (!n->field) fail(n, "field address has no field");
             else if (n->field->offset < 0) fail(n, "field has no offset");
         }
