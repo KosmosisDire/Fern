@@ -726,6 +726,8 @@ type Ptr<T>
     fn CopyTo(dest: Ptr<T>, count: usize)
 }
 
+-- length + data stored on the heap. 
+-- The value itself is a pointer to the length field on the heap.
 @BuiltinType
 ref type Array<T>
 {
@@ -767,6 +769,8 @@ type C8
     @Intrinsic("c8.le") op <=(left: c8, right: c8) -> bool
 }
 
+-- String is basically identical to an array
+-- The value is a pointer to a length field on the heap, followed by the data.
 @BuiltinType @AllowCustomLiterals
 type String
 {
