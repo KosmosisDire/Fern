@@ -1,0 +1,40 @@
+---
+Reinterpret cevtor data through different pointer types.
+Expected: 13
+---
+
+type Vec2
+{
+    x: f32
+    y: f32
+
+    fn MagnitudeSquared() -> f32
+    {
+        return x * x + y * y
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var vp = NativeMemory.Alloc(MemoryLayout<Vec2>.Size())
+        var vfp = (Core.Ptr<f32>)vp
+
+        -- set y to 3 through float pointer
+        vfp[1] = 3.0
+
+        var vbp = (Core.Ptr<u8>)vp
+
+        -- set x to 2 through byte pointer
+        vbp[0] = 0
+        vbp[1] = 0
+        vbp[2] = 0
+        vbp[3] = 64
+
+        var v = (Core.Ptr<Vec2>)vp
+        var m = v[0].MagnitudeSquared()
+        
+        return (i32)m
+    }
+}
