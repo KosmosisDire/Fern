@@ -8,6 +8,6 @@ type Program
     static fn Main -> i32
     {
         var escaped = "hello \"world\""
-        return escaped.length
+        return (i32)escaped.length
     }
 }

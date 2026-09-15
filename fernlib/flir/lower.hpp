@@ -60,7 +60,7 @@ private:
     TypeSymbol* pointer_type(TypeSymbol* pointee);
     FlirLocal* address_temp(TypeSymbol* pointee);
     FlirExpr* deref(BaseSyntax* syntax, FlirExpr* pointer, TypeSymbol* type);
-    FlirConst* i32_const(BaseSyntax* syntax, int64_t value);
+    FlirConst* usize_const(BaseSyntax* syntax, int64_t value);
     FlirConst* isize_const(BaseSyntax* syntax, int64_t value);
 
     FlirExpr* address_load(BaseSyntax* syntax, FlirExpr* address, TypeSymbol* type);

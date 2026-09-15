@@ -9,7 +9,7 @@ type Program
     {
         var arr = [10, 20, 30, 40, 50]
         var total = 0
-        var i = 0
+        var i: usize = 0
         while (i < arr.Length())
         {
             total = total + arr[i]

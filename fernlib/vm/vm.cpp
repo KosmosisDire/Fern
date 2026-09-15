@@ -509,7 +509,7 @@ void Interpreter::store_scalar(uint64_t addr, Value value)
 
 std::string Interpreter::read_string(uint64_t handle)
 {
-    uint32_t length = memory.read_u32(handle);
+    uint64_t length = memory.read_u64(handle);
     std::string text(length, '\0');
     if (length > 0)
         std::memcpy(text.data(), memory.host_ptr(handle + target.blockHeaderSize, length), length);
@@ -524,7 +524,7 @@ uint64_t Interpreter::intern_string(std::string_view text)
 
     uint64_t size = static_cast<uint64_t>(target.blockHeaderSize) + text.size() + 1;
     uint64_t addr = memory.alloc(size, stringType);
-    memory.write_u32(addr, static_cast<uint32_t>(text.size()));
+    memory.write_u64(addr, text.size());
     if (!text.empty())
         memory.write_bytes(addr + target.blockHeaderSize, text.data(), text.size());
     memory.write_u8(addr + target.blockHeaderSize + text.size(), 0);

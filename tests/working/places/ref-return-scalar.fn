@@ -12,7 +12,7 @@ ref type Cells
         data = [0, 0, 0]
     }
 
-    fn Slot(index: i32) -> ref i32
+    fn Slot(index: usize) -> ref i32
     {
         return data[index]
     }

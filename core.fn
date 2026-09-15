@@ -4,17 +4,17 @@ type Runtime
     @Core.Intrinsic("panic")
     static fn Panic(message: string);
 
-    static fn CheckIndex(index: i32, length: i32)
+    static fn CheckIndex(index: usize, length: usize)
     {
-        if (index < 0 || index >= length)
+        if (index >= length)
         {
             Panic("index " + (string)index + " out of range (length " + (string)length + ")")
         }
     }
 
-    static fn CheckRange(start: i32, count: i32, length: i32)
+    static fn CheckRange(start: usize, count: usize, length: usize)
     {
-        if (start < 0 || count < 0 || start > length - count)
+        if (start > length || count > length - start)
         {
             Panic("range " + (string)start + " to " + (string)(start + count) + " out of range (length " + (string)length + ")")
         }
@@ -25,19 +25,19 @@ type MemoryLayout<T>
 {
     -- Bytes the value occupies, trailing padding excluded
     @Core.Intrinsic("layout.size")
-    static fn Size() -> i32;
+    static fn Size() -> usize;
 
     -- Bytes between consecutive elements, so Size rounded up to Alignment
     @Core.Intrinsic("layout.stride")
-    static fn Stride() -> i32;
+    static fn Stride() -> usize;
 
     @Core.Intrinsic("layout.align")
-    static fn Alignment() -> i32;
+    static fn Alignment() -> usize;
 }
 
 type MemoryLayout
 {
-    static fn AlignUp(value: i32, alignment: i32) -> i32
+    static fn AlignUp(value: usize, alignment: usize) -> usize
     {
         return (value + alignment - 1) / alignment * alignment
     }
@@ -706,30 +706,30 @@ type Ptr<T>
 @BuiltinType
 ref type Array<T>
 {
-    length: i32
+    length: usize
 
-    fn Length() -> i32 { return length }
+    fn Length() -> usize { return length }
 
     @Intrinsic("array.data")
     fn Data() -> Ptr<T>
 
-    fn CopyTo(dest: Array<T>, destIndex: i32, srcIndex: i32, count: i32)
+    fn CopyTo(dest: Array<T>, destIndex: usize, srcIndex: usize, count: usize)
     {
         Runtime.CheckRange(srcIndex, count, length)
         Runtime.CheckRange(destIndex, count, dest.length);
-        (Data() + srcIndex).CopyTo(dest.Data() + destIndex, count)
+        (Data() + (isize)srcIndex).CopyTo(dest.Data() + (isize)destIndex, (isize)count)
     }
 
     @Intrinsic("array.init")
-    init(length: i32)
+    init(length: usize)
 
     @Intrinsic("array.empty") init
 
     -- Elements are places, so whole and partial writes through the index land in the array
-    op [](index: i32) -> ref T
+    op [](index: usize) -> ref T
     {
         Runtime.CheckIndex(index, length)
-        return Data()[index]
+        return Data()[(isize)index]
     }
 }
 
@@ -747,14 +747,14 @@ type C8
 @BuiltinType @AllowCustomLiterals
 type String
 {
-    length: i32
+    length: usize
 
-    fn Length() -> i32 { return length }
+    fn Length() -> usize { return length }
 
     @Intrinsic("string.empty") init
 
     @Intrinsic("string.init")
-    init(length: i32)
+    init(length: usize)
 
     @Intrinsic("string.data")
     fn Data() -> Ptr<c8>
@@ -762,12 +762,17 @@ type String
     static fn Concat(left: String, right: String) -> String
     {
         var result = String(left.length + right.length)
-        left.Data().CopyTo(result.Data(), left.length)
-        right.Data().CopyTo(result.Data() + left.length, right.length)
+        left.Data().CopyTo(result.Data(), (isize)left.length)
+        right.Data().CopyTo(result.Data() + (isize)left.length, (isize)right.length)
         return result
     }
 
     explicit cast(from: i32) -> string
+    {
+        return (string)(i64)from
+    }
+
+    explicit cast(from: usize) -> string
     {
         return (string)(i64)from
     }
@@ -790,7 +795,7 @@ type String
         while (v < 0)
         {
             var d = -(v % 10)
-            result = digits[(i32)d] + result
+            result = digits[(usize)d] + result
             v = v / 10
         }
 
@@ -808,10 +813,10 @@ type String
             return false
         }
 
-        var i = 0
+        var i: usize = 0
         while (i < left.length)
         {
-            if (left.Data()[i] != right.Data()[i])
+            if (left.Data()[(isize)i] != right.Data()[(isize)i])
             {
                 return false
             }
@@ -829,9 +834,9 @@ type String
         return String.Concat(left, right)
     }
 
-    op [](index: i32) -> c8
+    op [](index: usize) -> c8
     {
         Runtime.CheckIndex(index, length)
-        return Data()[index]
+        return Data()[(isize)index]
     }
 }

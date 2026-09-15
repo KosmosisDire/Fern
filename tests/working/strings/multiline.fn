@@ -12,7 +12,7 @@ type Program
             line two
             line three
         """
-        var i = 0
+        var i: usize = 0
         var lines = 1
         while (i < s.length)
         {

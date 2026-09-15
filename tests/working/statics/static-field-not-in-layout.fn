@@ -18,6 +18,6 @@ type Program
 {
     static fn Main -> i32
     {
-        return MemoryLayout<Counter>.Size()
+        return (i32)MemoryLayout<Counter>.Size()
     }
 }

@@ -622,15 +622,14 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::StringEmpty:
         {
             uint64_t addr = memory.alloc(header + 1, stringType);
-            memory.write_u32(addr, 0);
+            memory.write_u64(addr, 0);
             return Value::make_addr(addr);
         }
         case IntrinsicKind::StringInit:
         {
-            int32_t length = args[0].as_i32();
-            if (length < 0) throw VmError{std::format("negative length {}", length)};
-            uint64_t addr = memory.alloc(header + static_cast<uint64_t>(length) + 1, stringType);
-            memory.write_u32(addr, static_cast<uint32_t>(length));
+            uint64_t length = args[0].as_u64();
+            uint64_t addr = memory.alloc(header + length + 1, stringType);
+            memory.write_u64(addr, length);
             return Value::make_addr(addr);
         }
         case IntrinsicKind::StringData:
@@ -648,16 +647,15 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         case IntrinsicKind::ArrayEmpty:
         {
             uint64_t addr = memory.alloc(header, node->method->parent->as<NamedTypeSymbol>());
-            memory.write_u32(addr, 0);
+            memory.write_u64(addr, 0);
             return Value::make_addr(addr);
         }
         case IntrinsicKind::ArrayInit:
         {
-            int32_t length = args[0].as_i32();
-            if (length < 0) throw VmError{std::format("negative length {}", length)};
+            uint64_t length = args[0].as_u64();
             uint64_t stride = elem_size(array_elem_type(node->method));
-            uint64_t addr = memory.alloc(header + static_cast<uint64_t>(length) * stride, node->method->parent->as<NamedTypeSymbol>());
-            memory.write_u32(addr, static_cast<uint32_t>(length));
+            uint64_t addr = memory.alloc(header + length * stride, node->method->parent->as<NamedTypeSymbol>());
+            memory.write_u64(addr, length);
             return Value::make_addr(addr);
         }
         case IntrinsicKind::ArrayData:

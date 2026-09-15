@@ -1,5 +1,5 @@
 ---
-Description: Indexing a string with a negative index panics at runtime
+Description: Indexing a string past the end panics at runtime
 Expected: FN6000
 ---
 
@@ -8,7 +8,7 @@ type Program
     static fn Main -> i32
     {
         var s = "hey"
-        var i = -1
+        var i: usize = 3
         var c = s[i]
         return 0
     }

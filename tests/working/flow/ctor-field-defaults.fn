@@ -16,7 +16,7 @@ type Holder
     fn Sum -> i32
     {
         var total = 0
-        var i = 0
+        var i: usize = 0
         while (i < items.Length())
         {
             total = total + items[i]

@@ -133,7 +133,7 @@ DIAG(Err_UnknownLiteralSuffix,          3701, Error,   "unknown literal suffix '
 DIAG(Err_NoMatchingLiteral,             3702, Error,   "no literal '{}' accepting '{}'")
 DIAG(Err_AmbiguousLiteral,              3703, Error,   "literal call is ambiguous between the following members:{}")
 DIAG(Err_CharLiteralLength,             3705, Error,   "character literal must contain exactly one character")                                      // CS1011/CS1012
-DIAG(Err_ArrayMissingI32Ctor,           3706, Error,   "Core.Array has no constructor taking i32")
+DIAG(Err_ArrayMissingLengthCtor,        3706, Error,   "Core.Array has no constructor taking usize")
 DIAG(Err_ArrayMixedTypes,               3708, Error,   "array literal has mixed element types: '{}' and '{}'")
 DIAG(Err_ArrayCannotInferElement,       3709, Error,   "type cannot be inferred for array, consider adding a type annotation or explicit constructor")  // CS0826 (also covers empty array with no annotation)
 DIAG(Err_ArrayMissingIndexer,           3710, Error,   "Core.Array has no indexer that can store elements of type '{}'")

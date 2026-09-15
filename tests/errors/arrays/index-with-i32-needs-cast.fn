@@ -1,6 +1,6 @@
 ---
-Description: Indexing past the end of an array panics at runtime
-Expected: FN6000
+Description: An i32 variable does not index an array without a cast to usize
+Expected: FN3216
 ---
 
 type Program
@@ -8,7 +8,7 @@ type Program
     static fn Main -> i32
     {
         var a: i32[] = [1, 2, 3]
-        var i: usize = 3
+        var i = 1
         return a[i]
     }
 }

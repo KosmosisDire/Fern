@@ -664,9 +664,9 @@ FlirExpr* FlirLowerer::deref(BaseSyntax* syntax, FlirExpr* pointer, TypeSymbol* 
     return builder.elem_addr(syntax, pointer, isize_const(syntax, 0), type);
 }
 
-FlirConst* FlirLowerer::i32_const(BaseSyntax* syntax, int64_t value)
+FlirConst* FlirLowerer::usize_const(BaseSyntax* syntax, int64_t value)
 {
-    return builder.constant(syntax, semantic.resolve_type_name("i32"), ConstantValue::make_int(value));
+    return builder.constant(syntax, semantic.resolve_type_name("usize"), ConstantValue::make_int(value));
 }
 
 FlirConst* FlirLowerer::isize_const(BaseSyntax* syntax, int64_t value)
@@ -717,12 +717,12 @@ FlirExpr* FlirLowerer::lower_array_literal(FhirArrayLiteralExpr* expr)
     auto* tmp = builder.local(currentMethod, "$arr", type);
 
     std::vector<FlirStmt*> sideEffects;
-    auto* countConst = i32_const(syntax, count);
+    auto* countConst = usize_const(syntax, count);
     sideEffects.push_back(builder.store(syntax, builder.local_addr(syntax, tmp), build_call(syntax, type, expr->ctor, nullptr, { countConst })));
 
     for (int i = 0; i < count; ++i)
     {
-        auto* indexConst = i32_const(syntax, i);
+        auto* indexConst = usize_const(syntax, i);
         auto* value = lower_expr(expr->elements[i]);
         if (expr->getter)
         {

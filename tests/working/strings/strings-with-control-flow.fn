@@ -9,7 +9,7 @@ type Program
     {
         var name = "World"
         var len = 0
-        var i = 0
+        var i: usize = 0
         while (i < name.length)
         {
             len += 1

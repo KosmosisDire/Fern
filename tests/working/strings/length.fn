@@ -8,6 +8,6 @@ type Program
     static fn Main -> i32
     {
         var s = "hello"
-        return s.length
+        return (i32)s.length
     }
 }

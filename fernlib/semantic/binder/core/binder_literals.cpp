@@ -356,16 +356,16 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     }
     context.symbols.ensure_members_populated(arrayType);
 
-    TypeSymbol* i32Type = context.resolve_type_name("i32");
+    TypeSymbol* usizeType = context.resolve_type_name("usize");
 
-    auto* countLit = fhir.literal(expr, i32Type);
+    auto* countLit = fhir.literal(expr, usizeType);
     countLit->value = ConstantValue::make_int(static_cast<int>(elements.size()));
 
     std::vector<OverloadArg> ctorArgs = {OverloadArg(countLit)};
     auto ctorResult = arrayType->find_constructor(ctorArgs);
     if (!ctorResult.best.method)
     {
-        diag.report(DiagnosticCode::Err_ArrayMissingI32Ctor, expr->span);
+        diag.report(DiagnosticCode::Err_ArrayMissingLengthCtor, expr->span);
         return fhir.error_expr(expr);
     }
 
@@ -374,7 +374,7 @@ FhirExpr* Binder::bind_array_literal(ArrayLiteralExprSyntax* expr, TypeSymbol* e
     MethodSymbol* setter = nullptr;
     if (!elements.empty())
     {
-        OverloadArg indexArg = { i32Type, nullptr };
+        OverloadArg indexArg = { usizeType, nullptr };
         auto getterResult = arrayType->find_index_getter(indexArg);
         if (getterResult.best.is_callable() && getterResult.best.method->returnsRef)
         {

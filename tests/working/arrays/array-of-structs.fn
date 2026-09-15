@@ -17,7 +17,7 @@ type Program
         points[0] = Vec2(10.0, 20.0)
 
         var total = 0.0
-        var i = 0
+        var i: usize = 0
         while (i < points.Length())
         {
             total = total + points[i].x

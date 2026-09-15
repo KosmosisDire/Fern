@@ -7,6 +7,6 @@ type Program
 {
     static fn Main -> i32
     {
-        return MemoryLayout<i32>.Size() + MemoryLayout<f64>.Size() + MemoryLayout<c8>.Size()
+        return (i32)(MemoryLayout<i32>.Size() + MemoryLayout<f64>.Size() + MemoryLayout<c8>.Size())
     }
 }

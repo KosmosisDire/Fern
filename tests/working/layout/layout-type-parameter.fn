@@ -7,7 +7,7 @@ type Box<T>
 {
     static fn Stride() -> i32
     {
-        return MemoryLayout<T>.Stride()
+        return (i32)MemoryLayout<T>.Stride()
     }
 }
 

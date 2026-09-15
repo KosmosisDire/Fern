@@ -8,6 +8,6 @@ type Program
     static fn Main -> i32
     {
         -- may depend on platform in the future
-        return MemoryLayout<Core.Array<i32>>.Size()
+        return (i32)MemoryLayout<Core.Array<i32>>.Size()
     }
 }
