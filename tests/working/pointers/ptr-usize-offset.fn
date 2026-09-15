@@ -1,0 +1,17 @@
+---
+Description: A pointer steps and indexes by a usize as well as an isize
+Expected: 90
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [10, 20, 30, 40]
+        var p = a.Data()
+        var forward: usize = 3
+        var back: isize = -1
+        var q = p + forward
+        return p[forward] + q[back] + (p + 1)[0]
+    }
+}

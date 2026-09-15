@@ -677,6 +677,11 @@ type Ptr
 {
     @Intrinsic("ptr.from_usize") explicit cast(from: usize) -> Ptr
     @Intrinsic("ptr.add") op +(p: Ptr, offset: isize) -> Ptr
+    @Intrinsic("ptr.add") op +(p: Ptr, offset: usize) -> Ptr
+    op -(p: Ptr, offset: isize) -> Ptr { return p + -offset }
+    op -(p: Ptr, offset: usize) -> Ptr { return p + -(isize)offset }
+    -- Bytes from right to left
+    op -(left: Ptr, right: Ptr) -> isize { return (isize)(usize)left - (isize)(usize)right }
     @Intrinsic("ptr.eq") op ==(left: Ptr, right: Ptr) -> bool
     @Intrinsic("ptr.ne") op !=(left: Ptr, right: Ptr) -> bool
 
@@ -692,7 +697,13 @@ type Ptr<T>
     @Intrinsic("ptr.cast") explicit cast(from: Ptr) -> Ptr<T>
 
     @Intrinsic("ptr.index") op [](index: isize) -> ref T
+    @Intrinsic("ptr.index") op [](index: usize) -> ref T
     @Intrinsic("ptr.add") op +(p: Ptr<T>, offset: isize) -> Ptr<T>
+    @Intrinsic("ptr.add") op +(p: Ptr<T>, offset: usize) -> Ptr<T>
+    op -(p: Ptr<T>, offset: isize) -> Ptr<T> { return p + -offset }
+    op -(p: Ptr<T>, offset: usize) -> Ptr<T> { return p + -(isize)offset }
+    -- Elements from right to left, so right + (left - right) is left again
+    op -(left: Ptr<T>, right: Ptr<T>) -> isize { return ((Ptr)left - (Ptr)right) / (isize)MemoryLayout<T>.Stride() }
     @Intrinsic("ptr.eq") op ==(left: Ptr<T>, right: Ptr<T>) -> bool
     @Intrinsic("ptr.ne") op !=(left: Ptr<T>, right: Ptr<T>) -> bool
 
@@ -700,7 +711,7 @@ type Ptr<T>
 
     -- Moves count elements from this to dest. The two runs may overlap.
     @Intrinsic("ptr.copy")
-    fn CopyTo(dest: Ptr<T>, count: isize)
+    fn CopyTo(dest: Ptr<T>, count: usize)
 }
 
 @BuiltinType
@@ -717,7 +728,7 @@ ref type Array<T>
     {
         Runtime.CheckRange(srcIndex, count, length)
         Runtime.CheckRange(destIndex, count, dest.length);
-        (Data() + (isize)srcIndex).CopyTo(dest.Data() + (isize)destIndex, (isize)count)
+        (Data() + srcIndex).CopyTo(dest.Data() + destIndex, count)
     }
 
     @Intrinsic("array.init")
@@ -729,7 +740,7 @@ ref type Array<T>
     op [](index: usize) -> ref T
     {
         Runtime.CheckIndex(index, length)
-        return Data()[(isize)index]
+        return Data()[index]
     }
 }
 
@@ -762,8 +773,8 @@ type String
     static fn Concat(left: String, right: String) -> String
     {
         var result = String(left.length + right.length)
-        left.Data().CopyTo(result.Data(), (isize)left.length)
-        right.Data().CopyTo(result.Data() + (isize)left.length, (isize)right.length)
+        left.Data().CopyTo(result.Data(), left.length)
+        right.Data().CopyTo(result.Data() + left.length, right.length)
         return result
     }
 
@@ -816,7 +827,7 @@ type String
         var i: usize = 0
         while (i < left.length)
         {
-            if (left.Data()[(isize)i] != right.Data()[(isize)i])
+            if (left.Data()[i] != right.Data()[i])
             {
                 return false
             }
@@ -837,6 +848,6 @@ type String
     op [](index: usize) -> c8
     {
         Runtime.CheckIndex(index, length)
-        return Data()[(isize)index]
+        return Data()[index]
     }
 }

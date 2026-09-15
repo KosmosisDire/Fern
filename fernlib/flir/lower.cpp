@@ -77,7 +77,7 @@ FlirExpr* FlirLowerer::read_slot(BaseSyntax* syntax, FlirLocal* slot)
 void FlirLowerer::emit_assign(BaseSyntax* syntax, FlirExpr* destAddr, FlirExpr* value, TypeSymbol* type, std::vector<FlirStmt*>& out)
 {
     if (is_memory_value(type))
-        out.push_back(builder.copy(syntax, destAddr, value, type, isize_const(syntax, 1)));
+        out.push_back(builder.copy(syntax, destAddr, value, type, usize_const(syntax, 1)));
     else
         out.push_back(builder.store(syntax, destAddr, value));
 }
@@ -90,7 +90,7 @@ void FlirLowerer::caller_copy_args(BaseSyntax* syntax, std::vector<FlirExpr*>& a
     {
         if (!arg || !is_memory_value(arg->type)) continue;
         auto* temp = builder.synthetic_local(currentMethod, "arg", arg->type);
-        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type, isize_const(syntax, 1)));
+        out.push_back(builder.copy(syntax, builder.local_addr(syntax, temp), arg, arg->type, usize_const(syntax, 1)));
         arg = builder.local_addr(syntax, temp);
     }
 }
@@ -260,7 +260,7 @@ void FlirLowerer::lower_return(FhirReturnStmt* stmt, std::vector<FlirStmt*>& out
     if (currentMethod->sretParam)
     {
         auto* value = lower_expr(stmt->value);
-        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type, isize_const(stmt->syntax, 1)));
+        out.push_back(builder.copy(stmt->syntax, builder.local_addr(stmt->syntax, currentMethod->sretParam), value, currentMethod->sretParam->type, usize_const(stmt->syntax, 1)));
         out.push_back(builder.return_stmt(stmt->syntax, nullptr));
         return;
     }
@@ -375,7 +375,7 @@ FlirExpr* FlirLowerer::lower_op(FhirOpExpr* expr)
         // An untyped pointer has no pointee, so it steps in bytes
         TypeSymbol* elemType = pointee_type(expr->type);
         if (!elemType) elemType = semantic.resolve_type_name("u8");
-        auto* node = builder.elem_addr(expr->syntax, args[0], args[1], elemType);
+        auto* node = builder.elem_addr(expr->syntax, args[0], index_as_isize(expr->syntax, args[1]), elemType);
         node->type = expr->type;
         return node;
     }
@@ -485,7 +485,7 @@ FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr* expr)
     {
         // A value type stages into a temp so it evaluates once, copies into the target, yields the temp
         auto* tmp = builder.synthetic_local(currentMethod, "val", type);
-        sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type, isize_const(syntax, 1)));
+        sideEffects.push_back(builder.copy(syntax, builder.local_addr(syntax, tmp), loweredValue, type, usize_const(syntax, 1)));
         lower_store(expr->target, builder.local_addr(syntax, tmp), syntax, sideEffects);
         return builder.sequence(syntax, std::move(sideEffects), builder.local_addr(syntax, tmp));
     }
@@ -639,7 +639,7 @@ FlirExpr* FlirLowerer::lower_place(FhirExpr* expr)
 FlirExpr* FlirLowerer::index_place(BaseSyntax* syntax, MethodSymbol* getter, TypeSymbol* elemType, FlirExpr* object, FlirExpr* index)
 {
     if (getter && getter->intrinsic() == IntrinsicKind::PtrIndex)
-        return builder.elem_addr(syntax, object, index, elemType);
+        return builder.elem_addr(syntax, object, index_as_isize(syntax, index), elemType);
     return build_call(syntax, elemType, getter, object, { index });
 }
 
@@ -672,6 +672,15 @@ FlirConst* FlirLowerer::usize_const(BaseSyntax* syntax, int64_t value)
 FlirConst* FlirLowerer::isize_const(BaseSyntax* syntax, int64_t value)
 {
     return builder.constant(syntax, semantic.resolve_type_name("isize"), ConstantValue::make_int(value));
+}
+
+// A usize index is read as isize so an element address carries one index type. Both are one word,
+// so this costs nothing on any backend.
+FlirExpr* FlirLowerer::index_as_isize(BaseSyntax* syntax, FlirExpr* index)
+{
+    TypeSymbol* isizeType = semantic.resolve_type_name("isize");
+    if (!index || index->type == isizeType) return index;
+    return builder.cast(syntax, isizeType, index, intrinsic_method(isizeType, IntrinsicKind::ISizeFromUSize));
 }
 
 #pragma region Builders

@@ -62,6 +62,7 @@ private:
     FlirExpr* deref(BaseSyntax* syntax, FlirExpr* pointer, TypeSymbol* type);
     FlirConst* usize_const(BaseSyntax* syntax, int64_t value);
     FlirConst* isize_const(BaseSyntax* syntax, int64_t value);
+    FlirExpr* index_as_isize(BaseSyntax* syntax, FlirExpr* index);
 
     FlirExpr* address_load(BaseSyntax* syntax, FlirExpr* address, TypeSymbol* type);
     FlirExpr* read_slot(BaseSyntax* syntax, FlirLocal* slot);

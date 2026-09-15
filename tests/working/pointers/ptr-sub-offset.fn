@@ -1,0 +1,15 @@
+---
+Description: A pointer steps back by an isize or a usize
+Expected: 60
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [10, 20, 30, 40]
+        var end = a.Data() + a.Length()
+        var back: usize = 1
+        return (end - back)[0] + (end - 3)[0]
+    }
+}

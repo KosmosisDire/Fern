@@ -1,0 +1,22 @@
+---
+Description: A literal that fits both picks the signed overload over the unsigned one of the same width
+Expected: 1
+---
+
+type Program
+{
+    static fn Pick(n: isize) -> i32
+    {
+        return 1
+    }
+
+    static fn Pick(n: usize) -> i32
+    {
+        return 2
+    }
+
+    static fn Main -> i32
+    {
+        return Pick(5)
+    }
+}

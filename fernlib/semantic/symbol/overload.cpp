@@ -1,13 +1,40 @@
 #include "overload.hpp"
 #include "symbol.hpp"
 
+#include <algorithm>
+
 namespace Fern::Overload
 {
+
+// C# picks the signed integer over the unsigned one of the same width when nothing else separates two
+// candidates, so p + 1 steps by isize and not usize
+static bool is_signed_over_unsigned(TypeSymbol* a, TypeSymbol* b)
+{
+    auto* left = a ? a->as<NamedTypeSymbol>() : nullptr;
+    auto* right = b ? b->as<NamedTypeSymbol>() : nullptr;
+    if (!left || !right || !left->is_integer() || !right->is_integer()) return false;
+    return !left->is_unsigned() && right->is_unsigned() && left->builtin_scalar_size() == right->builtin_scalar_size();
+}
+
+static bool has_better_parameters(const OverloadMatch& a, const OverloadMatch& b)
+{
+    bool better = false;
+    size_t count = std::min(a.method->parameters.size(), b.method->parameters.size());
+    for (size_t i = 0; i < count; ++i)
+    {
+        TypeSymbol* paramA = a.method->parameters[i]->type;
+        TypeSymbol* paramB = b.method->parameters[i]->type;
+        if (is_signed_over_unsigned(paramB, paramA)) return false;
+        if (is_signed_over_unsigned(paramA, paramB)) better = true;
+    }
+    return better;
+}
 
 static bool is_better_match(const OverloadMatch& a, const OverloadMatch& b)
 {
     if (a.failCount != b.failCount) return a.failCount < b.failCount;
-    return a.exactCount > b.exactCount;
+    if (a.exactCount != b.exactCount) return a.exactCount > b.exactCount;
+    return has_better_parameters(a, b);
 }
 
 static bool is_better_failure(const OverloadMatch& a, const OverloadMatch& b)

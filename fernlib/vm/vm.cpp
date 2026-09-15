@@ -230,11 +230,10 @@ Control Interpreter::exec_copy(FlirCopy* node)
 {
     uint64_t dest = eval(node->dest).as_addr();
     uint64_t src = eval(node->src).as_addr();
-    int64_t count = eval(node->count).as_i64();
-    if (count < 0) throw VmError{std::format("negative length {}", count)};
+    uint64_t count = eval(node->count).as_u64();
     auto* named = node->type ? node->type->as<NamedTypeSymbol>() : nullptr;
     uint64_t stride = named ? static_cast<uint64_t>(named->strideInBytes) : 0;
-    memory.copy(dest, src, stride * static_cast<uint64_t>(count));
+    memory.copy(dest, src, stride * count);
     return Control::normal();
 }
 

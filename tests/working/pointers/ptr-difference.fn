@@ -1,0 +1,17 @@
+---
+Description: Typed pointers subtract to an element count and untyped pointers to a byte count
+Expected: 15
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [10, 20, 30, 40]
+        var p = a.Data()
+        var q = p + 3
+        var elements = q - p
+        var bytes = (Core.Ptr)q - (Core.Ptr)p
+        return (i32)(elements + bytes)
+    }
+}
