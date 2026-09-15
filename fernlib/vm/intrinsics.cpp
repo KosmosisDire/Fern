@@ -638,6 +638,10 @@ Value Interpreter::exec_intrinsic(FlirIntrinsic* node)
         // core
         case IntrinsicKind::Panic:
             throw VmError{std::format("panic: {}", read_string(args[0].as_addr()))};
+        case IntrinsicKind::NativeAlloc: return Value::make_addr(memory.native_alloc(args[0].as_u64()));
+        case IntrinsicKind::NativeFree:
+            memory.native_free(args[0].as_addr());
+            return Value{};
 
         // ptr
         case IntrinsicKind::PtrEq: return Value::make_bool(args[0].as_addr() == args[1].as_addr());

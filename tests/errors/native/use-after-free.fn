@@ -1,0 +1,15 @@
+---
+Description: Reading a native block after it was freed panics
+Expected: FN6000
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = (Core.Ptr<i32>)NativeMemory.Alloc(4)
+        p[0] = 1
+        NativeMemory.Free(p)
+        return p[0]
+    }
+}

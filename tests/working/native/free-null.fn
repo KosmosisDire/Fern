@@ -1,0 +1,13 @@
+---
+Description: Freeing a null pointer does nothing
+Expected: 1
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        NativeMemory.Free(Core.Ptr())
+        return 1
+    }
+}

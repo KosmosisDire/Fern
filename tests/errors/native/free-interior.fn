@@ -1,0 +1,14 @@
+---
+Description: Freeing an address inside a native block rather than its start panics
+Expected: FN6000
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = NativeMemory.Alloc(16)
+        NativeMemory.Free(p + 4)
+        return 0
+    }
+}

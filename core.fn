@@ -21,6 +21,18 @@ type Runtime
     }
 }
 
+-- Bytes from the C heap. The collector never touches them and Alloc panics when memory runs out.
+type NativeMemory
+{
+    -- Contents are undefined, aligned like C malloc
+    @Core.Intrinsic("native.alloc")
+    static fn Alloc(size: usize) -> Core.Ptr;
+
+    -- Freeing null does nothing. Freeing anything but a live native block panics.
+    @Core.Intrinsic("native.free")
+    static fn Free(p: Core.Ptr);
+}
+
 type MemoryLayout<T>
 {
     -- Bytes the value occupies, trailing padding excluded

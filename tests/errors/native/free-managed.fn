@@ -1,0 +1,15 @@
+---
+Description: Freeing a managed block panics
+Expected: FN6000
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var block = (Core.Ptr)a.Data() - 8
+        NativeMemory.Free(block)
+        return 0
+    }
+}

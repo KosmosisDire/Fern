@@ -1,0 +1,19 @@
+---
+Description: Native memory holds values written through a typed pointer until it is freed
+Expected: 60
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var count: usize = 3
+        var p = (Core.Ptr<i32>)NativeMemory.Alloc(MemoryLayout<i32>.Stride() * count)
+        p[0] = 10
+        p[1] = 20
+        p[2] = 30
+        var total = p[0] + p[1] + p[2]
+        NativeMemory.Free(p)
+        return total
+    }
+}

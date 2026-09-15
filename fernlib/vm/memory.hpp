@@ -18,11 +18,13 @@ struct VmError
 };
 
 // A live heap allocation, keyed by its start address in the block table. The type lets a future
-// collector walk the block.
+// collector walk the block. A native block came from NativeMemory.Alloc, has no type, and is the only
+// kind NativeMemory.Free accepts.
 struct HeapBlock
 {
     uint64_t size = 0;
     TypeSymbol* type = nullptr;
+    bool native = false;
 };
 
 // Interpreter memory on real host addresses, so a pointer can cross into C unchanged. The stack is one
@@ -40,6 +42,10 @@ public:
 
     // Allocates a zero filled heap block and records it. Returns the block address.
     uint64_t alloc(uint64_t size, TypeSymbol* type);
+    // Allocates a native block with undefined contents and records it. Returns the block address.
+    uint64_t native_alloc(uint64_t size);
+    // Releases a native block. Null is ignored, anything else that is not a live native block errors.
+    void native_free(uint64_t addr);
 
     // Reserves a zero filled frame in the stack region, 8 byte aligned. Errors on stack overflow.
     uint64_t stack_alloc(uint64_t size);
@@ -68,6 +74,8 @@ private:
     // Errors unless the whole range lies in the live stack or inside a single heap block.
     void validate(uint64_t addr, uint64_t size);
     std::map<uint64_t, HeapBlock>::iterator find_block(uint64_t addr);
+    // Records a fresh host allocation, erroring when the host returned null
+    uint64_t record_block(void* ptr, HeapBlock block);
 
     std::vector<uint8_t> stack;
     std::map<uint64_t, HeapBlock> blocks;

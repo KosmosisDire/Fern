@@ -42,12 +42,35 @@ VmMemory::~VmMemory()
 uint64_t VmMemory::alloc(uint64_t size, TypeSymbol* type)
 {
     // A zero sized block still gets its own address so it is never null and never shared
-    void* ptr = std::calloc(1, size == 0 ? 1 : size);
+    return record_block(std::calloc(1, size == 0 ? 1 : size), HeapBlock{size, type, false});
+}
+
+uint64_t VmMemory::native_alloc(uint64_t size)
+{
+    return record_block(std::malloc(size == 0 ? 1 : size), HeapBlock{size, nullptr, true});
+}
+
+void VmMemory::native_free(uint64_t addr)
+{
+    if (addr == 0) return;
+
+    auto it = blocks.find(addr);
+    if (it == blocks.end())
+        throw VmError{std::format("free of {:#x}, which is not the start of a live native block", addr)};
+    if (!it->second.native)
+        throw VmError{std::format("free of {:#x}, which is a managed block", addr)};
+
+    std::free(to_ptr(addr));
+    blocks.erase(it);
+}
+
+uint64_t VmMemory::record_block(void* ptr, HeapBlock block)
+{
     if (!ptr)
-        throw VmError{std::format("out of memory allocating {} bytes", size)};
+        throw VmError{std::format("out of memory allocating {} bytes", block.size)};
 
     uint64_t addr = to_addr(ptr);
-    blocks.emplace(addr, HeapBlock{size, type});
+    blocks.emplace(addr, block);
     return addr;
 }
 

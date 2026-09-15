@@ -397,6 +397,8 @@ INTRINSIC(Panic,          "panic",           "")
 INTRINSIC(LayoutSize,     "layout.size",     "")
 INTRINSIC(LayoutStride,   "layout.stride",   "")
 INTRINSIC(LayoutAlign,    "layout.align",    "")
+INTRINSIC(NativeAlloc,    "native.alloc",    "")
+INTRINSIC(NativeFree,     "native.free",     "")
 
 // ptr
 INTRINSIC(PtrIndex,       "ptr.index",       "")

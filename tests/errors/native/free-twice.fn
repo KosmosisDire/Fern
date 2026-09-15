@@ -1,0 +1,15 @@
+---
+Description: Freeing a native block twice panics
+Expected: FN6000
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = NativeMemory.Alloc(16)
+        NativeMemory.Free(p)
+        NativeMemory.Free(p)
+        return 0
+    }
+}
