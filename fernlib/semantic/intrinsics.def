@@ -399,7 +399,6 @@ INTRINSIC(LayoutStride,   "layout.stride",   "")
 INTRINSIC(LayoutAlign,    "layout.align",    "")
 
 // ptr
-INTRINSIC(PtrNull,        "ptr.null",        "")
 INTRINSIC(PtrIndex,       "ptr.index",       "")
 INTRINSIC(PtrAdd,         "ptr.add",         "+")
 INTRINSIC(PtrCopy,        "ptr.copy",        "")

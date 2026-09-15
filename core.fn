@@ -675,7 +675,6 @@ type Bool
 @BuiltinType
 type Ptr
 {
-    @Intrinsic("ptr.null") init
     @Intrinsic("ptr.from_usize") explicit cast(from: usize) -> Ptr
     @Intrinsic("ptr.add") op +(p: Ptr, offset: isize) -> Ptr
     @Intrinsic("ptr.eq") op ==(left: Ptr, right: Ptr) -> bool
@@ -688,8 +687,6 @@ type Ptr
 @BuiltinType
 type Ptr<T>
 {
-    @Intrinsic("ptr.null") init
-
     -- Dropping the type happens on its own. Giving a type needs a cast so the reader can see it.
     @Intrinsic("ptr.cast") implicit cast(from: Ptr<T>) -> Ptr
     @Intrinsic("ptr.cast") explicit cast(from: Ptr) -> Ptr<T>

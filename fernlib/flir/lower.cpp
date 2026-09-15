@@ -464,11 +464,13 @@ FlirExpr* FlirLowerer::lower_construction(FhirConstructionExpr* expr)
         return builder.sequence(expr->syntax, std::move(sideEffects), builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp)));
     }
 
-    // Value types construct in place: the constructor writes through a temp's address, which is yielded.
+    // Value types construct in place: the constructor writes through a temp's address. A memory value
+    // is yielded as that address, a word sized value is loaded from it.
     auto* temp = builder.synthetic_local(currentMethod, "new", type);
     std::vector<FlirStmt*> sideEffects;
     sideEffects.push_back(builder.expr_stmt(expr->syntax, build_call(expr->syntax, nullptr, ctor, builder.local_addr(expr->syntax, temp), std::move(args))));
-    return builder.sequence(expr->syntax, std::move(sideEffects), builder.local_addr(expr->syntax, temp));
+    if (is_memory_value(type)) return builder.sequence(expr->syntax, std::move(sideEffects), builder.local_addr(expr->syntax, temp));
+    return builder.sequence(expr->syntax, std::move(sideEffects), builder.load(expr->syntax, type, builder.local_addr(expr->syntax, temp)));
 }
 
 FlirExpr* FlirLowerer::lower_assign(FhirAssignExpr* expr)
