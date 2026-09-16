@@ -1,0 +1,18 @@
+---
+Description: An extern cannot return ref because C returns values, not places
+Expected: FN3120
+---
+
+type LibC
+{
+    @Core.Extern("get_counter")
+    static fn Counter() -> ref i32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

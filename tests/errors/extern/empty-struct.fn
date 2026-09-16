@@ -1,0 +1,22 @@
+---
+Description: An empty value type has no C form because C has no empty struct
+Expected: FN3119
+---
+
+type Handle
+{
+}
+
+type LibC
+{
+    @Core.Extern("use_handle")
+    static fn UseHandle(h: Handle);
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

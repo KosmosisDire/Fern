@@ -369,6 +369,10 @@ void BinderPipeline::check_extern_signature(MethodSymbol* method, CallableDeclSy
     {
         context.diag.report(DiagnosticCode::Err_ExternNotStatic, loc, method->name);
     }
+    if (method->returnsRef)
+    {
+        context.diag.report(DiagnosticCode::Err_ExternRefReturn, loc, method->name);
+    }
 
     for (auto* param : method->parameters)
     {

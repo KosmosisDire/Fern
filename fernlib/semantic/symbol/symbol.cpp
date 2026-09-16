@@ -214,10 +214,12 @@ static bool is_c_compatible_impl(const NamedTypeSymbol* type, std::vector<const 
         if (seen == type) return false;
     }
     visiting.push_back(type);
+    bool anyField = false;
     bool result = true;
     for (const auto* field : type->fields)
     {
         if (has_modifier(field->modifiers, Modifier::Static)) continue;
+        anyField = true;
         const auto* fieldType = field->type ? field->type->as<NamedTypeSymbol>() : nullptr;
         if (!fieldType || !is_c_compatible_impl(fieldType, visiting))
         {
@@ -226,7 +228,8 @@ static bool is_c_compatible_impl(const NamedTypeSymbol* type, std::vector<const 
         }
     }
     visiting.pop_back();
-    return result;
+    // C has no empty struct
+    return result && anyField;
 }
 
 bool NamedTypeSymbol::is_c_compatible() const
