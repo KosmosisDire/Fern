@@ -90,6 +90,8 @@ DIAG(Err_ThisInStaticFunction,          3218, Error,   "'this' cannot be used in
 DIAG(Err_InstanceFieldInStatic,         3219, Error,   "cannot access instance field '{}' in a static function")                                     // CS0120
 DIAG(Err_ConstantOverflow,              3220, Error,   "constant expression overflows type '{}'")                                                    // CS0220
 DIAG(Err_AssignToTemporary,             3221, Error,   "cannot assign to a temporary value, the target must be a variable, field, or element")     // CS1612
+DIAG(Err_AddressOfTemporary,            3222, Error,   "cannot take the address of a temporary value, the operand must be a variable, field, or element") // CS0211
+DIAG(Err_AddressOfFrameEscapes,         3223, Error,   "the address of a local or parameter can only be passed directly as a call argument")
 
 // Binder: statements (3300-3399)
 DIAG(Err_ReturnValueNoType,             3300, Error,   "function '{}' returns a value but has no return type annotation")

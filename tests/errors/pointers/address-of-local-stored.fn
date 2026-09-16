@@ -1,0 +1,14 @@
+---
+Description: The address of a local cannot be stored in a variable
+Expected: FN3223
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x = 1
+        var p = &x
+        return 0
+    }
+}

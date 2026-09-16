@@ -113,6 +113,14 @@ struct AstBuilder
         return node;
     }
 
+    AddressOfExprSyntax* address_of(BaseExprSyntax* operand, Span span)
+    {
+        auto* node = arena.alloc<AddressOfExprSyntax>();
+        node->operand = operand;
+        node->span = span;
+        return node;
+    }
+
     IndexExprSyntax* index(BaseExprSyntax* object, BaseExprSyntax* idx, Span span)
     {
         auto* node = arena.alloc<IndexExprSyntax>();

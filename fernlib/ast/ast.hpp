@@ -40,6 +40,7 @@ struct IndexExprSyntax;
 struct ArrayLiteralExprSyntax;
 struct LiteralSuffixExprSyntax;
 struct CastExprSyntax;
+struct AddressOfExprSyntax;
 struct ErrorExprSyntax;
 
 // Statements
@@ -111,6 +112,7 @@ public:
     virtual void visit(ArrayLiteralExprSyntax* node) = 0;
     virtual void visit(LiteralSuffixExprSyntax* node) = 0;
     virtual void visit(CastExprSyntax* node) = 0;
+    virtual void visit(AddressOfExprSyntax* node) = 0;
     virtual void visit(ErrorExprSyntax* node) = 0;
 
     // Statements
@@ -373,6 +375,14 @@ struct CastExprSyntax : BaseExprSyntax
     ExprPtr operand = nullptr;
 };
 
+// &place
+struct AddressOfExprSyntax : BaseExprSyntax
+{
+    SYNTAX_NODE(AddressOfExpr, BaseExprSyntax)
+
+    ExprPtr operand = nullptr;
+};
+
 // Wraps an expression the parser rejected. Binder skips this node.
 struct ErrorExprSyntax : BaseExprSyntax
 {
@@ -632,6 +642,12 @@ public:
     {
         on_visit(node);
         if (node->type) node->type->accept(this);
+        if (node->operand) node->operand->accept(this);
+    }
+
+    void visit(AddressOfExprSyntax* node) override
+    {
+        on_visit(node);
         if (node->operand) node->operand->accept(this);
     }
 

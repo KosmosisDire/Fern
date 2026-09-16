@@ -1,0 +1,18 @@
+---
+Description: The address of a parameter cannot be stored
+Expected: FN3223
+---
+
+type Program
+{
+    static fn Keep(n: i32) -> i32
+    {
+        var p = &n
+        return 0
+    }
+
+    static fn Main -> i32
+    {
+        return Keep(1)
+    }
+}

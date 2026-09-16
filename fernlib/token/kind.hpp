@@ -83,6 +83,7 @@ enum class TokenKind
     IndexSetOp,
 
     // Other symbols
+    Ampersand,
     At,
     Colon,
     ThinArrow,
@@ -482,6 +483,7 @@ constexpr std::string_view format(TokenKind k)
         case TokenKind::IndexOp:      return "[]";
         case TokenKind::IndexSetOp:   return "[]=";
 
+        case TokenKind::Ampersand:    return "&";
         case TokenKind::At:           return "@";
         case TokenKind::Colon:        return ":";
         case TokenKind::ThinArrow:    return "->";

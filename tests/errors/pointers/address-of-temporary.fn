@@ -1,0 +1,14 @@
+---
+Description: Taking the address of a temporary value is an error
+Expected: FN3222
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var x = 1
+        var p = &(x + 1)
+        return 0
+    }
+}

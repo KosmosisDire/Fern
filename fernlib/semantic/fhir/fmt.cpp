@@ -151,6 +151,12 @@ void FhirPrettyFormatter::visit(FhirCastExpr* node)
     out << " as " << (node->type ? format_type(node->type) : "?") << ")";
 }
 
+void FhirPrettyFormatter::visit(FhirAddressOfExpr* node)
+{
+    out << "&";
+    write_child(node->place);
+}
+
 void FhirPrettyFormatter::visit(FhirIndexExpr* node)
 {
     write_child(node->object);
@@ -519,6 +525,14 @@ void FhirDebugFormatter::visit(FhirCastExpr* node)
     open_block();
     write_child("operand", node->operand, true);
     write_child("typeRef", node->typeRef);
+    close_block();
+}
+
+void FhirDebugFormatter::visit(FhirAddressOfExpr* node)
+{
+    begin_node(node, type_attr(node));
+    open_block();
+    write_child("place", node->place);
     close_block();
 }
 

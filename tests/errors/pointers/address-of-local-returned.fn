@@ -1,0 +1,18 @@
+---
+Description: The address of a local cannot be returned
+Expected: FN3223
+---
+
+type Program
+{
+    static fn Leak() -> Core.Ptr<i32>
+    {
+        var x = 1
+        return &x
+    }
+
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

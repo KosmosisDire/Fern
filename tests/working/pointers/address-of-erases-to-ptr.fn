@@ -1,0 +1,18 @@
+---
+Description: The address of an untyped Ptr local passes to a Ptr parameter through the implicit erase
+Expected: 3
+---
+
+type Program
+{
+    static fn Count(p: Core.Ptr) -> i32
+    {
+        return 3
+    }
+
+    static fn Main -> i32
+    {
+        var x = 5
+        return Count(&x)
+    }
+}

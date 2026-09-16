@@ -1,0 +1,25 @@
+---
+Description: The address of a field of a value type local can be passed to a call
+Expected: 7
+---
+
+type Vec2
+{
+    x: i32
+    y: i32
+}
+
+type Program
+{
+    static fn Set(target: Core.Ptr<i32>, value: i32)
+    {
+        target[0] = value
+    }
+
+    static fn Main -> i32
+    {
+        var v = Vec2(1, 2)
+        Set(&v.y, 6)
+        return v.x + v.y
+    }
+}

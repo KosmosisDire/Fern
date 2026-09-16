@@ -280,6 +280,11 @@ void FlowAnalyzer::da_expr(FhirExpr* expr, State& state)
         da_expr(cast->operand, state);
         return;
     }
+    if (auto* addr = expr->as<FhirAddressOfExpr>())
+    {
+        da_expr(addr->place, state);
+        return;
+    }
     if (auto* index = expr->as<FhirIndexExpr>())
     {
         da_expr(index->object, state);

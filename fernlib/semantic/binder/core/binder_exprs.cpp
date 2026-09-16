@@ -13,7 +13,7 @@
 namespace Fern
 {
 
-FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
+FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected, bool asArgument)
 {
     if (!expr) return nullptr;
 
@@ -41,6 +41,8 @@ FhirExpr* Binder::bind_expr(BaseExprSyntax* expr, TypeSymbol* expected)
         result = bind_paren(paren, expected);
     else if (auto* castExpr = expr->as<CastExprSyntax>())
         result = bind_cast(castExpr);
+    else if (auto* addrExpr = expr->as<AddressOfExprSyntax>())
+        result = bind_address_of(addrExpr, asArgument);
     else if (auto* genName = expr->as<GenericNameExprSyntax>())
         result = bind_generic_name_expr(genName);
     else if (auto* indexExpr = expr->as<IndexExprSyntax>())
@@ -118,9 +120,9 @@ FhirExpr* Binder::coerce_to_param(FhirExpr* arg, TypeSymbol* paramType)
     return arg;
 }
 
-FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected)
+FhirExpr* Binder::bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected, bool asArgument)
 {
-    FhirExpr* result = bind_expr(expr, expected);
+    FhirExpr* result = bind_expr(expr, expected, asArgument);
     if (!result) return nullptr;
 
     if (auto* tref = result->as<FhirTypeRef>())
@@ -272,6 +274,28 @@ FhirExpr* Binder::bind_cast(CastExprSyntax* expr)
 
     diag.report(DiagnosticCode::Err_BadCast, expr->span, std::string{}, format_type(operand->type), format_type(targetType));
     return fhir.error_expr(expr);
+}
+
+FhirExpr* Binder::bind_address_of(AddressOfExprSyntax* expr, bool asArgument)
+{
+    FhirExpr* place = bind_value_expr(expr->operand);
+    if (!place || place->is_error()) return fhir.error_expr(expr);
+
+    PlaceStorage storage = place->place_storage();
+    if (storage == PlaceStorage::Temporary)
+    {
+        diag.report(DiagnosticCode::Err_AddressOfTemporary, expr->operand->span);
+        return fhir.error_expr(expr);
+    }
+
+    // A frame place dies with its call, so its address may only go to a callee, which returns first
+    if (storage == PlaceStorage::Frame && !asArgument)
+    {
+        diag.report(DiagnosticCode::Err_AddressOfFrameEscapes, expr->span);
+        return fhir.error_expr(expr);
+    }
+
+    return fhir.address_of(expr, context.symbols.get_or_declare_pointer_type(place->type), place);
 }
 
 FhirExpr* Binder::bind_generic_name_expr(GenericNameExprSyntax* expr)

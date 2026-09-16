@@ -1,0 +1,19 @@
+---
+Description: The address of a local can be passed to a call that writes through it
+Expected: 42
+---
+
+type Program
+{
+    static fn Set(target: Core.Ptr<i32>, value: i32)
+    {
+        target[0] = value
+    }
+
+    static fn Main -> i32
+    {
+        var x = 1
+        Set(&x, 41)
+        return x + 1
+    }
+}

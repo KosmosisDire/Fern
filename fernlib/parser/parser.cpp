@@ -991,6 +991,26 @@ BaseExprSyntax* Parser::parse_binary(Precedence minPrec)
 
 BaseExprSyntax* Parser::parse_unary()
 {
+    // & takes a place rather than a value, so it is not a unary operator
+    if (walker.check(TokenKind::Ampersand))
+    {
+        Span span = walker.current().span;
+        if (has_space_after(span, walker))
+        {
+            diag.report(DiagnosticCode::Err_UnaryOpDetached, span);
+        }
+        walker.advance();
+        skip_newlines(walker);
+
+        auto* operand = parse_unary();
+        if (!operand)
+        {
+            diag.report(DiagnosticCode::Err_ExpectedExprAfterOp, span.at_end(), Fern::format(TokenKind::Ampersand));
+        }
+        builder.merge_if(span, operand);
+        return builder.address_of(operand, span);
+    }
+
     auto unaryOp = to_unary_op(walker.current().kind);
     if (unaryOp)
     {

@@ -252,7 +252,7 @@ Token Lexer::scan_token()
             {
                 return make_token(TokenKind::And);
             }
-            return make_error_token();
+            return make_token(TokenKind::Ampersand);
         case '|':
             if (walker.match('|'))
             {

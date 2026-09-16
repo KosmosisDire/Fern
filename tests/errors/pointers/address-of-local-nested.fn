@@ -1,0 +1,18 @@
+---
+Description: The address of a local must be the whole argument, not part of a larger expression
+Expected: FN3223
+---
+
+type Program
+{
+    static fn Take(p: Core.Ptr<i32>) -> i32
+    {
+        return 0
+    }
+
+    static fn Main -> i32
+    {
+        var x = 1
+        return Take(&x + 1)
+    }
+}

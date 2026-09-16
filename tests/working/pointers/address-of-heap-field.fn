@@ -1,0 +1,24 @@
+---
+Description: The address of a ref type field lives on the heap and can be kept in a local
+Expected: 9
+---
+
+ref type Counter
+{
+    count: i32
+    init(start: i32)
+    {
+        this.count = start
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var c = Counter(4)
+        var p = &c.count
+        p[0] = p[0] + 5
+        return c.count
+    }
+}

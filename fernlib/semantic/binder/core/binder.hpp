@@ -122,8 +122,9 @@ protected:
 
 #pragma region Expression Binding
 
-    FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
-    FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr);
+    // asArgument marks a direct call argument, the one context where the address of a frame place is allowed
+    FhirExpr* bind_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr, bool asArgument = false);
+    FhirExpr* bind_value_expr(BaseExprSyntax* expr, TypeSymbol* expected = nullptr, bool asArgument = false);
     FhirCastExpr* try_implicit_cast(FhirExpr* expr, TypeSymbol* targetType, const Span& span);
     FhirExpr* coerce_to_param(FhirExpr* arg, TypeSymbol* paramType);
     void report_conversion_failure(TypeSymbol* from, TypeSymbol* to, const ConstantValue* constant, const Span& span, std::string prefix = {});
@@ -131,6 +132,7 @@ protected:
     FhirExpr* bind_this(ThisExprSyntax* expr);
     FhirExpr* bind_paren(ParenExprSyntax* expr, TypeSymbol* expected = nullptr);
     FhirExpr* bind_cast(CastExprSyntax* expr);
+    FhirExpr* bind_address_of(AddressOfExprSyntax* expr, bool asArgument);
     FhirExpr* bind_generic_name_expr(GenericNameExprSyntax* expr);
     FhirExpr* bind_member_access(MemberAccessExprSyntax* expr);
     FhirExpr* bind_unary(UnaryExprSyntax* expr);
@@ -154,6 +156,7 @@ protected:
 #pragma region Call Binding
 
     FhirExpr* bind_call(CallExprSyntax* expr);
+    FhirExpr* bind_argument(BaseExprSyntax* arg, TypeSymbol* expected = nullptr);
     void report_argument_mismatches(MethodSymbol* candidate, const std::vector<OverloadArg>& args, const std::vector<ExprPtr>& argSyntax);
 
 #pragma region Object Builder Binding

@@ -31,6 +31,7 @@ public:
     void visit(FhirAssignExpr* node) override;
     void visit(FhirCompoundAssignExpr* node) override;
     void visit(FhirCastExpr* node) override;
+    void visit(FhirAddressOfExpr* node) override;
     void visit(FhirIndexExpr* node) override;
     void visit(FhirObjectBuilderExpr* node) override;
     void visit(FhirArrayLiteralExpr* node) override;
@@ -108,6 +109,7 @@ public:
     void visit(FhirAssignExpr* node) override;
     void visit(FhirCompoundAssignExpr* node) override;
     void visit(FhirCastExpr* node) override;
+    void visit(FhirAddressOfExpr* node) override;
     void visit(FhirIndexExpr* node) override;
     void visit(FhirObjectBuilderExpr* node) override;
     void visit(FhirArrayLiteralExpr* node) override;

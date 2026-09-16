@@ -325,6 +325,7 @@ FlirExpr* FlirLowerer::lower_expr(FhirExpr* expr)
     if (auto* e = expr->as<FhirAssignExpr>())       return lower_assign(e);
     if (auto* e = expr->as<FhirCompoundAssignExpr>()) return lower_compound_assign(e);
     if (auto* e = expr->as<FhirCastExpr>())         return lower_cast(e);
+    if (auto* e = expr->as<FhirAddressOfExpr>())    return lower_address_of(e);
     if (auto* e = expr->as<FhirIndexExpr>())        return lower_index(e);
     if (auto* e = expr->as<FhirObjectBuilderExpr>())  return lower_object_builder(e);
     if (auto* e = expr->as<FhirArrayLiteralExpr>()) return lower_array_literal(e);
@@ -574,6 +575,14 @@ FlirExpr* FlirLowerer::lower_cast(FhirCastExpr* expr)
     if (expr->method && !expr->method->is_intrinsic())
         return build_call(expr->syntax, expr->type, expr->method, nullptr, { operand });
     return builder.cast(expr->syntax, expr->type, operand, expr->method);
+}
+
+// The place's address node flows as a Ptr value, the same way p + n does
+FlirExpr* FlirLowerer::lower_address_of(FhirAddressOfExpr* expr)
+{
+    FlirExpr* address = lower_place(expr->place);
+    if (address) address->type = expr->type;
+    return address;
 }
 
 // An index on a place getter reads the element place. A value getter stays a call.

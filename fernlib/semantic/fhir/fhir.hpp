@@ -43,6 +43,7 @@ struct FhirConstructionExpr;
 struct FhirAssignExpr;
 struct FhirCompoundAssignExpr;
 struct FhirCastExpr;
+struct FhirAddressOfExpr;
 struct FhirIndexExpr;
 struct FhirObjectBuilderExpr;
 struct FhirArrayLiteralExpr;
@@ -82,6 +83,7 @@ public:
     virtual void visit(FhirAssignExpr* node) = 0;
     virtual void visit(FhirCompoundAssignExpr* node) = 0;
     virtual void visit(FhirCastExpr* node) = 0;
+    virtual void visit(FhirAddressOfExpr* node) = 0;
     virtual void visit(FhirIndexExpr* node) = 0;
     virtual void visit(FhirObjectBuilderExpr* node) = 0;
     virtual void visit(FhirArrayLiteralExpr* node) = 0;
@@ -384,6 +386,19 @@ struct FhirCastExpr : FhirExpr
     }
 };
 
+// &place. The type is Ptr<T> for a place of type T.
+struct FhirAddressOfExpr : FhirExpr
+{
+    FHIR_NODE(FhirAddressOfExpr, FhirExpr)
+
+    FhirExpr* place = nullptr;
+
+    void visit_children(FhirVisitor* v) override
+    {
+        if (place) place->accept(v);
+    }
+};
+
 struct FhirIndexExpr : FhirExpr
 {
     FHIR_NODE(FhirIndexExpr, FhirExpr)
@@ -570,6 +585,7 @@ public:
     void visit(FhirAssignExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirCompoundAssignExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirCastExpr* node) override { on_visit(node); node->visit_children(this); }
+    void visit(FhirAddressOfExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirIndexExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirObjectBuilderExpr* node) override { on_visit(node); node->visit_children(this); }
     void visit(FhirArrayLiteralExpr* node) override { on_visit(node); node->visit_children(this); }

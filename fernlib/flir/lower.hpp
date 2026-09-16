@@ -48,6 +48,7 @@ private:
     FlirExpr* lower_assign(FhirAssignExpr* expr);
     FlirExpr* lower_compound_assign(FhirCompoundAssignExpr* expr);
     FlirExpr* lower_cast(FhirCastExpr* expr);
+    FlirExpr* lower_address_of(FhirAddressOfExpr* expr);
     FlirExpr* lower_index(FhirIndexExpr* expr);
     FlirExpr* lower_object_builder(FhirObjectBuilderExpr* expr);
     FlirExpr* lower_array_literal(FhirArrayLiteralExpr* expr);

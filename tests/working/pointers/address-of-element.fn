@@ -1,0 +1,15 @@
+---
+Description: The address of an array element can be kept and written through
+Expected: 20
+---
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var a: i32[] = [1, 2, 3]
+        var p = &a[1]
+        p[0] = 20
+        return a[1]
+    }
+}

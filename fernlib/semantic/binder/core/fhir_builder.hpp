@@ -132,6 +132,16 @@ struct FhirBuilder
         return node;
     }
 
+    FhirAddressOfExpr* address_of(BaseSyntax* syntax, TypeSymbol* pointerType, FhirExpr* place)
+    {
+        auto* node = arena.alloc<FhirAddressOfExpr>();
+        node->syntax = syntax;
+        node->span = syntax ? syntax->span : Span{};
+        node->type = pointerType;
+        node->place = place;
+        return node;
+    }
+
     FhirCastExpr* cast(BaseSyntax* syntax, TypeSymbol* targetType, FhirExpr* operand, MethodSymbol* method, FhirTypeRef* typeRef = nullptr)
     {
         auto* node = arena.alloc<FhirCastExpr>();

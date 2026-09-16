@@ -29,6 +29,11 @@ void Binder::report_argument_mismatches(
     }
 }
 
+FhirExpr* Binder::bind_argument(BaseExprSyntax* arg, TypeSymbol* expected)
+{
+    return bind_value_expr(arg, expected, true);
+}
+
 FhirExpr* Binder::bind_call(CallExprSyntax* expr)
 {
     FhirExpr* callee = bind_expr(expr->callee);
@@ -38,7 +43,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
     bool hasErrorArg = false;
     for (auto* arg : expr->arguments)
     {
-        FhirExpr* bound = bind_value_expr(arg);
+        FhirExpr* bound = bind_argument(arg);
         argExprs.push_back(bound);
         auto* arrLit = arg->as<ArrayLiteralExprSyntax>();
         if (bound && bound->is_error())
@@ -100,7 +105,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             for (size_t i = 0; i < expr->arguments.size(); ++i)
             {
-                argExprs[i] = bind_value_expr(expr->arguments[i], result.best.method->parameters[i]->type);
+                argExprs[i] = bind_argument(expr->arguments[i], result.best.method->parameters[i]->type);
             }
         }
         return fhir.construction(expr, namedType, tref, result.best.method, std::move(argExprs));
@@ -168,7 +173,7 @@ FhirExpr* Binder::bind_call(CallExprSyntax* expr)
         {
             for (size_t i = 0; i < expr->arguments.size(); ++i)
             {
-                argExprs[i] = bind_value_expr(expr->arguments[i], method->parameters[i]->type);
+                argExprs[i] = bind_argument(expr->arguments[i], method->parameters[i]->type);
             }
         }
 
