@@ -1,0 +1,18 @@
+---
+Description: A program that calls an extern whose C function is not in the process does not start
+Expected: FN6000
+---
+
+type LibC
+{
+    @Core.Extern("fern_no_such_function")
+    static fn Missing() -> i32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return LibC.Missing()
+    }
+}

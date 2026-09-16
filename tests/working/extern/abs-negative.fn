@@ -1,0 +1,18 @@
+---
+Description: A narrow signed return from C keeps its sign
+Expected: 7
+---
+
+type LibC
+{
+    @Core.Extern("abs")
+    static fn Abs(value: i32) -> i32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return LibC.Abs(-7)
+    }
+}

@@ -48,6 +48,7 @@ set(FERNLIB_SOURCES
     vm/memory.cpp
     vm/vm.cpp
     vm/intrinsics.cpp
+    vm/externs.cpp
 
     # source
     source/file.cpp
@@ -109,6 +110,6 @@ if(LLVM_AVAILABLE)
 endif()
 
 if(LIBFFI_AVAILABLE)
-    target_link_libraries(fernlib PUBLIC libffi)
+    target_link_libraries(fernlib PUBLIC libffi ${CMAKE_DL_LIBS})
     target_compile_definitions(fernlib PUBLIC FERN_LIBFFI_AVAILABLE)
 endif()

@@ -1,0 +1,25 @@
+---
+Description: A value type returned by value from C lands in the caller's result slot
+Expected: 32
+---
+
+type DivResult
+{
+    quot: i32
+    rem: i32
+}
+
+type LibC
+{
+    @Core.Extern("div")
+    static fn Div(numer: i32, denom: i32) -> DivResult;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var r = LibC.Div(17, 5)
+        return r.quot * 10 + r.rem
+    }
+}

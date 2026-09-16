@@ -13,16 +13,6 @@ static uint64_t align_up(uint64_t value, uint64_t align)
     return (value + align - 1) & ~(align - 1);
 }
 
-static uint64_t to_addr(const void* ptr)
-{
-    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr));
-}
-
-static uint8_t* to_ptr(uint64_t addr)
-{
-    return reinterpret_cast<uint8_t*>(static_cast<uintptr_t>(addr));
-}
-
 VmMemory::VmMemory(uint64_t stackSize)
     : stack(stackSize, 0)
 {

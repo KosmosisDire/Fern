@@ -1,5 +1,6 @@
 #include <vm/vm.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <format>
 
@@ -25,6 +26,7 @@ Interpreter::Interpreter(SemanticContext& semantic, FlirContext& flir, Diagnosti
     , config(config)
     , target(semantic.symbols.target)
     , memory(config.stackSize)
+    , externs(*this, memory)
 {
     i8Type = semantic.resolve_type_name("i8");
     i16Type = semantic.resolve_type_name("i16");
@@ -75,7 +77,56 @@ RunResult Interpreter::run_main()
 {
     FlirMethod* main = find_main();
     if (!main) return RunResult{};
+    if (!bind_externs())
+    {
+        RunResult result;
+        result.status = RunResult::Status::Errored;
+        result.errorMessage = "an extern could not be bound";
+        return result;
+    }
     return run(main);
+}
+
+// Every extern the program calls is bound before it starts, so a missing C function stops the run the
+// way a missing symbol stops a link. Declared but never called externs are left alone, also like a link.
+bool Interpreter::bind_externs()
+{
+    struct Collector : DefaultFlirVisitor
+    {
+        std::vector<MethodSymbol*> externs;
+
+        void visit(FlirCall* node) override
+        {
+            MethodSymbol* method = node->method;
+            if (method && method->is_extern() && std::find(externs.begin(), externs.end(), method) == externs.end())
+            {
+                externs.push_back(method);
+            }
+            node->visit_children(this);
+        }
+    };
+
+    Collector collector;
+    for (auto* method : flir.methods)
+    {
+        if (method->body) method->body->accept(&collector);
+    }
+
+    bool bound = true;
+    for (auto* method : collector.externs)
+    {
+        try
+        {
+            externs.bind(method);
+        }
+        catch (const VmError& error)
+        {
+            Span span = method->syntax ? method->syntax->span : Span{};
+            diag.report(DiagnosticCode::Err_RuntimeError, span, error.message);
+            bound = false;
+        }
+    }
+    return bound;
 }
 
 RunResult Interpreter::run(FlirMethod* main)
@@ -378,6 +429,9 @@ Value Interpreter::eval_call(FlirCall* node)
     bool hasResultDest = node->resultDest != nullptr;
     uint64_t resultDest = 0;
     if (hasResultDest) resultDest = eval(node->resultDest).as_addr();
+
+    if (node->method && node->method->is_extern())
+        return externs.call(node->method, args, hasResultDest, resultDest);
 
     auto it = flir.loweredMethods.find(node->method);
     if (it == flir.loweredMethods.end() || !it->second)

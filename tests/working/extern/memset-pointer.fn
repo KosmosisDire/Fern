@@ -1,0 +1,22 @@
+---
+Description: Pointers cross into C and back, memset fills a native block and returns it
+Expected: 4
+---
+
+type LibC
+{
+    @Core.Extern("memset")
+    static fn MemSet(dest: Core.Ptr, value: i32, count: usize) -> Core.Ptr;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var p = NativeMemory.Alloc(4)
+        var q = (Core.Ptr<u8>)LibC.MemSet(p, 1, 4)
+        var total = (i32)q[0] + (i32)q[1] + (i32)q[2] + (i32)q[3]
+        NativeMemory.Free(p)
+        return total
+    }
+}

@@ -1,0 +1,19 @@
+---
+Description: An extern call reaches the C runtime, strlen counts the bytes behind a string's data pointer
+Expected: 5
+---
+
+type LibC
+{
+    @Core.Extern("strlen")
+    static fn StrLen(s: Core.Ptr<c8>) -> usize;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        var s = "hello"
+        return (i32)LibC.StrLen(s.Data())
+    }
+}

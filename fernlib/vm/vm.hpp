@@ -10,6 +10,7 @@
 #include <semantic/intrinsics.hpp>
 #include <semantic/layout.hpp>
 #include <source/span.hpp>
+#include <vm/externs.hpp>
 #include <vm/memory.hpp>
 #include <vm/value.hpp>
 
@@ -96,9 +97,15 @@ public:
     // Renders a completed result by its return type. Empty for void. Must run while this Interpreter is alive
     std::string format_result(const RunResult& result);
 
+    // How a type flows as a value and how a value moves to and from bytes. Shared with ExternCalls.
+    Value::Kind type_kind(TypeSymbol* type) const;
+    Value load_scalar(uint64_t addr, Value::Kind kind);
+    void store_scalar(uint64_t addr, Value value);
+
 private:
     RunResult run(FlirMethod* main);
     FlirMethod* find_main();
+    bool bind_externs();
 
     Value invoke(FlirMethod* callee, bool hasThis, Value thisVal,
                  const std::vector<Value>& args, bool hasResultDest, uint64_t resultDest);
@@ -128,9 +135,6 @@ private:
     Value exec_intrinsic(FlirIntrinsic* node);
     Value convert(IntrinsicKind kind, Value operand);
 
-    Value::Kind type_kind(TypeSymbol* type) const;
-    Value load_scalar(uint64_t addr, Value::Kind kind);
-    void store_scalar(uint64_t addr, Value value);
     uint64_t intern_string(std::string_view text);
     std::string read_string(uint64_t handle);
 
@@ -146,6 +150,7 @@ private:
     VmConfig config;
     const TargetInfo& target;
     VmMemory memory;
+    ExternCalls externs;
     // The block holding every static field, allocated once when the interpreter is made
     uint64_t staticBase = 0;
 

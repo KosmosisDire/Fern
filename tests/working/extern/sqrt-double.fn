@@ -1,0 +1,18 @@
+---
+Description: A double crosses into C and back
+Expected: 4
+---
+
+type LibC
+{
+    @Core.Extern("sqrt")
+    static fn Sqrt(value: f64) -> f64;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return (i32)LibC.Sqrt(16.0)
+    }
+}

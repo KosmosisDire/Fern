@@ -10,6 +10,17 @@ namespace Fern
 
 struct TypeSymbol;
 
+// VM addresses are host addresses, these only change the spelling
+inline uint64_t to_addr(const void* ptr)
+{
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr));
+}
+
+inline uint8_t* to_ptr(uint64_t addr)
+{
+    return reinterpret_cast<uint8_t*>(static_cast<uintptr_t>(addr));
+}
+
 // A non resumable runtime error. Thrown at the fault site, caught once at the run boundary, where it
 // becomes a diagnostic carrying the current node span.
 struct VmError
