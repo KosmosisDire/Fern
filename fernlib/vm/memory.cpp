@@ -34,7 +34,9 @@ VmMemory::VmMemory(uint64_t stackSize)
 VmMemory::~VmMemory()
 {
     for (auto& [start, block] : blocks)
-        std::free(to_ptr(start));
+    {
+        if (!block.freed) std::free(to_ptr(start));
+    }
 }
 
 #pragma region Allocation
@@ -56,12 +58,14 @@ void VmMemory::native_free(uint64_t addr)
 
     auto it = blocks.find(addr);
     if (it == blocks.end())
-        throw VmError{std::format("free of {:#x}, which is not the start of a live native block", addr)};
+        throw VmError{std::format("free of {:#x}, which is not the start of a native block", addr)};
     if (!it->second.native)
         throw VmError{std::format("free of {:#x}, which is a managed block", addr)};
+    if (it->second.freed)
+        throw VmError{std::format("free of {:#x}, which was already freed", addr)};
 
     std::free(to_ptr(addr));
-    blocks.erase(it);
+    it->second.freed = true;
 }
 
 uint64_t VmMemory::record_block(void* ptr, HeapBlock block)
@@ -69,8 +73,9 @@ uint64_t VmMemory::record_block(void* ptr, HeapBlock block)
     if (!ptr)
         throw VmError{std::format("out of memory allocating {} bytes", block.size)};
 
+    // The host may hand back the address of a freed block, which this new block then replaces
     uint64_t addr = to_addr(ptr);
-    blocks.emplace(addr, block);
+    blocks.insert_or_assign(addr, block);
     return addr;
 }
 
@@ -103,15 +108,24 @@ std::map<uint64_t, HeapBlock>::iterator VmMemory::find_block(uint64_t addr)
 void VmMemory::validate(uint64_t addr, uint64_t size)
 {
     if (size == 0) return;
+    if (addr == 0)
+        throw VmError{std::format("null memory access (size {})", size)};
 
     uint64_t end = addr + size;
     if (end < addr)
         throw VmError{std::format("invalid memory access at address {:#x} (size {})", addr, size)};
 
-    if (addr >= stackBase && end <= sp) return;
+    if (addr >= stackBase && addr < stackEnd)
+    {
+        if (end <= sp) return;
+        throw VmError{std::format("invalid memory access at address {:#x} (size {})", addr, size)};
+    }
 
     auto it = find_block(addr);
-    if (it != blocks.end() && end <= it->first + it->second.size) return;
+    if (it == blocks.end() || addr >= it->first + it->second.size) return;
+    if (it->second.freed)
+        throw VmError{std::format("access to freed memory at address {:#x} (size {})", addr, size)};
+    if (end <= it->first + it->second.size) return;
 
     throw VmError{std::format("invalid memory access at address {:#x} (size {})", addr, size)};
 }

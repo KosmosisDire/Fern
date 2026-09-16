@@ -17,20 +17,21 @@ struct VmError
     std::string message;
 };
 
-// A live heap allocation, keyed by its start address in the block table. The type lets a future
-// collector walk the block. A native block came from NativeMemory.Alloc, has no type, and is the only
-// kind NativeMemory.Free accepts.
+// A heap allocation, keyed by its start address in the block table. The type lets a future collector
+// walk the block. A native block came from NativeMemory.Alloc, has no type, and is the only kind
+// NativeMemory.Free accepts. A freed block stays in the table so a stale pointer into it still traps.
 struct HeapBlock
 {
     uint64_t size = 0;
     TypeSymbol* type = nullptr;
     bool native = false;
+    bool freed = false;
 };
 
 // Interpreter memory on real host addresses, so a pointer can cross into C unchanged. The stack is one
 // fixed buffer that never moves. Every heap block is its own host allocation recorded in a table, so a
-// block never moves either. Every access is validated against the live stack range or an owning heap
-// block and errors otherwise, which is what makes null and garbage addresses trap.
+// block never moves either. An access to the stack or a known block is checked, so null, a popped frame,
+// a freed block, and an overrun trap. Any other address is memory C owns and is not checked.
 class VmMemory
 {
 public:
@@ -71,7 +72,7 @@ public:
     uint8_t* host_ptr(uint64_t addr, uint64_t size);
 
 private:
-    // Errors unless the whole range lies in the live stack or inside a single heap block.
+    // Checks a range that starts in the stack or a known block. Any other address is left alone.
     void validate(uint64_t addr, uint64_t size);
     std::map<uint64_t, HeapBlock>::iterator find_block(uint64_t addr);
     // Records a fresh host allocation, erroring when the host returned null
