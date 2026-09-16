@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -15,8 +16,9 @@ class VmMemory;
 struct MethodSymbol;
 struct TypeSymbol;
 
-// Calls @Extern functions through libffi. The C symbol is looked up in the running process and the call
-// is prepared once per method. Without libffi every bind errors.
+// Calls @Extern functions through libffi. The C symbol is looked up in the named library, or in the
+// running process when none is named, and the call is prepared once per method. Without libffi every
+// bind errors.
 class ExternCalls
 {
 public:
@@ -30,10 +32,13 @@ public:
 private:
     struct Binding;
     Binding& binding_for(MethodSymbol* method);
+    // Loads a library once by the name written in the attribute. Null when it cannot be loaded.
+    void* load_library(const std::string& name);
 
     Interpreter& vm;
     VmMemory& memory;
     std::unordered_map<MethodSymbol*, std::unique_ptr<Binding>> bindings;
+    std::unordered_map<std::string, void*> libraries;
 };
 
 }

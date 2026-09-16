@@ -247,11 +247,11 @@ const ResolvedAttribute* find_attribute(const std::vector<ResolvedAttribute>& at
     return nullptr;
 }
 
-// The first attribute argument when it is a string, else empty
-static std::string_view string_argument(const ResolvedAttribute* attr)
+// The attribute argument at index when it is a string, else empty
+static std::string_view string_argument(const ResolvedAttribute* attr, size_t index = 0)
 {
-    if (!attr || attr->arguments.empty() || attr->arguments[0].kind != ConstantValue::Kind::String) return {};
-    return attr->arguments[0].stringValue;
+    if (!attr || attr->arguments.size() <= index || attr->arguments[index].kind != ConstantValue::Kind::String) return {};
+    return attr->arguments[index].stringValue;
 }
 
 bool MethodSymbol::is_intrinsic() const
@@ -277,6 +277,11 @@ std::string_view MethodSymbol::extern_name() const
     return string_argument(find_attribute(resolvedAttributes, "Core.Extern"));
 }
 
+std::string_view MethodSymbol::extern_library() const
+{
+    return string_argument(find_attribute(resolvedAttributes, "Core.Extern"), 1);
+}
+
 bool SubstitutedMethodSymbol::is_intrinsic() const
 {
     return originalMethod && originalMethod->is_intrinsic();
@@ -295,6 +300,11 @@ bool SubstitutedMethodSymbol::is_extern() const
 std::string_view SubstitutedMethodSymbol::extern_name() const
 {
     return originalMethod ? originalMethod->extern_name() : std::string_view{};
+}
+
+std::string_view SubstitutedMethodSymbol::extern_library() const
+{
+    return originalMethod ? originalMethod->extern_library() : std::string_view{};
 }
 
 bool NamedTypeSymbol::allows_custom_literals() const

@@ -1,0 +1,18 @@
+---
+Description: A program that calls an extern from a library that cannot be loaded does not start
+Expected: FN6000
+---
+
+type Lib
+{
+    @Core.Extern("some_function", "fern_no_such_library")
+    static fn SomeFunction() -> i32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return Lib.SomeFunction()
+    }
+}

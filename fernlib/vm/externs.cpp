@@ -49,10 +49,47 @@ struct ExternCalls::Binding
     Value::Kind returnKind = Value::Kind::I32;
 };
 
-// The symbol from any module the process has loaded, so the C runtime is always in reach
-static void* find_symbol(const std::string& name)
+// The file name a platform gives a library called name, keeping any directory in front of it
+static std::string platform_library_name(const std::string& name)
+{
+    size_t slash = name.find_last_of("/\\");
+    std::string directory = slash == std::string::npos ? "" : name.substr(0, slash + 1);
+    std::string file = slash == std::string::npos ? name : name.substr(slash + 1);
+#if defined(_WIN32)
+    return std::format("{}{}.dll", directory, file);
+#elif defined(__APPLE__)
+    return std::format("{}lib{}.dylib", directory, file);
+#else
+    return std::format("{}lib{}.so", directory, file);
+#endif
+}
+
+void* ExternCalls::load_library(const std::string& name)
+{
+    auto it = libraries.find(name);
+    if (it != libraries.end()) return it->second;
+
+    void* handle = nullptr;
+    for (const std::string& candidate : {name, platform_library_name(name)})
+    {
+#ifdef _WIN32
+        handle = reinterpret_cast<void*>(LoadLibraryA(candidate.c_str()));
+#else
+        handle = dlopen(candidate.c_str(), RTLD_NOW);
+#endif
+        if (handle) break;
+    }
+    libraries.emplace(name, handle);
+    return handle;
+}
+
+// The symbol from the library, or with no library from any module the process has loaded, so the C
+// runtime is always in reach
+static void* find_symbol(void* library, const std::string& name)
 {
 #ifdef _WIN32
+    if (library) return reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(library), name.c_str()));
+
     HMODULE modules[1024];
     DWORD needed = 0;
     if (!EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &needed)) return nullptr;
@@ -63,7 +100,7 @@ static void* find_symbol(const std::string& name)
     }
     return nullptr;
 #else
-    return dlsym(RTLD_DEFAULT, name.c_str());
+    return dlsym(library ? library : RTLD_DEFAULT, name.c_str());
 #endif
 }
 
@@ -116,9 +153,20 @@ ExternCalls::Binding& ExternCalls::binding_for(MethodSymbol* method)
 
     auto binding = std::make_unique<Binding>();
     std::string name(method->extern_name());
-    binding->function = find_symbol(name);
+    std::string libraryName(method->extern_library());
+    void* library = nullptr;
+    if (!libraryName.empty())
+    {
+        library = load_library(libraryName);
+        if (!library)
+            throw VmError{std::format("extern '{}' needs library '{}', which could not be loaded", method->name, libraryName)};
+    }
+    binding->function = find_symbol(library, name);
     if (!binding->function)
-        throw VmError{std::format("extern '{}' names C function '{}', which is not in the running process", method->name, name)};
+    {
+        std::string where = libraryName.empty() ? "the running process" : std::format("library '{}'", libraryName);
+        throw VmError{std::format("extern '{}' names C function '{}', which is not in {}", method->name, name, where)};
+    }
 
     for (auto* param : method->parameters)
     {

@@ -77,10 +77,23 @@ attr type Intrinsic
     name: string
 }
 
--- A static function with no body that calls the C function of this name
+-- A static function with no body that calls the C function of this name. With no library the
+-- function must already be in the running process.
 attr type Extern
 {
     name: string
+    library: string
+
+    init(name: string)
+    {
+        this.name = name
+    }
+
+    init(name: string, library: string)
+    {
+        this.name = name
+        this.library = library
+    }
 }
 
 @BuiltinType(1) @AllowCustomLiterals @SignedInt

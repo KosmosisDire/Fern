@@ -298,9 +298,11 @@ struct MethodSymbol : Symbol
     bool is_cast() const { return callableKind == CallableKind::Cast; }
     virtual bool is_intrinsic() const;
     virtual IntrinsicKind intrinsic() const;
-    // An extern has no body and calls the C function named by its @Extern attribute
+    // An extern has no body and calls the C function named by its @Extern attribute. The library is
+    // empty when the function must already be in the running process.
     virtual bool is_extern() const;
     virtual std::string_view extern_name() const;
+    virtual std::string_view extern_library() const;
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 
@@ -341,6 +343,7 @@ struct SubstitutedMethodSymbol : MethodSymbol
     IntrinsicKind intrinsic() const override;
     bool is_extern() const override;
     std::string_view extern_name() const override;
+    std::string_view extern_library() const override;
     TypeSymbol* get_return_type() const override;
 };
 
