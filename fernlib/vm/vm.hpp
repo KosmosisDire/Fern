@@ -80,7 +80,7 @@ struct RunResult
 struct VmConfig
 {
     uint64_t stackSize = 1024 * 1024;   // 1 MiB virtual stack
-    uint64_t stepLimit = 100'000'000;   // hang protection for tests
+    uint64_t stepLimit = 100'000'000;   // hang protection for tests, 0 means no limit
     bool trace = false;
 };
 

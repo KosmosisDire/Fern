@@ -173,6 +173,8 @@ int main(int argc, char* argv[])
         {
             Fern::VmConfig config;
             config.trace = args.trace;
+            // A program run by hand may run as long as it likes
+            config.stepLimit = 0;
             interpreter.emplace(compilation->semantic(), compilation->flir(), compilation->diag, config);
             result = interpreter->run_main();
         }

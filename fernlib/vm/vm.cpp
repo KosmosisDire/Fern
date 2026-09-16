@@ -606,7 +606,7 @@ void Interpreter::trace(FlirStmt* stmt)
 
 void Interpreter::step()
 {
-    if (++stepCount > config.stepLimit)
+    if (config.stepLimit != 0 && ++stepCount > config.stepLimit)
         throw VmError{"step limit exceeded"};
 }
 
