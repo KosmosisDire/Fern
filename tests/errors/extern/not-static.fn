@@ -1,0 +1,18 @@
+---
+Description: An extern must be static because C has no receiver
+Expected: FN3118
+---
+
+type LibC
+{
+    @Core.Extern("abs")
+    fn Abs(value: i32) -> i32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

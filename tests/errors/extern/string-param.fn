@@ -1,0 +1,18 @@
+---
+Description: A string cannot cross into C, an extern takes Ptr<c8> instead
+Expected: FN3119
+---
+
+type LibC
+{
+    @Core.Extern("puts")
+    static fn Puts(s: string) -> i32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

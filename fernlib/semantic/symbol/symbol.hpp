@@ -52,6 +52,9 @@ struct ResolvedAttribute
     std::vector<ConstantValue> arguments;
 };
 
+// The attribute whose type has this qualified name, or null
+const ResolvedAttribute* find_attribute(const std::vector<ResolvedAttribute>& attributes, std::string_view qualifiedName);
+
 enum class Convertibility { None, Explicit, Implicit, Exact };
 
 struct Conversion
@@ -211,6 +214,10 @@ struct NamedTypeSymbol : TypeSymbol
     bool is_unsigned() const;
     bool is_float() const;
     bool is_word_sized() const;
+    // Ptr or Ptr<T>
+    bool is_pointer() const;
+    // True when the type has a C form, so an extern can take or return it
+    bool is_c_compatible() const;
     std::optional<int> builtin_scalar_size() const;
     std::optional<IntRange> integer_range() const;
     bool allows_custom_literals() const;
@@ -291,6 +298,9 @@ struct MethodSymbol : Symbol
     bool is_cast() const { return callableKind == CallableKind::Cast; }
     virtual bool is_intrinsic() const;
     virtual IntrinsicKind intrinsic() const;
+    // An extern has no body and calls the C function named by its @Extern attribute
+    virtual bool is_extern() const;
+    virtual std::string_view extern_name() const;
     virtual TypeSymbol* get_return_type() const;
     void set_return_type(TypeSymbol* type) { returnType = type; }
 
@@ -329,6 +339,8 @@ struct SubstitutedMethodSymbol : MethodSymbol
 
     bool is_intrinsic() const override;
     IntrinsicKind intrinsic() const override;
+    bool is_extern() const override;
+    std::string_view extern_name() const override;
     TypeSymbol* get_return_type() const override;
 };
 

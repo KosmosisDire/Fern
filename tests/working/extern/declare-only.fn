@@ -1,0 +1,30 @@
+---
+Description: An extern declares a C function with no body, and scalars, pointers, and value types of those may cross
+Expected: 0
+---
+
+type Vec2
+{
+    x: f32
+    y: f32
+}
+
+type LibC
+{
+    @Core.Extern("strlen")
+    static fn StrLen(s: Core.Ptr<c8>) -> usize;
+
+    @Core.Extern("memset")
+    static fn MemSet(dest: Core.Ptr, value: i32, count: usize) -> Core.Ptr;
+
+    @Core.Extern("vec2_length")
+    static fn Vec2Length(v: Vec2) -> f32;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

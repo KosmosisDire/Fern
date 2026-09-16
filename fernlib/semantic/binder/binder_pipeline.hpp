@@ -7,8 +7,10 @@ struct SemanticContext;
 struct RootSyntax;
 struct NamespaceDeclSyntax;
 struct TypeDeclSyntax;
+struct CallableDeclSyntax;
 struct NamespaceSymbol;
 struct NamedTypeSymbol;
+struct MethodSymbol;
 struct Symbol;
 
 // Phase driver for semantic analysis. Walks the symbol table / AST across the binder phases and produces bound FHIR. 
@@ -34,6 +36,7 @@ private:
     void check_duplicate_methods(NamedTypeSymbol* type);
     void check_operator_pairs(NamedTypeSymbol* type);
     void check_indexer_signatures(NamedTypeSymbol* type);
+    void check_extern_signature(MethodSymbol* method, CallableDeclSyntax* callable);
 };
 
 }

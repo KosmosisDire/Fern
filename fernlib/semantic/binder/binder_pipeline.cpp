@@ -361,6 +361,32 @@ void BinderPipeline::check_duplicate_methods(NamedTypeSymbol* type)
     }
 }
 
+// An extern is a static function whose parameters and return all have a C form
+void BinderPipeline::check_extern_signature(MethodSymbol* method, CallableDeclSyntax* callable)
+{
+    Span loc = callable ? callable->name.span : Span{};
+    if (!has_modifier(method->modifiers, Modifier::Static))
+    {
+        context.diag.report(DiagnosticCode::Err_ExternNotStatic, loc, method->name);
+    }
+
+    for (auto* param : method->parameters)
+    {
+        auto* type = param->type ? param->type->as<NamedTypeSymbol>() : nullptr;
+        if (!param->type || (type && type->is_c_compatible())) continue;
+        Span paramLoc = param->syntax ? param->syntax->span : loc;
+        context.diag.report(DiagnosticCode::Err_ExternBadType, paramLoc, method->name, format_type(param->type));
+    }
+
+    TypeSymbol* returnType = method->get_return_type();
+    auto* namedReturn = returnType ? returnType->as<NamedTypeSymbol>() : nullptr;
+    if (returnType && !(namedReturn && namedReturn->is_c_compatible()))
+    {
+        Span returnLoc = callable && callable->returnType ? callable->returnType->span : loc;
+        context.diag.report(DiagnosticCode::Err_ExternBadType, returnLoc, method->name, format_type(returnType));
+    }
+}
+
 void BinderPipeline::validate_signatures()
 {
     for (auto* type : context.symbols.allTypes)
@@ -378,10 +404,22 @@ void BinderPipeline::validate_signatures()
                         context.diag.report(DiagnosticCode::Err_IntrinsicWithBody, loc, method->name);
                     }
                 }
+                else if (method->is_extern())
+                {
+                    if (callable->body)
+                    {
+                        context.diag.report(DiagnosticCode::Err_ExternWithBody, loc, method->name);
+                    }
+                }
                 else if (!callable->body)
                 {
                     context.diag.report(DiagnosticCode::Err_MethodNoBody, loc, method->name);
                 }
+            }
+
+            if (method->is_extern())
+            {
+                check_extern_signature(method, callable);
             }
 
             // Index operators take the containing type as this, every other operator names it in a parameter

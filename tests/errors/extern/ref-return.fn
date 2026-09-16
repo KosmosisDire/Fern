@@ -1,0 +1,23 @@
+---
+Description: A ref type cannot cross into C
+Expected: FN3119
+---
+
+ref type Node
+{
+    value: i32
+}
+
+type LibC
+{
+    @Core.Extern("make_node")
+    static fn MakeNode() -> Node;
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

@@ -1,0 +1,21 @@
+---
+Description: An extern cannot declare a body
+Expected: FN3117
+---
+
+type LibC
+{
+    @Core.Extern("abs")
+    static fn Abs(value: i32) -> i32
+    {
+        return value
+    }
+}
+
+type Program
+{
+    static fn Main -> i32
+    {
+        return 0
+    }
+}

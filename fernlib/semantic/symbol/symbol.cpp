@@ -192,14 +192,68 @@ std::optional<IntRange> NamedTypeSymbol::integer_range() const
     return IntRange{ -max - 1, max };
 }
 
+bool NamedTypeSymbol::is_pointer() const
+{
+    if (!table) return false;
+    if (genericOrigin) return genericOrigin == table->core_template("Ptr", 1);
+    return this == table->core_template("Ptr", 0);
+}
+
+// Guarded like has_default_impl because value type cycles are only rejected in the layout pass
+static bool is_c_compatible_impl(const NamedTypeSymbol* type, std::vector<const NamedTypeSymbol*>& visiting)
+{
+    if (type->is_ref()) return false;
+    if (type->is_builtin())
+    {
+        // C has no half float. A builtin with no scalar size is a handle like String.
+        if (type->table && type == type->table->core_template("F16", 0)) return false;
+        return type->builtin_scalar_size().has_value() || type->is_pointer();
+    }
+    for (const auto* seen : visiting)
+    {
+        if (seen == type) return false;
+    }
+    visiting.push_back(type);
+    bool result = true;
+    for (const auto* field : type->fields)
+    {
+        if (has_modifier(field->modifiers, Modifier::Static)) continue;
+        const auto* fieldType = field->type ? field->type->as<NamedTypeSymbol>() : nullptr;
+        if (!fieldType || !is_c_compatible_impl(fieldType, visiting))
+        {
+            result = false;
+            break;
+        }
+    }
+    visiting.pop_back();
+    return result;
+}
+
+bool NamedTypeSymbol::is_c_compatible() const
+{
+    std::vector<const NamedTypeSymbol*> visiting;
+    return is_c_compatible_impl(this, visiting);
+}
+
+const ResolvedAttribute* find_attribute(const std::vector<ResolvedAttribute>& attributes, std::string_view qualifiedName)
+{
+    for (const auto& attr : attributes)
+    {
+        if (attr.type && attr.type->qualified_name() == qualifiedName) return &attr;
+    }
+    return nullptr;
+}
+
+// The first attribute argument when it is a string, else empty
+static std::string_view string_argument(const ResolvedAttribute* attr)
+{
+    if (!attr || attr->arguments.empty() || attr->arguments[0].kind != ConstantValue::Kind::String) return {};
+    return attr->arguments[0].stringValue;
+}
+
 bool MethodSymbol::is_intrinsic() const
 {
-    for (const auto& attr : resolvedAttributes)
-    {
-        if (attr.type && attr.type->qualified_name() == "Core.Intrinsic")
-            return true;
-    }
-    return false;
+    return find_attribute(resolvedAttributes, "Core.Intrinsic") != nullptr;
 }
 
 // TODO: This is kinda a workaround since we have not implemented compile time function execution
@@ -207,15 +261,17 @@ bool MethodSymbol::is_intrinsic() const
 // and get the real struct value.
 IntrinsicKind MethodSymbol::intrinsic() const
 {
-    for (const auto& attr : resolvedAttributes)
-    {
-        if (attr.type && attr.type->qualified_name() == "Core.Intrinsic" &&
-            !attr.arguments.empty() && attr.arguments[0].kind == ConstantValue::Kind::String)
-        {
-            return intrinsic_from_name(attr.arguments[0].stringValue);
-        }
-    }
-    return IntrinsicKind::None;
+    return intrinsic_from_name(string_argument(find_attribute(resolvedAttributes, "Core.Intrinsic")));
+}
+
+bool MethodSymbol::is_extern() const
+{
+    return find_attribute(resolvedAttributes, "Core.Extern") != nullptr;
+}
+
+std::string_view MethodSymbol::extern_name() const
+{
+    return string_argument(find_attribute(resolvedAttributes, "Core.Extern"));
 }
 
 bool SubstitutedMethodSymbol::is_intrinsic() const
@@ -226,6 +282,16 @@ bool SubstitutedMethodSymbol::is_intrinsic() const
 IntrinsicKind SubstitutedMethodSymbol::intrinsic() const
 {
     return originalMethod ? originalMethod->intrinsic() : IntrinsicKind::None;
+}
+
+bool SubstitutedMethodSymbol::is_extern() const
+{
+    return originalMethod && originalMethod->is_extern();
+}
+
+std::string_view SubstitutedMethodSymbol::extern_name() const
+{
+    return originalMethod ? originalMethod->extern_name() : std::string_view{};
 }
 
 bool NamedTypeSymbol::allows_custom_literals() const

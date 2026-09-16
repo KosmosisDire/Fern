@@ -66,6 +66,9 @@ DIAG(Err_CastParamCount,                3113, Error,   "cast must have exactly 1
 DIAG(Err_CastMissingSelfType,           3114, Error,   "cast on type '{}' must convert to or from the containing type")                             // CS0556
 DIAG(Err_RecursiveValueField,           3115, Error,   "value type '{}' contains a cycle through field '{}'")                                       // CS0523
 DIAG(Err_DuplicateParameter,            3116, Error,   "duplicate parameter name '{}'")                                                             // CS0100
+DIAG(Err_ExternWithBody,                3117, Error,   "extern '{}' cannot declare a body")                                                         // CS0179
+DIAG(Err_ExternNotStatic,               3118, Error,   "extern '{}' must be static")
+DIAG(Err_ExternBadType,                 3119, Error,   "extern '{}' cannot use '{}', only scalars, pointers, and value types made of those can cross into C")
 
 // Binder: expressions (3200-3299)
 DIAG(Err_ConstantOutOfRange,            3200, Error,   "value {} is out of range for type '{}'")                                                    // CS0031

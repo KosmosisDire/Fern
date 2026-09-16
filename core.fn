@@ -77,6 +77,12 @@ attr type Intrinsic
     name: string
 }
 
+-- A static function with no body that calls the C function of this name
+attr type Extern
+{
+    name: string
+}
+
 @BuiltinType(1) @AllowCustomLiterals @SignedInt
 type I8
 {
